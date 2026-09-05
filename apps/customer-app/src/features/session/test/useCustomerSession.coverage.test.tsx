@@ -18,7 +18,7 @@ beforeEach(()=>{
  mocks.getCustomerStorageScope.mockReturnValue("scope"); mocks.loadPersistedSession.mockReturnValue(null); mocks.loadPersistedOrderId.mockReturnValue(null); mocks.restoreCart.mockReturnValue({cart:[],droppedCount:0}); mocks.realtime.mockReturnValue(true);
  mocks.createCustomerSession.mockResolvedValue({sessionToken:"new-token",expiresAt:"2099"}); mocks.getCustomerMenu.mockResolvedValue(menu()); mocks.createCustomerRequest.mockResolvedValue({});
 });
-afterEach(()=>vi.useRealTimers());
+afterEach(()=>{ vi.useRealTimers(); });
 
 describe("useCustomerSession exhaustive",()=>{
  it("shows QR error when no token exists", async()=>{ history.replaceState({},"","/"); mocks.getCustomerStorageScope.mockReturnValue(null); const {result}=renderHook(()=>useCustomerSession()); await waitFor(()=>expect(result.current.loading).toBe(false)); expect(result.current.error).toMatch(/QR code/); expect(mocks.createCustomerSession).not.toHaveBeenCalled(); });

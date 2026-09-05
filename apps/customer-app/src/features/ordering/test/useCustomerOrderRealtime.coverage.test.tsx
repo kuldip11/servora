@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCustomerOrderRealtime } from "../useCustomerOrderRealtime";
 class WS { static OPEN=1; static instances:WS[]=[]; readyState=1; sent:any[]=[]; onopen:any;onmessage:any;onerror:any;onclose:any; constructor(public url:string){WS.instances.push(this);} send(x:any){this.sent.push(x)} close(){this.onclose?.();} }
 beforeEach(()=>{WS.instances=[];(globalThis as any).WebSocket=WS; vi.useFakeTimers(); vi.stubEnv("VITE_WS_URL","");});

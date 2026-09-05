@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   stationArgs: [] as Array<string | undefined>,
   realtimeArgs: [] as Array<string | undefined>,
   attentionArgs: [] as Array<string | undefined>,
-  getTerminalStationId: vi.fn<() => string | undefined>(() => undefined),
+  getTerminalStationId: vi.fn<[], string | undefined>(() => undefined),
   getVoidAlertsEnabled: vi.fn(() => true),
   setTerminalStationId: vi.fn(),
   setVoidAlertsEnabled: vi.fn(),

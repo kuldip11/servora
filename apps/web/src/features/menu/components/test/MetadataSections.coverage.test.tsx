@@ -1,0 +1,22 @@
+import React from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const h=vi.hoisted(()=>({holidays:[] as any[],tags:[] as any[],stations:[] as any[],loading:false,addHoliday:vi.fn(),delHoliday:vi.fn(),addTag:vi.fn(),delTag:vi.fn(),createStation:vi.fn(),delStation:vi.fn()}));
+vi.mock("@/features/menu/hooks/useMenuHolidays",()=>({useMenuHolidays:()=>({data:h.holidays})}));
+vi.mock("@/features/menu/hooks/useAddHoliday",()=>({useAddHoliday:()=>({isPending:false,mutate:h.addHoliday})}));
+vi.mock("@/features/menu/hooks/useDeleteHoliday",()=>({useDeleteHoliday:()=>({mutate:h.delHoliday})}));
+vi.mock("@/features/menu/hooks/useMenuTags",()=>({useMenuTags:()=>({data:h.tags})}));
+vi.mock("@/features/menu/hooks/useAddMenuTag",()=>({useAddMenuTag:()=>({isPending:false,mutate:h.addTag})}));
+vi.mock("@/features/menu/hooks/useDeleteMenuTag",()=>({useDeleteMenuTag:()=>({mutate:h.delTag})}));
+vi.mock("@/features/menu/hooks/useKitchenStations",()=>({useKitchenStations:()=>({data:h.stations,isLoading:h.loading}),useCreateKitchenStation:()=>({isPending:false,mutate:h.createStation}),useDeleteKitchenStation:()=>({mutate:h.delStation})}));
+vi.mock("@/config/app-urls",()=>({appUrls:{kitchen:"https://kds.test"}}));
+vi.mock("@pos/ui",()=>({Button:({children,loading:_l,...p}:any)=><button {...p}>{children}</button>,Input:({label,...p}:any)=><label>{label}<input aria-label={label} {...p}/></label>}));
+import { HolidaysSection } from "../HolidaysSection";
+import { TagsSection } from "../TagsSection";
+import { KitchenStationsSection } from "../KitchenStationsSection";
+
+describe("menu metadata sections coverage",()=>{beforeEach(()=>{vi.clearAllMocks();h.holidays=[];h.tags=[];h.stations=[];h.loading=false;});
+ it("covers holidays empty/add/trim/delete",async()=>{const {rerender}=render(<HolidaysSection/>);expect(screen.getByText(/No holidays/)).toBeTruthy();h.addHoliday.mockImplementation((_v:any,o:any)=>o?.onSuccess?.());fireEvent.change(screen.getByLabelText("Name"),{target:{value:"Diwali"}});fireEvent.change(screen.getByLabelText("Date"),{target:{value:"2026-11-08"}});fireEvent.change(screen.getByLabelText("Region (optional)"),{target:{value:" India "}});fireEvent.submit(screen.getByRole("button").closest("form")!);await waitFor(()=>expect(h.addHoliday).toHaveBeenCalledWith(expect.objectContaining({name:"Diwali",holidayDate:"2026-11-08",region:"India"}),expect.anything()));h.holidays=[{id:"h1",name:"Diwali",holidayDate:"2026-11-08",region:"IN"}];rerender(<HolidaysSection/>);vi.spyOn(window,"confirm").mockReturnValue(true);fireEvent.click(screen.getByLabelText("Remove holiday Diwali"));expect(h.delHoliday).toHaveBeenCalledWith("h1");});
+ it("covers tags colors, add/reset and delete",async()=>{h.tags=[{id:"t1",name:"Hot",color:null}];h.addTag.mockImplementation((_v:any,o:any)=>o?.onSuccess?.());const {rerender}=render(<TagsSection/>);fireEvent.click(screen.getAllByRole("button",{name:/Choose/})[1]!);fireEvent.change(screen.getByLabelText("New tag"),{target:{value:"Chef"}});fireEvent.submit(screen.getByRole("button",{name:""}).closest("form")!);await waitFor(()=>expect(h.addTag).toHaveBeenCalled());vi.spyOn(window,"confirm").mockReturnValue(true);fireEvent.click(screen.getByLabelText("Delete tag Hot"));expect(h.delTag).toHaveBeenCalledWith("t1");h.tags=[];rerender(<TagsSection/>);expect(screen.getByText(/No tags yet/)).toBeTruthy();});
+ it("covers stations loading/empty/create/list/delete links",async()=>{h.loading=true;const {rerender}=render(<KitchenStationsSection/>);expect(screen.getByText(/Loading stations/)).toBeTruthy();h.loading=false;rerender(<KitchenStationsSection/>);expect(screen.getByText(/No stations configured/)).toBeTruthy();h.createStation.mockImplementation((_v:any,o:any)=>o?.onSuccess?.());fireEvent.change(screen.getByLabelText("New station"),{target:{value:" Grill "}});fireEvent.submit(screen.getByRole("button",{name:/Create/}).closest("form")!);expect(h.createStation).toHaveBeenCalledWith({name:"Grill"},expect.anything());h.stations=[{id:"s1",name:"Grill",printerIdentifier:null},{id:"s2",name:"Bar",printerIdentifier:"P2"}];rerender(<KitchenStationsSection/>);expect(screen.getByText("No printer assigned")).toBeTruthy();expect(screen.getByText("P2")).toBeTruthy();expect(screen.getAllByRole("link",{name:/Open KDS/})[0]?.getAttribute("href")).toBe("https://kds.test?stationId=s1");fireEvent.click(screen.getByLabelText("Delete Grill"));expect(h.delStation).toHaveBeenCalledWith("s1");});
+});

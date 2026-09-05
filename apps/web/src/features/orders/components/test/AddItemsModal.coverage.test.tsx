@@ -1,0 +1,25 @@
+import React from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks=vi.hoisted(()=>({mutate:vi.fn(),schema:vi.fn(),course:true,categories:[] as any[]}));
+vi.mock("lucide-react",()=>({Plus:()=>null,Minus:()=>null,Trash2:()=>null}));
+vi.mock("@/shared/utils/format",()=>({formatCurrency:(v:number)=>`₹${v}`}));
+vi.mock("@/features/menu/hooks/useMenuCategories",()=>({useMenuCategories:()=>({data:mocks.categories})}));
+vi.mock("@/features/orders/hooks/useAddOrderItems",()=>({useAddOrderItems:()=>({mutate:mocks.mutate,isPending:false})}));
+vi.mock("@/features/orders/hooks/useCourseSequencingEnabled",()=>({useCourseSequencingEnabled:()=>mocks.course}));
+vi.mock("@/features/orders/services/orders.service",()=>({toCartItemPayload:(x:any)=>({menuItemId:x.menuItemId,quantity:x.quantity,selectedOptions:(x.modifiers??[]).map((m:any)=>({optionId:m.optionId,quantity:m.quantity})),chefNotes:x.chefNotes,seatLabel:x.seatLabel,variantId:x.variantId})}));
+vi.mock("@pos/validation",()=>({addOrderItemsSchema:{safeParse:mocks.schema}}));
+vi.mock("@/features/orders/utils/cartTypes",()=>({cartItemKey:(x:any)=>`${x.menuItemId}:${x.variantId??""}:${(x.modifiers??[]).map((m:any)=>m.optionId).join(",")}`}));
+vi.mock("@pos/ui",()=>({Modal:({open,title,children}:any)=>open?<div role="dialog"><h2>{title}</h2>{children}</div>:null,Button:({children,loading:_l,...p}:any)=><button {...p}>{children}</button>}));
+vi.mock("../ItemCustomizerModal",()=>({ItemCustomizerModal:({item,onConfirm,onClose}:any)=><div><span>custom-{item.name}</span><button onClick={()=>{onConfirm({menuItemId:item.id,menuItemName:item.name,basePrice:10,variantId:"v1",variantName:"Large",modifiers:[{optionId:"o1",groupId:"g1",groupName:"G",name:"Extra",price:2,quantity:2}],chefNotes:"hot",seatLabel:"S1",quantity:1,unitPrice:14});onClose();}}>confirm-custom</button></div>}));
+import { AddItemsModal } from "../AddItemsModal";
+
+const simple={id:"i1",name:"Tea",basePrice:"10",foodType:"VEG",variants:[],modifierGroupLinks:[]} as any;
+const custom={id:"i2",name:"Coffee",basePrice:"12",foodType:"NON_VEG",variants:[{id:"v1",name:"S",price:"12"},{id:"v2",name:"L",price:"16"}],modifierGroupLinks:[]} as any;
+
+describe("AddItemsModal coverage",()=>{
+ beforeEach(()=>{vi.clearAllMocks();mocks.course=true;mocks.categories=[{id:"c1",name:"Drinks",menuItems:[simple,custom]}];mocks.schema.mockImplementation((input:any)=>({success:true,data:input}));});
+ it("filters, adds, increments/decrements/removes and customises items",()=>{render(<AddItemsModal orderId="o1" onClose={vi.fn()}/>);expect(screen.getByText("Tea")).toBeTruthy();expect(screen.getByText("₹12 – ₹16")).toBeTruthy();fireEvent.click(screen.getByRole("button",{name:"Veg"}));expect(screen.queryByText("Coffee")).toBeNull();fireEvent.click(screen.getByRole("button",{name:"All"}));const teaButton=screen.getByText("Tea").closest("button")!;fireEvent.click(teaButton);fireEvent.click(teaButton);expect(screen.getByText("2")).toBeTruthy();fireEvent.click(screen.getByLabelText("Decrease quantity of Tea"));fireEvent.click(screen.getByLabelText("Increase quantity of Tea"));fireEvent.click(screen.getByText("Coffee").closest("button")!);expect(screen.getByText("custom-Coffee")).toBeTruthy();fireEvent.click(screen.getByRole("button",{name:"confirm-custom"}));expect(screen.getByText("Large")).toBeTruthy();expect(screen.getByText(/Extra/)).toBeTruthy();expect(screen.getByText(/hot/)).toBeTruthy();fireEvent.click(screen.getByLabelText("Remove Tea from order"));expect(screen.queryByText("Tea")).not.toBeNull();});
+ it("submits notes/course payload and shows validation errors",async()=>{const close=vi.fn();render(<AddItemsModal orderId="o1" onClose={close}/>);fireEvent.click(screen.getByText("Tea").closest("button")!);fireEvent.change(screen.getByLabelText("Notes for this round"),{target:{value:"rush"}});fireEvent.click(screen.getByLabelText(/Assign this round to a course/));fireEvent.change(screen.getByRole("combobox"),{target:{value:"3"}});mocks.schema.mockReturnValueOnce({success:false,error:{issues:[{message:"Bad item"}]}});fireEvent.click(screen.getByRole("button",{name:"Add to Order"}));expect(screen.getByText("Bad item")).toBeTruthy();mocks.schema.mockImplementation((input:any)=>({success:true,data:input}));fireEvent.click(screen.getByRole("button",{name:"Add to Order"}));await waitFor(()=>expect(mocks.mutate).toHaveBeenCalled());const [payload,opts]=mocks.mutate.mock.calls.at(-1)!;expect(payload.notes).toBe("rush");expect(payload.items[0].courseNumber).toBe(3);opts.onSuccess();expect(close).toHaveBeenCalled();});
+ it("covers empty menu and no-course mode",()=>{mocks.categories=[];mocks.course=false;render(<AddItemsModal orderId="o1" onClose={vi.fn()}/>);expect(screen.getByText("No menu items yet.")).toBeTruthy();expect(screen.queryByLabelText(/Assign this round/)).toBeNull();expect((screen.getByRole("button",{name:"Add to Order"}) as HTMLButtonElement).disabled).toBe(true);});
+});

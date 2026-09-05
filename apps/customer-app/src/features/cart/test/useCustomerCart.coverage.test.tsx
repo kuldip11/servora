@@ -54,7 +54,7 @@ describe("useCustomerCart exhaustive behavior",()=>{
   const i=item({modifierGroupLinks:[]}); const h=setup([{item:i,quantity:1,selectedOptions:[],fulfillmentType:"DINE_IN"}], [i]);
   act(()=>h.result.current.toggleComboOption("s","x")); act(()=>h.result.current.addSelectedCombo());
   const auto=combo({slots:[{id:"auto",name:"A",minSelections:1,maxSelections:1,sortOrder:0,options:[{id:"only",menuItemId:"i1",variantId:null,upcharge:"0"}]}]});
-  act(()=>h.result.current.openCombo(auto)); expect(h.result.current.comboSelections[0].optionIds).toEqual(["only"]); act(()=>h.result.current.closeCombo());
+  act(()=>h.result.current.openCombo(auto)); expect(h.result.current.comboSelections[0]!.optionIds).toEqual(["only"]); act(()=>h.result.current.closeCombo());
   const c=combo(); act(()=>h.result.current.openCombo(c)); act(()=>h.result.current.toggleComboOption("missing","x"));
   act(()=>h.result.current.addSelectedCombo()); expect(h.result.current.comboCart).toHaveLength(0);
   act(()=>h.result.current.toggleComboOption("s1","co1")); act(()=>h.result.current.toggleComboOption("s1","co2")); act(()=>h.result.current.toggleComboOption("s1","co1"));
@@ -85,11 +85,11 @@ describe("useCustomerCart remaining branches",()=>{
   act(()=>h.result.current.openCombo(c));
   act(()=>h.result.current.toggleComboOption("s","a"));
   act(()=>h.result.current.toggleComboOption("s","b"));
-  expect(h.result.current.comboSelections[0].optionIds).toEqual(["b"]);
+  expect(h.result.current.comboSelections[0]!.optionIds).toEqual(["b"]);
   act(()=>h.result.current.addSelectedCombo());
   act(()=>h.result.current.openCombo(c)); act(()=>h.result.current.toggleComboOption("s","b")); act(()=>h.result.current.addSelectedCombo());
-  expect(h.result.current.comboCart[0].quantity).toBe(2);
+  expect(h.result.current.comboCart[0]!.quantity).toBe(2);
   act(()=>h.result.current.changeComboQuantity(0,1));
-  expect(h.result.current.comboCart[0].quantity).toBe(3);
+  expect(h.result.current.comboCart[0]!.quantity).toBe(3);
  });
 });

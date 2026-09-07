@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@pos/ui", () => ({
   Card: ({ children }: any) => <section>{children}</section>,
   Button: ({ children, onClick, disabled }: any) => (
-    <button onClick={onClick} disabled={disabled}>{children}</button>
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
   ),
   StatusBadge: ({ label, tone }: any) => <span data-tone={tone}>{label}</span>,
 }));
@@ -97,11 +99,13 @@ describe("TicketGroup interactions", () => {
 
     render(
       <TicketGroup
-        ticket={ticket({
-          notes: "Rush",
-          course: { courseNumber: 2, name: "Mains" },
-          items,
-        }) as any}
+        ticket={
+          ticket({
+            notes: "Rush",
+            course: { courseNumber: 2, name: "Mains" },
+            items,
+          }) as any
+        }
         isUpdating={false}
         canVoid
         canComp
@@ -110,7 +114,9 @@ describe("TicketGroup interactions", () => {
         onRefire={onRefire}
         onSeatShares={onSeatShares}
         onMarkServed={onMarkServed}
-        replacementByOriginalId={new Map([["refired", { id: "replacement-abcdef" }]])}
+        replacementByOriginalId={
+          new Map([["refired", { id: "replacement-abcdef" }]])
+        }
       />,
     );
 
@@ -134,7 +140,9 @@ describe("TicketGroup interactions", () => {
 
     expect(onRefill).toHaveBeenCalledWith("item-active");
     expect(onRefire).toHaveBeenCalledWith("item-active");
-    expect(onSeatShares).toHaveBeenCalledWith("item-active", [{ seatLabel: "S1", shareRatio: 1 }]);
+    expect(onSeatShares).toHaveBeenCalledWith("item-active", [
+      { seatLabel: "S1", shareRatio: 1 },
+    ]);
     expect(onAdjust).toHaveBeenCalledWith("item-active", "void");
     expect(onAdjust).toHaveBeenCalledWith("item-active", "comp");
     expect(onMarkServed).toHaveBeenCalledWith("ticket-1");
@@ -144,11 +152,13 @@ describe("TicketGroup interactions", () => {
     const onFireHeld = vi.fn();
     const { rerender } = render(
       <TicketGroup
-        ticket={ticket({
-          status: "HELD",
-          course: { courseNumber: 1, name: "" },
-          items: [{ ...baseItem, fulfillmentType: undefined }],
-        }) as any}
+        ticket={
+          ticket({
+            status: "HELD",
+            course: { courseNumber: 1, name: "" },
+            items: [{ ...baseItem, fulfillmentType: undefined }],
+          }) as any
+        }
         isUpdating
         onFireHeld={onFireHeld}
       />,
@@ -161,10 +171,20 @@ describe("TicketGroup interactions", () => {
 
     rerender(
       <TicketGroup
-        ticket={ticket({
-          status: "CUSTOM_STATUS",
-          items: [{ ...baseItem, id: "pending", itemStatus: "REFIRED", refireReason: "", compedAt: null }],
-        }) as any}
+        ticket={
+          ticket({
+            status: "CUSTOM_STATUS",
+            items: [
+              {
+                ...baseItem,
+                id: "pending",
+                itemStatus: "REFIRED",
+                refireReason: "",
+                compedAt: null,
+              },
+            ],
+          }) as any
+        }
         isUpdating={false}
       />,
     );

@@ -48,7 +48,9 @@ export const ContextPage = () => {
   const activate = async (membership: AvailableMembership) => {
     try {
       await activateMembershipContext(membership, items);
-      router.navigate({ to: getAuthorizedHomePath(useAuthStore.getState().user) });
+      router.navigate({
+        to: getAuthorizedHomePath(useAuthStore.getState().user),
+      });
     } catch (err: unknown) {
       toast({ title: extractApiError(err), tone: "danger" });
     }
@@ -86,7 +88,8 @@ export const ContextPage = () => {
       const membership = next.find(
         (item) => item.membershipId === created.membershipId,
       );
-      if (!membership) throw new Error("Created franchise membership not found");
+      if (!membership)
+        throw new Error("Created franchise membership not found");
       await activateMembershipContext(membership, next, organizationId);
       toast({
         title: "Franchise created. Add a branch to get started.",

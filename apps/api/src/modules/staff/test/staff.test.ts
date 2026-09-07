@@ -1,17 +1,346 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContext } from "@/core/auth";
-const m=vi.hoisted(()=>({findMany:vi.fn(),findMembership:vi.fn(),findRoleById:vi.fn(),findBranchesByIds:vi.fn(),create:vi.fn(),updateUser:vi.fn(),updateMembershipStatus:vi.fn(),setRole:vi.fn(),setBranches:vi.fn(),softDelete:vi.fn(),findAllRoles:vi.fn(),writeAudit:vi.fn(),hash:vi.fn()}));
-vi.mock("../staff.repository",()=>({staffRepository:{findMany:m.findMany,findMembership:m.findMembership,findRoleById:m.findRoleById,findBranchesByIds:m.findBranchesByIds,create:m.create,updateUser:m.updateUser,updateMembershipStatus:m.updateMembershipStatus,setRole:m.setRole,setBranches:m.setBranches,softDelete:m.softDelete,findAllRoles:m.findAllRoles}}));
-vi.mock("@/core/audit",()=>({writeAudit:m.writeAudit}));vi.mock("bcryptjs",()=>({default:{hash:m.hash}}));
-import { staffService } from "../staff.service";import{staffController}from"../staff.controller";
-const auth=(o:(Omit<Partial<AuthContext>,"authorizedBranchIds">&{authorizedBranchIds?:string[]|undefined})={}):AuthContext=>({userId:"admin",tenantId:"t1",email:"a@x",branchId:"b1",tenantWide:true,authorizedBranchIds:["b1","b2"],permissions:["staff:read","staff:create","staff:update","staff:deactivate","staff:assign_role","staff:assign_branch"],roles:[],requestId:"r1",ipAddress:"127.0.0.1",...o} as AuthContext);
-const membership=(o:Record<string,unknown>={})=>({id:"m1",userId:"u1",status:"ACTIVE",user:{id:"u1"},roles:[{role:{id:"r1",scope:"BRANCH"}}],branches:[{branchId:"b1",branch:{id:"b1"}}],...o});
-const role=(scope:"BRANCH"|"TENANT"|"GLOBAL"="BRANCH")=>({id:"r1",scope});
-describe("staff comprehensive service coverage",()=>{beforeEach(()=>{vi.clearAllMocks();m.findMany.mockResolvedValue([{id:"u1",firstName:"Jane",lastName:"Doe",email:"j@example.com",status:"ACTIVE"},{id:"u2",firstName:null,lastName:null,email:null,status:"INACTIVE"}]);m.findMembership.mockResolvedValue(membership());m.findRoleById.mockResolvedValue(role());m.findBranchesByIds.mockImplementation(async(_t:string,ids:string[])=>ids.map(id=>({id,isActive:true})));m.create.mockResolvedValue({id:"m1",userId:"u1"});m.updateUser.mockResolvedValue({id:"u1"});m.updateMembershipStatus.mockResolvedValue({id:"m1"});m.setRole.mockResolvedValue(undefined);m.setBranches.mockResolvedValue(undefined);m.softDelete.mockResolvedValue({id:"m1"});m.findAllRoles.mockResolvedValue([role("GLOBAL"),role("TENANT"),role("BRANCH")]);m.writeAudit.mockResolvedValue(undefined);m.hash.mockResolvedValue("hash");});
- it("lists with search/status/pagination normalization and controller",async()=>{await expect(staffService.list(auth(),{search:" jane ",status:"ACTIVE",page:0,limit:500})).resolves.toMatchObject({total:1,page:1,limit:100});await expect(staffService.list(auth(),{page:2,limit:1})).resolves.toMatchObject({page:2,limit:1});await expect(staffService.list(auth({tenantWide:false,authorizedBranchIds:["b1"]}),{})).resolves.toBeTruthy();await expect(staffController.list(auth(),{} as any)).resolves.toMatchObject({success:true});await expect(staffService.list(auth({permissions:[]}))).rejects.toThrow();});
- it("creates branch staff using explicit/default branch and validates roles/branches",async()=>{await expect(staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r1",branchIds:["b1","b1"]})).resolves.toMatchObject({userId:"u1"});expect(m.create).toHaveBeenCalledWith(expect.objectContaining({passwordHash:"hash",branchIds:["b1"]}));await staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r1"});await staffController.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r1",branchIds:["b1"]});m.findRoleById.mockResolvedValueOnce(undefined);await expect(staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"bad",branchIds:["b1"]})).rejects.toThrow("Invalid role");m.findRoleById.mockResolvedValueOnce(role("GLOBAL"));await expect(staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:[]})).rejects.toThrow("Global roles");m.findRoleById.mockResolvedValueOnce(role("TENANT"));await expect(staffService.create(auth({tenantWide:false}),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:[]})).rejects.toThrow("tenant-wide roles");m.findRoleById.mockResolvedValueOnce(role("BRANCH"));m.findBranchesByIds.mockResolvedValueOnce([]);await expect(staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:["bad"]})).rejects.toThrow("outside the active tenant");m.findRoleById.mockResolvedValueOnce(role("BRANCH"));await expect(staffService.create(auth({tenantWide:false,authorizedBranchIds:["b1"]}),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:["b2"]})).rejects.toThrow("outside your membership scope");m.findRoleById.mockResolvedValueOnce(role("BRANCH"));await expect(staffService.create(auth({tenantWide:false,authorizedBranchIds:undefined}),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:["b1"]})).rejects.toThrow("outside your membership scope");m.findRoleById.mockResolvedValueOnce(role("BRANCH"));await expect(staffService.create(auth({branchId:null}),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r"})).rejects.toThrow();m.findRoleById.mockResolvedValueOnce(role("TENANT"));await expect(staffService.create(auth(),{firstName:"J",lastName:"D",email:"j@x",password:"pw",roleId:"r",branchIds:["b1"]})).rejects.toThrow("Tenant-wide staff");});
- it("updates profile/status and covers management scoping",async()=>{await staffService.update(auth(),"u1",{firstName:"New",lastName:"Name",status:"ACTIVE"});expect(m.updateUser).toHaveBeenCalled();expect(m.updateMembershipStatus).toHaveBeenCalledWith("t1","u1","ACTIVE");await staffService.update(auth(),"u1",{status:"INACTIVE"});await staffService.update(auth(),"u1",{status:"SUSPENDED"});await staffController.update(auth(),"u1",{});m.findMembership.mockResolvedValueOnce(undefined);await expect(staffService.update(auth(),"missing",{})).rejects.toThrow();m.findMembership.mockResolvedValueOnce(membership({branches:[{branchId:"b2"}]}));await expect(staffService.update(auth({tenantWide:false,authorizedBranchIds:["b1"]}),"u1",{})).rejects.toThrow();m.findMembership.mockResolvedValueOnce(membership({branches:[{branchId:"b1"}]}));await expect(staffService.update(auth({tenantWide:false,authorizedBranchIds:undefined}),"u1",{})).rejects.toThrow();});
- it("assigns roles and validates branch compatibility",async()=>{await staffService.update(auth(),"u1",{roleId:"r1"});expect(m.setRole).toHaveBeenCalled();m.findRoleById.mockResolvedValueOnce(role("TENANT"));await expect(staffService.update(auth(),"u1",{roleId:"r1"})).rejects.toThrow("Tenant-wide staff");m.findMembership.mockResolvedValueOnce(membership({branches:[]}));m.findRoleById.mockResolvedValueOnce(role("TENANT"));await staffService.update(auth(),"u1",{roleId:"r1"});});
- it("assigns branches using explicit/current roles and covers role/branch invariants",async()=>{await staffService.update(auth(),"u1",{branchIds:["b1"]});expect(m.setBranches).toHaveBeenCalledWith("m1",["b1"]);m.findMembership.mockResolvedValueOnce(membership());m.findRoleById.mockResolvedValueOnce(role("BRANCH"));await staffService.update(auth(),"u1",{roleId:"r1",branchIds:["b2"]});m.findMembership.mockResolvedValueOnce(membership({roles:[{role:role("TENANT")}]}));await expect(staffService.update(auth(),"u1",{branchIds:["b1"]})).rejects.toThrow("Tenant-wide staff");m.findMembership.mockResolvedValueOnce(membership({roles:[{role:role("BRANCH")}]}));await expect(staffService.update(auth(),"u1",{branchIds:[]})).rejects.toThrow();m.findMembership.mockResolvedValueOnce(membership({roles:[]}));await staffService.update(auth(),"u1",{branchIds:[]});});
- it("removes staff and lists assignable roles",async()=>{await expect(staffService.remove(auth(),"u1")).resolves.toBeUndefined();await expect(staffController.remove(auth(),"u1")).resolves.toEqual({success:true,data:null});m.findMembership.mockResolvedValueOnce(undefined);await expect(staffService.remove(auth(),"missing")).rejects.toThrow();m.softDelete.mockResolvedValueOnce(undefined);await expect(staffService.remove(auth(),"u1")).rejects.toThrow();await expect(staffService.listRoles(auth())).resolves.toHaveLength(2);await expect(staffService.listRoles(auth({tenantWide:false}))).resolves.toEqual([expect.objectContaining({scope:"BRANCH"})]);});
+const m = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  findMembership: vi.fn(),
+  findRoleById: vi.fn(),
+  findBranchesByIds: vi.fn(),
+  create: vi.fn(),
+  updateUser: vi.fn(),
+  updateMembershipStatus: vi.fn(),
+  setRole: vi.fn(),
+  setBranches: vi.fn(),
+  softDelete: vi.fn(),
+  findAllRoles: vi.fn(),
+  writeAudit: vi.fn(),
+  hash: vi.fn(),
+}));
+vi.mock("../staff.repository", () => ({
+  staffRepository: {
+    findMany: m.findMany,
+    findMembership: m.findMembership,
+    findRoleById: m.findRoleById,
+    findBranchesByIds: m.findBranchesByIds,
+    create: m.create,
+    updateUser: m.updateUser,
+    updateMembershipStatus: m.updateMembershipStatus,
+    setRole: m.setRole,
+    setBranches: m.setBranches,
+    softDelete: m.softDelete,
+    findAllRoles: m.findAllRoles,
+  },
+}));
+vi.mock("@/core/audit", () => ({ writeAudit: m.writeAudit }));
+vi.mock("bcryptjs", () => ({ default: { hash: m.hash } }));
+import { staffService } from "../staff.service";
+import { staffController } from "../staff.controller";
+const auth = (
+  o: Omit<Partial<AuthContext>, "authorizedBranchIds"> & {
+    authorizedBranchIds?: string[] | undefined;
+  } = {},
+): AuthContext =>
+  ({
+    userId: "admin",
+    tenantId: "t1",
+    email: "a@x",
+    branchId: "b1",
+    tenantWide: true,
+    authorizedBranchIds: ["b1", "b2"],
+    permissions: [
+      "staff:read",
+      "staff:create",
+      "staff:update",
+      "staff:deactivate",
+      "staff:assign_role",
+      "staff:assign_branch",
+    ],
+    roles: [],
+    requestId: "r1",
+    ipAddress: "127.0.0.1",
+    ...o,
+  }) as AuthContext;
+const membership = (o: Record<string, unknown> = {}) => ({
+  id: "m1",
+  userId: "u1",
+  status: "ACTIVE",
+  user: { id: "u1" },
+  roles: [{ role: { id: "r1", scope: "BRANCH" } }],
+  branches: [{ branchId: "b1", branch: { id: "b1" } }],
+  ...o,
+});
+const role = (scope: "BRANCH" | "TENANT" | "GLOBAL" = "BRANCH") => ({
+  id: "r1",
+  scope,
+});
+describe("staff comprehensive service coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.findMany.mockResolvedValue([
+      {
+        id: "u1",
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "j@example.com",
+        status: "ACTIVE",
+      },
+      {
+        id: "u2",
+        firstName: null,
+        lastName: null,
+        email: null,
+        status: "INACTIVE",
+      },
+    ]);
+    m.findMembership.mockResolvedValue(membership());
+    m.findRoleById.mockResolvedValue(role());
+    m.findBranchesByIds.mockImplementation(async (_t: string, ids: string[]) =>
+      ids.map((id) => ({ id, isActive: true })),
+    );
+    m.create.mockResolvedValue({ id: "m1", userId: "u1" });
+    m.updateUser.mockResolvedValue({ id: "u1" });
+    m.updateMembershipStatus.mockResolvedValue({ id: "m1" });
+    m.setRole.mockResolvedValue(undefined);
+    m.setBranches.mockResolvedValue(undefined);
+    m.softDelete.mockResolvedValue({ id: "m1" });
+    m.findAllRoles.mockResolvedValue([
+      role("GLOBAL"),
+      role("TENANT"),
+      role("BRANCH"),
+    ]);
+    m.writeAudit.mockResolvedValue(undefined);
+    m.hash.mockResolvedValue("hash");
+  });
+  it("lists with search/status/pagination normalization and controller", async () => {
+    await expect(
+      staffService.list(auth(), {
+        search: " jane ",
+        status: "ACTIVE",
+        page: 0,
+        limit: 500,
+      }),
+    ).resolves.toMatchObject({ total: 1, page: 1, limit: 100 });
+    await expect(
+      staffService.list(auth(), { page: 2, limit: 1 }),
+    ).resolves.toMatchObject({ page: 2, limit: 1 });
+    await expect(
+      staffService.list(
+        auth({ tenantWide: false, authorizedBranchIds: ["b1"] }),
+        {},
+      ),
+    ).resolves.toBeTruthy();
+    await expect(
+      staffController.list(auth(), {} as any),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      staffService.list(auth({ permissions: [] })),
+    ).rejects.toThrow();
+  });
+  it("creates branch staff using explicit/default branch and validates roles/branches", async () => {
+    await expect(
+      staffService.create(auth(), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r1",
+        branchIds: ["b1", "b1"],
+      }),
+    ).resolves.toMatchObject({ userId: "u1" });
+    expect(m.create).toHaveBeenCalledWith(
+      expect.objectContaining({ passwordHash: "hash", branchIds: ["b1"] }),
+    );
+    await staffService.create(auth(), {
+      firstName: "J",
+      lastName: "D",
+      email: "j@x",
+      password: "pw",
+      roleId: "r1",
+    });
+    await staffController.create(auth(), {
+      firstName: "J",
+      lastName: "D",
+      email: "j@x",
+      password: "pw",
+      roleId: "r1",
+      branchIds: ["b1"],
+    });
+    m.findRoleById.mockResolvedValueOnce(undefined);
+    await expect(
+      staffService.create(auth(), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "bad",
+        branchIds: ["b1"],
+      }),
+    ).rejects.toThrow("Invalid role");
+    m.findRoleById.mockResolvedValueOnce(role("GLOBAL"));
+    await expect(
+      staffService.create(auth(), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r",
+        branchIds: [],
+      }),
+    ).rejects.toThrow("Global roles");
+    m.findRoleById.mockResolvedValueOnce(role("TENANT"));
+    await expect(
+      staffService.create(auth({ tenantWide: false }), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r",
+        branchIds: [],
+      }),
+    ).rejects.toThrow("tenant-wide roles");
+    m.findRoleById.mockResolvedValueOnce(role("BRANCH"));
+    m.findBranchesByIds.mockResolvedValueOnce([]);
+    await expect(
+      staffService.create(auth(), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r",
+        branchIds: ["bad"],
+      }),
+    ).rejects.toThrow("outside the active tenant");
+    m.findRoleById.mockResolvedValueOnce(role("BRANCH"));
+    await expect(
+      staffService.create(
+        auth({ tenantWide: false, authorizedBranchIds: ["b1"] }),
+        {
+          firstName: "J",
+          lastName: "D",
+          email: "j@x",
+          password: "pw",
+          roleId: "r",
+          branchIds: ["b2"],
+        },
+      ),
+    ).rejects.toThrow("outside your membership scope");
+    m.findRoleById.mockResolvedValueOnce(role("BRANCH"));
+    await expect(
+      staffService.create(
+        auth({ tenantWide: false, authorizedBranchIds: undefined }),
+        {
+          firstName: "J",
+          lastName: "D",
+          email: "j@x",
+          password: "pw",
+          roleId: "r",
+          branchIds: ["b1"],
+        },
+      ),
+    ).rejects.toThrow("outside your membership scope");
+    m.findRoleById.mockResolvedValueOnce(role("BRANCH"));
+    await expect(
+      staffService.create(auth({ branchId: null }), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r",
+      }),
+    ).rejects.toThrow();
+    m.findRoleById.mockResolvedValueOnce(role("TENANT"));
+    await expect(
+      staffService.create(auth(), {
+        firstName: "J",
+        lastName: "D",
+        email: "j@x",
+        password: "pw",
+        roleId: "r",
+        branchIds: ["b1"],
+      }),
+    ).rejects.toThrow("Tenant-wide staff");
+  });
+  it("updates profile/status and covers management scoping", async () => {
+    await staffService.update(auth(), "u1", {
+      firstName: "New",
+      lastName: "Name",
+      status: "ACTIVE",
+    });
+    expect(m.updateUser).toHaveBeenCalled();
+    expect(m.updateMembershipStatus).toHaveBeenCalledWith("t1", "u1", "ACTIVE");
+    await staffService.update(auth(), "u1", { status: "INACTIVE" });
+    await staffService.update(auth(), "u1", { status: "SUSPENDED" });
+    await staffController.update(auth(), "u1", {});
+    m.findMembership.mockResolvedValueOnce(undefined);
+    await expect(staffService.update(auth(), "missing", {})).rejects.toThrow();
+    m.findMembership.mockResolvedValueOnce(
+      membership({ branches: [{ branchId: "b2" }] }),
+    );
+    await expect(
+      staffService.update(
+        auth({ tenantWide: false, authorizedBranchIds: ["b1"] }),
+        "u1",
+        {},
+      ),
+    ).rejects.toThrow();
+    m.findMembership.mockResolvedValueOnce(
+      membership({ branches: [{ branchId: "b1" }] }),
+    );
+    await expect(
+      staffService.update(
+        auth({ tenantWide: false, authorizedBranchIds: undefined }),
+        "u1",
+        {},
+      ),
+    ).rejects.toThrow();
+  });
+  it("assigns roles and validates branch compatibility", async () => {
+    await staffService.update(auth(), "u1", { roleId: "r1" });
+    expect(m.setRole).toHaveBeenCalled();
+    m.findRoleById.mockResolvedValueOnce(role("TENANT"));
+    await expect(
+      staffService.update(auth(), "u1", { roleId: "r1" }),
+    ).rejects.toThrow("Tenant-wide staff");
+    m.findMembership.mockResolvedValueOnce(membership({ branches: [] }));
+    m.findRoleById.mockResolvedValueOnce(role("TENANT"));
+    await staffService.update(auth(), "u1", { roleId: "r1" });
+  });
+  it("assigns branches using explicit/current roles and covers role/branch invariants", async () => {
+    await staffService.update(auth(), "u1", { branchIds: ["b1"] });
+    expect(m.setBranches).toHaveBeenCalledWith("m1", ["b1"]);
+    m.findMembership.mockResolvedValueOnce(membership());
+    m.findRoleById.mockResolvedValueOnce(role("BRANCH"));
+    await staffService.update(auth(), "u1", {
+      roleId: "r1",
+      branchIds: ["b2"],
+    });
+    m.findMembership.mockResolvedValueOnce(
+      membership({ roles: [{ role: role("TENANT") }] }),
+    );
+    await expect(
+      staffService.update(auth(), "u1", { branchIds: ["b1"] }),
+    ).rejects.toThrow("Tenant-wide staff");
+    m.findMembership.mockResolvedValueOnce(
+      membership({ roles: [{ role: role("BRANCH") }] }),
+    );
+    await expect(
+      staffService.update(auth(), "u1", { branchIds: [] }),
+    ).rejects.toThrow();
+    m.findMembership.mockResolvedValueOnce(membership({ roles: [] }));
+    await staffService.update(auth(), "u1", { branchIds: [] });
+  });
+  it("removes staff and lists assignable roles", async () => {
+    await expect(staffService.remove(auth(), "u1")).resolves.toBeUndefined();
+    await expect(staffController.remove(auth(), "u1")).resolves.toEqual({
+      success: true,
+      data: null,
+    });
+    m.findMembership.mockResolvedValueOnce(undefined);
+    await expect(staffService.remove(auth(), "missing")).rejects.toThrow();
+    m.softDelete.mockResolvedValueOnce(undefined);
+    await expect(staffService.remove(auth(), "u1")).rejects.toThrow();
+    await expect(staffService.listRoles(auth())).resolves.toHaveLength(2);
+    await expect(
+      staffService.listRoles(auth({ tenantWide: false })),
+    ).resolves.toEqual([expect.objectContaining({ scope: "BRANCH" })]);
+  });
 });

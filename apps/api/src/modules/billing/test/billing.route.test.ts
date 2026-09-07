@@ -14,8 +14,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: Function | undefined; options: unknown }> = [];
-    use() { return this; }
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: Function | undefined;
+      options: unknown;
+    }> = [];
+    use() {
+      return this;
+    }
     get(path: string, handler: Function | undefined, options: unknown) {
       this.routes.push({ method: "GET", path, handler, options });
       return this;
@@ -37,7 +44,9 @@ vi.mock("../billing.controller", () => ({ billingController: mocks }));
 import { billingRouter } from "@/modules/billing/billing.route";
 
 const route = (method: string, path: string) =>
-  (billingRouter as any).routes.find((entry: any) => entry.method === method && entry.path === path);
+  (billingRouter as any).routes.find(
+    (entry: any) => entry.method === method && entry.path === path,
+  );
 
 const auth = { tenantId: "t1" };
 
@@ -48,7 +57,12 @@ describe("billing routes", () => {
   });
 
   it("registers every billing endpoint", () => {
-    expect((billingRouter as any).routes.map((entry: any) => [entry.method, entry.path])).toEqual([
+    expect(
+      (billingRouter as any).routes.map((entry: any) => [
+        entry.method,
+        entry.path,
+      ]),
+    ).toEqual([
       ["POST", "/api/payments"],
       ["POST", "/api/refunds"],
       ["GET", "/api/bills/:id"],
@@ -62,15 +76,29 @@ describe("billing routes", () => {
 
   it("executes every handler and applies created statuses", async () => {
     const set1: any = {};
-    await route("POST", "/api/payments").handler({ auth, body: { orderId: "o1" }, set: set1 });
+    await route("POST", "/api/payments").handler({
+      auth,
+      body: { orderId: "o1" },
+      set: set1,
+    });
     expect(set1.status).toBe(201);
 
     const set2: any = {};
-    await route("POST", "/api/refunds").handler({ auth, body: { paymentId: "p1" }, set: set2 });
+    await route("POST", "/api/refunds").handler({
+      auth,
+      body: { paymentId: "p1" },
+      set: set2,
+    });
     expect(set2.status).toBe(201);
 
-    await route("GET", "/api/bills/:id").handler({ auth, params: { id: "b1" } });
-    await route("GET", "/api/orders/:id/bills").handler({ auth, params: { id: "o1" } });
+    await route("GET", "/api/bills/:id").handler({
+      auth,
+      params: { id: "b1" },
+    });
+    await route("GET", "/api/orders/:id/bills").handler({
+      auth,
+      params: { id: "o1" },
+    });
 
     const set3: any = {};
     await route("POST", "/api/orders/:id/bills/split").handler({
@@ -112,8 +140,21 @@ describe("billing routes", () => {
     expect(mocks.getBill).toHaveBeenCalledWith(auth, "b1");
     expect(mocks.getOrderBills).toHaveBeenCalledWith(auth, "o1");
     expect(mocks.splitOrder).toHaveBeenCalledWith(auth, "o1", 2);
-    expect(mocks.splitOrderByItems).toHaveBeenCalledWith(auth, "o1", allocations);
-    expect(mocks.setItemSeatShares).toHaveBeenCalledWith(auth, "o1", "oi1", shares);
-    expect(mocks.splitOrderBySeat).toHaveBeenCalledWith(auth, "o1", "EVEN_SPLIT");
+    expect(mocks.splitOrderByItems).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      allocations,
+    );
+    expect(mocks.setItemSeatShares).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "oi1",
+      shares,
+    );
+    expect(mocks.splitOrderBySeat).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "EVEN_SPLIT",
+    );
   });
 });

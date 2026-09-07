@@ -34,6 +34,7 @@ import { staffKeys } from "@/features/staff/query-keys";
 import { AddStaffForm } from "@/features/staff/components/forms/AddStaffForm";
 import { EditStaffForm } from "@/features/staff/components/forms/EditStaffForm";
 import { RoleManager } from "@/features/staff/components/roles/RoleManager";
+import { useStaffPageState } from "@/features/staff/hooks/useStaffPageState";
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: "success",
@@ -43,14 +44,24 @@ const STATUS_TONES: Record<string, StatusTone> = {
 
 export const StaffPage = () => {
   const { has } = usePermissions();
-  const [showAdd, setShowAdd] = useState(false);
-  const [editing, setEditing] = useState<StaffRow | null>(null);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const {
+    showAdd,
+    editing,
+    page,
+    search,
+    statusFilter,
+    activeTab,
+    pageSize,
+    setShowAdd,
+    setEditing,
+    setPage,
+    setSearch,
+    setStatusFilter,
+    setActiveTab,
+    setPageSize,
+    clearFilters,
+  } = useStaffPageState();
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [activeTab, setActiveTab] = useState<"team" | "roles">("team");
-  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -243,26 +254,12 @@ export const StaffPage = () => {
       {activeTab === "team" && (
         <Card padding="sm">
           <FilterBar
-            onClearAll={
-              search && statusFilter
-                ? () => {
-                    setSearch("");
-                    setStatusFilter("");
-                    setPage(1);
-                  }
-                : undefined
-            }
+            onClearAll={search && statusFilter ? clearFilters : undefined}
           >
             <SearchInput
               value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              onClear={() => {
-                setSearch("");
-                setPage(1);
-              }}
+              onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch("")}
               placeholder="Search name or email"
               aria-label="Search staff"
               className="w-full sm:w-72"
@@ -278,10 +275,7 @@ export const StaffPage = () => {
                 { value: "INACTIVE", label: "Inactive" },
                 { value: "SUSPENDED", label: "Suspended" },
               ]}
-              onChange={(value) => {
-                setStatusFilter(value ?? "");
-                setPage(1);
-              }}
+              onChange={(value) => setStatusFilter(value ?? "")}
               className="w-44"
             />
           </FilterBar>
@@ -314,10 +308,7 @@ export const StaffPage = () => {
             totalItems={staffTotal}
             pageSize={pageSize}
             onPageChange={setPage}
-            onPageSizeChange={(next) => {
-              setPageSize(next);
-              setPage(1);
-            }}
+            onPageSizeChange={setPageSize}
           />
         </Card>
       )}

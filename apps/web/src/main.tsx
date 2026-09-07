@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { ThemeProvider, Toaster } from "@pos/ui";
+import { ThemeProvider, Toaster, AppErrorBoundary } from "@pos/ui";
 import { router } from "./routes";
 import { queryClient } from "./shared/lib/query-client";
 import "./index.css";
@@ -21,9 +21,11 @@ const start = async () => {
     <StrictMode>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <PerformanceProfiler id="web-router">
-            <RouterProvider router={router} />
-          </PerformanceProfiler>
+          <AppErrorBoundary appName="Servora Web">
+            <PerformanceProfiler id="web-router">
+              <RouterProvider router={router} />
+            </PerformanceProfiler>
+          </AppErrorBoundary>
           {}
           <Toaster />
           {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

@@ -8,11 +8,21 @@ const mocks = vi.hoisted(() => ({
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: Function | undefined }> = [];
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: Function | undefined;
+    }> = [];
     prefix: string;
-    constructor(options: { prefix?: string } = {}) { this.prefix = options.prefix ?? ""; }
+    constructor(options: { prefix?: string } = {}) {
+      this.prefix = options.prefix ?? "";
+    }
     post(path: string, handler: Function | undefined) {
-      this.routes.push({ method: "POST", path: `${this.prefix}${path}`, handler });
+      this.routes.push({
+        method: "POST",
+        path: `${this.prefix}${path}`,
+        handler,
+      });
       return this;
     }
   }
@@ -21,7 +31,9 @@ vi.mock("elysia", async (importOriginal) => {
 vi.mock("./razorpay-webhook.service", () => ({
   razorpayWebhookService: { handle: mocks.handle },
 }));
-vi.mock("@/core/observability/metrics", () => ({ metrics: { increment: mocks.increment } }));
+vi.mock("@/core/observability/metrics", () => ({
+  metrics: { increment: mocks.increment },
+}));
 
 import { razorpayWebhookRouter } from "./razorpay-webhook.route";
 import { ValidationError } from "@/core/errors";
@@ -42,7 +54,7 @@ describe("razorpayWebhookRouter coverage", () => {
         "x-razorpay-signature": "sig",
         "x-razorpay-event-id": "event1",
       },
-      body: "{\"event\":\"payment.captured\"}",
+      body: '{"event":"payment.captured"}',
     });
 
     await expect(handler({ request, set })).resolves.toEqual({

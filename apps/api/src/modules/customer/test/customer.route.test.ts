@@ -18,16 +18,17 @@ vi.mock("@/modules/customer/customer.controller", () => ({
 import { customerRouter } from "@/modules/customer/customer.route";
 
 const handle = (path: string, init?: RequestInit) =>
-  new Elysia().use(customerRouter).handle(
-    new Request(`http://localhost${path}`, init),
-  );
+  new Elysia()
+    .use(customerRouter)
+    .handle(new Request(`http://localhost${path}`, init));
 
 const sessionHeaders = { "x-customer-session": "s1" };
 
 describe("customerRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    for (const mock of Object.values(controller)) mock.mockResolvedValue({ ok: true });
+    for (const mock of Object.values(controller))
+      mock.mockResolvedValue({ ok: true });
   });
 
   it("creates sessions", async () => {
@@ -41,9 +42,13 @@ describe("customerRouter", () => {
   });
 
   it("serves the menu and rejects missing customer sessions", async () => {
-    expect((await handle("/api/customer/menu", { headers: sessionHeaders })).status).toBe(200);
+    expect(
+      (await handle("/api/customer/menu", { headers: sessionHeaders })).status,
+    ).toBe(200);
     expect(controller.getMenu).toHaveBeenCalledWith("s1");
-    expect((await handle("/api/customer/menu")).status).toBeGreaterThanOrEqual(400);
+    expect((await handle("/api/customer/menu")).status).toBeGreaterThanOrEqual(
+      400,
+    );
   });
 
   it("creates orders with the optional customer request id", async () => {
@@ -63,11 +68,13 @@ describe("customerRouter", () => {
       "req1",
     );
     expect(
-      (await handle("/api/customer/orders", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      })).status,
+      (
+        await handle("/api/customer/orders", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      ).status,
     ).toBeGreaterThanOrEqual(400);
   });
 
@@ -109,7 +116,9 @@ describe("customerRouter", () => {
       billId: "b1",
     });
 
-    response = await handle("/api/customer/orders/o1", { headers: sessionHeaders });
+    response = await handle("/api/customer/orders/o1", {
+      headers: sessionHeaders,
+    });
     expect(response.status).toBe(200);
     expect(controller.getOrder).toHaveBeenCalledWith("s1", "o1");
   });
@@ -138,6 +147,8 @@ describe("customerRouter", () => {
     ],
     ["/api/customer/orders/o1", undefined],
   ])("rejects missing session token on %s", async (path, init) => {
-    expect((await handle(path, init as RequestInit | undefined)).status).toBeGreaterThanOrEqual(400);
+    expect(
+      (await handle(path, init as RequestInit | undefined)).status,
+    ).toBeGreaterThanOrEqual(400);
   });
 });

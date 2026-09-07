@@ -139,25 +139,27 @@ export const branchService = {
       normalizedCode,
     );
     if (existingCode) throw branchCodeAlreadyExists(normalizedCode);
-    const branch = await branchRepository.create(compact({
-      tenantId: auth.tenantId,
-      ...input,
-      ...(input.addressLine1 !== undefined || input.address !== undefined
-        ? { address: input.addressLine1?.trim() || input.address || "" }
-        : {}),
-      taxOverride:
-        input.taxOverride === undefined || input.taxOverride === null
-          ? input.taxOverride
-          : input.taxOverride.toFixed(2),
-      serviceChargeOverride:
-        input.serviceChargeOverride === undefined ||
-        input.serviceChargeOverride === null
-          ? input.serviceChargeOverride
-          : input.serviceChargeOverride.toFixed(2),
-      code: normalizedCode,
-      timezone: normalizedTimezone,
-      currency: input.currency.trim().toUpperCase(),
-    }) as Parameters<typeof branchRepository.create>[0]);
+    const branch = await branchRepository.create(
+      compact({
+        tenantId: auth.tenantId,
+        ...input,
+        ...(input.addressLine1 !== undefined || input.address !== undefined
+          ? { address: input.addressLine1?.trim() || input.address || "" }
+          : {}),
+        taxOverride:
+          input.taxOverride === undefined || input.taxOverride === null
+            ? input.taxOverride
+            : input.taxOverride.toFixed(2),
+        serviceChargeOverride:
+          input.serviceChargeOverride === undefined ||
+          input.serviceChargeOverride === null
+            ? input.serviceChargeOverride
+            : input.serviceChargeOverride.toFixed(2),
+        code: normalizedCode,
+        timezone: normalizedTimezone,
+        currency: input.currency.trim().toUpperCase(),
+      }) as Parameters<typeof branchRepository.create>[0],
+    );
     await writeAudit({
       tenantId: auth.tenantId,
       userId: auth.userId,

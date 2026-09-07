@@ -45,7 +45,8 @@ export const TagsSection = () => {
             style={{ backgroundColor: tag.color ?? "#8b5cf6" }}
           >
             {tag.name}
-            <button type="button"
+            <button
+              type="button"
               onClick={() => {
                 if (confirm(`Delete tag "${tag.name}"?`))
                   deleteMutation.mutate(tag.id);

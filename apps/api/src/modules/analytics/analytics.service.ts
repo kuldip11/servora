@@ -215,8 +215,12 @@ export const analyticsService = {
     const known = margins
       .map((row, index) => ({ row, volume: volumes[index]! }))
       .filter(
-        (entry): entry is { row: CostMarginRow & { margin: number }; volume: number } =>
-          entry.row.margin !== null,
+        (
+          entry,
+        ): entry is {
+          row: CostMarginRow & { margin: number };
+          volume: number;
+        } => entry.row.margin !== null,
       );
     const marginThreshold = median(known.map((entry) => entry.row.margin));
     const volumeThreshold = median(known.map((entry) => entry.volume));

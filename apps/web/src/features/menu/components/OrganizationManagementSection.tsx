@@ -10,6 +10,7 @@ const menuApi = createMenuApi(apiClient);
 import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { usePermissions } from "@/shared/auth/permissions";
+import { useOrganizationDefaultsFormState } from "@/features/menu/hooks/useOrganizationDefaultsFormState";
 
 interface OrgMembership {
   organizationId: string;
@@ -80,17 +81,21 @@ export const OrganizationManagementSection = () => {
       organizationsApi.loyaltyTiers<CustomerLoyaltyTier>(organizationId),
     enabled: !!organizationId && canManage,
   });
-  const [menuName, setMenuName] = useState("");
-  const [menuSkus, setMenuSkus] = useState("");
-  const [menuPublished, setMenuPublished] = useState(false);
-  const [menuDefault, setMenuDefault] = useState(true);
-  const [ruleSku, setRuleSku] = useState("");
-  const [rulePrice, setRulePrice] = useState("");
-  const [loyaltyName, setLoyaltyName] = useState("");
-  const [loyaltyMode, setLoyaltyMode] = useState<"PERCENT" | "FIXED">(
-    "PERCENT",
-  );
-  const [loyaltyValue, setLoyaltyValue] = useState("5");
+  const {
+    menuName,
+    menuSkus,
+    menuPublished,
+    menuDefault,
+    ruleSku,
+    rulePrice,
+    loyaltyName,
+    loyaltyMode,
+    loyaltyValue,
+    setField,
+    resetMenu,
+    resetRule,
+    resetLoyalty,
+  } = useOrganizationDefaultsFormState();
 
   const createMenu = useMutation({
     mutationFn: () =>
@@ -105,8 +110,7 @@ export const OrganizationManagementSection = () => {
           .map((itemSku, index) => ({ itemSku, sortOrder: index })),
       }),
     onSuccess: async () => {
-      setMenuName("");
-      setMenuSkus("");
+      resetMenu();
       await queryClient.invalidateQueries({ queryKey: menusKey });
       notifySuccess("Organization menu created");
     },
@@ -138,8 +142,7 @@ export const OrganizationManagementSection = () => {
         priority: 0,
       }),
     onSuccess: async () => {
-      setRuleSku("");
-      setRulePrice("");
+      resetRule();
       await queryClient.invalidateQueries({ queryKey: rulesKey });
       notifySuccess("Organization price rule created");
     },
@@ -159,7 +162,7 @@ export const OrganizationManagementSection = () => {
           : { discountFixed: Number(loyaltyValue) }),
       }),
     onSuccess: async () => {
-      setLoyaltyName("");
+      resetLoyalty();
       await queryClient.invalidateQueries({ queryKey: loyaltyKey });
       notifySuccess("Organization loyalty tier created");
     },
@@ -240,14 +243,14 @@ export const OrganizationManagementSection = () => {
           <Input
             label="Menu name"
             value={menuName}
-            onChange={(event) => setMenuName(event.target.value)}
+            onChange={(event) => setField("menuName", event.target.value)}
           />
           <label className="block text-sm font-medium text-text-primary">
             Tenant item SKUs
             <textarea
               className="mt-1.5 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
               value={menuSkus}
-              onChange={(event) => setMenuSkus(event.target.value)}
+              onChange={(event) => setField("menuSkus", event.target.value)}
               placeholder="PIZZA-MARGHERITA, DRINK-COLA"
             />
           </label>
@@ -256,7 +259,9 @@ export const OrganizationManagementSection = () => {
               <input
                 type="checkbox"
                 checked={menuDefault}
-                onChange={(event) => setMenuDefault(event.target.checked)}
+                onChange={(event) =>
+                  setField("menuDefault", event.target.checked)
+                }
               />
               Default
             </label>
@@ -264,7 +269,9 @@ export const OrganizationManagementSection = () => {
               <input
                 type="checkbox"
                 checked={menuPublished}
-                onChange={(event) => setMenuPublished(event.target.checked)}
+                onChange={(event) =>
+                  setField("menuPublished", event.target.checked)
+                }
               />
               Publish now
             </label>
@@ -288,7 +295,8 @@ export const OrganizationManagementSection = () => {
                   {menu.isDefault ? " · Default" : ""}
                 </span>
                 <div className="flex gap-2">
-                  <button type="button"
+                  <button
+                    type="button"
                     className="text-primary"
                     onClick={() =>
                       toggleMenu.mutate({
@@ -300,7 +308,8 @@ export const OrganizationManagementSection = () => {
                   >
                     {menu.status === "PUBLISHED" ? "Draft" : "Publish"}
                   </button>
-                  <button type="button"
+                  <button
+                    type="button"
                     className="text-danger"
                     onClick={() => deleteMenu.mutate(menu.id)}
                   >
@@ -324,7 +333,7 @@ export const OrganizationManagementSection = () => {
             <Input
               label="Menu item SKU"
               value={ruleSku}
-              onChange={(event) => setRuleSku(event.target.value)}
+              onChange={(event) => setField("ruleSku", event.target.value)}
             />
             <Input
               label="Price"
@@ -332,7 +341,7 @@ export const OrganizationManagementSection = () => {
               min="0"
               step="0.01"
               value={rulePrice}
-              onChange={(event) => setRulePrice(event.target.value)}
+              onChange={(event) => setField("rulePrice", event.target.value)}
             />
           </div>
           <Button
@@ -354,7 +363,8 @@ export const OrganizationManagementSection = () => {
                   {rule.menuItemSku ?? "General"} · ₹
                   {Number(rule.price ?? 0).toFixed(2)}
                 </span>
-                <button type="button"
+                <button
+                  type="button"
                   className="text-danger"
                   onClick={() => deleteRule.mutate(rule.id)}
                 >
@@ -376,7 +386,7 @@ export const OrganizationManagementSection = () => {
             <Input
               label="Tier name"
               value={loyaltyName}
-              onChange={(event) => setLoyaltyName(event.target.value)}
+              onChange={(event) => setField("loyaltyName", event.target.value)}
             />
             <label className="text-sm font-medium text-text-primary">
               Discount type
@@ -384,7 +394,10 @@ export const OrganizationManagementSection = () => {
                 className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
                 value={loyaltyMode}
                 onChange={(event) =>
-                  setLoyaltyMode(event.target.value as "PERCENT" | "FIXED")
+                  setField(
+                    "loyaltyMode",
+                    event.target.value as "PERCENT" | "FIXED",
+                  )
                 }
               >
                 <option value="PERCENT">Percent</option>
@@ -398,7 +411,7 @@ export const OrganizationManagementSection = () => {
               max={loyaltyMode === "PERCENT" ? "100" : undefined}
               step="0.01"
               value={loyaltyValue}
-              onChange={(event) => setLoyaltyValue(event.target.value)}
+              onChange={(event) => setField("loyaltyValue", event.target.value)}
             />
             <Button
               type="button"
@@ -425,7 +438,8 @@ export const OrganizationManagementSection = () => {
                   : `₹${Number(tier.discountFixed ?? 0).toFixed(2)} off`}{" "}
                 · organization-wide
               </span>
-              <button type="button"
+              <button
+                type="button"
                 className="text-danger"
                 onClick={() => deleteLoyaltyTier.mutate(tier.id)}
               >

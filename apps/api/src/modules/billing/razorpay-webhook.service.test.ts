@@ -110,22 +110,22 @@ describe("razorpayWebhookService coverage", () => {
   });
 
   it("requires webhook headers, configured secret, valid signature, and valid JSON", async () => {
-    await expect(razorpayWebhookService.handle("{}", undefined, "e1")).rejects.toThrow(
-      "signature and event id are required",
-    );
-    await expect(razorpayWebhookService.handle("{}", "sig", undefined)).rejects.toThrow(
-      "signature and event id are required",
-    );
+    await expect(
+      razorpayWebhookService.handle("{}", undefined, "e1"),
+    ).rejects.toThrow("signature and event id are required");
+    await expect(
+      razorpayWebhookService.handle("{}", "sig", undefined),
+    ).rejects.toThrow("signature and event id are required");
 
     delete process.env["RAZORPAY_WEBHOOK_SECRET"];
-    await expect(razorpayWebhookService.handle("{}", "sig", "e1")).rejects.toThrow(
-      "webhook secret is not configured",
-    );
+    await expect(
+      razorpayWebhookService.handle("{}", "sig", "e1"),
+    ).rejects.toThrow("webhook secret is not configured");
 
     process.env["RAZORPAY_WEBHOOK_SECRET"] = "secret";
-    await expect(razorpayWebhookService.handle("{}", "bad", "e1")).rejects.toThrow(
-      "Invalid Razorpay webhook signature",
-    );
+    await expect(
+      razorpayWebhookService.handle("{}", "bad", "e1"),
+    ).rejects.toThrow("Invalid Razorpay webhook signature");
 
     const invalid = "not-json";
     await expect(
@@ -139,7 +139,11 @@ describe("razorpayWebhookService coverage", () => {
       razorpayWebhookService.handle(body, signature(body), "e1"),
     ).resolves.toEqual({ duplicate: false, queued: true });
     expect(mocks.txInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ eventId: "e1", eventType: "payment.captured", status: "RECEIVED" }),
+      expect.objectContaining({
+        eventId: "e1",
+        eventType: "payment.captured",
+        status: "RECEIVED",
+      }),
     );
     expect(mocks.lpush).toHaveBeenCalledWith("razorpay-webhooks", "e1");
   });
@@ -157,13 +161,19 @@ describe("razorpayWebhookService coverage", () => {
       razorpayWebhookService.handle(body, signature(body), "e2"),
     ).resolves.toEqual({ duplicate: true, queued: true });
     expect(mocks.txUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: "unknown", status: "RECEIVED", error: null }),
+      expect.objectContaining({
+        eventType: "unknown",
+        status: "RECEIVED",
+        error: null,
+      }),
     );
   });
 
   it("handles missing and already processed events", async () => {
     mocks.eventFindFirst.mockResolvedValueOnce(null);
-    await expect(razorpayWebhookService.processEvent("missing")).resolves.toEqual({
+    await expect(
+      razorpayWebhookService.processEvent("missing"),
+    ).resolves.toEqual({
       processed: false,
       reason: "not_found",
     });
@@ -189,7 +199,11 @@ describe("razorpayWebhookService coverage", () => {
       amount: "105.00",
       order: { tenantId: "t1", branchId: "b1" },
     });
-    mocks.txPaymentFindFirst.mockResolvedValue({ id: "p1", orderId: "o1", status: "PENDING" });
+    mocks.txPaymentFindFirst.mockResolvedValue({
+      id: "p1",
+      orderId: "o1",
+      status: "PENDING",
+    });
     mocks.txTicketFindMany.mockResolvedValue([
       { id: "kt1", course: null },
       { id: "kt2", course: { courseNumber: 2 } },
@@ -252,7 +266,11 @@ describe("razorpayWebhookService coverage", () => {
   });
 
   it("logs inventory shortages and safely handles current payment already successful", async () => {
-    mocks.eventFindFirst.mockResolvedValue({ status: "RECEIVED", eventType: "payment.captured", payload: raw() });
+    mocks.eventFindFirst.mockResolvedValue({
+      status: "RECEIVED",
+      eventType: "payment.captured",
+      payload: raw(),
+    });
     mocks.paymentFindFirst.mockResolvedValue({
       id: "p1",
       orderId: "o1",
@@ -260,15 +278,33 @@ describe("razorpayWebhookService coverage", () => {
       amount: "105.00",
       order: { tenantId: "t1", branchId: "b1" },
     });
-    mocks.txPaymentFindFirst.mockResolvedValueOnce({ id: "p1", status: "SUCCESS" });
+    mocks.txPaymentFindFirst.mockResolvedValueOnce({
+      id: "p1",
+      status: "SUCCESS",
+    });
     await razorpayWebhookService.processEvent("e1");
     expect(mocks.findOrder).not.toHaveBeenCalled();
 
-    mocks.txPaymentFindFirst.mockResolvedValueOnce({ id: "p1", orderId: "o1", status: "PENDING" });
+    mocks.txPaymentFindFirst.mockResolvedValueOnce({
+      id: "p1",
+      orderId: "o1",
+      status: "PENDING",
+    });
     mocks.txTicketFindMany.mockResolvedValueOnce([{ id: "kt1", course: null }]);
-    mocks.findOrder.mockResolvedValueOnce({
-      items: [{ id: "oi1", kitchenTicketId: "kt1", menuItemId: "mi1", variantId: null, quantity: 1, modifiers: [] }],
-    }).mockResolvedValueOnce(null);
+    mocks.findOrder
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "oi1",
+            kitchenTicketId: "kt1",
+            menuItemId: "mi1",
+            variantId: null,
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+      })
+      .mockResolvedValueOnce(null);
     mocks.deduct.mockResolvedValueOnce({ short: [{ item: "x" }] });
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await razorpayWebhookService.processEvent("e2");
@@ -301,10 +337,12 @@ describe("razorpayWebhookService coverage", () => {
       eventType: "other",
       payload: JSON.stringify({ event: "other" }),
     });
-    await expect(razorpayWebhookService.processEvent("other")).resolves.toEqual({
-      processed: true,
-      duplicate: false,
-    });
+    await expect(razorpayWebhookService.processEvent("other")).resolves.toEqual(
+      {
+        processed: true,
+        duplicate: false,
+      },
+    );
   });
 
   it("records processing failures with retry metadata and rethrows", async () => {
@@ -340,11 +378,15 @@ describe("razorpayWebhookService coverage", () => {
         }),
       });
 
-    await expect(razorpayWebhookService.processEvent("stored-type")).resolves.toEqual({
+    await expect(
+      razorpayWebhookService.processEvent("stored-type"),
+    ).resolves.toEqual({
       processed: true,
       duplicate: false,
     });
-    await expect(razorpayWebhookService.processEvent("order-fallback")).resolves.toEqual({
+    await expect(
+      razorpayWebhookService.processEvent("order-fallback"),
+    ).resolves.toEqual({
       processed: true,
       duplicate: false,
     });
@@ -359,9 +401,9 @@ describe("razorpayWebhookService coverage", () => {
     });
     mocks.paymentFindFirst.mockRejectedValueOnce("db-string-failure");
 
-    await expect(razorpayWebhookService.processEvent("string-failure")).rejects.toBe(
-      "db-string-failure",
-    );
+    await expect(
+      razorpayWebhookService.processEvent("string-failure"),
+    ).rejects.toBe("db-string-failure");
     expect(mocks.dbUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "FAILED",
@@ -369,5 +411,4 @@ describe("razorpayWebhookService coverage", () => {
       }),
     );
   });
-
 });

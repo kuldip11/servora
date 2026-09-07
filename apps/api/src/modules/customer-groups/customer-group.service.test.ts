@@ -23,11 +23,13 @@ vi.mock("@/core/audit", () => ({ writeAudit: mocks.writeAudit }));
 
 import { customerGroupService } from "./customer-group.service";
 
-const auth = (permissions: string[] = ["menu:read", "menu:pricing:write"]): AuthContext =>
+const auth = (
+  permissions: string[] = ["menu:read", "menu:pricing:write"],
+): AuthContext =>
   ({
     userId: "u1",
     tenantId: "t1",
-  email: "user@example.com",
+    email: "user@example.com",
     branchId: "b1",
     tenantWide: false,
     permissions,
@@ -53,10 +55,16 @@ describe("customerGroupService", () => {
   });
 
   it("lists and finds groups with read permission", async () => {
-    await expect(customerGroupService.list(auth())).resolves.toEqual([{ id: "g1" }]);
-    await expect(customerGroupService.findById(auth(), "g1")).resolves.toMatchObject({ id: "g1" });
+    await expect(customerGroupService.list(auth())).resolves.toEqual([
+      { id: "g1" },
+    ]);
+    await expect(
+      customerGroupService.findById(auth(), "g1"),
+    ).resolves.toMatchObject({ id: "g1" });
     mocks.findById.mockResolvedValueOnce(undefined);
-    await expect(customerGroupService.findById(auth(), "missing")).rejects.toThrow("Customer group not found");
+    await expect(
+      customerGroupService.findById(auth(), "missing"),
+    ).rejects.toThrow("Customer group not found");
     await expect(customerGroupService.list(auth([]))).rejects.toThrow();
   });
 
@@ -69,50 +77,108 @@ describe("customerGroupService", () => {
       { name: "VIP", discountFixed: -1 },
     ];
     for (const input of invalid) {
-      await expect(customerGroupService.create(auth(), input)).rejects.toThrow();
+      await expect(
+        customerGroupService.create(auth(), input),
+      ).rejects.toThrow();
     }
-    await expect(customerGroupService.create(auth([]), { name: "VIP" })).rejects.toThrow();
+    await expect(
+      customerGroupService.create(auth([]), { name: "VIP" }),
+    ).rejects.toThrow();
   });
 
   it("creates groups, trims names, preserves explicit discounts, and audits", async () => {
-    await customerGroupService.create(auth(), { name: " VIP ", discountPercent: 15 });
-    expect(mocks.create).toHaveBeenCalledWith({ tenantId: "t1", name: "VIP", discountPercent: 15 });
-    expect(mocks.writeAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "CUSTOMER_GROUP_CREATED", entityId: "g1" }));
+    await customerGroupService.create(auth(), {
+      name: " VIP ",
+      discountPercent: 15,
+    });
+    expect(mocks.create).toHaveBeenCalledWith({
+      tenantId: "t1",
+      name: "VIP",
+      discountPercent: 15,
+    });
+    expect(mocks.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "CUSTOMER_GROUP_CREATED",
+        entityId: "g1",
+      }),
+    );
 
-    await customerGroupService.create(auth(), { name: "Regular", discountFixed: null });
-    expect(mocks.create).toHaveBeenLastCalledWith({ tenantId: "t1", name: "Regular", discountFixed: null });
+    await customerGroupService.create(auth(), {
+      name: "Regular",
+      discountFixed: null,
+    });
+    expect(mocks.create).toHaveBeenLastCalledWith({
+      tenantId: "t1",
+      name: "Regular",
+      discountFixed: null,
+    });
   });
 
   it("updates groups using existing values and validates merged state", async () => {
     await customerGroupService.update(auth(), "g1", { name: "VIP 2" });
     expect(mocks.update).toHaveBeenCalledWith("t1", "g1", { name: "VIP 2" });
-    expect(mocks.writeAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "CUSTOMER_GROUP_UPDATED" }));
+    expect(mocks.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "CUSTOMER_GROUP_UPDATED" }),
+    );
 
-    mocks.findById.mockResolvedValueOnce({ id: "g1", name: "VIP", discountPercent: null, discountFixed: "5" });
+    mocks.findById.mockResolvedValueOnce({
+      id: "g1",
+      name: "VIP",
+      discountPercent: null,
+      discountFixed: "5",
+    });
     await customerGroupService.update(auth(), "g1", { discountFixed: 7 });
 
-    mocks.findById.mockResolvedValueOnce({ id: "g1", name: "VIP", discountPercent: null, discountFixed: "5" });
+    mocks.findById.mockResolvedValueOnce({
+      id: "g1",
+      name: "VIP",
+      discountPercent: null,
+      discountFixed: "5",
+    });
     await customerGroupService.update(auth(), "g1", { name: "VIP Plus" });
 
-    mocks.findById.mockResolvedValueOnce({ id: "g1", name: "VIP", discountPercent: "12", discountFixed: null });
+    mocks.findById.mockResolvedValueOnce({
+      id: "g1",
+      name: "VIP",
+      discountPercent: "12",
+      discountFixed: null,
+    });
     await customerGroupService.update(auth(), "g1", { discountPercent: null });
 
-    mocks.findById.mockResolvedValueOnce({ id: "g1", name: "VIP", discountPercent: null, discountFixed: "6" });
+    mocks.findById.mockResolvedValueOnce({
+      id: "g1",
+      name: "VIP",
+      discountPercent: null,
+      discountFixed: "6",
+    });
     await customerGroupService.update(auth(), "g1", { discountFixed: null });
 
     mocks.findById.mockResolvedValueOnce(undefined);
-    await expect(customerGroupService.update(auth(), "missing", {})).rejects.toThrow("Customer group not found");
+    await expect(
+      customerGroupService.update(auth(), "missing", {}),
+    ).rejects.toThrow("Customer group not found");
 
-    mocks.findById.mockResolvedValueOnce({ id: "g1", name: "VIP", discountPercent: null, discountFixed: null });
+    mocks.findById.mockResolvedValueOnce({
+      id: "g1",
+      name: "VIP",
+      discountPercent: null,
+      discountFixed: null,
+    });
     mocks.update.mockResolvedValueOnce(undefined);
-    await expect(customerGroupService.update(auth(), "g1", {})).rejects.toThrow("Customer group not found");
+    await expect(customerGroupService.update(auth(), "g1", {})).rejects.toThrow(
+      "Customer group not found",
+    );
   });
 
   it("removes existing groups with audit and treats missing groups as a no-op", async () => {
     await customerGroupService.remove(auth(), "g1");
-    expect(mocks.writeAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "CUSTOMER_GROUP_DELETED" }));
+    expect(mocks.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "CUSTOMER_GROUP_DELETED" }),
+    );
     mocks.remove.mockResolvedValueOnce(undefined);
-    await expect(customerGroupService.remove(auth(), "missing")).resolves.toBeUndefined();
+    await expect(
+      customerGroupService.remove(auth(), "missing"),
+    ).resolves.toBeUndefined();
     expect(mocks.writeAudit).toHaveBeenCalledTimes(1);
   });
 });

@@ -94,9 +94,19 @@ describe("razorpay webhook worker coverage", () => {
 
     expect(mocks.redisInstances).toHaveLength(2);
     const recoveryRedis = mocks.redisInstances[1]!;
-    expect(recoveryRedis.lpush).toHaveBeenNthCalledWith(1, "pos:queue:razorpay_webhooks", "e1");
-    expect(recoveryRedis.lpush).toHaveBeenNthCalledWith(2, "pos:queue:razorpay_webhooks", "e2");
-    expect(mocks.dbUpdateSet).toHaveBeenCalledWith({ nextAttemptAt: expect.any(Date) });
+    expect(recoveryRedis.lpush).toHaveBeenNthCalledWith(
+      1,
+      "pos:queue:razorpay_webhooks",
+      "e1",
+    );
+    expect(recoveryRedis.lpush).toHaveBeenNthCalledWith(
+      2,
+      "pos:queue:razorpay_webhooks",
+      "e2",
+    );
+    expect(mocks.dbUpdateSet).toHaveBeenCalledWith({
+      nextAttemptAt: expect.any(Date),
+    });
     expect(recoveryRedis.quit).toHaveBeenCalledOnce();
 
     stop();
@@ -107,14 +117,18 @@ describe("razorpay webhook worker coverage", () => {
     let call = 0;
     mocks.brpopImplementations.push(() => {
       call += 1;
-      if (call === 1) return Promise.resolve(["pos:queue:razorpay_webhooks", "e1"]);
-      if (call === 2) return Promise.resolve(["pos:queue:razorpay_webhooks", "e2"]);
+      if (call === 1)
+        return Promise.resolve(["pos:queue:razorpay_webhooks", "e1"]);
+      if (call === 2)
+        return Promise.resolve(["pos:queue:razorpay_webhooks", "e2"]);
       return new Promise(() => undefined);
     });
     mocks.processEvent
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("process failed"));
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     const { startRazorpayWebhookWorker } = await loadWorker("redis://test");
     const stop = startRazorpayWebhookWorker();
@@ -137,8 +151,12 @@ describe("razorpay webhook worker coverage", () => {
   });
 
   it("records Redis queue failures, backs off, and exits after stop", async () => {
-    mocks.brpopImplementations.push(() => Promise.reject(new Error("redis down")));
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.brpopImplementations.push(() =>
+      Promise.reject(new Error("redis down")),
+    );
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     const { startRazorpayWebhookWorker } = await loadWorker("redis://test");
     const stop = startRazorpayWebhookWorker();
@@ -161,7 +179,9 @@ describe("razorpay webhook worker coverage", () => {
   it("logs initial and interval recovery scan failures", async () => {
     mocks.findMany.mockRejectedValue(new Error("scan failed"));
     mocks.brpopImplementations.push(() => new Promise(() => undefined));
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     const { startRazorpayWebhookWorker } = await loadWorker("redis://test");
     const stop = startRazorpayWebhookWorker();
@@ -198,5 +218,4 @@ describe("razorpay webhook worker coverage", () => {
     expect(mocks.processEvent).not.toHaveBeenCalled();
     stop();
   });
-
 });

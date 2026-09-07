@@ -19,7 +19,11 @@ const placeholderPattern = /(replace-with|example\.com|change-this)/i;
 const errors = [];
 
 const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS);
-if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 0 || trustedProxyHops > 10) {
+if (
+  !Number.isInteger(trustedProxyHops) ||
+  trustedProxyHops < 0 ||
+  trustedProxyHops > 10
+) {
   errors.push("TRUST_PROXY_HOPS must be an integer between 0 and 10");
 }
 

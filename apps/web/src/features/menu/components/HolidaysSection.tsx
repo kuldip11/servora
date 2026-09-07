@@ -50,7 +50,8 @@ export const HolidaysSection = () => {
                 <span className="text-xs text-text-disabled">({h.region})</span>
               )}
             </div>
-            <button type="button"
+            <button
+              type="button"
               onClick={() => {
                 if (confirm(`Remove holiday "${h.name}"?`))
                   deleteMutation.mutate(h.id);

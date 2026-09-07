@@ -87,7 +87,9 @@ describe("customerRequestService", () => {
 
   it("rejects requests without a dine-in table", async () => {
     mocks.getSession.mockResolvedValue({ ...session, tableId: null });
-    await expect(customerRequestService.create("tok", { type: "WATER" })).rejects.toThrow(
+    await expect(
+      customerRequestService.create("tok", { type: "WATER" }),
+    ).rejects.toThrow(
       "Customer requests are only available for dine-in sessions",
     );
   });
@@ -101,9 +103,9 @@ describe("customerRequestService", () => {
 
   it("rejects when persistence does not return the created request", async () => {
     mocks.insertReturning.mockResolvedValueOnce([]);
-    await expect(customerRequestService.create("tok", { type: "WATER" })).rejects.toThrow(
-      "Unable to create customer request",
-    );
+    await expect(
+      customerRequestService.create("tok", { type: "WATER" }),
+    ).rejects.toThrow("Unable to create customer request");
   });
 
   it("creates and publishes a normal customer request", async () => {
@@ -127,7 +129,9 @@ describe("customerRequestService", () => {
       .mockResolvedValueOnce({ id: "o1" })
       .mockResolvedValueOnce({ id: "o1", status: "OPEN" });
     mocks.allServed.mockResolvedValueOnce(true);
-    mocks.updateReturning.mockResolvedValueOnce([{ id: "o1", status: "BILL_REQUESTED" }]);
+    mocks.updateReturning.mockResolvedValueOnce([
+      { id: "o1", status: "BILL_REQUESTED" },
+    ]);
 
     await customerRequestService.create("tok", { type: "BILL", orderId: "o1" });
 
@@ -160,7 +164,9 @@ describe("customerRequestService", () => {
       .mockResolvedValueOnce({ id: "o1" })
       .mockResolvedValueOnce({ id: "o1", status: "PAID" });
     mocks.insertValues.mockReturnValue({ returning: mocks.insertReturning });
-    mocks.insertReturning.mockResolvedValue([{ id: "r2", tenantId: "t1", branchId: "b1" }]);
+    mocks.insertReturning.mockResolvedValue([
+      { id: "r2", tenantId: "t1", branchId: "b1" },
+    ]);
     mocks.publish.mockResolvedValue(undefined);
     await customerRequestService.create("tok", { type: "BILL", orderId: "o1" });
     expect(mocks.allServed).not.toHaveBeenCalled();
@@ -172,7 +178,9 @@ describe("customerRequestService", () => {
       .mockResolvedValueOnce({ id: "o1", status: "OPEN" });
     mocks.allServed.mockResolvedValue(true);
     mocks.insertValues.mockReturnValue({ returning: mocks.insertReturning });
-    mocks.insertReturning.mockResolvedValue([{ id: "r3", tenantId: "t1", branchId: "b1" }]);
+    mocks.insertReturning.mockResolvedValue([
+      { id: "r3", tenantId: "t1", branchId: "b1" },
+    ]);
     mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
     mocks.updateWhere.mockReturnValue({ returning: mocks.updateReturning });
     mocks.updateReturning.mockResolvedValue([]);
@@ -187,15 +195,23 @@ describe("customerRequestService", () => {
     ).rejects.toThrow("Insufficient permissions");
 
     await expect(
-      customerRequestService.listForStaff(auth({ tenantWide: true, branchId: null })),
+      customerRequestService.listForStaff(
+        auth({ tenantWide: true, branchId: null }),
+      ),
     ).resolves.toEqual([{ id: "r1" }]);
-    await expect(customerRequestService.listForStaff(auth())).resolves.toEqual([{ id: "r1" }]);
+    await expect(customerRequestService.listForStaff(auth())).resolves.toEqual([
+      { id: "r1" },
+    ]);
     expect(mocks.selectOrderBy).toHaveBeenCalledTimes(2);
   });
 
   it("enforces update permission, existence, branch scope, and no reopen", async () => {
     await expect(
-      customerRequestService.updateForStaff(auth({ permissions: [] }), "r1", "ACKNOWLEDGED"),
+      customerRequestService.updateForStaff(
+        auth({ permissions: [] }),
+        "r1",
+        "ACKNOWLEDGED",
+      ),
     ).rejects.toThrow("Insufficient permissions");
 
     mocks.findRequest.mockResolvedValueOnce(undefined);
@@ -203,19 +219,31 @@ describe("customerRequestService", () => {
       customerRequestService.updateForStaff(auth(), "r1", "ACKNOWLEDGED"),
     ).rejects.toThrow("Customer request not found");
 
-    mocks.findRequest.mockResolvedValueOnce({ id: "r1", tenantId: "t1", branchId: "b2" });
+    mocks.findRequest.mockResolvedValueOnce({
+      id: "r1",
+      tenantId: "t1",
+      branchId: "b2",
+    });
     await expect(
       customerRequestService.updateForStaff(auth(), "r1", "ACKNOWLEDGED"),
     ).rejects.toThrow("Customer request branch access denied");
 
-    mocks.findRequest.mockResolvedValueOnce({ id: "r1", tenantId: "t1", branchId: "b1" });
-    await expect(customerRequestService.updateForStaff(auth(), "r1", "OPEN")).rejects.toThrow(
-      "A request cannot be reopened",
-    );
+    mocks.findRequest.mockResolvedValueOnce({
+      id: "r1",
+      tenantId: "t1",
+      branchId: "b1",
+    });
+    await expect(
+      customerRequestService.updateForStaff(auth(), "r1", "OPEN"),
+    ).rejects.toThrow("A request cannot be reopened");
   });
 
   it("updates a request and publishes the update for permitted staff", async () => {
-    mocks.findRequest.mockResolvedValueOnce({ id: "r1", tenantId: "t1", branchId: "b1" });
+    mocks.findRequest.mockResolvedValueOnce({
+      id: "r1",
+      tenantId: "t1",
+      branchId: "b1",
+    });
     const result = await customerRequestService.updateForStaff(
       auth(),
       "r1",

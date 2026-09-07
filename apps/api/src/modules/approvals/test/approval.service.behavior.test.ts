@@ -51,7 +51,9 @@ vi.mock("../../../db", () => ({
     update: mocks.update,
   },
 }));
-vi.mock("../../../core/auth", () => ({ requirePermission: mocks.requirePermission }));
+vi.mock("../../../core/auth", () => ({
+  requirePermission: mocks.requirePermission,
+}));
 vi.mock("../../../core/audit", () => ({ writeAudit: mocks.writeAudit }));
 vi.mock("bcryptjs", () => ({ default: { compare: mocks.compare } }));
 
@@ -73,9 +75,7 @@ const role = (
   role: {
     name,
     isActive,
-    rolePermissions: permission
-      ? [{ permission: { key: permission } }]
-      : [],
+    rolePermissions: permission ? [{ permission: { key: permission } }] : [],
   },
 });
 
@@ -104,28 +104,35 @@ describe("approvalService comprehensive coverage", () => {
   });
 
   it("lists thresholds after checking permission", async () => {
-    await expect(approvalService.list(auth)).resolves.toEqual([{ id: "threshold-1" }]);
+    await expect(approvalService.list(auth)).resolves.toEqual([
+      { id: "threshold-1" },
+    ]);
     expect(mocks.requirePermission).toHaveBeenCalledWith(auth, "orders:update");
     expect(mocks.findMany).toHaveBeenCalledOnce();
   });
 
   it("rejects non-finite, negative, and blank threshold settings", async () => {
-    await expect(approvalService.upsert(auth, "VOID", Number.NaN)).rejects.toThrow(
-      "Threshold must be zero or greater",
-    );
+    await expect(
+      approvalService.upsert(auth, "VOID", Number.NaN),
+    ).rejects.toThrow("Threshold must be zero or greater");
     await expect(approvalService.upsert(auth, "VOID", -1)).rejects.toThrow(
       "Threshold must be zero or greater",
     );
-    await expect(approvalService.upsert(auth, "COMP", 0, "   ")).rejects.toThrow(
-      "Approval role is required",
-    );
+    await expect(
+      approvalService.upsert(auth, "COMP", 0, "   "),
+    ).rejects.toThrow("Approval role is required");
   });
 
   it("upserts a normalized threshold and writes its audit entry", async () => {
-    await expect(approvalService.upsert(auth, "COMP", 12.5, " Supervisor ")).resolves.toEqual({
+    await expect(
+      approvalService.upsert(auth, "COMP", 12.5, " Supervisor "),
+    ).resolves.toEqual({
       id: "threshold-1",
     });
-    expect(mocks.requirePermission).toHaveBeenCalledWith(auth, "settings:update");
+    expect(mocks.requirePermission).toHaveBeenCalledWith(
+      auth,
+      "settings:update",
+    );
     expect(mocks.values).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "tenant-1",
@@ -159,7 +166,10 @@ describe("approvalService comprehensive coverage", () => {
   it("uses Manager as the default role when upserting", async () => {
     await approvalService.upsert(auth, "VOID", 0);
     expect(mocks.values).toHaveBeenCalledWith(
-      expect.objectContaining({ requiresRole: "Manager", thresholdAmount: "0.00" }),
+      expect.objectContaining({
+        requiresRole: "Manager",
+        thresholdAmount: "0.00",
+      }),
     );
   });
 
@@ -206,7 +216,11 @@ describe("approvalService comprehensive coverage", () => {
       password: "pw",
     };
     mocks.findUser.mockResolvedValue(
-      userWith([role("Manager", "orders:void", false), role("Chef"), role("Manager", "")]),
+      userWith([
+        role("Manager", "orders:void", false),
+        role("Chef"),
+        role("Manager", ""),
+      ]),
     );
     await expect(approvalService.issue(auth, input)).rejects.toThrow(
       "Manager approval credentials are invalid",
@@ -228,8 +242,13 @@ describe("approvalService comprehensive coverage", () => {
   });
 
   it("issues and audits a VOID approval token using the configured role", async () => {
-    mocks.findThreshold.mockResolvedValue({ thresholdAmount: "1", requiresRole: "Supervisor" });
-    mocks.findUser.mockResolvedValue(userWith([role("Supervisor", "orders:void")]));
+    mocks.findThreshold.mockResolvedValue({
+      thresholdAmount: "1",
+      requiresRole: "Supervisor",
+    });
+    mocks.findUser.mockResolvedValue(
+      userWith([role("Supervisor", "orders:void")]),
+    );
     await expect(
       approvalService.issue(auth, {
         actionType: "VOID",
@@ -256,14 +275,19 @@ describe("approvalService comprehensive coverage", () => {
       expect.objectContaining({
         action: "MANAGER_APPROVAL_GRANTED",
         entityId: "token-1",
-        metadata: expect.objectContaining({ requiresRole: "Supervisor", requestedBy: "requester-1" }),
+        metadata: expect.objectContaining({
+          requiresRole: "Supervisor",
+          requestedBy: "requester-1",
+        }),
       }),
     );
   });
 
   it("issues COMP approval with the default Manager role when no threshold exists", async () => {
     mocks.findThreshold.mockResolvedValue(undefined);
-    mocks.findUser.mockResolvedValue(userWith([role("Manager", "orders:comp")]));
+    mocks.findUser.mockResolvedValue(
+      userWith([role("Manager", "orders:comp")]),
+    );
     await approvalService.issue(auth, {
       actionType: "COMP",
       orderId: "o1",
@@ -273,7 +297,10 @@ describe("approvalService comprehensive coverage", () => {
     });
     expect(mocks.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: expect.objectContaining({ requiresRole: "Manager", actionType: "COMP" }),
+        metadata: expect.objectContaining({
+          requiresRole: "Manager",
+          actionType: "COMP",
+        }),
       }),
     );
   });

@@ -74,7 +74,9 @@ vi.mock("@/modules/tables/table.repository", () => ({
 }));
 vi.mock("@/lib/event-bus", () => ({ eventBus: { publish: mocks.publish } }));
 vi.mock("@/modules/customer/customer-payment.service", () => ({
-  customerPaymentService: { initiateTakeawayPayment: mocks.initiateTakeawayPayment },
+  customerPaymentService: {
+    initiateTakeawayPayment: mocks.initiateTakeawayPayment,
+  },
 }));
 
 import { customerOrderService } from "@/modules/customer/customer-order.service";
@@ -157,7 +159,10 @@ describe("customerOrderService coverage", () => {
     mocks.price.mockResolvedValue({ lines: [line] });
     mocks.priceCombos.mockResolvedValue({ lines: [] });
     mocks.activeItemIds.mockResolvedValue(new Set(["mi1"]));
-    mocks.effectiveItem.mockResolvedValue({ effectiveStatus: "ACTIVE", isHidden: false });
+    mocks.effectiveItem.mockResolvedValue({
+      effectiveStatus: "ACTIVE",
+      isHidden: false,
+    });
     mocks.validateStock.mockResolvedValue({ valid: true, insufficient: [] });
     mocks.listRedemptions.mockResolvedValue([]);
     mocks.loyaltyByPhone.mockResolvedValue([]);
@@ -198,7 +203,10 @@ describe("customerOrderService coverage", () => {
     ).rejects.toThrow("ambiguous");
 
     mocks.findOpenOrderBySession.mockResolvedValue({ id: "o-existing" });
-    mocks.orderFindById.mockResolvedValueOnce({ ...existingOrder, customerId: "c-old" });
+    mocks.orderFindById.mockResolvedValueOnce({
+      ...existingOrder,
+      customerId: "c-old",
+    });
     mocks.loyaltyByPhone.mockResolvedValueOnce([{ id: "c-new" }]);
     await expect(
       customerOrderService.createOrder("tok", {
@@ -211,17 +219,29 @@ describe("customerOrderService coverage", () => {
   it("rejects items absent from active menu, inactive/hidden availability, and insufficient stock", async () => {
     mocks.activeItemIds.mockResolvedValueOnce(new Set());
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("not on an active menu");
 
-    mocks.effectiveItem.mockResolvedValueOnce({ effectiveStatus: "INACTIVE", isHidden: false });
+    mocks.effectiveItem.mockResolvedValueOnce({
+      effectiveStatus: "INACTIVE",
+      isHidden: false,
+    });
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("not available right now");
 
-    mocks.effectiveItem.mockResolvedValueOnce({ effectiveStatus: "ACTIVE", isHidden: true });
+    mocks.effectiveItem.mockResolvedValueOnce({
+      effectiveStatus: "ACTIVE",
+      isHidden: true,
+    });
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("not available right now");
 
     mocks.validateStock.mockResolvedValueOnce({
@@ -229,7 +249,9 @@ describe("customerOrderService coverage", () => {
       insufficient: [{ name: "Burger" }, { name: "Fries" }],
     });
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("Burger, Fries");
   });
 
@@ -254,7 +276,9 @@ describe("customerOrderService coverage", () => {
         customerRequestId: "req1",
       }),
     );
-    expect(mocks.tableUpdate).toHaveBeenCalledWith("t1", "table1", { status: "OCCUPIED" });
+    expect(mocks.tableUpdate).toHaveBeenCalledWith("t1", "table1", {
+      status: "OCCUPIED",
+    });
     expect(mocks.publish).toHaveBeenCalledWith(
       expect.objectContaining({ type: "order.created" }),
       "t1",
@@ -281,7 +305,11 @@ describe("customerOrderService coverage", () => {
   });
 
   it("creates takeaway orders payment-gated without firing kitchen or deducting inventory", async () => {
-    mocks.getSession.mockResolvedValue({ ...dineSession, tableId: null, mode: "TAKEAWAY" });
+    mocks.getSession.mockResolvedValue({
+      ...dineSession,
+      tableId: null,
+      mode: "TAKEAWAY",
+    });
     mocks.orderFindById.mockResolvedValue({
       ...fullOrder,
       kitchenTickets: [{ ...ticket, status: "PENDING_PAYMENT" }],
@@ -293,9 +321,16 @@ describe("customerOrderService coverage", () => {
     });
 
     expect(mocks.orderCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "TAKEAWAY", initialTicketStatus: "PENDING_PAYMENT" }),
+      expect.objectContaining({
+        type: "TAKEAWAY",
+        initialTicketStatus: "PENDING_PAYMENT",
+      }),
     );
-    expect(mocks.initiateTakeawayPayment).toHaveBeenCalledWith("t1", "b1", "o1");
+    expect(mocks.initiateTakeawayPayment).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "o1",
+    );
     expect(mocks.deduct).not.toHaveBeenCalled();
     expect(mocks.publish).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "kitchen.ticket.created" }),
@@ -369,7 +404,10 @@ describe("customerOrderService coverage", () => {
       2,
       undefined,
       "req2",
-      expect.objectContaining({ replacePromotionRedemptions: true, customerId: "c1" }),
+      expect.objectContaining({
+        replacePromotionRedemptions: true,
+        customerId: "c1",
+      }),
     );
     expect(mocks.publish).toHaveBeenCalledWith(
       expect.objectContaining({ type: "order.updated" }),
@@ -380,15 +418,29 @@ describe("customerOrderService coverage", () => {
 
   it("rejects more ordering when existing order is billing or session is takeaway", async () => {
     mocks.findOpenOrderBySession.mockResolvedValue({ id: "o1" });
-    mocks.orderFindById.mockResolvedValueOnce({ ...existingOrder, status: "BILL_REQUESTED" });
+    mocks.orderFindById.mockResolvedValueOnce({
+      ...existingOrder,
+      status: "BILL_REQUESTED",
+    });
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("already being settled");
 
-    mocks.getSession.mockResolvedValue({ ...dineSession, tableId: null, mode: "TAKEAWAY" });
-    mocks.orderFindById.mockResolvedValueOnce({ ...existingOrder, status: "OPEN" });
+    mocks.getSession.mockResolvedValue({
+      ...dineSession,
+      tableId: null,
+      mode: "TAKEAWAY",
+    });
+    mocks.orderFindById.mockResolvedValueOnce({
+      ...existingOrder,
+      status: "OPEN",
+    });
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("takeaway order has already been submitted");
   });
 
@@ -424,7 +476,9 @@ describe("customerOrderService coverage", () => {
     mocks.orderFindById.mockResolvedValueOnce(existingOrder);
     mocks.fireNewTicket.mockRejectedValueOnce(new Error("db down"));
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("db down");
   });
 
@@ -435,7 +489,11 @@ describe("customerOrderService coverage", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "o-concurrent" });
     mocks.orderFindById
-      .mockResolvedValueOnce({ ...existingOrder, id: "o-concurrent", customerId: null })
+      .mockResolvedValueOnce({
+        ...existingOrder,
+        id: "o-concurrent",
+        customerId: null,
+      })
       .mockResolvedValueOnce({ ...fullOrder, id: "o-concurrent" });
     mocks.listRedemptions.mockResolvedValue([{ promotionId: "p1" }]);
 
@@ -480,14 +538,20 @@ describe("customerOrderService coverage", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toBe(unique);
 
     mocks.findOpenOrderBySession
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "o3" });
     mocks.loyaltyByPhone.mockResolvedValueOnce([{ id: "c-new" }]);
-    mocks.orderFindById.mockResolvedValueOnce({ ...existingOrder, id: "o3", customerId: "c-old" });
+    mocks.orderFindById.mockResolvedValueOnce({
+      ...existingOrder,
+      id: "o3",
+      customerId: "c-old",
+    });
     await expect(
       customerOrderService.createOrder("tok", {
         items: [{ menuItemId: "mi1", quantity: 1 }],
@@ -504,14 +568,18 @@ describe("customerOrderService coverage", () => {
       .mockResolvedValueOnce({ ...fullOrder, id: "o4" });
     mocks.fireNewTicket.mockRejectedValueOnce(unique);
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).resolves.toEqual(expect.objectContaining({ id: "o4" }));
   });
 
   it("rethrows non-unique creation/nested errors and handles missing concurrent full order", async () => {
     mocks.orderCreate.mockRejectedValueOnce(new Error("create failed"));
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("create failed");
 
     const unique = { code: "23505" };
@@ -521,7 +589,9 @@ describe("customerOrderService coverage", () => {
       .mockResolvedValueOnce({ id: "o5" });
     mocks.orderFindById.mockResolvedValueOnce(null);
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).resolves.toEqual(expect.objectContaining({ id: "o1" }));
 
     mocks.findOpenOrderBySession
@@ -530,14 +600,18 @@ describe("customerOrderService coverage", () => {
     mocks.orderFindById.mockResolvedValueOnce(existingOrder);
     mocks.fireNewTicket.mockRejectedValueOnce(new Error("nested failed"));
     await expect(
-      customerOrderService.createOrder("tok", { items: [{ menuItemId: "mi1", quantity: 1 }] }),
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
     ).rejects.toThrow("nested failed");
   });
 
   it("does not publish table update when occupation update returns null and tolerates inventory failure", async () => {
     mocks.tableUpdate.mockResolvedValue(null);
     mocks.deduct.mockRejectedValueOnce(new Error("inventory unavailable"));
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     await customerOrderService.createOrder("tok", {
       items: [{ menuItemId: "mi1", quantity: 1 }],
@@ -564,7 +638,11 @@ describe("customerOrderService coverage", () => {
       .mockResolvedValueOnce({ id: "o-customer" });
     mocks.loyaltyByPhone.mockResolvedValueOnce([{ id: "c1" }]);
     mocks.orderFindById
-      .mockResolvedValueOnce({ ...existingOrder, id: "o-customer", customerId: "c1" })
+      .mockResolvedValueOnce({
+        ...existingOrder,
+        id: "o-customer",
+        customerId: "c1",
+      })
       .mockResolvedValueOnce({
         ...fullOrder,
         id: "o-customer",
@@ -677,5 +755,4 @@ describe("customerOrderService coverage", () => {
       null,
     );
   });
-
 });

@@ -75,21 +75,18 @@ describe("printBills", () => {
     } as unknown as Window;
     vi.spyOn(window, "open").mockReturnValue(popup);
 
-    printBills(
-      order({ table: null, type: "TAKEAWAY" }),
-      [
-        bill({
-          splitLabel: null,
-          discountAmount: 0,
-          serviceChargeAmount: 0,
-          totalAmount: 10,
-          subtotal: 10,
-          taxAmount: 0,
-          payments: [{ status: "SUCCESS", amount: 10 }],
-          itemAssignments: [],
-        }),
-      ],
-    );
+    printBills(order({ table: null, type: "TAKEAWAY" }), [
+      bill({
+        splitLabel: null,
+        discountAmount: 0,
+        serviceChargeAmount: 0,
+        totalAmount: 10,
+        subtotal: 10,
+        taxAmount: 0,
+        payments: [{ status: "SUCCESS", amount: 10 }],
+        itemAssignments: [],
+      }),
+    ]);
 
     const html = String(write.mock.calls[0]?.[0]);
     expect(html).toContain("TAKEAWAY");

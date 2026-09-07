@@ -19,6 +19,7 @@ const UNIT_OPTIONS: { value: InventoryUnit; label: string }[] = [
 type SourceType = "inventory" | "sub-recipe";
 type ScopeType = "base" | "variant" | "modifier";
 interface Row {
+  clientKey: string;
   sourceType: SourceType;
   inventoryItemId: string;
   subRecipeId: string;
@@ -51,6 +52,7 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
     if (recipe && !dirty) {
       setRows(
         recipe.map((r) => ({
+          clientKey: r.id ?? crypto.randomUUID(),
           sourceType: r.subRecipeId ? "sub-recipe" : "inventory",
           inventoryItemId: r.inventoryItemId ?? "",
           subRecipeId: r.subRecipeId ?? "",
@@ -111,6 +113,7 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
     setRows((prev) => [
       ...prev,
       {
+        clientKey: crypto.randomUUID(),
         sourceType: first ? "inventory" : "sub-recipe",
         inventoryItemId: first?.id ?? "",
         subRecipeId: first ? "" : (subRecipes?.[0]?.id ?? ""),
@@ -162,7 +165,7 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
               parseFloat(row.quantity || "0") > inv.currentStock;
             return (
               <div
-                key={i}
+                key={row.clientKey}
                 className="rounded-lg border border-border p-3 space-y-2"
               >
                 <div className="grid gap-2 md:grid-cols-[8rem_1fr_8rem_7rem_auto]">

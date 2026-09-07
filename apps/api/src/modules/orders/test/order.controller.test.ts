@@ -1,13 +1,141 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const svc = vi.hoisted(() => ({ list:vi.fn(),getById:vi.fn(),getInventoryImpact:vi.fn(),create:vi.fn(),updateStatus:vi.fn(),fireTicket:vi.fn(),voidItem:vi.fn(),compItem:vi.fn(),refireItem:vi.fn(),refillItem:vi.fn(),transferTable:vi.fn(),mergeOrders:vi.fn() }));
-const explainOrder=vi.hoisted(()=>vi.fn());
-vi.mock("../order.service",()=>({orderService:svc}));
-vi.mock("@/modules/menu/explain/order-explain.service",()=>({orderExplainService:{explainOrder}}));
-import{orderController}from"../order.controller";
-const auth:any={userId:"u1",tenantId:"t1",branchId:"b1",permissions:[]};
-beforeEach(()=>{vi.clearAllMocks()});
-describe("order controller",()=>{
- it("wraps explain, list, detail and inventory responses",async()=>{explainOrder.mockResolvedValue({id:"o1"});svc.list.mockResolvedValue({items:[{id:"o1"}],total:26,page:1,limit:25});svc.getById.mockResolvedValue({id:"o1"});svc.getInventoryImpact.mockResolvedValue([{item:"x"}]);expect(await orderController.explain(auth,"o1")).toEqual({success:true,data:{id:"o1"}});expect(await orderController.list(auth,{status:"OPEN"})).toEqual({success:true,data:[{id:"o1"}],pagination:{total:26,page:1,limit:25,hasMore:true}});expect(await orderController.getById(auth,"o1")).toEqual({success:true,data:{id:"o1"}});expect(await orderController.getInventoryImpact(auth,"o1")).toEqual({success:true,data:[{item:"x"}]})});
- it("delegates create/status/fire and item mutations",async()=>{for(const fn of [svc.create,svc.updateStatus,svc.fireTicket,svc.voidItem,svc.compItem,svc.refireItem,svc.refillItem])fn.mockResolvedValue({id:"o1"});expect(await orderController.create(auth,{type:"TAKEAWAY",items:[]} as any)).toEqual({success:true,data:{id:"o1"}});await orderController.updateStatus(auth,"o1","PAID","r","c1","unused");expect(svc.updateStatus).toHaveBeenCalledWith(auth,"o1","PAID","r","c1");await orderController.fireTicket(auth,"o1",{items:[]} as any);await orderController.voidItem(auth,"o1","i1","r","c1","ap");expect(svc.voidItem).toHaveBeenCalledWith(auth,"o1","i1","r","c1","ap");await orderController.compItem(auth,"o1","i1",undefined,undefined,"ap");expect(svc.compItem).toHaveBeenCalledWith(auth,"o1","i1",undefined,undefined,"ap");await orderController.refireItem(auth,"o1","i1","again");expect(svc.refireItem).toHaveBeenLastCalledWith(auth,"o1","i1","again",true);await orderController.refireItem(auth,"o1","i1","again",false);expect(svc.refireItem).toHaveBeenLastCalledWith(auth,"o1","i1","again",false);await orderController.refillItem(auth,"o1","i1")});
- it("delegates transfer and merge",async()=>{svc.transferTable.mockResolvedValue({id:"o1"});svc.mergeOrders.mockResolvedValue({id:"o2"});await expect(orderController.transferTable(auth,"o1","t2","move")).resolves.toMatchObject({data:{id:"o1"}});expect(svc.transferTable).toHaveBeenCalledWith(auth,"o1","t2","move");await expect(orderController.mergeOrders(auth,"o1","o2")).resolves.toMatchObject({data:{id:"o2"}});expect(svc.mergeOrders).toHaveBeenCalledWith(auth,"o1","o2")});
+const svc = vi.hoisted(() => ({
+  list: vi.fn(),
+  getById: vi.fn(),
+  getInventoryImpact: vi.fn(),
+  create: vi.fn(),
+  updateStatus: vi.fn(),
+  fireTicket: vi.fn(),
+  voidItem: vi.fn(),
+  compItem: vi.fn(),
+  refireItem: vi.fn(),
+  refillItem: vi.fn(),
+  transferTable: vi.fn(),
+  mergeOrders: vi.fn(),
+}));
+const explainOrder = vi.hoisted(() => vi.fn());
+vi.mock("../order.service", () => ({ orderService: svc }));
+vi.mock("@/modules/menu/explain/order-explain.service", () => ({
+  orderExplainService: { explainOrder },
+}));
+import { orderController } from "../order.controller";
+const auth: any = {
+  userId: "u1",
+  tenantId: "t1",
+  branchId: "b1",
+  permissions: [],
+};
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+describe("order controller", () => {
+  it("wraps explain, list, detail and inventory responses", async () => {
+    explainOrder.mockResolvedValue({ id: "o1" });
+    svc.list.mockResolvedValue({
+      items: [{ id: "o1" }],
+      total: 26,
+      page: 1,
+      limit: 25,
+    });
+    svc.getById.mockResolvedValue({ id: "o1" });
+    svc.getInventoryImpact.mockResolvedValue([{ item: "x" }]);
+    expect(await orderController.explain(auth, "o1")).toEqual({
+      success: true,
+      data: { id: "o1" },
+    });
+    expect(await orderController.list(auth, { status: "OPEN" })).toEqual({
+      success: true,
+      data: [{ id: "o1" }],
+      pagination: { total: 26, page: 1, limit: 25, hasMore: true },
+    });
+    expect(await orderController.getById(auth, "o1")).toEqual({
+      success: true,
+      data: { id: "o1" },
+    });
+    expect(await orderController.getInventoryImpact(auth, "o1")).toEqual({
+      success: true,
+      data: [{ item: "x" }],
+    });
+  });
+  it("delegates create/status/fire and item mutations", async () => {
+    for (const fn of [
+      svc.create,
+      svc.updateStatus,
+      svc.fireTicket,
+      svc.voidItem,
+      svc.compItem,
+      svc.refireItem,
+      svc.refillItem,
+    ])
+      fn.mockResolvedValue({ id: "o1" });
+    expect(
+      await orderController.create(auth, {
+        type: "TAKEAWAY",
+        items: [],
+      } as any),
+    ).toEqual({ success: true, data: { id: "o1" } });
+    await orderController.updateStatus(auth, "o1", "PAID", "r", "c1", "unused");
+    expect(svc.updateStatus).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "PAID",
+      "r",
+      "c1",
+    );
+    await orderController.fireTicket(auth, "o1", { items: [] } as any);
+    await orderController.voidItem(auth, "o1", "i1", "r", "c1", "ap");
+    expect(svc.voidItem).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "i1",
+      "r",
+      "c1",
+      "ap",
+    );
+    await orderController.compItem(
+      auth,
+      "o1",
+      "i1",
+      undefined,
+      undefined,
+      "ap",
+    );
+    expect(svc.compItem).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "i1",
+      undefined,
+      undefined,
+      "ap",
+    );
+    await orderController.refireItem(auth, "o1", "i1", "again");
+    expect(svc.refireItem).toHaveBeenLastCalledWith(
+      auth,
+      "o1",
+      "i1",
+      "again",
+      true,
+    );
+    await orderController.refireItem(auth, "o1", "i1", "again", false);
+    expect(svc.refireItem).toHaveBeenLastCalledWith(
+      auth,
+      "o1",
+      "i1",
+      "again",
+      false,
+    );
+    await orderController.refillItem(auth, "o1", "i1");
+  });
+  it("delegates transfer and merge", async () => {
+    svc.transferTable.mockResolvedValue({ id: "o1" });
+    svc.mergeOrders.mockResolvedValue({ id: "o2" });
+    await expect(
+      orderController.transferTable(auth, "o1", "t2", "move"),
+    ).resolves.toMatchObject({ data: { id: "o1" } });
+    expect(svc.transferTable).toHaveBeenCalledWith(auth, "o1", "t2", "move");
+    await expect(
+      orderController.mergeOrders(auth, "o1", "o2"),
+    ).resolves.toMatchObject({ data: { id: "o2" } });
+    expect(svc.mergeOrders).toHaveBeenCalledWith(auth, "o1", "o2");
+  });
 });

@@ -221,11 +221,21 @@ export const organizationService = {
     const result = await organizationRepository.create({
       ...input,
       name: input.name.trim(),
-      ...(input.country !== undefined ? { country: input.country?.trim().toUpperCase() || null } : {}),
-      ...(input.currency !== undefined ? { currency: input.currency?.trim().toUpperCase() || null } : {}),
-      ...(input.businessEmail !== undefined ? { businessEmail: input.businessEmail?.trim().toLowerCase() || null } : {}),
-      ...(input.gstin !== undefined ? { gstin: input.gstin?.trim().toUpperCase() || null } : {}),
-      ...(input.pan !== undefined ? { pan: input.pan?.trim().toUpperCase() || null } : {}),
+      ...(input.country !== undefined
+        ? { country: input.country?.trim().toUpperCase() || null }
+        : {}),
+      ...(input.currency !== undefined
+        ? { currency: input.currency?.trim().toUpperCase() || null }
+        : {}),
+      ...(input.businessEmail !== undefined
+        ? { businessEmail: input.businessEmail?.trim().toLowerCase() || null }
+        : {}),
+      ...(input.gstin !== undefined
+        ? { gstin: input.gstin?.trim().toUpperCase() || null }
+        : {}),
+      ...(input.pan !== undefined
+        ? { pan: input.pan?.trim().toUpperCase() || null }
+        : {}),
       createdBy: auth.userId,
     });
     return {

@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/db", () => {
   mocks.txDelete.mockImplementation(() => ({ where: mocks.txDeleteWhere }));
   mocks.txInsert.mockImplementation(() => ({ values: mocks.txInsertValues }));
-  mocks.transaction.mockImplementation(async (fn: Function) => fn({ delete: mocks.txDelete, insert: mocks.txInsert }));
+  mocks.transaction.mockImplementation(async (fn: Function) =>
+    fn({ delete: mocks.txDelete, insert: mocks.txInsert }),
+  );
   return {
     db: {
       query: {
@@ -31,7 +33,10 @@ describe("permission repository coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.permissionFindMany.mockImplementation(async (options?: any) => {
-      options?.orderBy?.({ module: "module", key: "key" }, { asc: (v: unknown) => v });
+      options?.orderBy?.(
+        { module: "module", key: "key" },
+        { asc: (v: unknown) => v },
+      );
       return [{ id: "p1" }];
     });
     mocks.roleFindFirst.mockResolvedValue({ id: "r1" });
@@ -41,12 +46,18 @@ describe("permission repository coverage", () => {
 
   it("lists permissions, finds roles, and short-circuits empty id lookups", async () => {
     await expect(permissionRepository.list()).resolves.toEqual([{ id: "p1" }]);
-    await expect(permissionRepository.findRole("t1", "r1")).resolves.toEqual({ id: "r1" });
-    await expect(permissionRepository.findPermissionsByIds([])).resolves.toEqual([]);
+    await expect(permissionRepository.findRole("t1", "r1")).resolves.toEqual({
+      id: "r1",
+    });
+    await expect(
+      permissionRepository.findPermissionsByIds([]),
+    ).resolves.toEqual([]);
   });
 
   it("finds permissions by ids", async () => {
-    await expect(permissionRepository.findPermissionsByIds(["p1"])).resolves.toEqual([{ id: "p1" }]);
+    await expect(
+      permissionRepository.findPermissionsByIds(["p1"]),
+    ).resolves.toEqual([{ id: "p1" }]);
     expect(mocks.permissionFindMany).toHaveBeenCalledTimes(1);
   });
 
@@ -59,7 +70,9 @@ describe("permission repository coverage", () => {
     ]);
 
     vi.clearAllMocks();
-    mocks.transaction.mockImplementation(async (fn: Function) => fn({ delete: mocks.txDelete, insert: mocks.txInsert }));
+    mocks.transaction.mockImplementation(async (fn: Function) =>
+      fn({ delete: mocks.txDelete, insert: mocks.txInsert }),
+    );
     mocks.txDelete.mockImplementation(() => ({ where: mocks.txDeleteWhere }));
     mocks.txInsert.mockImplementation(() => ({ values: mocks.txInsertValues }));
     await permissionRepository.replaceRolePermissions("r1", []);

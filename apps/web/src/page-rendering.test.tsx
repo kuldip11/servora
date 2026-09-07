@@ -165,15 +165,18 @@ vi.mock("./features/tables/components/TableFormModal", () => ({
 }));
 
 vi.mock("./features/staff/hooks/useStaff", () => ({
-  useStaff: () => ({ data: {
-  items: [],
-  pagination: {
-    page: 1,
-    pageSize: 20,
-    total: 0,
-    totalPages: 0,
-  },
-}, isLoading: false }),
+  useStaff: () => ({
+    data: {
+      items: [],
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        total: 0,
+        totalPages: 0,
+      },
+    },
+    isLoading: false,
+  }),
 }));
 vi.mock("./features/staff/hooks/useRoles", () => ({
   useRoles: () => ({ data: [], isLoading: false }),

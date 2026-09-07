@@ -104,8 +104,11 @@ export const TicketGroup = ({
                         {Number(item.weightQuantity)} {item.weightUnit ?? ""}
                       </p>
                     )}
-                    {item.modifiers?.map((m, i) => (
-                      <p key={i} className="text-xs text-text-disabled">
+                    {item.modifiers?.map((m) => (
+                      <p
+                        key={`${m.modifierId}:${m.zoneLabel ?? "WHOLE"}`}
+                        className="text-xs text-text-disabled"
+                      >
                         +{" "}
                         {m.zoneLabel && m.zoneLabel !== "WHOLE"
                           ? `${m.zoneLabel}: `

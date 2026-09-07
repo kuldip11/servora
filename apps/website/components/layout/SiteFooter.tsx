@@ -1,7 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { track } from "@/lib/analytics";
+import { TrackedLink } from "@/components/analytics/TrackedLink";
+import { CookieSettingsButton } from "@/components/privacy/CookieSettingsButton";
 import { servoraApps } from "@/lib/servora-apps";
 
 export const SiteFooter = () => {
@@ -72,15 +71,13 @@ export const SiteFooter = () => {
               </Link>
             </li>
             <li>
-              <Link
-                onClick={() =>
-                  track({ event: "nav_cta_click", location: "footer" })
-                }
+              <TrackedLink
+                tracking={{ kind: "navigation", location: "footer" }}
                 className="hover:text-text-primary"
                 href="/book-a-demo"
               >
                 Book a Demo
-              </Link>
+              </TrackedLink>
             </li>
             <li>
               <Link className="hover:text-text-primary" href="/contact">
@@ -105,14 +102,7 @@ export const SiteFooter = () => {
             <Link href="/legal/privacy">Privacy</Link>
             <Link href="/legal/terms">Terms</Link>
             <Link href="/legal/cookies">Cookies</Link>
-            <button
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(new Event("servora:open-cookie-settings"))
-              }
-            >
-              Cookie settings
-            </button>
+            <CookieSettingsButton>Cookie settings</CookieSettingsButton>
           </div>
         </div>
       </div>

@@ -989,88 +989,573 @@ describe("G3 weight-based recipe consumption", () => {
 describe("inventory recipe service completion coverage", () => {
   it("covers recipe-impact missing/empty and disabled/nonmatching impact rows", async () => {
     findById.mockResolvedValueOnce(undefined);
-    await expect(inventoryService.getRecipeImpact({ ...baseAuth, permissions:["inventory:read"] },"missing")).rejects.toThrow();
-    findById.mockResolvedValueOnce({id:"i1",tenantId:"t1",branchId:"b1",name:"Milk"});findAllRecipeMenuItemIds.mockResolvedValueOnce([]);
-    await expect(inventoryService.getRecipeImpact({ ...baseAuth, permissions:["inventory:read"] },"i1")).resolves.toEqual({inventoryItemId:"i1",inventoryItemName:"Milk",impacts:[]});
-    findById.mockResolvedValueOnce({id:"i1",tenantId:"t1",branchId:"b1",name:"Milk"});findAllRecipeMenuItemIds.mockResolvedValueOnce(["m1"]);findRequiredRecipeLines.mockResolvedValueOnce([]);findMenuItemsForAvailability.mockResolvedValueOnce([{id:"m1",name:"Pizza",enableRecipeDeduction:false}]);findScopedRecipeVariants.mockResolvedValueOnce([{id:"v1",menuItemId:"m1",menuItemName:"Pizza",name:"Large"}]);findScopedRecipeModifierOptions.mockResolvedValueOnce([{id:"op1",menuItemId:"m1",menuItemName:"Pizza",name:"Extra"}]);
-    await expect(inventoryService.getRecipeImpact({ ...baseAuth, permissions:["inventory:read"] },"i1")).resolves.toMatchObject({impacts:[]});
+    await expect(
+      inventoryService.getRecipeImpact(
+        { ...baseAuth, permissions: ["inventory:read"] },
+        "missing",
+      ),
+    ).rejects.toThrow();
+    findById.mockResolvedValueOnce({
+      id: "i1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: "Milk",
+    });
+    findAllRecipeMenuItemIds.mockResolvedValueOnce([]);
+    await expect(
+      inventoryService.getRecipeImpact(
+        { ...baseAuth, permissions: ["inventory:read"] },
+        "i1",
+      ),
+    ).resolves.toEqual({
+      inventoryItemId: "i1",
+      inventoryItemName: "Milk",
+      impacts: [],
+    });
+    findById.mockResolvedValueOnce({
+      id: "i1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: "Milk",
+    });
+    findAllRecipeMenuItemIds.mockResolvedValueOnce(["m1"]);
+    findRequiredRecipeLines.mockResolvedValueOnce([]);
+    findMenuItemsForAvailability.mockResolvedValueOnce([
+      { id: "m1", name: "Pizza", enableRecipeDeduction: false },
+    ]);
+    findScopedRecipeVariants.mockResolvedValueOnce([
+      { id: "v1", menuItemId: "m1", menuItemName: "Pizza", name: "Large" },
+    ]);
+    findScopedRecipeModifierOptions.mockResolvedValueOnce([
+      { id: "op1", menuItemId: "m1", menuItemName: "Pizza", name: "Extra" },
+    ]);
+    await expect(
+      inventoryService.getRecipeImpact(
+        { ...baseAuth, permissions: ["inventory:read"] },
+        "i1",
+      ),
+    ).resolves.toMatchObject({ impacts: [] });
   });
 
   it("covers empty stock validation, repeated needs and sufficient totals", async () => {
-    await expect(inventoryService.validateStock("t1","b1",[])).resolves.toEqual({valid:true,insufficient:[]});
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({quantityRequired:"1"})]);
-    await expect(inventoryService.validateStock("t1","b1",[{menuItemId:"m1",quantity:1},{menuItemId:"m1",quantity:1}])).resolves.toEqual({valid:true,insufficient:[]});
+    await expect(
+      inventoryService.validateStock("t1", "b1", []),
+    ).resolves.toEqual({ valid: true, insufficient: [] });
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({ quantityRequired: "1" }),
+    ]);
+    await expect(
+      inventoryService.validateStock("t1", "b1", [
+        { menuItemId: "m1", quantity: 1 },
+        { menuItemId: "m1", quantity: 1 },
+      ]),
+    ).resolves.toEqual({ valid: true, insufficient: [] });
   });
 
   it("covers empty/no-recipe costs and shared subrecipe cache", async () => {
-    await expect(inventoryService.computeRecipeCosts("t1","b1",[])).resolves.toEqual([]);
+    await expect(
+      inventoryService.computeRecipeCosts("t1", "b1", []),
+    ).resolves.toEqual([]);
     findRequiredRecipeLines.mockResolvedValueOnce([]);
-    await expect(inventoryService.computeRecipeCosts("t1","b1",[{menuItemId:"m1",quantity:1}])).resolves.toEqual([null]);
+    await expect(
+      inventoryService.computeRecipeCosts("t1", "b1", [
+        { menuItemId: "m1", quantity: 1 },
+      ]),
+    ).resolves.toEqual([null]);
     findRequiredRecipeLines.mockResolvedValueOnce([]);
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).resolves.toBe(0);
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({inventoryItemId:null,subRecipeId:"s1",unit:"KG",quantityRequired:"1",inventoryItem:null,subRecipe:{id:"s1",tenantId:"t1"}})]);
-    findSubRecipeWithIngredients.mockResolvedValue({id:"s1",tenantId:"t1",branchId:"b1",name:"Sauce",yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[]});
-    await inventoryService.computeRecipeCosts("t1","b1",[{menuItemId:"m1",quantity:1},{menuItemId:"m1",quantity:1}]);
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).resolves.toBe(0);
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({
+        inventoryItemId: null,
+        subRecipeId: "s1",
+        unit: "KG",
+        quantityRequired: "1",
+        inventoryItem: null,
+        subRecipe: { id: "s1", tenantId: "t1" },
+      }),
+    ]);
+    findSubRecipeWithIngredients.mockResolvedValue({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: "Sauce",
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [],
+    });
+    await inventoryService.computeRecipeCosts("t1", "b1", [
+      { menuItemId: "m1", quantity: 1 },
+      { menuItemId: "m1", quantity: 1 },
+    ]);
     expect(findSubRecipeWithIngredients).toHaveBeenCalledTimes(1);
   });
 
   it("covers unresolved, tenant/branch-invalid, nested, circular and too-deep subrecipes", async () => {
-    const subRow=rawRecipe({inventoryItemId:null,subRecipeId:"s1",unit:"KG",quantityRequired:"1",inventoryItem:null,subRecipe:{id:"s1",tenantId:"t1"}});
-    findRequiredRecipeLines.mockResolvedValue([subRow]); findSubRecipeWithIngredients.mockResolvedValueOnce(undefined);
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("could not be resolved");
+    const subRow = rawRecipe({
+      inventoryItemId: null,
+      subRecipeId: "s1",
+      unit: "KG",
+      quantityRequired: "1",
+      inventoryItem: null,
+      subRecipe: { id: "s1", tenantId: "t1" },
+    });
+    findRequiredRecipeLines.mockResolvedValue([subRow]);
+    findSubRecipeWithIngredients.mockResolvedValueOnce(undefined);
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("could not be resolved");
 
-    findSubRecipeWithIngredients.mockResolvedValueOnce({id:"s1",tenantId:"t1",branchId:"b1",name:null,yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:"i1",ingredientSubRecipeId:null,quantityRequired:"1",unit:"KG",inventoryItem:{id:"i1",tenantId:"t2",branchId:"b1",unit:"KG",name:"X",currentStock:"1",costPerUnit:"1"}}]});
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("outside this tenant");
+    findSubRecipeWithIngredients.mockResolvedValueOnce({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: null,
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [
+        {
+          inventoryItemId: "i1",
+          ingredientSubRecipeId: null,
+          quantityRequired: "1",
+          unit: "KG",
+          inventoryItem: {
+            id: "i1",
+            tenantId: "t2",
+            branchId: "b1",
+            unit: "KG",
+            name: "X",
+            currentStock: "1",
+            costPerUnit: "1",
+          },
+        },
+      ],
+    });
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("outside this tenant");
 
-    findSubRecipeWithIngredients.mockResolvedValueOnce({id:"s1",tenantId:"t1",branchId:"b1",name:"S",yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:"i1",ingredientSubRecipeId:null,quantityRequired:"1",unit:"KG",inventoryItem:{id:"i1",tenantId:"t1",branchId:"b2",unit:"KG",name:"X",currentStock:"1",costPerUnit:"1"}}]});
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("active branch");
-    findSubRecipeWithIngredients.mockResolvedValueOnce({id:"s1",tenantId:"t1",branchId:"b2",name:null,yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[]});
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("Sub-recipe s1");
-    findSubRecipeWithIngredients.mockResolvedValueOnce({id:"s1",tenantId:"t1",branchId:"b1",name:null,yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:"i1",ingredientSubRecipeId:null,quantityRequired:"1",unit:"KG",inventoryItem:{id:"i1",tenantId:"t1",branchId:"b2",unit:"KG",name:"X",currentStock:"1",costPerUnit:"1"}}]});
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("Sub-recipe s1");
+    findSubRecipeWithIngredients.mockResolvedValueOnce({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: "S",
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [
+        {
+          inventoryItemId: "i1",
+          ingredientSubRecipeId: null,
+          quantityRequired: "1",
+          unit: "KG",
+          inventoryItem: {
+            id: "i1",
+            tenantId: "t1",
+            branchId: "b2",
+            unit: "KG",
+            name: "X",
+            currentStock: "1",
+            costPerUnit: "1",
+          },
+        },
+      ],
+    });
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("active branch");
+    findSubRecipeWithIngredients.mockResolvedValueOnce({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b2",
+      name: null,
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [],
+    });
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("Sub-recipe s1");
+    findSubRecipeWithIngredients.mockResolvedValueOnce({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: null,
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [
+        {
+          inventoryItemId: "i1",
+          ingredientSubRecipeId: null,
+          quantityRequired: "1",
+          unit: "KG",
+          inventoryItem: {
+            id: "i1",
+            tenantId: "t1",
+            branchId: "b2",
+            unit: "KG",
+            name: "X",
+            currentStock: "1",
+            costPerUnit: "1",
+          },
+        },
+      ],
+    });
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("Sub-recipe s1");
 
-    findSubRecipeWithIngredients.mockImplementation(async(_t:string,id:string)=> id==="s1"?{id:"s1",tenantId:"t1",branchId:"b1",name:"S1",yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:null,ingredientSubRecipeId:"s2",quantityRequired:"1",unit:"KG",inventoryItem:null}]}:{id:"s2",tenantId:"t1",branchId:"b1",name:"S2",yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:"i2",ingredientSubRecipeId:null,quantityRequired:"1",unit:"KG",inventoryItem:{id:"i2",tenantId:"t1",branchId:"b1",unit:"KG",name:"Y",currentStock:"2",costPerUnit:"3"}}]});
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).resolves.toBe(3);
+    findSubRecipeWithIngredients.mockImplementation(
+      async (_t: string, id: string) =>
+        id === "s1"
+          ? {
+              id: "s1",
+              tenantId: "t1",
+              branchId: "b1",
+              name: "S1",
+              yieldQuantity: "1",
+              yieldUnit: "KG",
+              yieldPercent: null,
+              ingredients: [
+                {
+                  inventoryItemId: null,
+                  ingredientSubRecipeId: "s2",
+                  quantityRequired: "1",
+                  unit: "KG",
+                  inventoryItem: null,
+                },
+              ],
+            }
+          : {
+              id: "s2",
+              tenantId: "t1",
+              branchId: "b1",
+              name: "S2",
+              yieldQuantity: "1",
+              yieldUnit: "KG",
+              yieldPercent: null,
+              ingredients: [
+                {
+                  inventoryItemId: "i2",
+                  ingredientSubRecipeId: null,
+                  quantityRequired: "1",
+                  unit: "KG",
+                  inventoryItem: {
+                    id: "i2",
+                    tenantId: "t1",
+                    branchId: "b1",
+                    unit: "KG",
+                    name: "Y",
+                    currentStock: "2",
+                    costPerUnit: "3",
+                  },
+                },
+              ],
+            },
+    );
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).resolves.toBe(3);
 
-    findSubRecipeWithIngredients.mockImplementation(async()=>({id:"s1",tenantId:"t1",branchId:"b1",name:"S1",yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:null,ingredientSubRecipeId:"s1",quantityRequired:"1",unit:"KG",inventoryItem:null}]}));
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("Circular");
+    findSubRecipeWithIngredients.mockImplementation(async () => ({
+      id: "s1",
+      tenantId: "t1",
+      branchId: "b1",
+      name: "S1",
+      yieldQuantity: "1",
+      yieldUnit: "KG",
+      yieldPercent: null,
+      ingredients: [
+        {
+          inventoryItemId: null,
+          ingredientSubRecipeId: "s1",
+          quantityRequired: "1",
+          unit: "KG",
+          inventoryItem: null,
+        },
+      ],
+    }));
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("Circular");
 
-    findSubRecipeWithIngredients.mockImplementation(async(_t:string,id:string)=>({id,tenantId:"t1",branchId:"b1",name:id,yieldQuantity:"1",yieldUnit:"KG",yieldPercent:null,ingredients:[{inventoryItemId:null,ingredientSubRecipeId:`s${Number(id.slice(1))+1}`,quantityRequired:"1",unit:"KG",inventoryItem:null}]}));
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("depth exceeds");
+    findSubRecipeWithIngredients.mockImplementation(
+      async (_t: string, id: string) => ({
+        id,
+        tenantId: "t1",
+        branchId: "b1",
+        name: id,
+        yieldQuantity: "1",
+        yieldUnit: "KG",
+        yieldPercent: null,
+        ingredients: [
+          {
+            inventoryItemId: null,
+            ingredientSubRecipeId: `s${Number(id.slice(1)) + 1}`,
+            quantityRequired: "1",
+            unit: "KG",
+            inventoryItem: null,
+          },
+        ],
+      }),
+    );
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("depth exceeds");
   });
 
   it("covers recipe ingredient branch mismatch", async () => {
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({inventoryItem:{id:"i1",tenantId:"t1",branchId:"b2",unit:"KG",currentStock:"1",costPerUnit:"1",name:"Wrong"}})]);
-    await expect(inventoryService.computeRecipeCost("t1","b1",{menuItemId:"m1",quantity:1})).rejects.toThrow("active branch");
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({
+        inventoryItem: {
+          id: "i1",
+          tenantId: "t1",
+          branchId: "b2",
+          unit: "KG",
+          currentStock: "1",
+          costPerUnit: "1",
+          name: "Wrong",
+        },
+      }),
+    ]);
+    await expect(
+      inventoryService.computeRecipeCost("t1", "b1", {
+        menuItemId: "m1",
+        quantity: 1,
+      }),
+    ).rejects.toThrow("active branch");
   });
 
   it("covers deduction early exits, no-lines, aggregation, touched stock sync and low-stock events", async () => {
-    await expect(inventoryService.deductForOrderItems("t1","b1","o","kt",[],null)).resolves.toEqual({deducted:0,short:[]});
-    findRequiredRecipeLines.mockResolvedValueOnce([]);await expect(inventoryService.deductForOrderItems("t1","b1","o","kt",[{orderItemId:"oi",menuItemId:"m1",quantity:1}],null)).resolves.toEqual({deducted:0,short:[]});
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({menuItemId:"other"})]);await expect(inventoryService.deductForOrderItems("t1","b1","o","kt",[{orderItemId:"oi",menuItemId:"m1",quantity:1}],null)).resolves.toEqual({deducted:0,short:[]});
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({quantityRequired:"1"}),rawRecipe({quantityRequired:"2"})]);deductRecipeLines.mockResolvedValueOnce({deducted:1,touchedInventoryItemIds:["i1","i2"],short:[]});findByIds.mockResolvedValueOnce([{id:"i1",branchId:"b1",currentStock:"1",minimumStock:"2"},{id:"i2",branchId:"b1",currentStock:"3",minimumStock:"2"}]);findAllRecipeMenuItemIds.mockResolvedValueOnce([]);
-    await inventoryService.deductForOrderItems("t1","b1","o","kt",[{orderItemId:"oi",menuItemId:"m1",quantity:1}],"u1");expect(deductRecipeLines).toHaveBeenCalledWith("t1","b1","o","kt",[expect.objectContaining({neededQuantity:3})],"u1");expect(publish).toHaveBeenCalledTimes(1);
-    findRequiredRecipeLines.mockResolvedValueOnce([rawRecipe({quantityRequired:"1"})]);deductRecipeLines.mockResolvedValueOnce({deducted:1,touchedInventoryItemIds:[],short:[]});await inventoryService.deductForOrderItems("t1","b1","o","kt",[{orderItemId:"same",menuItemId:"m1",quantity:1},{orderItemId:"same",menuItemId:"m1",quantity:2}],"u1");expect(deductRecipeLines).toHaveBeenLastCalledWith("t1","b1","o","kt",[expect.objectContaining({neededQuantity:3})],"u1");
+    await expect(
+      inventoryService.deductForOrderItems("t1", "b1", "o", "kt", [], null),
+    ).resolves.toEqual({ deducted: 0, short: [] });
+    findRequiredRecipeLines.mockResolvedValueOnce([]);
+    await expect(
+      inventoryService.deductForOrderItems(
+        "t1",
+        "b1",
+        "o",
+        "kt",
+        [{ orderItemId: "oi", menuItemId: "m1", quantity: 1 }],
+        null,
+      ),
+    ).resolves.toEqual({ deducted: 0, short: [] });
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({ menuItemId: "other" }),
+    ]);
+    await expect(
+      inventoryService.deductForOrderItems(
+        "t1",
+        "b1",
+        "o",
+        "kt",
+        [{ orderItemId: "oi", menuItemId: "m1", quantity: 1 }],
+        null,
+      ),
+    ).resolves.toEqual({ deducted: 0, short: [] });
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({ quantityRequired: "1" }),
+      rawRecipe({ quantityRequired: "2" }),
+    ]);
+    deductRecipeLines.mockResolvedValueOnce({
+      deducted: 1,
+      touchedInventoryItemIds: ["i1", "i2"],
+      short: [],
+    });
+    findByIds.mockResolvedValueOnce([
+      { id: "i1", branchId: "b1", currentStock: "1", minimumStock: "2" },
+      { id: "i2", branchId: "b1", currentStock: "3", minimumStock: "2" },
+    ]);
+    findAllRecipeMenuItemIds.mockResolvedValueOnce([]);
+    await inventoryService.deductForOrderItems(
+      "t1",
+      "b1",
+      "o",
+      "kt",
+      [{ orderItemId: "oi", menuItemId: "m1", quantity: 1 }],
+      "u1",
+    );
+    expect(deductRecipeLines).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "o",
+      "kt",
+      [expect.objectContaining({ neededQuantity: 3 })],
+      "u1",
+    );
+    expect(publish).toHaveBeenCalledTimes(1);
+    findRequiredRecipeLines.mockResolvedValueOnce([
+      rawRecipe({ quantityRequired: "1" }),
+    ]);
+    deductRecipeLines.mockResolvedValueOnce({
+      deducted: 1,
+      touchedInventoryItemIds: [],
+      short: [],
+    });
+    await inventoryService.deductForOrderItems(
+      "t1",
+      "b1",
+      "o",
+      "kt",
+      [
+        { orderItemId: "same", menuItemId: "m1", quantity: 1 },
+        { orderItemId: "same", menuItemId: "m1", quantity: 2 },
+      ],
+      "u1",
+    );
+    expect(deductRecipeLines).toHaveBeenLastCalledWith(
+      "t1",
+      "b1",
+      "o",
+      "kt",
+      [expect.objectContaining({ neededQuantity: 3 })],
+      "u1",
+    );
   });
 
   it("clears recipe availability signals for only the selected menu item", async () => {
-    findScopedRecipeVariants.mockResolvedValue([{id:"v1",menuItemId:"m1"},{id:"v2",menuItemId:"other"}]);findScopedRecipeModifierOptions.mockResolvedValue([{id:"op1",menuItemId:"m1"},{id:"op2",menuItemId:"other"}]);
-    await inventoryService.clearRecipeAvailabilitySignals("t1","b1","m1");
-    expect(applyInventoryItemSignal).toHaveBeenCalledWith("t1","b1","m1",true);expect(applyInventoryVariantSignal).toHaveBeenCalledTimes(1);expect(applyInventoryModifierSignal).toHaveBeenCalledTimes(1);
+    findScopedRecipeVariants.mockResolvedValue([
+      { id: "v1", menuItemId: "m1" },
+      { id: "v2", menuItemId: "other" },
+    ]);
+    findScopedRecipeModifierOptions.mockResolvedValue([
+      { id: "op1", menuItemId: "m1" },
+      { id: "op2", menuItemId: "other" },
+    ]);
+    await inventoryService.clearRecipeAvailabilitySignals("t1", "b1", "m1");
+    expect(applyInventoryItemSignal).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "m1",
+      true,
+    );
+    expect(applyInventoryVariantSignal).toHaveBeenCalledTimes(1);
+    expect(applyInventoryModifierSignal).toHaveBeenCalledTimes(1);
   });
 
   it("syncs recipe configuration including previous/current scoped IDs and skips disabled scopes", async () => {
-    findRequiredRecipeLines.mockResolvedValue([rawRecipe(),rawRecipe({variantId:"v1"}),rawRecipe({modifierOptionId:"op1"})]);findMenuItemsForAvailability.mockResolvedValue([{id:"m1",enableRecipeDeduction:true}]);findScopedRecipeVariants.mockResolvedValue([{id:"v1",menuItemId:"m1",enableRecipeDeduction:true},{id:"vDisabled",menuItemId:"m1",enableRecipeDeduction:false}]);findScopedRecipeModifierOptions.mockResolvedValue([{id:"op1",menuItemId:"m1",enableRecipeDeduction:true},{id:"opDisabled",menuItemId:"m1",enableRecipeDeduction:false}]);
-    await inventoryService.syncRecipeConfigurationAvailability("t1","b1","m1",["vPrev","vDisabled"],["opPrev","opDisabled"]);
-    expect(applyInventoryItemSignal).toHaveBeenCalled();expect(applyInventoryVariantSignal).toHaveBeenCalledWith("t1","b1","v1",expect.any(Boolean));expect(applyInventoryVariantSignal).toHaveBeenCalledWith("t1","b1","vPrev",expect.any(Boolean));expect(applyInventoryModifierSignal).toHaveBeenCalledWith("t1","b1","m1","op1",expect.any(Boolean));expect(applyInventoryModifierSignal).toHaveBeenCalledWith("t1","b1","m1","opPrev",expect.any(Boolean));
-    expect(applyInventoryVariantSignal).not.toHaveBeenCalledWith("t1","b1","vDisabled",expect.any(Boolean));expect(applyInventoryModifierSignal).not.toHaveBeenCalledWith("t1","b1","m1","opDisabled",expect.any(Boolean));
+    findRequiredRecipeLines.mockResolvedValue([
+      rawRecipe(),
+      rawRecipe({ variantId: "v1" }),
+      rawRecipe({ modifierOptionId: "op1" }),
+    ]);
+    findMenuItemsForAvailability.mockResolvedValue([
+      { id: "m1", enableRecipeDeduction: true },
+    ]);
+    findScopedRecipeVariants.mockResolvedValue([
+      { id: "v1", menuItemId: "m1", enableRecipeDeduction: true },
+      { id: "vDisabled", menuItemId: "m1", enableRecipeDeduction: false },
+    ]);
+    findScopedRecipeModifierOptions.mockResolvedValue([
+      { id: "op1", menuItemId: "m1", enableRecipeDeduction: true },
+      { id: "opDisabled", menuItemId: "m1", enableRecipeDeduction: false },
+    ]);
+    await inventoryService.syncRecipeConfigurationAvailability(
+      "t1",
+      "b1",
+      "m1",
+      ["vPrev", "vDisabled"],
+      ["opPrev", "opDisabled"],
+    );
+    expect(applyInventoryItemSignal).toHaveBeenCalled();
+    expect(applyInventoryVariantSignal).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "v1",
+      expect.any(Boolean),
+    );
+    expect(applyInventoryVariantSignal).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "vPrev",
+      expect.any(Boolean),
+    );
+    expect(applyInventoryModifierSignal).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "m1",
+      "op1",
+      expect.any(Boolean),
+    );
+    expect(applyInventoryModifierSignal).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "m1",
+      "opPrev",
+      expect.any(Boolean),
+    );
+    expect(applyInventoryVariantSignal).not.toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "vDisabled",
+      expect.any(Boolean),
+    );
+    expect(applyInventoryModifierSignal).not.toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "m1",
+      "opDisabled",
+      expect.any(Boolean),
+    );
   });
 
   it("returns early from recipe configuration when item missing/disabled and from availability for empty inputs", async () => {
-    findRequiredRecipeLines.mockResolvedValue([]);findMenuItemsForAvailability.mockResolvedValue([]);await inventoryService.syncRecipeConfigurationAvailability("t1","b1","m1");expect(applyInventoryItemSignal).not.toHaveBeenCalled();
-    findMenuItemsForAvailability.mockResolvedValueOnce([{id:"m1",enableRecipeDeduction:false}]);await inventoryService.syncRecipeConfigurationAvailability("t1","b1","m1");expect(applyInventoryItemSignal).not.toHaveBeenCalled();
-    findAllRecipeMenuItemIds.mockClear(); findRequiredRecipeLines.mockClear();
-    await inventoryService.syncMenuItemAvailability("t1","b1",[]);expect(findAllRecipeMenuItemIds).not.toHaveBeenCalled();
-    findAllRecipeMenuItemIds.mockResolvedValueOnce([]);await inventoryService.syncMenuItemAvailability("t1","b1",["i1"]);expect(findRequiredRecipeLines).not.toHaveBeenCalled();
+    findRequiredRecipeLines.mockResolvedValue([]);
+    findMenuItemsForAvailability.mockResolvedValue([]);
+    await inventoryService.syncRecipeConfigurationAvailability(
+      "t1",
+      "b1",
+      "m1",
+    );
+    expect(applyInventoryItemSignal).not.toHaveBeenCalled();
+    findMenuItemsForAvailability.mockResolvedValueOnce([
+      { id: "m1", enableRecipeDeduction: false },
+    ]);
+    await inventoryService.syncRecipeConfigurationAvailability(
+      "t1",
+      "b1",
+      "m1",
+    );
+    expect(applyInventoryItemSignal).not.toHaveBeenCalled();
+    findAllRecipeMenuItemIds.mockClear();
+    findRequiredRecipeLines.mockClear();
+    await inventoryService.syncMenuItemAvailability("t1", "b1", []);
+    expect(findAllRecipeMenuItemIds).not.toHaveBeenCalled();
+    findAllRecipeMenuItemIds.mockResolvedValueOnce([]);
+    await inventoryService.syncMenuItemAvailability("t1", "b1", ["i1"]);
+    expect(findRequiredRecipeLines).not.toHaveBeenCalled();
   });
 });

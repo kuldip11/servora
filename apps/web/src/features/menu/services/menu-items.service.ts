@@ -33,7 +33,10 @@ export const menuItemsService = {
   ): Promise<MenuItem> {
     if (!item) return menuApi.createItem(payload);
     const { categoryId: _categoryId, ...updatePayload } = payload;
-    return menuApi.updateItem(item.id, updatePayload satisfies UpdateMenuItemInput);
+    return menuApi.updateItem(
+      item.id,
+      updatePayload satisfies UpdateMenuItemInput,
+    );
   },
 
   async setManualStockCount(

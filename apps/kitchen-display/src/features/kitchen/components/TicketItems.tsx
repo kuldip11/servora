@@ -94,8 +94,11 @@ export const TicketItems = ({ notes, items }: Props) => {
                           📝 {item.chefNotes}
                         </p>
                       )}
-                      {item.modifiers?.map((m, i) => (
-                        <p key={i} className="text-xs text-text-secondary">
+                      {item.modifiers?.map((m) => (
+                        <p
+                          key={`${m.modifierId}:${m.zoneLabel ?? "WHOLE"}`}
+                          className="text-xs text-text-secondary"
+                        >
                           +{" "}
                           {m.zoneLabel && m.zoneLabel !== "WHOLE"
                             ? `${m.zoneLabel}: `

@@ -76,7 +76,9 @@ describe("customerSessionService", () => {
       ...table,
       branch: { ...branch, ...override },
     });
-    await expect(customerSessionService.createSession("qr-table")).rejects.toThrow(
+    await expect(
+      customerSessionService.createSession("qr-table"),
+    ).rejects.toThrow(
       "This restaurant is not accepting dine-in orders right now",
     );
     expect(repository.createSession).not.toHaveBeenCalled();
@@ -103,17 +105,17 @@ describe("customerSessionService", () => {
   });
 
   it("rejects unknown or disabled takeaway QR codes", async () => {
-    await expect(customerSessionService.createSession("missing")).rejects.toThrow(
-      "Customer table not found",
-    );
+    await expect(
+      customerSessionService.createSession("missing"),
+    ).rejects.toThrow("Customer table not found");
 
     repository.findBranchByTakeawayQrToken.mockResolvedValue({
       ...branch,
       takeawayEnabled: false,
     });
-    await expect(customerSessionService.createSession("disabled")).rejects.toThrow(
-      "Customer table not found",
-    );
+    await expect(
+      customerSessionService.createSession("disabled"),
+    ).rejects.toThrow("Customer table not found");
   });
 
   it("returns an active dine-in session", async () => {
@@ -127,7 +129,9 @@ describe("customerSessionService", () => {
       branch,
     };
     repository.findSession.mockResolvedValue(session);
-    await expect(customerSessionService.getSession("token")).resolves.toBe(session);
+    await expect(customerSessionService.getSession("token")).resolves.toBe(
+      session,
+    );
   });
 
   it("rejects missing and expired sessions", async () => {
@@ -151,13 +155,16 @@ describe("customerSessionService", () => {
     { mode: "DINE_IN", branch: { ...branch, dineInEnabled: false } },
     { mode: "DINE_IN", branch: { ...branch, tablesEnabled: false } },
     { mode: "TAKEAWAY", branch: { ...branch, takeawayEnabled: false } },
-  ])("rejects sessions whose branch capabilities no longer allow them %#", async (input) => {
-    repository.findSession.mockResolvedValue({
-      ...input,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    await expect(customerSessionService.getSession("token")).rejects.toThrow(
-      "This restaurant is not accepting dine-in orders right now",
-    );
-  });
+  ])(
+    "rejects sessions whose branch capabilities no longer allow them %#",
+    async (input) => {
+      repository.findSession.mockResolvedValue({
+        ...input,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      await expect(customerSessionService.getSession("token")).rejects.toThrow(
+        "This restaurant is not accepting dine-in orders right now",
+      );
+    },
+  );
 });

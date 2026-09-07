@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, Input } from "@pos/ui";
 import { createCustomersApi, createMenuApi } from "@pos/api-client";
@@ -11,6 +10,7 @@ import type { CustomerGroup, PriceRule } from "@pos/types";
 import { getErrorMessage } from "@/shared/lib/errors";
 
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
+import { usePriceRuleDraft } from "@/features/menu/hooks/usePriceRuleDraft";
 
 const describeRule = (rule: PriceRule) => {
   const scope = [
@@ -38,17 +38,22 @@ export const PriceRulesPanel = ({
   itemId: string;
   branchId?: string | null;
 }) => {
-  const [channel, setChannel] = useState("");
-  const [fulfillmentType, setFulfillmentType] = useState("");
-  const [scopeToBranch, setScopeToBranch] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [price, setPrice] = useState("");
-  const [priority, setPriority] = useState("0");
-  const [customerGroupId, setCustomerGroupId] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const {
+    channel,
+    fulfillmentType,
+    scopeToBranch,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    price,
+    priority,
+    customerGroupId,
+    error,
+    setField,
+    markSaved,
+    setError,
+  } = usePriceRuleDraft();
 
   const key = ["menu-items", itemId, "price-rules"];
   const { data: customerGroups = [] } = useQuery<CustomerGroup[]>({
@@ -77,8 +82,7 @@ export const PriceRulesPanel = ({
         priority: Number(priority) || 0,
       }),
     onSuccess: () => {
-      setError(null);
-      setPrice("");
+      markSaved();
       queryClient.invalidateQueries({ queryKey: key });
     },
     onError: (err: unknown) => {
@@ -123,7 +127,7 @@ export const PriceRulesPanel = ({
         <select
           aria-label="Rule channel"
           value={channel}
-          onChange={(event) => setChannel(event.target.value)}
+          onChange={(event) => setField("channel", event.target.value)}
           className="rounded border border-border px-2 py-1.5 text-sm"
         >
           <option value="">Any channel</option>
@@ -133,7 +137,7 @@ export const PriceRulesPanel = ({
         <select
           aria-label="Rule fulfillment type"
           value={fulfillmentType}
-          onChange={(event) => setFulfillmentType(event.target.value)}
+          onChange={(event) => setField("fulfillmentType", event.target.value)}
           className="rounded border border-border px-2 py-1.5 text-sm"
         >
           <option value="">Any fulfillment</option>
@@ -146,7 +150,9 @@ export const PriceRulesPanel = ({
             <input
               type="checkbox"
               checked={scopeToBranch}
-              onChange={(event) => setScopeToBranch(event.target.checked)}
+              onChange={(event) =>
+                setField("scopeToBranch", event.target.checked)
+              }
             />
             Scope to this branch only
           </label>
@@ -155,34 +161,34 @@ export const PriceRulesPanel = ({
           aria-label="Rule start date"
           type="date"
           value={startDate}
-          onChange={(event) => setStartDate(event.target.value)}
+          onChange={(event) => setField("startDate", event.target.value)}
           placeholder="Start date"
         />
         <Input
           aria-label="Rule end date"
           type="date"
           value={endDate}
-          onChange={(event) => setEndDate(event.target.value)}
+          onChange={(event) => setField("endDate", event.target.value)}
           placeholder="End date"
         />
         <Input
           aria-label="Rule start time"
           type="time"
           value={startTime}
-          onChange={(event) => setStartTime(event.target.value)}
+          onChange={(event) => setField("startTime", event.target.value)}
           placeholder="Start time"
         />
         <Input
           aria-label="Rule end time"
           type="time"
           value={endTime}
-          onChange={(event) => setEndTime(event.target.value)}
+          onChange={(event) => setField("endTime", event.target.value)}
           placeholder="End time"
         />
         <select
           aria-label="Customer group scope"
           value={customerGroupId}
-          onChange={(event) => setCustomerGroupId(event.target.value)}
+          onChange={(event) => setField("customerGroupId", event.target.value)}
           className="rounded border border-border px-2 py-1.5 text-sm"
         >
           <option value="">Any customer group</option>
@@ -198,14 +204,14 @@ export const PriceRulesPanel = ({
           min={0}
           step="0.01"
           value={price}
-          onChange={(event) => setPrice(event.target.value)}
+          onChange={(event) => setField("price", event.target.value)}
           placeholder="Price"
         />
         <Input
           aria-label="Rule priority"
           type="number"
           value={priority}
-          onChange={(event) => setPriority(event.target.value)}
+          onChange={(event) => setField("priority", event.target.value)}
           placeholder="Priority"
         />
         <Button

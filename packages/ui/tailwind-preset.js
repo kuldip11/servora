@@ -1,5 +1,3 @@
-
-
 import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
@@ -19,7 +17,6 @@ export default {
         spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
       keyframes: {
-
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },

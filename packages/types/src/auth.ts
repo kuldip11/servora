@@ -149,5 +149,10 @@ export interface AvailableMembership {
     name: RoleName;
     scope: "GLOBAL" | "TENANT" | "BRANCH";
   }>;
-  branches: Array<Pick<Branch, "id" | "name" | "address" | "isActive" | "tablesEnabled"> & Partial<Omit<Branch, "id" | "name" | "address" | "isActive" | "tablesEnabled">>>;
+  branches: Array<
+    Pick<Branch, "id" | "name" | "address" | "isActive" | "tablesEnabled"> &
+      Partial<
+        Omit<Branch, "id" | "name" | "address" | "isActive" | "tablesEnabled">
+      >
+  >;
 }

@@ -167,7 +167,12 @@ export const approvalService = {
         eq(voidCompApprovalThresholds.actionType, actionType),
       ),
     });
-    if (!isApprovalRequired(lineValue, threshold ? Number(threshold.thresholdAmount) : null))
+    if (
+      !isApprovalRequired(
+        lineValue,
+        threshold ? Number(threshold.thresholdAmount) : null,
+      )
+    )
       return;
     if (!tokenId) throw new ForbiddenError("Manager approval required");
     const [used] = await db

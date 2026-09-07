@@ -1,9 +1,15 @@
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: ((context: any) => unknown) | undefined }> = [];
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: ((context: any) => unknown) | undefined;
+    }> = [];
     constructor(_options: unknown = {}) {}
-    use(_plugin: unknown) { return this; }
+    use(_plugin: unknown) {
+      return this;
+    }
     post(path: string, handler: ((context: any) => unknown) | undefined) {
       this.routes.push({ method: "POST", path, handler });
       return this;
@@ -60,7 +66,8 @@ describe("bulk-ops.route routes", () => {
       { method: "POST", path: "/delete" },
     ]);
 
-    const route = (path: string) => routes.find((candidate) => candidate.path === path)!;
+    const route = (path: string) =>
+      routes.find((candidate) => candidate.path === path)!;
     updateItemsStatus.mockResolvedValueOnce({ ok: true });
     updateItemsCategory.mockResolvedValueOnce({ ok: true });
     bulkSetItemTags.mockResolvedValueOnce({ ok: true });
@@ -68,18 +75,53 @@ describe("bulk-ops.route routes", () => {
     bulkUpdatePrice.mockResolvedValueOnce({ ok: true });
     bulkDeleteItems.mockResolvedValueOnce({ ok: true });
 
-    await route("/status").handler!({ auth, body: { itemIds: ["i1"], status: "ACTIVE", reason: "Back" } });
-    await route("/category").handler!({ auth, body: { itemIds: ["i1"], categoryId: "c1" } });
-    await route("/tags").handler!({ auth, body: { itemIds: ["i1"], tagIds: ["t1"], mode: "REPLACE" } });
-    await route("/modifiers").handler!({ auth, body: { itemIds: ["i1"], modifierGroupIds: ["m1"], mode: "ADD" } });
-    await route("/price").handler!({ auth, body: { itemIds: ["i1"], priceChange: 10, mode: "PERCENTAGE" } });
+    await route("/status").handler!({
+      auth,
+      body: { itemIds: ["i1"], status: "ACTIVE", reason: "Back" },
+    });
+    await route("/category").handler!({
+      auth,
+      body: { itemIds: ["i1"], categoryId: "c1" },
+    });
+    await route("/tags").handler!({
+      auth,
+      body: { itemIds: ["i1"], tagIds: ["t1"], mode: "REPLACE" },
+    });
+    await route("/modifiers").handler!({
+      auth,
+      body: { itemIds: ["i1"], modifierGroupIds: ["m1"], mode: "ADD" },
+    });
+    await route("/price").handler!({
+      auth,
+      body: { itemIds: ["i1"], priceChange: 10, mode: "PERCENTAGE" },
+    });
     await route("/delete").handler!({ auth, body: { itemIds: ["i1"] } });
 
-    expect(updateItemsStatus).toHaveBeenCalledWith(auth, ["i1"], "ACTIVE", "Back");
+    expect(updateItemsStatus).toHaveBeenCalledWith(
+      auth,
+      ["i1"],
+      "ACTIVE",
+      "Back",
+    );
     expect(updateItemsCategory).toHaveBeenCalledWith(auth, ["i1"], "c1");
-    expect(bulkSetItemTags).toHaveBeenCalledWith(auth, ["i1"], ["t1"], "REPLACE");
-    expect(bulkSetItemModifierGroups).toHaveBeenCalledWith(auth, ["i1"], ["m1"], "ADD");
-    expect(bulkUpdatePrice).toHaveBeenCalledWith(auth, ["i1"], 10, "PERCENTAGE");
+    expect(bulkSetItemTags).toHaveBeenCalledWith(
+      auth,
+      ["i1"],
+      ["t1"],
+      "REPLACE",
+    );
+    expect(bulkSetItemModifierGroups).toHaveBeenCalledWith(
+      auth,
+      ["i1"],
+      ["m1"],
+      "ADD",
+    );
+    expect(bulkUpdatePrice).toHaveBeenCalledWith(
+      auth,
+      ["i1"],
+      10,
+      "PERCENTAGE",
+    );
     expect(bulkDeleteItems).toHaveBeenCalledWith(auth, ["i1"]);
   });
 });

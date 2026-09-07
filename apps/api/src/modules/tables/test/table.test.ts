@@ -1,15 +1,165 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContext } from "@/core/auth";
-const m=vi.hoisted(()=>({findMany:vi.fn(),findById:vi.fn(),create:vi.fn(),regenerateQrToken:vi.fn(),update:vi.fn(),softDelete:vi.fn(),hasOpenOrders:vi.fn(),branchFindById:vi.fn()}));
-vi.mock("../table.repository",()=>({tableRepository:{findMany:m.findMany,findById:m.findById,create:m.create,regenerateQrToken:m.regenerateQrToken,update:m.update,softDelete:m.softDelete,hasOpenOrders:m.hasOpenOrders}}));
-vi.mock("@/modules/branches/branch.repository",()=>({branchRepository:{findById:m.branchFindById}}));
-import{tableService}from"../table.service";import{tableController}from"../table.controller";
-const auth=(o:Partial<AuthContext>={}):AuthContext=>({userId:"u1",tenantId:"t1",email:"u@x",branchId:"b1",tenantWide:true,authorizedBranchIds:["b1"],permissions:["tables:read","tables:create","tables:update","tables:delete"],roles:[],requestId:"r1",ipAddress:"127.0.0.1",...o} as AuthContext);
-const table=(o:Record<string,unknown>={})=>({id:"tb1",branchId:"b1",name:"T1",status:"AVAILABLE",...o});
-describe("table service/controller coverage",()=>{beforeEach(()=>{vi.clearAllMocks();m.findMany.mockResolvedValue([table()]);m.findById.mockResolvedValue(table());m.create.mockResolvedValue(table());m.regenerateQrToken.mockResolvedValue(table({publicQrToken:"q"}));m.update.mockResolvedValue(table());m.softDelete.mockResolvedValue(table({isActive:false}));m.hasOpenOrders.mockResolvedValue(false);m.branchFindById.mockResolvedValue({id:"b1",tablesEnabled:true});});
- it("lists and creates tables through success and branch validation paths",async()=>{await expect(tableService.list(auth())).resolves.toHaveLength(1);await expect(tableController.list(auth())).resolves.toMatchObject({success:true});await expect(tableService.create(auth(),{name:"T"})).resolves.toMatchObject({id:"tb1"});await expect(tableController.create(auth(),{name:"T",branchId:"b1"})).resolves.toMatchObject({success:true});await expect(tableService.create(auth({tenantWide:false,authorizedBranchIds:["b1"]}),{name:"T",branchId:"b2"})).rejects.toThrow();await expect(tableService.create(auth({branchId:null}),{name:"T"})).rejects.toThrow();m.branchFindById.mockResolvedValueOnce(undefined);await expect(tableService.create(auth(),{name:"T",branchId:"missing"})).rejects.toThrow();m.branchFindById.mockResolvedValueOnce({id:"b1",tablesEnabled:false});await expect(tableService.create(auth(),{name:"T"})).rejects.toThrow();});
- it("regenerates QR and covers missing/access/repository failures",async()=>{await expect(tableService.regenerateQr(auth(),"tb1")).resolves.toMatchObject({id:"tb1"});await expect(tableController.regenerateQr(auth(),"tb1")).resolves.toMatchObject({success:true});m.findById.mockResolvedValueOnce(undefined);await expect(tableService.regenerateQr(auth(),"missing")).rejects.toThrow();m.findById.mockResolvedValueOnce(table({branchId:"b2"}));await expect(tableService.regenerateQr(auth({tenantWide:false,authorizedBranchIds:["b1"]}),"tb1")).rejects.toThrow();m.regenerateQrToken.mockResolvedValueOnce(undefined);await expect(tableService.regenerateQr(auth(),"tb1")).rejects.toThrow();});
- it("updates tables with/without status and handles open/missing rows",async()=>{await expect(tableService.update(auth(),"tb1",{name:"N"})).resolves.toMatchObject({id:"tb1"});await tableController.update(auth(),"tb1",{});m.hasOpenOrders.mockResolvedValueOnce(false);await tableService.update(auth(),"tb1",{status:"CLEANING"});m.hasOpenOrders.mockResolvedValueOnce(true);await expect(tableService.update(auth(),"tb1",{status:"OCCUPIED"})).rejects.toThrow();m.findById.mockResolvedValueOnce(undefined);await expect(tableService.update(auth(),"missing",{})).rejects.toThrow();m.update.mockResolvedValueOnce(undefined);await expect(tableService.update(auth(),"tb1",{})).rejects.toThrow();});
- it("updates status and covers active-order/missing result guards",async()=>{await expect(tableService.updateStatus(auth(),"tb1","CLEANING")).resolves.toMatchObject({id:"tb1"});await expect(tableController.updateStatus(auth(),"tb1","AVAILABLE")).resolves.toMatchObject({success:true});m.findById.mockResolvedValueOnce(undefined);await expect(tableService.updateStatus(auth(),"missing","AVAILABLE")).rejects.toThrow();m.hasOpenOrders.mockResolvedValueOnce(true);await expect(tableService.updateStatus(auth(),"tb1","AVAILABLE")).rejects.toThrow();m.update.mockResolvedValueOnce(undefined);await expect(tableService.updateStatus(auth(),"tb1","AVAILABLE")).rejects.toThrow();});
- it("removes tables and covers open-order/missing/deletion guards",async()=>{await expect(tableService.remove(auth(),"tb1")).resolves.toMatchObject({id:"tb1"});await expect(tableController.remove(auth(),"tb1")).resolves.toMatchObject({success:true});m.findById.mockResolvedValueOnce(undefined);await expect(tableService.remove(auth(),"missing")).rejects.toThrow();m.hasOpenOrders.mockResolvedValueOnce(true);await expect(tableService.remove(auth(),"tb1")).rejects.toThrow();m.softDelete.mockResolvedValueOnce(undefined);await expect(tableService.remove(auth(),"tb1")).rejects.toThrow();});
+const m = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  findById: vi.fn(),
+  create: vi.fn(),
+  regenerateQrToken: vi.fn(),
+  update: vi.fn(),
+  softDelete: vi.fn(),
+  hasOpenOrders: vi.fn(),
+  branchFindById: vi.fn(),
+}));
+vi.mock("../table.repository", () => ({
+  tableRepository: {
+    findMany: m.findMany,
+    findById: m.findById,
+    create: m.create,
+    regenerateQrToken: m.regenerateQrToken,
+    update: m.update,
+    softDelete: m.softDelete,
+    hasOpenOrders: m.hasOpenOrders,
+  },
+}));
+vi.mock("@/modules/branches/branch.repository", () => ({
+  branchRepository: { findById: m.branchFindById },
+}));
+import { tableService } from "../table.service";
+import { tableController } from "../table.controller";
+const auth = (o: Partial<AuthContext> = {}): AuthContext =>
+  ({
+    userId: "u1",
+    tenantId: "t1",
+    email: "u@x",
+    branchId: "b1",
+    tenantWide: true,
+    authorizedBranchIds: ["b1"],
+    permissions: [
+      "tables:read",
+      "tables:create",
+      "tables:update",
+      "tables:delete",
+    ],
+    roles: [],
+    requestId: "r1",
+    ipAddress: "127.0.0.1",
+    ...o,
+  }) as AuthContext;
+const table = (o: Record<string, unknown> = {}) => ({
+  id: "tb1",
+  branchId: "b1",
+  name: "T1",
+  status: "AVAILABLE",
+  ...o,
+});
+describe("table service/controller coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.findMany.mockResolvedValue([table()]);
+    m.findById.mockResolvedValue(table());
+    m.create.mockResolvedValue(table());
+    m.regenerateQrToken.mockResolvedValue(table({ publicQrToken: "q" }));
+    m.update.mockResolvedValue(table());
+    m.softDelete.mockResolvedValue(table({ isActive: false }));
+    m.hasOpenOrders.mockResolvedValue(false);
+    m.branchFindById.mockResolvedValue({ id: "b1", tablesEnabled: true });
+  });
+  it("lists and creates tables through success and branch validation paths", async () => {
+    await expect(tableService.list(auth())).resolves.toHaveLength(1);
+    await expect(tableController.list(auth())).resolves.toMatchObject({
+      success: true,
+    });
+    await expect(
+      tableService.create(auth(), { name: "T" }),
+    ).resolves.toMatchObject({ id: "tb1" });
+    await expect(
+      tableController.create(auth(), { name: "T", branchId: "b1" }),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      tableService.create(
+        auth({ tenantWide: false, authorizedBranchIds: ["b1"] }),
+        { name: "T", branchId: "b2" },
+      ),
+    ).rejects.toThrow();
+    await expect(
+      tableService.create(auth({ branchId: null }), { name: "T" }),
+    ).rejects.toThrow();
+    m.branchFindById.mockResolvedValueOnce(undefined);
+    await expect(
+      tableService.create(auth(), { name: "T", branchId: "missing" }),
+    ).rejects.toThrow();
+    m.branchFindById.mockResolvedValueOnce({ id: "b1", tablesEnabled: false });
+    await expect(tableService.create(auth(), { name: "T" })).rejects.toThrow();
+  });
+  it("regenerates QR and covers missing/access/repository failures", async () => {
+    await expect(
+      tableService.regenerateQr(auth(), "tb1"),
+    ).resolves.toMatchObject({ id: "tb1" });
+    await expect(
+      tableController.regenerateQr(auth(), "tb1"),
+    ).resolves.toMatchObject({ success: true });
+    m.findById.mockResolvedValueOnce(undefined);
+    await expect(
+      tableService.regenerateQr(auth(), "missing"),
+    ).rejects.toThrow();
+    m.findById.mockResolvedValueOnce(table({ branchId: "b2" }));
+    await expect(
+      tableService.regenerateQr(
+        auth({ tenantWide: false, authorizedBranchIds: ["b1"] }),
+        "tb1",
+      ),
+    ).rejects.toThrow();
+    m.regenerateQrToken.mockResolvedValueOnce(undefined);
+    await expect(tableService.regenerateQr(auth(), "tb1")).rejects.toThrow();
+  });
+  it("updates tables with/without status and handles open/missing rows", async () => {
+    await expect(
+      tableService.update(auth(), "tb1", { name: "N" }),
+    ).resolves.toMatchObject({ id: "tb1" });
+    await tableController.update(auth(), "tb1", {});
+    m.hasOpenOrders.mockResolvedValueOnce(false);
+    await tableService.update(auth(), "tb1", { status: "CLEANING" });
+    m.hasOpenOrders.mockResolvedValueOnce(true);
+    await expect(
+      tableService.update(auth(), "tb1", { status: "OCCUPIED" }),
+    ).rejects.toThrow();
+    m.findById.mockResolvedValueOnce(undefined);
+    await expect(tableService.update(auth(), "missing", {})).rejects.toThrow();
+    m.update.mockResolvedValueOnce(undefined);
+    await expect(tableService.update(auth(), "tb1", {})).rejects.toThrow();
+  });
+  it("updates status and covers active-order/missing result guards", async () => {
+    await expect(
+      tableService.updateStatus(auth(), "tb1", "CLEANING"),
+    ).resolves.toMatchObject({ id: "tb1" });
+    await expect(
+      tableController.updateStatus(auth(), "tb1", "AVAILABLE"),
+    ).resolves.toMatchObject({ success: true });
+    m.findById.mockResolvedValueOnce(undefined);
+    await expect(
+      tableService.updateStatus(auth(), "missing", "AVAILABLE"),
+    ).rejects.toThrow();
+    m.hasOpenOrders.mockResolvedValueOnce(true);
+    await expect(
+      tableService.updateStatus(auth(), "tb1", "AVAILABLE"),
+    ).rejects.toThrow();
+    m.update.mockResolvedValueOnce(undefined);
+    await expect(
+      tableService.updateStatus(auth(), "tb1", "AVAILABLE"),
+    ).rejects.toThrow();
+  });
+  it("removes tables and covers open-order/missing/deletion guards", async () => {
+    await expect(tableService.remove(auth(), "tb1")).resolves.toMatchObject({
+      id: "tb1",
+    });
+    await expect(tableController.remove(auth(), "tb1")).resolves.toMatchObject({
+      success: true,
+    });
+    m.findById.mockResolvedValueOnce(undefined);
+    await expect(tableService.remove(auth(), "missing")).rejects.toThrow();
+    m.hasOpenOrders.mockResolvedValueOnce(true);
+    await expect(tableService.remove(auth(), "tb1")).rejects.toThrow();
+    m.softDelete.mockResolvedValueOnce(undefined);
+    await expect(tableService.remove(auth(), "tb1")).rejects.toThrow();
+  });
 });

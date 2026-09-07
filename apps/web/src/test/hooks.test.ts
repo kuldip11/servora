@@ -1,3 +1,4 @@
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { invalidateQueries, setQueryData, notifySuccess, notifyError } =
@@ -96,15 +97,23 @@ describe("feature hooks coverage", () => {
     for (const { path, name, fn } of entries) {
       let result: any;
       try {
-        result = fn({
-          id: "item-1",
-          itemId: "item-1",
-          orderId: "order-1",
-          branchId: "branch-1",
-        });
+        const primaryArgument =
+          name === "useItemFormWorkflow"
+            ? null
+            : {
+                id: "item-1",
+                itemId: "item-1",
+                orderId: "order-1",
+                branchId: "branch-1",
+              };
+        const rendered = renderHook(() => fn(primaryArgument));
+        result = rendered.result.current;
+        rendered.unmount();
       } catch (firstError) {
         try {
-          result = fn("item-1");
+          const rendered = renderHook(() => fn("item-1"));
+          result = rendered.result.current;
+          rendered.unmount();
         } catch {
           throw new Error(
             `Unable to initialize ${name} from ${path}: ${String(firstError)}`,

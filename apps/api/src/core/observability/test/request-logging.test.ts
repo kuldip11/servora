@@ -10,7 +10,9 @@ describe("requestLoggingPlugin", () => {
   });
 
   it("records and logs successful requests with the default status", async () => {
-    const info = vi.spyOn(rootLogger, "info").mockImplementation(() => undefined);
+    const info = vi
+      .spyOn(rootLogger, "info")
+      .mockImplementation(() => undefined);
     const observe = vi
       .spyOn(metrics, "observeDuration")
       .mockImplementation(() => undefined);
@@ -22,10 +24,14 @@ describe("requestLoggingPlugin", () => {
 
     const response = await app.handle(new Request("http://localhost/health"));
     expect(response.status).toBe(200);
-    expect(observe).toHaveBeenCalledWith("servora_api_request_duration_ms", 25, {
-      method: "GET",
-      status: "200",
-    });
+    expect(observe).toHaveBeenCalledWith(
+      "servora_api_request_duration_ms",
+      25,
+      {
+        method: "GET",
+        status: "200",
+      },
+    );
     expect(info).toHaveBeenCalledWith(
       "request.completed",
       expect.objectContaining({
@@ -41,7 +47,9 @@ describe("requestLoggingPlugin", () => {
   });
 
   it("uses an explicitly assigned response status", async () => {
-    const info = vi.spyOn(rootLogger, "info").mockImplementation(() => undefined);
+    const info = vi
+      .spyOn(rootLogger, "info")
+      .mockImplementation(() => undefined);
     const observe = vi
       .spyOn(metrics, "observeDuration")
       .mockImplementation(() => undefined);

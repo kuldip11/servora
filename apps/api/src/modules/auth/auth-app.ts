@@ -60,7 +60,8 @@ export const parseAuthApp = (value: string | undefined): AuthApp => {
 export const hasAppRoleAccess = (
   app: AuthApp,
   roleNames: readonly string[],
-): boolean => roleNames.some((roleName) => APP_SYSTEM_ROLE_ACCESS[app].has(roleName));
+): boolean =>
+  roleNames.some((roleName) => APP_SYSTEM_ROLE_ACCESS[app].has(roleName));
 
 export const hasMembershipAppAccess = (
   app: AuthApp,
@@ -90,7 +91,9 @@ export const assertAppRoleAccess = (
   roleNames: readonly string[],
 ): void => {
   if (!hasAppRoleAccess(app, roleNames)) {
-    throw new ForbiddenError("Account does not have access to this application");
+    throw new ForbiddenError(
+      "Account does not have access to this application",
+    );
   }
 };
 
@@ -100,7 +103,9 @@ export const assertMembershipAppAccess = (
   permissionKeys: readonly string[],
 ): void => {
   if (!hasMembershipAppAccess(app, roles, permissionKeys)) {
-    throw new ForbiddenError("Account does not have access to this application");
+    throw new ForbiddenError(
+      "Account does not have access to this application",
+    );
   }
 };
 

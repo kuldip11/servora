@@ -4,39 +4,122 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   return {
-    queryResult: { current: {} as any }, has: vi.fn(), invalidate: vi.fn(),
-    authMemberships: vi.fn(), activate: vi.fn(), success: vi.fn(), error: vi.fn(),
-    organizations: vi.fn(), franchises: vi.fn(), createOrganization: vi.fn(), updateOrganization: vi.fn(), archiveOrganization: vi.fn(),
-    createFranchise: vi.fn(), updateFranchise: vi.fn(), archiveFranchise: vi.fn(), createBranch: vi.fn(), updateBranch: vi.fn(), archiveBranch: vi.fn(),
+    queryResult: { current: {} as any },
+    has: vi.fn(),
+    invalidate: vi.fn(),
+    authMemberships: vi.fn(),
+    activate: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    organizations: vi.fn(),
+    franchises: vi.fn(),
+    createOrganization: vi.fn(),
+    updateOrganization: vi.fn(),
+    archiveOrganization: vi.fn(),
+    createFranchise: vi.fn(),
+    updateFranchise: vi.fn(),
+    archiveFranchise: vi.fn(),
+    createBranch: vi.fn(),
+    updateBranch: vi.fn(),
+    archiveBranch: vi.fn(),
     capturedQueryFn: null as null | (() => Promise<any>),
   };
 });
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
-  useQuery: (options: any) => { mocks.capturedQueryFn = options.queryFn; return mocks.queryResult.current; },
-  useMutation: (options: any) => ({ isPending: false, mutate: async (value?: any) => { try { const result = await options.mutationFn(value); await options.onSuccess?.(result); } catch (error) { options.onError?.(error); } } }),
+  useQuery: (options: any) => {
+    mocks.capturedQueryFn = options.queryFn;
+    return mocks.queryResult.current;
+  },
+  useMutation: (options: any) => ({
+    isPending: false,
+    mutate: async (value?: any) => {
+      try {
+        const result = await options.mutationFn(value);
+        await options.onSuccess?.(result);
+      } catch (error) {
+        options.onError?.(error);
+      }
+    },
+  }),
 }));
-vi.mock("@/shared/auth/permissions", () => ({ usePermissions: () => ({ has: mocks.has }) }));
-vi.mock("@/features/business/services/business.service", () => ({ businessService: {
-  organizations: mocks.organizations, franchises: mocks.franchises, createOrganization: mocks.createOrganization,
-  updateOrganization: mocks.updateOrganization, archiveOrganization: mocks.archiveOrganization, createFranchise: mocks.createFranchise,
-  updateFranchise: mocks.updateFranchise, archiveFranchise: mocks.archiveFranchise, createBranch: mocks.createBranch,
-  updateBranch: mocks.updateBranch, archiveBranch: mocks.archiveBranch,
-} }));
-vi.mock("@/features/auth/services/auth.service", () => ({ authService: { memberships: mocks.authMemberships } }));
-vi.mock("@/shared/auth/active-context", () => ({ activateMembershipContext: mocks.activate }));
-vi.mock("@/shared/lib/notify", () => ({ notifySuccess: mocks.success, notifyError: mocks.error }));
+vi.mock("@/shared/auth/permissions", () => ({
+  usePermissions: () => ({ has: mocks.has }),
+}));
+vi.mock("@/features/business/services/business.service", () => ({
+  businessService: {
+    organizations: mocks.organizations,
+    franchises: mocks.franchises,
+    createOrganization: mocks.createOrganization,
+    updateOrganization: mocks.updateOrganization,
+    archiveOrganization: mocks.archiveOrganization,
+    createFranchise: mocks.createFranchise,
+    updateFranchise: mocks.updateFranchise,
+    archiveFranchise: mocks.archiveFranchise,
+    createBranch: mocks.createBranch,
+    updateBranch: mocks.updateBranch,
+    archiveBranch: mocks.archiveBranch,
+  },
+}));
+vi.mock("@/features/auth/services/auth.service", () => ({
+  authService: { memberships: mocks.authMemberships },
+}));
+vi.mock("@/shared/auth/active-context", () => ({
+  activateMembershipContext: mocks.activate,
+}));
+vi.mock("@/shared/lib/notify", () => ({
+  notifySuccess: mocks.success,
+  notifyError: mocks.error,
+}));
 vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
-vi.mock("@pos/validation", () => ({ businessBranchFormSchema: {}, franchiseBusinessFormSchema: {}, organizationBusinessFormSchema: {} }));
-vi.mock("lucide-react", () => ({ Building2: () => null, CheckCircle2: () => null, ChevronRight: () => null, GitBranch: () => null, MapPin: () => null, Pencil: () => null, Plus: () => null, Store: () => null }));
+vi.mock("@pos/validation", () => ({
+  businessBranchFormSchema: {},
+  franchiseBusinessFormSchema: {},
+  organizationBusinessFormSchema: {},
+}));
+vi.mock("lucide-react", () => ({
+  Building2: () => null,
+  CheckCircle2: () => null,
+  ChevronRight: () => null,
+  GitBranch: () => null,
+  MapPin: () => null,
+  Pencil: () => null,
+  Plus: () => null,
+  Store: () => null,
+}));
 vi.mock("@pos/ui", () => ({
-  Button: ({ children, loading: _loading, ...props }: any) => <button {...props}>{children}</button>,
-  Card: ({ children }: React.PropsWithChildren) => <section>{children}</section>,
-  Input: React.forwardRef<HTMLInputElement, any>(({ label, error, ...props }, ref) => <label>{label}<input ref={ref} aria-label={label} {...props}/>{error ? <span>{error}</span> : null}</label>),
-  Modal: ({ open, title, children, onClose }: any) => open ? <div role="dialog"><h2>{title}</h2><button onClick={onClose}>modal-x</button>{children}</div> : null,
+  Button: ({ children, loading: _loading, ...props }: any) => (
+    <button {...props}>{children}</button>
+  ),
+  Card: ({ children }: React.PropsWithChildren) => (
+    <section>{children}</section>
+  ),
+  Input: React.forwardRef<HTMLInputElement, any>(
+    ({ label, error, ...props }, ref) => (
+      <label>
+        {label}
+        <input ref={ref} aria-label={label} {...props} />
+        {error ? <span>{error}</span> : null}
+      </label>
+    ),
+  ),
+  Modal: ({ open, title, children, onClose }: any) =>
+    open ? (
+      <div role="dialog">
+        <h2>{title}</h2>
+        <button onClick={onClose}>modal-x</button>
+        {children}
+      </div>
+    ) : null,
   Page: ({ children }: React.PropsWithChildren) => <main>{children}</main>,
-  PageHeader: ({ title, description, actions }: any) => <header><h1>{title}</h1><p>{description}</p>{actions}</header>,
+  PageHeader: ({ title, description, actions }: any) => (
+    <header>
+      <h1>{title}</h1>
+      <p>{description}</p>
+      {actions}
+    </header>
+  ),
   Spinner: () => <div>spinner</div>,
 }));
 
@@ -44,19 +127,52 @@ import { useAuthStore } from "@/store/auth";
 import { BusinessPage } from "../BusinessPage";
 
 const organization = {
-  id: "o1", name: "Org One", businessType: "RESTAURANT_GROUP", country: "IN", timezone: "Asia/Kolkata", currency: "INR",
-  primaryContactName: "Owner", businessEmail: "owner@example.com", businessPhone: "999", city: "Pune", stateProvince: "MH",
+  id: "o1",
+  name: "Org One",
+  businessType: "RESTAURANT_GROUP",
+  country: "IN",
+  timezone: "Asia/Kolkata",
+  currency: "INR",
+  primaryContactName: "Owner",
+  businessEmail: "owner@example.com",
+  businessPhone: "999",
+  city: "Pune",
+  stateProvince: "MH",
 } as any;
 const franchise = {
-  id: "t1", organizationId: "o1", name: "Brand", displayName: "Brand One", businessModel: "RESTAURANT", cuisineTypes: ["Indian"],
-  defaultCurrency: "INR", defaultTimezone: "Asia/Kolkata", isActive: true,
+  id: "t1",
+  organizationId: "o1",
+  name: "Brand",
+  displayName: "Brand One",
+  businessModel: "RESTAURANT",
+  cuisineTypes: ["Indian"],
+  defaultCurrency: "INR",
+  defaultTimezone: "Asia/Kolkata",
+  isActive: true,
 } as any;
 const branch = {
-  id: "b1", name: "Central", code: "CTR", isActive: true, address: "Main St", city: "Pune", stateProvince: "MH", phone: "123",
-  timezone: "Asia/Kolkata", tablesEnabled: true, addressLine1: "Main St", dineInEnabled: true, takeawayEnabled: true, deliveryEnabled: true,
-  onlineEnabled: true, customerQrEnabled: true, kdsEnabled: true, waiterAppEnabled: true,
+  id: "b1",
+  name: "Central",
+  code: "CTR",
+  isActive: true,
+  address: "Main St",
+  city: "Pune",
+  stateProvince: "MH",
+  phone: "123",
+  timezone: "Asia/Kolkata",
+  tablesEnabled: true,
+  addressLine1: "Main St",
+  dineInEnabled: true,
+  takeawayEnabled: true,
+  deliveryEnabled: true,
+  onlineEnabled: true,
+  customerQrEnabled: true,
+  kdsEnabled: true,
+  waiterAppEnabled: true,
 } as any;
-const memberships = [{ membershipId: "m1", tenant: franchise, branches: [branch] }] as any;
+const memberships = [
+  { membershipId: "m1", tenant: franchise, branches: [branch] },
+] as any;
 const user = { roles: [{ name: "OWNER" }] } as any;
 
 describe("BusinessPage coverage", () => {
@@ -73,19 +189,31 @@ describe("BusinessPage coverage", () => {
       isAuthenticated: true,
     });
     mocks.authMemberships.mockResolvedValue(memberships);
-    mocks.queryResult.current = { data: { organizations: [organization], franchises: [franchise] }, isLoading: false };
+    mocks.queryResult.current = {
+      data: { organizations: [organization], franchises: [franchise] },
+      isLoading: false,
+    };
     mocks.organizations.mockResolvedValue([organization]);
     mocks.franchises.mockResolvedValue([franchise]);
-    mocks.createOrganization.mockResolvedValue({ organization, membershipId: "m1" });
+    mocks.createOrganization.mockResolvedValue({
+      organization,
+      membershipId: "m1",
+    });
     mocks.updateOrganization.mockResolvedValue(organization);
     mocks.archiveOrganization.mockResolvedValue({});
-    mocks.createFranchise.mockResolvedValue({ membershipId: "m1", tenant: franchise });
+    mocks.createFranchise.mockResolvedValue({
+      membershipId: "m1",
+      tenant: franchise,
+    });
     mocks.updateFranchise.mockResolvedValue(franchise);
     mocks.archiveFranchise.mockResolvedValue({});
     mocks.createBranch.mockResolvedValue(branch);
     mocks.updateBranch.mockResolvedValue(branch);
     mocks.archiveBranch.mockResolvedValue({});
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
   });
 
   it("renders loading and executes the hierarchy query function including franchise failure fallback", async () => {
@@ -94,21 +222,39 @@ describe("BusinessPage coverage", () => {
     expect(screen.getByText("spinner")).toBeTruthy();
     expect(mocks.capturedQueryFn).toBeTypeOf("function");
     mocks.franchises.mockRejectedValueOnce(new Error("hidden"));
-    expect(await mocks.capturedQueryFn!()).toEqual({ organizations: [organization], franchises: [] });
+    expect(await mocks.capturedQueryFn!()).toEqual({
+      organizations: [organization],
+      franchises: [],
+    });
   });
 
   it("covers owner onboarding and organization creation", async () => {
-    mocks.queryResult.current = { data: { organizations: [], franchises: [] }, isLoading: false };
-    useAuthStore.setState({ memberships: [], membershipId: null, franchiseId: null, branchId: null, user });
+    mocks.queryResult.current = {
+      data: { organizations: [], franchises: [] },
+      isLoading: false,
+    };
+    useAuthStore.setState({
+      memberships: [],
+      membershipId: null,
+      franchiseId: null,
+      branchId: null,
+      user,
+    });
     mocks.authMemberships.mockResolvedValue([]);
     render(<BusinessPage />);
     expect(screen.getByText("Set up your business")).toBeTruthy();
     expect(screen.getByText("Required next")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Create business/ }));
     expect(screen.getByRole("heading", { name: "Add business" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Organization / Business name"), { target: { value: "New Org" } });
+    fireEvent.change(screen.getByLabelText("Organization / Business name"), {
+      target: { value: "New Org" },
+    });
     fireEvent.submit(screen.getByText("Save business").closest("form")!);
-    await waitFor(() => expect(mocks.createOrganization).toHaveBeenCalledWith(expect.objectContaining({ name: "New Org" })));
+    await waitFor(() =>
+      expect(mocks.createOrganization).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "New Org" }),
+      ),
+    );
     expect(mocks.success).toHaveBeenCalledWith("Organization created");
     expect(mocks.authMemberships).toHaveBeenCalled();
     expect(mocks.invalidate).toHaveBeenCalled();
@@ -125,21 +271,36 @@ describe("BusinessPage coverage", () => {
     expect(screen.getByText("Indian")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Add branch/ }));
     expect(screen.getByRole("heading", { name: "Create Branch" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Branch name"), { target: { value: "North" } });
+    fireEvent.change(screen.getByLabelText("Branch name"), {
+      target: { value: "North" },
+    });
     fireEvent.submit(screen.getByText("Save Branch").closest("form")!);
-    await waitFor(() => expect(mocks.createBranch).toHaveBeenCalledWith(expect.objectContaining({ name: "North", currency: "INR" })));
+    await waitFor(() =>
+      expect(mocks.createBranch).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "North", currency: "INR" }),
+      ),
+    );
     expect(mocks.success).toHaveBeenCalledWith("Branch created");
 
     fireEvent.click(screen.getByRole("button", { name: "Brand One" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
-    expect(screen.getByRole("heading", { name: "Edit Franchise" })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Edit Franchise" }),
+    ).toBeTruthy();
     fireEvent.submit(screen.getByText("Save Franchise").closest("form")!);
-    await waitFor(() => expect(mocks.updateFranchise).toHaveBeenCalledWith("t1", expect.any(Object)));
+    await waitFor(() =>
+      expect(mocks.updateFranchise).toHaveBeenCalledWith(
+        "t1",
+        expect.any(Object),
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Brand One" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-    await waitFor(() => expect(mocks.archiveFranchise).toHaveBeenCalledWith("t1"));
+    await waitFor(() =>
+      expect(mocks.archiveFranchise).toHaveBeenCalledWith("t1"),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Central" }));
     expect(screen.getByText("Branch")).toBeTruthy();
@@ -147,7 +308,12 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     expect(screen.getByRole("heading", { name: "Edit Branch" })).toBeTruthy();
     fireEvent.submit(screen.getByText("Save Branch").closest("form")!);
-    await waitFor(() => expect(mocks.updateBranch).toHaveBeenCalledWith("b1", expect.objectContaining({ currency: "INR" })));
+    await waitFor(() =>
+      expect(mocks.updateBranch).toHaveBeenCalledWith(
+        "b1",
+        expect.objectContaining({ currency: "INR" }),
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Central" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
@@ -158,31 +324,63 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     expect(screen.getByRole("heading", { name: "Edit business" })).toBeTruthy();
     fireEvent.submit(screen.getByText("Save business").closest("form")!);
-    await waitFor(() => expect(mocks.updateOrganization).toHaveBeenCalledWith("o1", expect.any(Object)));
+    await waitFor(() =>
+      expect(mocks.updateOrganization).toHaveBeenCalledWith(
+        "o1",
+        expect.any(Object),
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Org One" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-    await waitFor(() => expect(mocks.archiveOrganization).toHaveBeenCalledWith("o1"));
+    await waitFor(() =>
+      expect(mocks.archiveOrganization).toHaveBeenCalledWith("o1"),
+    );
   });
 
   it("covers franchise onboarding creation and activation", async () => {
-    mocks.queryResult.current = { data: { organizations: [organization], franchises: [] }, isLoading: false };
-    useAuthStore.setState({ memberships: [], membershipId: null, franchiseId: null, branchId: null, user });
+    mocks.queryResult.current = {
+      data: { organizations: [organization], franchises: [] },
+      isLoading: false,
+    };
+    useAuthStore.setState({
+      memberships: [],
+      membershipId: null,
+      franchiseId: null,
+      branchId: null,
+      user,
+    });
     render(<BusinessPage />);
     expect(screen.getByText("Create Franchise")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Create Franchise/ }));
-    fireEvent.change(screen.getByLabelText("Franchise / Brand name"), { target: { value: "Brand" } });
+    fireEvent.change(screen.getByLabelText("Franchise / Brand name"), {
+      target: { value: "Brand" },
+    });
     fireEvent.submit(screen.getByText("Save Franchise").closest("form")!);
-    await waitFor(() => expect(mocks.createFranchise).toHaveBeenCalledWith("o1", expect.objectContaining({ name: "Brand" })));
+    await waitFor(() =>
+      expect(mocks.createFranchise).toHaveBeenCalledWith(
+        "o1",
+        expect.objectContaining({ name: "Brand" }),
+      ),
+    );
     expect(mocks.activate).toHaveBeenCalled();
     expect(mocks.success).toHaveBeenCalledWith("Franchise created");
   });
 
   it("covers franchise and branch form controls, capability toggles, cancellation and declined archive confirmations", async () => {
     const noBranchMemberships = [{ ...memberships[0], branches: [] }] as any;
-    useAuthStore.setState({ memberships: noBranchMemberships, membershipId: "m1", franchiseId: "t1", branchId: null, user });
-    mocks.queryResult.current = { data: { organizations: [organization], franchises: [franchise] }, isLoading: false };
+    useAuthStore.setState({
+      memberships: noBranchMemberships,
+      membershipId: "m1",
+      franchiseId: "t1",
+      branchId: null,
+      user,
+    });
+    mocks.queryResult.current = {
+      data: { organizations: [organization], franchises: [franchise] },
+      isLoading: false,
+    };
     render(<BusinessPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Brand One" }));
@@ -202,9 +400,15 @@ describe("BusinessPage coverage", () => {
     const branchChecks = screen.getAllByRole("checkbox");
     fireEvent.click(branchChecks[0]!);
     fireEvent.click(branchChecks[branchChecks.length - 1]!);
-    fireEvent.click(screen.getByText("MON").closest("label")!.querySelector("input")!);
-    fireEvent.click(screen.getByText("TUE").closest("label")!.querySelector("input")!);
-    fireEvent.click(screen.getByText("TUE").closest("label")!.querySelector("input")!);
+    fireEvent.click(
+      screen.getByText("MON").closest("label")!.querySelector("input")!,
+    );
+    fireEvent.click(
+      screen.getByText("TUE").closest("label")!.querySelector("input")!,
+    );
+    fireEvent.click(
+      screen.getByText("TUE").closest("label")!.querySelector("input")!,
+    );
     fireEvent.click(screen.getByRole("button", { name: "modal-x" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Org One" }));
@@ -221,30 +425,61 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateOrganization.mockRejectedValueOnce(new Error("org-save"));
     fireEvent.submit(screen.getByText("Save business").closest("form")!);
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not save organization"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not save organization",
+      ),
+    );
     mocks.archiveOrganization.mockRejectedValueOnce(new Error("org-archive"));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not archive organization"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not archive organization",
+      ),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Brand One" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateFranchise.mockRejectedValueOnce(new Error("franchise-save"));
     fireEvent.submit(screen.getByText("Save Franchise").closest("form")!);
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not save franchise"));
-    mocks.archiveFranchise.mockRejectedValueOnce(new Error("franchise-archive"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not save franchise",
+      ),
+    );
+    mocks.archiveFranchise.mockRejectedValueOnce(
+      new Error("franchise-archive"),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not archive franchise"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not archive franchise",
+      ),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Central" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateBranch.mockRejectedValueOnce(new Error("branch-save"));
     fireEvent.submit(screen.getByText("Save Branch").closest("form")!);
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not save branch"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not save branch",
+      ),
+    );
     mocks.archiveBranch.mockRejectedValueOnce(new Error("branch-archive"));
     fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.any(Error), "Could not deactivate branch"));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Could not deactivate branch",
+      ),
+    );
   });
-
 });

@@ -13,7 +13,8 @@ export const resolveRealtimeUrl = (
   host: string,
   configuredUrl?: string,
 ): string =>
-  configuredUrl ?? `${protocol === "https:" ? "wss" : "ws"}://${host}/ws/events`;
+  configuredUrl ??
+  `${protocol === "https:" ? "wss" : "ws"}://${host}/ws/events`;
 
 const wsUrl = resolveRealtimeUrl(
   window.location.protocol,

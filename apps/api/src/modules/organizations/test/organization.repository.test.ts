@@ -1,12 +1,202 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
-const m=vi.hoisted(()=>({orgMembershipFindMany:vi.fn(),orgMembershipFindFirst:vi.fn(),tenantFindMany:vi.fn(),tenantFindFirst:vi.fn(),menuFindMany:vi.fn(),txMenuFindFirst:vi.fn(),transaction:vi.fn(),insert:vi.fn(),insertValues:vi.fn(),insertReturning:vi.fn(),update:vi.fn(),updateSet:vi.fn(),updateWhere:vi.fn(),updateReturning:vi.fn(),del:vi.fn(),deleteWhere:vi.fn(),deleteReturning:vi.fn()}));
-vi.mock("@/db",()=>{const tx:any={insert:m.insert,update:m.update,delete:m.del,query:{menus:{findFirst:m.txMenuFindFirst}}};m.transaction.mockImplementation(async(fn:Function)=>fn(tx));m.insert.mockImplementation(()=>({values:m.insertValues}));m.insertValues.mockImplementation(()=>({returning:m.insertReturning,then:Promise.resolve(undefined).then.bind(Promise.resolve(undefined))}));m.update.mockImplementation(()=>({set:m.updateSet}));m.updateSet.mockImplementation(()=>({where:m.updateWhere}));m.updateWhere.mockImplementation(()=>({returning:m.updateReturning}));m.del.mockImplementation(()=>({where:m.deleteWhere}));m.deleteWhere.mockImplementation(()=>({returning:m.deleteReturning,then:Promise.resolve(undefined).then.bind(Promise.resolve(undefined))}));return{db:{query:{organizationMemberships:{findMany:m.orgMembershipFindMany,findFirst:m.orgMembershipFindFirst},tenants:{findMany:m.tenantFindMany,findFirst:m.tenantFindFirst},menus:{findMany:m.menuFindMany}},transaction:m.transaction,insert:m.insert,update:m.update,delete:m.del}}});
-import{organizationRepository}from"../organization.repository";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const m = vi.hoisted(() => ({
+  orgMembershipFindMany: vi.fn(),
+  orgMembershipFindFirst: vi.fn(),
+  tenantFindMany: vi.fn(),
+  tenantFindFirst: vi.fn(),
+  menuFindMany: vi.fn(),
+  txMenuFindFirst: vi.fn(),
+  transaction: vi.fn(),
+  insert: vi.fn(),
+  insertValues: vi.fn(),
+  insertReturning: vi.fn(),
+  update: vi.fn(),
+  updateSet: vi.fn(),
+  updateWhere: vi.fn(),
+  updateReturning: vi.fn(),
+  del: vi.fn(),
+  deleteWhere: vi.fn(),
+  deleteReturning: vi.fn(),
+}));
+vi.mock("@/db", () => {
+  const tx: any = {
+    insert: m.insert,
+    update: m.update,
+    delete: m.del,
+    query: { menus: { findFirst: m.txMenuFindFirst } },
+  };
+  m.transaction.mockImplementation(async (fn: Function) => fn(tx));
+  m.insert.mockImplementation(() => ({ values: m.insertValues }));
+  m.insertValues.mockImplementation(() => ({
+    returning: m.insertReturning,
+    then: Promise.resolve(undefined).then.bind(Promise.resolve(undefined)),
+  }));
+  m.update.mockImplementation(() => ({ set: m.updateSet }));
+  m.updateSet.mockImplementation(() => ({ where: m.updateWhere }));
+  m.updateWhere.mockImplementation(() => ({ returning: m.updateReturning }));
+  m.del.mockImplementation(() => ({ where: m.deleteWhere }));
+  m.deleteWhere.mockImplementation(() => ({
+    returning: m.deleteReturning,
+    then: Promise.resolve(undefined).then.bind(Promise.resolve(undefined)),
+  }));
+  return {
+    db: {
+      query: {
+        organizationMemberships: {
+          findMany: m.orgMembershipFindMany,
+          findFirst: m.orgMembershipFindFirst,
+        },
+        tenants: { findMany: m.tenantFindMany, findFirst: m.tenantFindFirst },
+        menus: { findMany: m.menuFindMany },
+      },
+      transaction: m.transaction,
+      insert: m.insert,
+      update: m.update,
+      delete: m.del,
+    },
+  };
+});
+import { organizationRepository } from "../organization.repository";
 
-describe("organization repository comprehensive coverage",()=>{beforeEach(()=>{vi.clearAllMocks();m.orgMembershipFindMany.mockImplementation(async(o?:any)=>{o?.orderBy?.({createdAt:"c"},{asc:(v:unknown)=>v});return[{id:"m1"}]});m.orgMembershipFindFirst.mockResolvedValue({id:"m1"});m.tenantFindMany.mockResolvedValue([{id:"t1"}]);m.tenantFindFirst.mockResolvedValue({id:"t1",organizationId:"o1"});m.menuFindMany.mockResolvedValue([{id:"menu1"}]);m.insertReturning.mockResolvedValue([{id:"o1"}]);m.updateReturning.mockResolvedValue([{id:"o1"}]);m.deleteReturning.mockResolvedValue([{id:"menu1"}]);m.txMenuFindFirst.mockResolvedValue({id:"menu1",organizationItems:[]});});
- it("covers membership and tenant/menu reads",async()=>{await expect(organizationRepository.findMembershipsByUserId("u1")).resolves.toEqual([{id:"m1"}]);await expect(organizationRepository.findMembership("u1","o1")).resolves.toEqual({id:"m1"});await expect(organizationRepository.listTenants("o1")).resolves.toEqual([{id:"t1"}]);await expect(organizationRepository.findTenant("t1")).resolves.toMatchObject({id:"t1"});await expect(organizationRepository.listMenus("o1")).resolves.toEqual([{id:"menu1"}]);});
- it("creates organization+membership and covers both failures",async()=>{m.insertReturning.mockResolvedValueOnce([{id:"o1"}]).mockResolvedValueOnce([{id:"m1"}]);await expect(organizationRepository.create({name:"Org",createdBy:"u1"} as any)).resolves.toEqual({organization:{id:"o1"},membership:{id:"m1"}});m.insertReturning.mockResolvedValueOnce([]);await expect(organizationRepository.create({name:"Org",createdBy:"u1"} as any)).rejects.toThrow("Organization creation failed");m.insertReturning.mockResolvedValueOnce([{id:"o1"}]).mockResolvedValueOnce([]);await expect(organizationRepository.create({name:"Org",createdBy:"u1"} as any)).rejects.toThrow("membership creation failed");});
- it("creates menus with defaults/items and insert failure",async()=>{m.insertReturning.mockResolvedValueOnce([{id:"menu1"}]);await expect(organizationRepository.createMenu({organizationId:"o1",name:"M",items:[{itemSku:" S ",categoryName:" Cat ",sortOrder:5},{itemSku:"T",categoryName:" "}]})).resolves.toMatchObject({id:"menu1"});expect(m.insertValues).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({itemSku:"S",categoryName:"Cat",sortOrder:5}),expect.objectContaining({itemSku:"T",categoryName:null,sortOrder:1})]));m.insertReturning.mockResolvedValueOnce([{id:"menu2"}]);await organizationRepository.createMenu({organizationId:"o1",name:"M",description:"d",status:"PUBLISHED",isDefault:true,availableChannels:["WEB"],availableFulfillmentTypes:["DINE_IN"],effectiveFrom:new Date(),items:[]});m.insertReturning.mockResolvedValueOnce([]);await expect(organizationRepository.createMenu({organizationId:"o1",name:"M",items:[]})).rejects.toThrow("insert returned no row");});
- it("updates menus across all optional fields, item replacement, and missing row",async()=>{m.updateReturning.mockResolvedValueOnce([{id:"menu1"}]);await organizationRepository.updateMenu("o1","menu1",{name:"N",description:null,status:"PUBLISHED",isDefault:true,availableChannels:null,availableFulfillmentTypes:null,effectiveFrom:null,items:[{itemSku:" S ",categoryName:" C "},{itemSku:"T",sortOrder:9}]});m.updateReturning.mockResolvedValueOnce([{id:"menu1"}]);await organizationRepository.updateMenu("o1","menu1",{items:[]});m.updateReturning.mockResolvedValueOnce([{id:"menu1"}]);await organizationRepository.updateMenu("o1","menu1",{});m.updateReturning.mockResolvedValueOnce([]);await expect(organizationRepository.updateMenu("o1","missing",{})).resolves.toBeUndefined();});
- it("deletes menus and updates organizations",async()=>{await expect(organizationRepository.deleteMenu("o1","menu1")).resolves.toEqual({id:"menu1"});m.deleteReturning.mockResolvedValueOnce([]);await expect(organizationRepository.deleteMenu("o1","missing")).resolves.toBeUndefined();await expect(organizationRepository.update("o1",{name:"N"} as any)).resolves.toEqual({id:"o1"});m.updateReturning.mockResolvedValueOnce([]);await expect(organizationRepository.update("o1",{})).resolves.toBeUndefined();});
+describe("organization repository comprehensive coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.orgMembershipFindMany.mockImplementation(async (o?: any) => {
+      o?.orderBy?.({ createdAt: "c" }, { asc: (v: unknown) => v });
+      return [{ id: "m1" }];
+    });
+    m.orgMembershipFindFirst.mockResolvedValue({ id: "m1" });
+    m.tenantFindMany.mockResolvedValue([{ id: "t1" }]);
+    m.tenantFindFirst.mockResolvedValue({ id: "t1", organizationId: "o1" });
+    m.menuFindMany.mockResolvedValue([{ id: "menu1" }]);
+    m.insertReturning.mockResolvedValue([{ id: "o1" }]);
+    m.updateReturning.mockResolvedValue([{ id: "o1" }]);
+    m.deleteReturning.mockResolvedValue([{ id: "menu1" }]);
+    m.txMenuFindFirst.mockResolvedValue({ id: "menu1", organizationItems: [] });
+  });
+  it("covers membership and tenant/menu reads", async () => {
+    await expect(
+      organizationRepository.findMembershipsByUserId("u1"),
+    ).resolves.toEqual([{ id: "m1" }]);
+    await expect(
+      organizationRepository.findMembership("u1", "o1"),
+    ).resolves.toEqual({ id: "m1" });
+    await expect(organizationRepository.listTenants("o1")).resolves.toEqual([
+      { id: "t1" },
+    ]);
+    await expect(
+      organizationRepository.findTenant("t1"),
+    ).resolves.toMatchObject({ id: "t1" });
+    await expect(organizationRepository.listMenus("o1")).resolves.toEqual([
+      { id: "menu1" },
+    ]);
+  });
+  it("creates organization+membership and covers both failures", async () => {
+    m.insertReturning
+      .mockResolvedValueOnce([{ id: "o1" }])
+      .mockResolvedValueOnce([{ id: "m1" }]);
+    await expect(
+      organizationRepository.create({ name: "Org", createdBy: "u1" } as any),
+    ).resolves.toEqual({
+      organization: { id: "o1" },
+      membership: { id: "m1" },
+    });
+    m.insertReturning.mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.create({ name: "Org", createdBy: "u1" } as any),
+    ).rejects.toThrow("Organization creation failed");
+    m.insertReturning
+      .mockResolvedValueOnce([{ id: "o1" }])
+      .mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.create({ name: "Org", createdBy: "u1" } as any),
+    ).rejects.toThrow("membership creation failed");
+  });
+  it("creates menus with defaults/items and insert failure", async () => {
+    m.insertReturning.mockResolvedValueOnce([{ id: "menu1" }]);
+    await expect(
+      organizationRepository.createMenu({
+        organizationId: "o1",
+        name: "M",
+        items: [
+          { itemSku: " S ", categoryName: " Cat ", sortOrder: 5 },
+          { itemSku: "T", categoryName: " " },
+        ],
+      }),
+    ).resolves.toMatchObject({ id: "menu1" });
+    expect(m.insertValues).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          itemSku: "S",
+          categoryName: "Cat",
+          sortOrder: 5,
+        }),
+        expect.objectContaining({
+          itemSku: "T",
+          categoryName: null,
+          sortOrder: 1,
+        }),
+      ]),
+    );
+    m.insertReturning.mockResolvedValueOnce([{ id: "menu2" }]);
+    await organizationRepository.createMenu({
+      organizationId: "o1",
+      name: "M",
+      description: "d",
+      status: "PUBLISHED",
+      isDefault: true,
+      availableChannels: ["WEB"],
+      availableFulfillmentTypes: ["DINE_IN"],
+      effectiveFrom: new Date(),
+      items: [],
+    });
+    m.insertReturning.mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.createMenu({
+        organizationId: "o1",
+        name: "M",
+        items: [],
+      }),
+    ).rejects.toThrow("insert returned no row");
+  });
+  it("updates menus across all optional fields, item replacement, and missing row", async () => {
+    m.updateReturning.mockResolvedValueOnce([{ id: "menu1" }]);
+    await organizationRepository.updateMenu("o1", "menu1", {
+      name: "N",
+      description: null,
+      status: "PUBLISHED",
+      isDefault: true,
+      availableChannels: null,
+      availableFulfillmentTypes: null,
+      effectiveFrom: null,
+      items: [
+        { itemSku: " S ", categoryName: " C " },
+        { itemSku: "T", sortOrder: 9 },
+      ],
+    });
+    m.updateReturning.mockResolvedValueOnce([{ id: "menu1" }]);
+    await organizationRepository.updateMenu("o1", "menu1", { items: [] });
+    m.updateReturning.mockResolvedValueOnce([{ id: "menu1" }]);
+    await organizationRepository.updateMenu("o1", "menu1", {});
+    m.updateReturning.mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.updateMenu("o1", "missing", {}),
+    ).resolves.toBeUndefined();
+  });
+  it("deletes menus and updates organizations", async () => {
+    await expect(
+      organizationRepository.deleteMenu("o1", "menu1"),
+    ).resolves.toEqual({ id: "menu1" });
+    m.deleteReturning.mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.deleteMenu("o1", "missing"),
+    ).resolves.toBeUndefined();
+    await expect(
+      organizationRepository.update("o1", { name: "N" } as any),
+    ).resolves.toEqual({ id: "o1" });
+    m.updateReturning.mockResolvedValueOnce([]);
+    await expect(
+      organizationRepository.update("o1", {}),
+    ).resolves.toBeUndefined();
+  });
 });

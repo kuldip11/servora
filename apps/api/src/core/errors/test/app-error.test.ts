@@ -133,5 +133,4 @@ describe("AppError hierarchy", () => {
       expect(AppError.unwrap(invalid)).toBeUndefined();
     }
   });
-
 });

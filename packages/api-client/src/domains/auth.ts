@@ -72,7 +72,10 @@ export const createAuthApi = (client: DomainHttpClient) => {
         typeof input === "string" ? { name: input, organizationId } : input,
       );
     },
-    updateTenant<T>(tenantId: string, input: Record<string, unknown>): Promise<T> {
+    updateTenant<T>(
+      tenantId: string,
+      input: Record<string, unknown>,
+    ): Promise<T> {
       return patchDomainData<T>(client, `/tenants/${tenantId}`, input);
     },
     archiveTenant(tenantId: string): Promise<void> {

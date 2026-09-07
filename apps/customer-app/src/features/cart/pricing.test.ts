@@ -179,7 +179,13 @@ describe("pricing branch coverage", () => {
               maxQuantity: 3,
               variantPrices: [{ variantId: "large", additionalPrice: "25" }],
             },
-            { id: "sauce", name: "Sauce", additionalPrice: "10", isAvailable: true, maxQuantity: 3 },
+            {
+              id: "sauce",
+              name: "Sauce",
+              additionalPrice: "10",
+              isAvailable: true,
+              maxQuantity: 3,
+            },
           ],
         },
       },
@@ -212,8 +218,18 @@ describe("pricing branch coverage", () => {
       fulfillmentType: "DINE_IN",
     };
     expect(getLineSubtotal(base)).toBe(115);
-    expect(getLineSubtotal({ ...base, item: { ...zonedItem, zonePricingRule: "HALF_SUM" as any } })).toBe(115);
-    expect(getLineSubtotal({ ...base, item: { ...zonedItem, supportsZones: false } })).toBe(130);
+    expect(
+      getLineSubtotal({
+        ...base,
+        item: { ...zonedItem, zonePricingRule: "HALF_SUM" as any },
+      }),
+    ).toBe(115);
+    expect(
+      getLineSubtotal({
+        ...base,
+        item: { ...zonedItem, supportsZones: false },
+      }),
+    ).toBe(130);
     expect(getLineSubtotal({ ...base, selectedOptions: [] })).toBe(100);
   });
 
@@ -221,12 +237,23 @@ describe("pricing branch coverage", () => {
     const line: CartLine = {
       item: { ...item, taxRate: "not-a-number" },
       quantity: 3,
-      selectedOptions: [{ optionId: "missing", quantity: 2, zoneLabel: "WHOLE" }],
+      selectedOptions: [
+        { optionId: "missing", quantity: 2, zoneLabel: "WHOLE" },
+      ],
       fulfillmentType: "TAKEAWAY",
     };
-    expect(getCartSummary([line])).toEqual({ subtotal: 300, tax: 0, total: 300, itemCount: 3 });
+    expect(getCartSummary([line])).toEqual({
+      subtotal: 300,
+      tax: 0,
+      total: 300,
+      itemCount: 3,
+    });
     expect(getItemCount([line])).toBe(3);
-    const key = getCartLineKey({ item, selectedOptions: [{ optionId: "x", quantity: 1 }], fulfillmentType: "DINE_IN" });
+    const key = getCartLineKey({
+      item,
+      selectedOptions: [{ optionId: "x", quantity: 1 }],
+      fulfillmentType: "DINE_IN",
+    });
     expect(key).toContain('"variantId":null');
   });
 });

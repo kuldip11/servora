@@ -193,7 +193,6 @@ export const requirePermission = (
     throw new ForbiddenError("Tenant context required");
   }
 
-
   if (!auth.permissions.includes(permission)) {
     throw new ForbiddenError("Insufficient permissions", {
       required: permission,

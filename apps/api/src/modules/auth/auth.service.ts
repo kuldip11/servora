@@ -2,11 +2,18 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { authRepository } from "./auth.repository";
 import { listUserMemberships } from "@/core/auth/membership-context";
-import { resolveAuthorization, resolveMembership } from "@/core/auth/authorization";
+import {
+  resolveAuthorization,
+  resolveMembership,
+} from "@/core/auth/authorization";
 import { db } from "@/db";
 import { ConflictError, ForbiddenError, ValidationError } from "@/core/errors";
 import { signAccessToken } from "@/lib/jwt";
-import { hasAppRoleAccess, hasMembershipAppAccess, type AuthApp } from "./auth-app";
+import {
+  hasAppRoleAccess,
+  hasMembershipAppAccess,
+  type AuthApp,
+} from "./auth-app";
 import type { SignupInput, LoginInput } from "@pos/validation";
 import {
   invalidCredentials,
@@ -53,7 +60,9 @@ const assertUserAppAccess = async (
     ),
   );
   if (!access.some(Boolean)) {
-    throw new ForbiddenError("Account does not have access to this application");
+    throw new ForbiddenError(
+      "Account does not have access to this application",
+    );
   }
 };
 
@@ -227,13 +236,21 @@ export const authService = {
   ) {
     const user = await authRepository.findUserById(userId);
     if (!user) throw authUserNotFound();
-    const matches = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    const matches = await bcrypt.compare(
+      input.currentPassword,
+      user.passwordHash,
+    );
     if (!matches) throw invalidCredentials();
     if (await bcrypt.compare(input.newPassword, user.passwordHash)) {
-      throw new ValidationError("New password must be different from the current password");
+      throw new ValidationError(
+        "New password must be different from the current password",
+      );
     }
     const passwordHash = await bcrypt.hash(input.newPassword, 12);
-    const updated = await authRepository.updatePasswordHash(userId, passwordHash);
+    const updated = await authRepository.updatePasswordHash(
+      userId,
+      passwordHash,
+    );
     if (!updated) throw authUserNotFound();
   },
 

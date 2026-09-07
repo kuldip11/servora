@@ -9,7 +9,9 @@ import {
   groupOrderItemsForEvenBills,
   splitMoneyEvenly,
   validateComboGroupAllocations,
+  validateFractionalComboAllocations,
   validateItemAllocations,
+  validateItemShareAllocations,
 } from "@/modules/billing/billing-split";
 
 describe("multi-bill splitting", () => {
@@ -248,6 +250,88 @@ describe("multi-bill splitting", () => {
       ).toContain("shared");
     }
   });
+
+
+  it("rejects invalid split counts and every item-allocation validation failure", () => {
+    expect(() => splitMoneyEvenly(10, 0)).toThrow(ValidationError);
+    expect(() => groupOrderItemsForEvenBills([{ id: "a" }], 1.5)).toThrow(
+      ValidationError,
+    );
+    expect(validateItemAllocations(["a"], [{ orderItemIds: [] }])).toEqual({
+      ok: false,
+      reason: "EMPTY_BILL",
+    });
+    expect(
+      validateItemAllocations(["a"], [{ orderItemIds: ["missing"] }]),
+    ).toEqual({ ok: false, reason: "UNKNOWN_ITEM" });
+  });
+
+  it("validates fractional item shares and combo atomicity", () => {
+    expect(
+      validateItemShareAllocations(["a"], [{ itemShares: [] }]),
+    ).toEqual({ ok: false, reason: "EMPTY_BILL" });
+    expect(
+      validateItemShareAllocations(["a"], [
+        { itemShares: [{ orderItemId: "missing", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "UNKNOWN_ITEM" });
+    for (const ratio of [0, 1.1, Number.NaN]) {
+      expect(
+        validateItemShareAllocations(["a"], [
+          { itemShares: [{ orderItemId: "a", shareRatio: ratio }] },
+        ]),
+      ).toEqual({ ok: false, reason: "INVALID_RATIO" });
+    }
+    expect(
+      validateItemShareAllocations(["a"], [
+        { itemShares: [{ orderItemId: "a", shareRatio: 0.5 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "UNASSIGNED_ITEM" });
+    expect(
+      validateItemShareAllocations(["a"], [
+        { itemShares: [{ orderItemId: "a", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: true });
+    expect(
+      validateItemShareAllocations(["a", "b"], [
+        { itemShares: [{ orderItemId: "a", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "UNASSIGNED_ITEM" });
+
+    const comboItems = [
+      { id: "parent", comboGroupId: "c1" },
+      { id: "child", comboGroupId: "c1" },
+      { id: "solo", comboGroupId: null },
+    ];
+    expect(
+      validateFractionalComboAllocations(comboItems, [
+        { itemShares: [{ orderItemId: "parent", shareRatio: 1 }] },
+        { itemShares: [{ orderItemId: "child", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "SPLIT_COMBO_GROUP" });
+    expect(
+      validateFractionalComboAllocations(comboItems, [
+        {
+          itemShares: [
+            { orderItemId: "parent", shareRatio: 1 },
+            { orderItemId: "child", shareRatio: 1 },
+            { orderItemId: "solo", shareRatio: 1 },
+          ],
+        },
+      ]),
+    ).toEqual({ ok: true });
+    expect(
+      validateFractionalComboAllocations(comboItems, [
+        { itemShares: [{ orderItemId: "child", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "SPLIT_COMBO_GROUP" });
+    expect(
+      validateFractionalComboAllocations(comboItems, [
+        { itemShares: [{ orderItemId: "parent", shareRatio: 1 }] },
+      ]),
+    ).toEqual({ ok: false, reason: "SPLIT_COMBO_GROUP" });
+  });
+
 });
 
 describe("G5 fractional shared-dish splitting", () => {
@@ -349,4 +433,110 @@ describe("G5 fractional shared-dish splitting", () => {
         ),
     ).toBeCloseTo(41, 6);
   });
+
+  it("returns null without seat shares and handles no-seat/manual fractional plans", () => {
+    expect(
+      buildFractionalSeatAllocationPlan(
+        [{ id: "a", seatLabel: "Seat 1", subtotal: 1, taxRate: 0 }],
+        "EVEN_SPLIT",
+      ),
+    ).toBeNull();
+
+    expect(
+      buildFractionalSeatAllocationPlan(
+        [
+          {
+            id: "a",
+            seatLabel: null,
+            subtotal: 1,
+            taxRate: 0,
+            seatShares: [{ seatLabel: "   ", shareRatio: 1 }],
+          },
+        ],
+        "EVEN_SPLIT",
+      ),
+    ).toEqual({ status: "no_seats" });
+
+    expect(
+      buildFractionalSeatAllocationPlan(
+        [
+          {
+            id: "a",
+            seatLabel: null,
+            subtotal: 10,
+            taxRate: 0,
+            seatShares: [{ seatLabel: "Seat 1", shareRatio: 1 }],
+          },
+          {
+            id: "shared",
+            seatLabel: null,
+            subtotal: 5,
+            taxRate: 0,
+          },
+        ],
+        "MANUAL",
+      ),
+    ).toMatchObject({
+      status: "manual_required",
+      allocations: [{ label: "Seat 1", orderItemIds: ["a"] }],
+      sharedItemIds: ["shared"],
+    });
+  });
+
+
+  it("covers no-seat and inclusive-tax weighting branches", () => {
+    expect(
+      buildSeatAllocationPlan(
+        [{ id: "shared", seatLabel: null, subtotal: 5, taxRate: 20, taxMode: "INCLUSIVE" }],
+        "EVEN_SPLIT",
+      ),
+    ).toEqual({ status: "no_seats" });
+
+    const seatPlan = buildSeatAllocationPlan(
+      [
+        { id: "seat-a", seatLabel: "A", subtotal: 10, taxRate: 0, taxMode: "EXCLUSIVE" },
+        { id: "seat-b", seatLabel: "B", subtotal: 10, taxRate: 0, taxMode: "EXCLUSIVE" },
+        { id: "shared-inclusive", seatLabel: null, subtotal: 5, taxRate: 20, taxMode: "INCLUSIVE" },
+      ],
+      "EVEN_SPLIT",
+    );
+    expect(seatPlan.status).toBe("complete");
+
+    const fractional = buildFractionalSeatAllocationPlan(
+      [
+        {
+          id: "fractional-inclusive",
+          seatLabel: null,
+          subtotal: 10,
+          taxRate: 20,
+          taxMode: "INCLUSIVE",
+          seatShares: [{ seatLabel: "A", shareRatio: 1 }],
+        },
+        {
+          id: "fractional-exclusive",
+          seatLabel: "B",
+          subtotal: 10,
+          taxRate: 20,
+          taxMode: "EXCLUSIVE",
+        },
+        {
+          id: "unresolved-inclusive",
+          seatLabel: null,
+          subtotal: 2,
+          taxRate: 20,
+          taxMode: "INCLUSIVE",
+        },
+        {
+          id: "unresolved-exclusive",
+          seatLabel: null,
+          subtotal: 2,
+          taxRate: 20,
+          taxMode: "EXCLUSIVE",
+        },
+      ],
+      "EVEN_SPLIT",
+    );
+    expect(fractional?.status).toBe("complete");
+  });
+
 });

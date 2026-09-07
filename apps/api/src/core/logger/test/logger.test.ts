@@ -65,4 +65,35 @@ describe("Logger", () => {
     expect(payload.meta.token).toBe("[REDACTED]");
     expect(child).toBeInstanceOf(Logger);
   });
+
+  it("sanitizes arrays and primitive values inside metadata", () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    createLogger({}, "test").info("meta", {
+      values: [null, 0, false, "ok", { apiKey: "secret", count: 2 }],
+    });
+    const payload = JSON.parse(spy.mock.calls[0]![0] as string);
+    expect(payload.meta.values).toEqual([
+      null,
+      0,
+      false,
+      "ok",
+      { apiKey: "[REDACTED]", count: 2 },
+    ]);
+  });
+
+  it("omits stack traces in production-style errors and keeps the parent module by default", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const logger = new Logger({ userId: "u1" }, "orders", false);
+    const child = logger.child({ requestId: "r1" });
+    child.error("failed", new Error("boom"));
+    const payload = JSON.parse(spy.mock.calls[0]![0] as string);
+    expect(payload).toMatchObject({
+      module: "orders",
+      userId: "u1",
+      requestId: "r1",
+      meta: { error: { name: "Error", message: "boom" } },
+    });
+    expect(payload.meta.error.stack).toBeUndefined();
+  });
+
 });

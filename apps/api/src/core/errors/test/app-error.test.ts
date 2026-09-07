@@ -7,6 +7,8 @@ import {
   ForbiddenError,
   InternalError,
   MissingBranchError,
+  CustomerSessionRequiredError,
+  TooManyRequestsError,
   NotFoundError,
   ServiceUnavailableError,
   UnauthorizedError,
@@ -31,6 +33,12 @@ describe("AppError hierarchy", () => {
   it("maps specialized errors to their stable codes and HTTP statuses", () => {
     const cases = [
       [new UnauthorizedError(), ErrorCode.UNAUTHORIZED, 401],
+      [new TooManyRequestsError(), ErrorCode.RATE_LIMITED, 429],
+      [
+        new CustomerSessionRequiredError(),
+        ErrorCode.CUSTOMER_SESSION_REQUIRED,
+        401,
+      ],
       [new ForbiddenError(), ErrorCode.FORBIDDEN, 403],
       [new NotFoundError("Order", "1"), ErrorCode.NOT_FOUND, 404],
       [new ConflictError("Conflict"), ErrorCode.CONFLICT, 409],
@@ -76,4 +84,54 @@ describe("AppError hierarchy", () => {
     expect(recovered?.statusCode).toBe(401);
     expect(recovered?.code).toBe(ErrorCode.UNAUTHORIZED);
   });
+
+  it("unwraps direct, cloned, nested, cyclic, and invalid values safely", () => {
+    const direct = new ForbiddenError("nope", { reason: "role" });
+    expect(AppError.unwrap(direct)).toBe(direct);
+
+    const cloned = AppError.unwrap({
+      statusCode: 422,
+      code: "DOMAIN_RULE_VIOLATION",
+      message: "rule failed",
+      details: { field: "status" },
+    });
+    expect(cloned?.toJSON()).toMatchObject({
+      code: ErrorCode.DOMAIN_RULE_VIOLATION,
+      message: "rule failed",
+      details: { field: "status" },
+    });
+    expect(cloned?.statusCode).toBe(422);
+
+    const withoutDetails = AppError.unwrap({
+      statusCode: 404,
+      code: "NOT_FOUND",
+      message: "missing",
+      details: "not-an-object",
+    });
+    expect(withoutDetails?.details).toBeUndefined();
+
+    expect(
+      AppError.unwrap({
+        original: { value: new ConflictError("nested") },
+      }),
+    ).toBeInstanceOf(ConflictError);
+
+    const cyclic: Record<string, unknown> = {};
+    cyclic.cause = cyclic;
+    cyclic.error = null;
+    expect(AppError.unwrap(cyclic)).toBeUndefined();
+    expect(AppError.unwrap(undefined)).toBeUndefined();
+    expect(AppError.unwrap("plain-error")).toBeUndefined();
+
+    for (const invalid of [
+      { statusCode: 399, code: "FORBIDDEN", message: "x" },
+      { statusCode: 600, code: "FORBIDDEN", message: "x" },
+      { statusCode: 403, code: "UNKNOWN", message: "x" },
+      { statusCode: 403, code: "FORBIDDEN", message: 123 },
+      { statusCode: "403", code: "FORBIDDEN", message: "x" },
+    ]) {
+      expect(AppError.unwrap(invalid)).toBeUndefined();
+    }
+  });
+
 });

@@ -43,3 +43,45 @@ describe("inventory recipe engine", () => {
     ).toBe(false);
   });
 });
+
+import { applicableRecipeRows, convertRecipeQuantity } from "@/modules/inventory/inventory-recipe.engine";
+
+describe("inventory recipe engine comprehensive branches", () => {
+  it("covers all weight units and invalid weight/yield fallbacks", () => {
+    expect(weightRecipeScale(undefined, "KG")).toBe(1);
+    expect(weightRecipeScale(1, null)).toBe(1);
+    expect(weightRecipeScale("bad", "KG")).toBe(1);
+    expect(weightRecipeScale(0, "KG")).toBe(1);
+    expect(weightRecipeScale(2, "LB")).toBeCloseTo(0.90718474);
+    expect(weightRecipeScale(2, "OZ")).toBeCloseTo(0.05669904625);
+    expect(recipeYieldFactor(undefined)).toBe(1);
+    expect(recipeYieldFactor("bad")).toBe(1);
+    expect(recipeYieldFactor("0")).toBe(1);
+  });
+
+  it("selects base, variant and modifier recipes with override/multipliers", () => {
+    const baseRow = (o: Record<string, unknown> = {}) => ({
+      menuItemId: "m1", inventoryItemId: "i1", subRecipeId: null, variantId: null, modifierOptionId: null,
+      menuItem: { enableRecipeDeduction: true }, ...o,
+    }) as any;
+    const rows = [
+      baseRow(),
+      baseRow({ inventoryItemId: "i2", menuItem: { enableRecipeDeduction: false } }),
+      baseRow({ inventoryItemId: "i1", variantId: "v1" }),
+      baseRow({ inventoryItemId: null, subRecipeId: "s1", variantId: "v1" }),
+      baseRow({ inventoryItemId: "i3", modifierOptionId: "op1" }),
+      baseRow({ inventoryItemId: "i4", modifierOptionId: "op2" }),
+      baseRow({ menuItemId: "other", inventoryItemId: "x" }),
+    ];
+    const selected = applicableRecipeRows(rows, {menuItemId:"m1",variantId:"v1",selectedOptions:[{optionId:"op1"},{optionId:"op1",quantity:2},{optionId:"op2",quantity:0}]});
+    expect(selected.some((x:any)=>x.row.variantId==="v1")).toBe(true);
+    expect(selected.find((x:any)=>x.row.modifierOptionId==="op1")?.multiplier).toBe(3);
+    expect(selected.some((x:any)=>x.row.modifierOptionId==="op2")).toBe(false);
+    expect(applicableRecipeRows(rows,{menuItemId:"m1"},false).length).toBeGreaterThan(1);
+  });
+
+  it("converts compatible recipe quantities and rejects incompatible units", () => {
+    expect(convertRecipeQuantity(500,"GRAMS","KG","Flour")).toBe(0.5);
+    expect(()=>convertRecipeQuantity(1,"KG","ML","Flour")).toThrow("Flour uses incompatible units");
+  });
+});

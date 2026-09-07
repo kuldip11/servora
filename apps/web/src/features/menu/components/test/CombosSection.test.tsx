@@ -192,4 +192,49 @@ describe("CombosSection", () => {
     expect((screen.getByRole("button", { name: "Create combo" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+
+  it("covers slot field updates and create/delete mutation error callbacks", async () => {
+    listCombos.mockResolvedValue([{ id:"combo-e", name:"Error Combo", description:null, pricePolicy:"FIXED", fixedPrice:100, percentOff:null, slots:[{id:"s",name:"Only",minSelections:1,maxSelections:1,options:[{id:"o",menuItemId:"item-1",variantId:null,upcharge:0,isUnlimitedRefill:false}]}] }]);
+    createCombo.mockRejectedValueOnce(new Error("create failed"));
+    removeCombo.mockRejectedValueOnce(new Error("delete failed"));
+    renderSection();
+    await screen.findByText("Error Combo");
+    fireEvent.change(screen.getByLabelText("Combo name"), { target: { value: "New Error" } });
+    fireEvent.change(screen.getByLabelText("Slot 1"), { target: { value: "Entrée" } });
+    fireEvent.change(screen.getByLabelText("Minimum"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("Maximum"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Choice 1"), { target: { value: "item-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
+    await waitFor(() => expect(createCombo).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(removeCombo).toHaveBeenCalledWith("combo-e"));
+  });
+
+
+  it("covers sibling slot and option map branches while editing", async () => {
+    listCombos.mockResolvedValue([]);
+    renderSection();
+    fireEvent.click(screen.getByRole("button", { name: "+ Add slot" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "+ Add choice" })[0]!);
+
+    const slots = screen.getAllByLabelText(/Slot \d/);
+    fireEvent.change(slots[0]!, { target: { value: "Primary" } });
+    const minimums = screen.getAllByLabelText("Minimum");
+    const maximums = screen.getAllByLabelText("Maximum");
+    fireEvent.change(minimums[0]!, { target: { value: "1" } });
+    fireEvent.change(maximums[0]!, { target: { value: "2" } });
+
+    const choices = screen.getAllByLabelText(/Choice \d/);
+    fireEvent.change(choices[0]!, { target: { value: "item-1" } });
+    fireEvent.change(choices[1]!, { target: { value: "item-1" } });
+    const variants = screen.getAllByLabelText("Variant");
+    fireEvent.change(variants[0]!, { target: { value: "variant-1" } });
+    const upcharges = screen.getAllByLabelText("Upcharge");
+    fireEvent.change(upcharges[0]!, { target: { value: "3" } });
+    const refills = screen.getAllByLabelText("Refill");
+    fireEvent.click(refills[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove slot" })[1]!);
+  });
+
 });

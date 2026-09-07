@@ -67,3 +67,17 @@ describe("cancellation reason service", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+it("covers validation and optional update patch branches", async () => {
+  await expect(cancellationReasonService.create(auth(), "   ")).rejects.toThrow("label is required");
+  mocks.findById.mockResolvedValue({ id: "r1" });
+  await expect(cancellationReasonService.update(auth(), "r1", { label: "   " })).rejects.toThrow("label is required");
+  mocks.findById.mockResolvedValue({ id: "r1" }); mocks.update.mockResolvedValue({ id: "r1" });
+  await cancellationReasonService.update(auth(), "r1", { label: " New ", isActive: true });
+  expect(mocks.update).toHaveBeenLastCalledWith("t1", "r1", { label: "New", isActive: true });
+  mocks.findById.mockResolvedValue({ id: "r1" });
+  await cancellationReasonService.update(auth(), "r1", {});
+  expect(mocks.update).toHaveBeenLastCalledWith("t1", "r1", {});
+  mocks.findActiveByIds.mockResolvedValue([{ id: "r1" }]);
+  await expect(cancellationReasonService.assertUsable("t1", "r1")).resolves.toBeUndefined();
+});

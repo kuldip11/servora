@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'app/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'content/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}'",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "next": "^15.5.7",
@@ -30,8 +31,9 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "tailwindcss-animate": "^1.0.7",
-    "vitest": "^3.2.4",
+    "vitest": "1.6.1",
     "@playwright/test": "^1.55.0",
-    "@axe-core/playwright": "^4.10.2"
+    "@axe-core/playwright": "^4.10.2",
+    "@vitest/coverage-v8": "1.6.1"
   }
 }

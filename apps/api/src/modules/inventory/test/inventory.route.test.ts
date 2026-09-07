@@ -44,14 +44,14 @@ const {
   updateStock,
   lowStockAlerts,
   recentTransactions,
-  logWaste,
+  logWaste, recipeImpact, listWasteReasons, createWasteReason, updateWasteReason,
 } = vi.hoisted(() => ({
   list: vi.fn(),
   create: vi.fn(),
   updateStock: vi.fn(),
   lowStockAlerts: vi.fn(),
   recentTransactions: vi.fn(),
-  logWaste: vi.fn(),
+  logWaste: vi.fn(), recipeImpact: vi.fn(), listWasteReasons: vi.fn(), createWasteReason: vi.fn(), updateWasteReason: vi.fn(),
 }));
 vi.mock("../inventory.controller", () => ({
   inventoryController: {
@@ -60,7 +60,7 @@ vi.mock("../inventory.controller", () => ({
     updateStock,
     lowStockAlerts,
     recentTransactions,
-    logWaste,
+    logWaste, recipeImpact, listWasteReasons, createWasteReason, updateWasteReason,
   },
 }));
 import { inventoryRouter } from "@/modules/inventory/inventory.route";
@@ -129,4 +129,23 @@ describe("inventory routes", () => {
 
     expect(logWaste).toHaveBeenCalledWith({ tenantId: "t1" }, "i1", body);
   });
+  it("executes every registered inventory route handler", async () => {
+    list.mockResolvedValue({ok:true}); create.mockResolvedValue({ok:true}); updateStock.mockResolvedValue({ok:true}); lowStockAlerts.mockResolvedValue({ok:true}); recentTransactions.mockResolvedValue({ok:true}); recipeImpact.mockResolvedValue({ok:true}); listWasteReasons.mockResolvedValue({ok:true}); createWasteReason.mockResolvedValue({ok:true}); updateWasteReason.mockResolvedValue({ok:true}); logWaste.mockResolvedValue({ok:true});
+    const routes=(inventoryRouter as any).routes as Array<{method:string;path:string;handler:(ctx:any)=>unknown}>;
+    const get=(method:string,path:string)=>routes.find(r=>r.method===method&&r.path===path)!;
+    const auth={tenantId:"t1"};
+    await get("GET","/api/inventory/items").handler({auth,query:{page:1}});
+    const set1:any={}; await get("POST","/api/inventory/items").handler({auth,body:{name:"x"},set:set1}); expect(set1.status).toBe(201);
+    await get("PATCH","/api/inventory/items/:id/stock").handler({auth,params:{id:"i1"},body:{quantity:1}});
+    await get("GET","/api/inventory/alerts/low-stock").handler({auth});
+    await get("GET","/api/inventory/transactions").handler({auth});
+    await get("GET","/api/inventory/items/:id/recipe-impact").handler({auth,params:{id:"i1"}});
+    await get("GET","/api/inventory/waste-reasons").handler({auth,query:{includeInactive:"true"}});
+    await get("GET","/api/inventory/waste-reasons").handler({auth,query:{includeInactive:"false"}});
+    const set2:any={}; await get("POST","/api/inventory/waste-reasons").handler({auth,body:{label:"Waste"},set:set2}); expect(set2.status).toBe(201);
+    await get("PATCH","/api/inventory/waste-reasons/:id").handler({auth,params:{id:"w1"},body:{label:"X"}});
+    await get("POST","/api/inventory/items/:id/waste").handler({auth,params:{id:"i1"},body:{quantity:1,wasteReasonId:"w1"}});
+    expect(recipeImpact).toHaveBeenCalled(); expect(listWasteReasons).toHaveBeenCalledWith(auth,true); expect(listWasteReasons).toHaveBeenCalledWith(auth,false);
+  });
+
 });

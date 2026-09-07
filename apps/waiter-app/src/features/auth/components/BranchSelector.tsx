@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { toast } from "@pos/ui";
 import type { AvailableMembership } from "@pos/types";
 
 interface Props {
@@ -10,13 +9,7 @@ interface Props {
 }
 export const BranchSelector = ({ branches, onSelect, onBack }: Props) => {
   const [selected, setSelected] = useState("");
-  function confirm() {
-    if (!selected) {
-      toast({ title: "Please select a branch", tone: "danger" });
-      return;
-    }
-    onSelect(selected);
-  }
+  const confirm = () => onSelect(selected);
   return (
     <div className="space-y-3">
       <p className="text-sm font-semibold text-text-primary mb-4">

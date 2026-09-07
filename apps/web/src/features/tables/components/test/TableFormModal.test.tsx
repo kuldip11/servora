@@ -1,0 +1,11 @@
+import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@pos/ui",()=>({Modal:({open,title,children}:any)=>open?<div role="dialog"><h2>{title}</h2>{children}</div>:null,Button:({children,loading:_l,...p}:any)=><button {...p}>{children}</button>,Input:({label,error,...p}:any)=><label>{label}<input aria-label={label} {...p}/>{error&&<span>{error}</span>}</label>,Select:({label,options=[],error,...p}:any)=><label>{label}<select aria-label={label} {...p}>{options.map((o:any)=><option key={o.value} value={o.value}>{o.label}</option>)}</select>{error&&<span>{error}</span>}</label>}));
+import { TableFormModal } from "../TableFormModal";
+const register=(name:string)=>({name,onChange:vi.fn(),onBlur:vi.fn(),ref:vi.fn()}) as any;
+const handleSubmit=(cb:any)=>(e:any)=>{e.preventDefault();cb({name:"T1",capacity:"4",section:"Hall",branchId:"b1"});};
+describe("TableFormModal coverage",()=>{
+ it("renders aggregate add form, errors and submits",()=>{const submit=vi.fn(),close=vi.fn();render(<TableFormModal mode="add" open editing={null} branches={[{id:"b1",name:"Central"} as any]} aggregate errors={{name:{message:"Name required",type:"x"} as any,branchId:{message:"Branch required",type:"x"} as any}} register={register} handleSubmit={handleSubmit as any} pending={false} onClose={close} onSubmit={submit}/>);expect(screen.getByRole("heading",{name:"Add Table"})).toBeTruthy();expect(screen.getByText("Name required")).toBeTruthy();expect(screen.getByText("Branch required")).toBeTruthy();fireEvent.submit(screen.getByRole("button",{name:"Add Table"}).closest("form")!);expect(submit).toHaveBeenCalledWith({name:"T1",capacity:"4",section:"Hall",branchId:"b1"});fireEvent.click(screen.getByRole("button",{name:"Cancel"}));expect(close).toHaveBeenCalled();});
+ it("renders edit form without branch selector",()=>{render(<TableFormModal mode="edit" open editing={{id:"t1"} as any} branches={[]} aggregate={false} errors={{}} register={register} handleSubmit={handleSubmit as any} pending onClose={vi.fn()} onSubmit={vi.fn()}/>);expect(screen.getByRole("heading",{name:"Edit Table"})).toBeTruthy();expect(screen.queryByLabelText("Branch")).toBeNull();expect(screen.getByRole("button",{name:"Save Changes"})).toBeTruthy();});
+});

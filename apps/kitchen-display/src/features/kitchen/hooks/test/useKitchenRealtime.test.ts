@@ -83,6 +83,22 @@ describe("useKitchenRealtime", () => {
       current,
     );
   });
+
+  it("sorts tickets with and without firedAt and handles an undefined current queue", () => {
+    const later = {
+      id: "later",
+      status: "FIRED",
+      firedAt: "2026-08-27T12:00:00.000Z",
+    };
+    const held = { id: "held", status: "HELD", firedAt: null };
+    const first = mergeKitchenTicketIntoQueue(undefined, later as any);
+    expect(first).toEqual([later]);
+    const sorted = mergeKitchenTicketIntoQueue(first as any, held as any);
+    expect(sorted.map((value) => value.id)).toEqual(["held", "later"]);
+    const reverse = mergeKitchenTicketIntoQueue([held] as any, later as any);
+    expect(reverse.map((value) => value.id)).toEqual(["held", "later"]);
+  });
+
   it("projects a void event onto the assigned station immediately without polling", () => {
     useKitchenRealtime("grill");
     const voidHandler = mocks.handlers.find(

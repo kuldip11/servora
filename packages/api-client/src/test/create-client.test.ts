@@ -50,8 +50,9 @@ const installedInterceptors = (
   harness: ReturnType<typeof makeClientHarness>,
 ) => {
   const requestHandler = (harness.request.use as any).mock.calls[0][0];
+  const responseFulfilled = (harness.response.use as any).mock.calls[0][0];
   const responseRejected = (harness.response.use as any).mock.calls[0][1];
-  return { requestHandler, responseRejected };
+  return { requestHandler, responseFulfilled, responseRejected };
 };
 
 beforeEach(() => {
@@ -125,6 +126,20 @@ describe("createApiClient request interceptor", () => {
 });
 
 describe("createApiClient response interceptor", () => {
+  it("passes successful responses through unchanged", () => {
+    const harness = makeClientHarness();
+    createApiClient({
+      baseURL: "/api",
+      timeout: 1000,
+      storage: storage(),
+      onRefreshFailure: vi.fn(),
+    });
+    const response = { data: { ok: true } };
+    expect(installedInterceptors(harness).responseFulfilled(response)).toBe(
+      response,
+    );
+  });
+
   it("binds requests and refreshes to the configured Servora application", () => {
     createApiClient({
       app: "kitchen",
@@ -134,12 +149,14 @@ describe("createApiClient response interceptor", () => {
       onRefreshFailure: vi.fn(),
     });
 
-    expect(axios.create).toHaveBeenNthCalledWith(1,
+    expect(axios.create).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Servora-App": "kitchen" }),
       }),
     );
-    expect(axios.create).toHaveBeenNthCalledWith(2,
+    expect(axios.create).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Servora-App": "kitchen" }),
       }),
@@ -185,6 +202,12 @@ describe("createApiClient response interceptor", () => {
         config: { url: "/orders", _retry: true },
       }),
     ).rejects.toBeTruthy();
+    await expect(
+      handler({
+        response: { status: 401 },
+        config: { url: undefined, _retry: true },
+      }),
+    ).rejects.toBeTruthy();
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
@@ -218,6 +241,27 @@ describe("createApiClient response interceptor", () => {
     expect(harness.api).toHaveBeenCalledWith(original);
     expect(result).toBe(retried);
     expect(failure).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a 401 request even when its URL is absent", async () => {
+    const harness = makeClientHarness();
+    mocks.post.mockResolvedValue({
+      data: { data: { accessToken: "new-access" } },
+    });
+    harness.api.mockResolvedValue({ data: { ok: true } });
+    createApiClient({
+      baseURL: "/api",
+      timeout: 1000,
+      storage: storage(),
+      onRefreshFailure: vi.fn(),
+    });
+
+    await expect(
+      installedInterceptors(harness).responseRejected({
+        response: { status: 401 },
+        config: { url: undefined, headers: {} },
+      }),
+    ).resolves.toEqual({ data: { ok: true } });
   });
 
   it("uses the configured absolute API origin for the isolated refresh client", async () => {
@@ -282,6 +326,40 @@ describe("createApiClient response interceptor", () => {
     expect(mocks.post).toHaveBeenCalledOnce();
     expect(results[0].config.headers.Authorization).toBe("Bearer new-access");
     expect(results[1].config.headers.Authorization).toBe("Bearer new-access");
+  });
+
+  it("still resets refresh state when the refresh-failure callback throws", async () => {
+    const harness = makeClientHarness();
+    const refreshError = new Error("refresh failed");
+    const callbackError = new Error("callback failed");
+    mocks.post.mockRejectedValueOnce(refreshError).mockResolvedValueOnce({
+      data: { data: { accessToken: "recovered" } },
+    });
+    harness.api.mockResolvedValue({ data: { ok: true } });
+    createApiClient({
+      baseURL: "/api",
+      timeout: 1000,
+      storage: storage(),
+      onRefreshFailure: vi.fn(() => {
+        throw callbackError;
+      }),
+    });
+    const handler = installedInterceptors(harness).responseRejected;
+
+    await expect(
+      handler({
+        response: { status: 401 },
+        config: { url: "/one", headers: {} },
+      }),
+    ).rejects.toBe(callbackError);
+
+    await expect(
+      handler({
+        response: { status: 401 },
+        config: { url: "/two", headers: {} },
+      }),
+    ).resolves.toEqual({ data: { ok: true } });
+    expect(mocks.post).toHaveBeenCalledTimes(2);
   });
 
   it("rejects the refresh error and fails queued requests when refresh fails", async () => {

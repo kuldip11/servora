@@ -85,6 +85,27 @@ describe("business domain validation", () => {
       }).success,
     ).toBe(false);
   });
+  it("requires at least one branch fulfillment type", () => {
+    const result = businessBranchFormSchema.safeParse({
+      ...branch,
+      dineInEnabled: false,
+      takeawayEnabled: false,
+      deliveryEnabled: false,
+      tablesEnabled: false,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["name"],
+            message: "Enable at least one fulfillment type",
+          }),
+        ]),
+      );
+    }
+  });
+
   it("keeps legal/tax registration identifiers optional", () => {
     expect(organizationBusinessFormSchema.safeParse(organization).success).toBe(
       true,

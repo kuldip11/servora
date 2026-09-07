@@ -86,3 +86,16 @@ describe("resolveEffectiveAvailability", () => {
     expect(result.availabilityCause).toBe("SCHEDULE");
   });
 });
+
+describe("resolveEffectiveAvailability additional branches",()=>{
+  it("covers branch/channel/base/recipe causes and presentation fallbacks",()=>{
+    expect(resolveEffectiveAvailability(evidence({channelOverride:{status:"OUT_OF_STOCK"}})).availabilityCause).toBe("CHANNEL_OVERRIDE");
+    expect(resolveEffectiveAvailability(evidence({branchOverride:{status:"OUT_OF_STOCK",taxRate:"7.00",isHidden:true,availabilityReason:"branch"}}))).toMatchObject({availabilityCause:"BRANCH_OVERRIDE",effectiveTaxRate:"7.00",isHidden:true,availabilityReason:"branch"});expect(resolveEffectiveAvailability(evidence({branchOverride:{status:null,isHidden:true}})).availabilityCause).toBe("BRANCH_OVERRIDE");
+    expect(resolveEffectiveAvailability(evidence({resolvedStatus:{status:"OUT_OF_STOCK",reason:"Insufficient inventory"}})).availabilityCause).toBe("RECIPE_DRIVEN");
+    expect(resolveEffectiveAvailability(evidence({resolvedStatus:{status:"ACTIVE",reason:"Base status"}}))).toMatchObject({availabilityCause:"BASE_STATUS",effectivePrice:"10.00",effectiveTaxRate:"5.00",effectivePrepTimeMinutes:10,isHidden:false,overrideApplied:false});
+  });
+  it("uses manual override default reason and recognizes all schedule reason forms",()=>{
+    expect(resolveEffectiveAvailability(evidence({item:{...evidence().item,manualOverrideStatus:"OUT_OF_STOCK",manualOverrideReason:null}})).availabilityReason).toBe("Manual availability override");
+    for(const reason of ["Scheduled 2026-09-06","Holiday: Fest","Sunday 10:00:00–12:00:00"]){expect(resolveEffectiveAvailability(evidence({resolvedStatus:{status:"OUT_OF_STOCK",reason}})).availabilityCause).toBe("SCHEDULE");}
+  });
+});

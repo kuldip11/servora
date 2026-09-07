@@ -8,10 +8,18 @@ import type { RealtimeEvent } from "@pos/types";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { getToken } from "@/features/auth/storage";
 
-const proto = window.location.protocol === "https:" ? "wss" : "ws";
-const wsUrl =
-  import.meta.env["VITE_WS_URL"] ??
-  `${proto}://${window.location.host}/ws/events`;
+export const resolveRealtimeUrl = (
+  protocol: string,
+  host: string,
+  configuredUrl?: string,
+): string =>
+  configuredUrl ?? `${protocol === "https:" ? "wss" : "ws"}://${host}/ws/events`;
+
+const wsUrl = resolveRealtimeUrl(
+  window.location.protocol,
+  window.location.host,
+  import.meta.env["VITE_WS_URL"],
+);
 
 const client = createRealtimeClient<RealtimeEvent>({
   url: wsUrl,

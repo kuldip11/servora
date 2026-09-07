@@ -4,6 +4,7 @@ import {
   fetchMemberships,
   login,
   resolveWaiterContext,
+  restoreSession,
 } from "@/features/auth/api/login";
 
 vi.mock("../../../../shared/lib/api-client", () => ({
@@ -57,4 +58,25 @@ describe("auth API", () => {
       branchId: "b1",
     });
   });
+  it("returns null when no membership or active branch exists", () => {
+    expect(resolveWaiterContext([], null, null)).toBeNull();
+    expect(resolveWaiterContext([{ membershipId: "m", tenant: { id: "t", name: "T" }, roles: [], branches: [{ id: "b", name: "B", isActive: false }] }] as any, null, null)).toBeNull();
+  });
+
+  it("restores session and persists resolved context/profile", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { accessToken: "fresh", user: { id: "u" } } } } as any);
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce({ data: { data: [{ membershipId: "m", tenant: { id: "t", name: "T" }, roles: [], branches: [{ id: "b", name: "B", isActive: true }] }] } } as any)
+      .mockResolvedValueOnce({ data: { data: { id: "u", firstName: "A", lastName: "B", roles: [] } } } as any);
+    await expect(restoreSession()).resolves.toBe(true);
+    expect(localStorage.getItem("waiter_tenant")).toBe("t");
+    expect(localStorage.getItem("waiter_branch")).toBe("b");
+  });
+
+  it("fails restore when no context can be resolved", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { accessToken: "fresh", user: { id: "u" } } } } as any);
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { data: [] } } as any);
+    await expect(restoreSession()).rejects.toThrow("No active branch");
+  });
+
 });

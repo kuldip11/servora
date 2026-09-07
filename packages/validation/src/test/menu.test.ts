@@ -115,3 +115,72 @@ describe("menuItemFormSchema", () => {
     ).toBe(false);
   });
 });
+
+import { advancedMenuItemPricingSchema } from "../menu";
+
+describe("advancedMenuItemPricingSchema", () => {
+  const base = {
+    pricingMode: "FIXED" as const,
+    supportsZones: false,
+    zonePricingRule: "HIGHER" as const,
+    manualStockCount: null,
+  };
+
+  it("accepts valid fixed, weighted and open pricing configurations", () => {
+    expect(advancedMenuItemPricingSchema.safeParse(base).success).toBe(true);
+    expect(
+      advancedMenuItemPricingSchema.safeParse({
+        ...base,
+        pricingMode: "WEIGHT_BASED",
+        weightUnit: "KG",
+      }).success,
+    ).toBe(true);
+    expect(
+      advancedMenuItemPricingSchema.safeParse({
+        ...base,
+        pricingMode: "OPEN",
+        openPriceMin: 10,
+        openPriceMax: 20,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires a unit for weight-based pricing and rejects units elsewhere", () => {
+    const missing = advancedMenuItemPricingSchema.safeParse({
+      ...base,
+      pricingMode: "WEIGHT_BASED",
+    });
+    expect(missing.success).toBe(false);
+    if (!missing.success)
+      expect(missing.error.issues[0]?.path).toEqual(["weightUnit"]);
+
+    const misplaced = advancedMenuItemPricingSchema.safeParse({
+      ...base,
+      weightUnit: "KG",
+    });
+    expect(misplaced.success).toBe(false);
+    if (!misplaced.success)
+      expect(misplaced.error.issues[0]?.message).toContain("only valid");
+  });
+
+  it("restricts open-price bounds to OPEN mode and keeps max >= min", () => {
+    expect(
+      advancedMenuItemPricingSchema.safeParse({
+        ...base,
+        openPriceMin: 1,
+      }).success,
+    ).toBe(false);
+
+    const reversed = advancedMenuItemPricingSchema.safeParse({
+      ...base,
+      pricingMode: "OPEN",
+      openPriceMin: 20,
+      openPriceMax: 10,
+    });
+    expect(reversed.success).toBe(false);
+    if (!reversed.success)
+      expect(
+        reversed.error.issues.some((issue) => issue.path[0] === "openPriceMax"),
+      ).toBe(true);
+  });
+});

@@ -60,6 +60,57 @@ describe("DataGrid", () => {
     await user.click(screen.getByRole("checkbox", { name: "Select row 1" }));
     expect(onSelected).toHaveBeenCalled();
   });
+
+  it("selects only enabled rows and can clear the page selection", async () => {
+    const user = userEvent.setup();
+    const onSelected = vi.fn();
+    render(
+      <DataGrid<Row>
+        columns={columns}
+        data={data}
+        getRowId={(row) => row.id}
+        selectable
+        disabledSelectionIds={new Set(["2"])}
+        onSelectedIdsChange={onSelected}
+      />,
+    );
+
+    const selectAll = screen.getByRole("checkbox", {
+      name: "Select all rows on this page",
+    });
+    expect(
+      screen.getByRole("checkbox", { name: "Select row 2" }),
+    ).toBeDisabled();
+
+    await user.click(selectAll);
+    expect(onSelected).toHaveBeenLastCalledWith(new Set(["1"]));
+    expect(selectAll).toBeChecked();
+
+    await user.click(selectAll);
+    expect(onSelected).toHaveBeenLastCalledWith(new Set());
+  });
+
+  it("reports the next controlled sort state from descending to unsorted", async () => {
+    const user = userEvent.setup();
+    const onSortChange = vi.fn();
+    render(
+      <DataGrid<Row>
+        columns={columns}
+        data={data}
+        getRowId={(row) => row.id}
+        sort={{ columnId: "name", direction: "desc" }}
+        onSortChange={onSortChange}
+      />,
+    );
+
+    expect(screen.getByRole("columnheader", { name: "Name" })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
+    await user.click(screen.getByRole("button", { name: "Name" }));
+    expect(onSortChange).toHaveBeenCalledWith(null);
+  });
+
   it("renders the empty state when no rows exist", () => {
     render(
       <DataGrid<Row>

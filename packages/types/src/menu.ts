@@ -1,5 +1,5 @@
 import type { Branch } from "./auth";
-import { Recipe } from "./inventory";
+import type { Recipe } from "./inventory";
 
 export type FoodType = "VEG" | "NON_VEG" | "EGG";
 

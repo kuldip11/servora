@@ -28,7 +28,6 @@ type StaffMembership = NonNullable<
 >;
 
 const canManageTarget = (auth: AuthContext, membership: StaffMembership) => {
-  if (!membership) throw staffNotFound("unknown");
   if (auth.tenantWide) return;
   const targetBranches = membership.branches.map((item) => item.branchId);
   if (

@@ -37,6 +37,34 @@ describe("createOrderSchema", () => {
     );
   });
 
+  it("enforces billing-mode-specific cover fields", () => {
+    expect(
+      createOrderSchema.safeParse({
+        type: "DINE_IN",
+        billingMode: "PER_COVER",
+        coverCount: 2,
+        perCoverPriceRuleId: uuid,
+        items: [item],
+      }).success,
+    ).toBe(true);
+    expect(
+      createOrderSchema.safeParse({
+        type: "DINE_IN",
+        billingMode: "PER_COVER",
+        items: [item],
+      }).success,
+    ).toBe(false);
+    expect(
+      createOrderSchema.safeParse({
+        type: "DINE_IN",
+        billingMode: "LINE_ITEMS",
+        coverCount: 2,
+        perCoverPriceRuleId: uuid,
+        items: [item],
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts optional table/customer and selected options", () => {
     expect(
       createOrderSchema.safeParse({
@@ -90,6 +118,17 @@ describe("order update/customization schemas", () => {
     expect(addOrderItemSchema.safeParse(item).success).toBe(true);
     expect(addOrderItemsSchema.safeParse({ items: [item] }).success).toBe(true);
     expect(addOrderItemsSchema.safeParse({ items: [] }).success).toBe(false);
+    expect(
+      addOrderItemsSchema.safeParse({
+        combos: [
+          {
+            comboId: uuid,
+            selections: [{ slotId: uuid, optionIds: [uuid] }],
+          },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(addOrderItemsSchema.safeParse({}).success).toBe(false);
   });
   it("requires complete customization fields", () => {
     expect(

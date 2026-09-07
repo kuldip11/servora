@@ -405,3 +405,113 @@ describe("auth service", () => {
     await expect(authService.memberships("u1")).resolves.toEqual([listed]);
   });
 });
+
+describe("auth service edge coverage", () => {
+  it("covers signup lookup failure and role-description fallback", async () => {
+    findStandaloneUserByEmail.mockResolvedValue(undefined);
+    createUserWithGlobalOwnerRole.mockResolvedValue({ user: { id: "u1" } });
+    findUserById.mockResolvedValueOnce(undefined);
+    await expect(authService.signup({ email: "x@example.com", password: "password123", firstName: "A", lastName: "B" } as any)).rejects.toThrow("User creation failed");
+    findUserById.mockResolvedValueOnce({ ...user, globalUserRoles: [{ roleId: "r1", role: { name: "OWNER", description: null, rolePermissions: [] } }] });
+    await expect(authService.signup({ email: "x@example.com", password: "password123", firstName: "A", lastName: "B" } as any)).resolves.toMatchObject({ user: { roles: [{ description: "" }] } });
+  });
+
+  it("rejects duplicate/missing/inactive login users and exercises unlocked failure", async () => {
+    findUsersByEmail.mockResolvedValueOnce([]);
+    await expect(authService.login({ email: "x", password: "p" } as any)).rejects.toThrow("Invalid credentials");
+    findUsersByEmail.mockResolvedValueOnce([user, user]);
+    await expect(authService.login({ email: "x", password: "p" } as any)).rejects.toThrow("Invalid credentials");
+    findUsersByEmail.mockResolvedValueOnce([{ ...user, status: "INACTIVE" }]);
+    await expect(authService.login({ email: "x", password: "p" } as any)).rejects.toThrow("Invalid credentials");
+    findUsersByEmail.mockResolvedValueOnce([{ ...user, failedLoginAttempts: 1, lockedUntil: null }]);
+    await expect(authService.login({ email: "x", password: "wrong" } as any)).rejects.toThrow("Invalid credentials");
+    expect(recordFailedLogin).toHaveBeenLastCalledWith("u1", 2, null);
+  });
+
+  it("covers membership access early denials and role-id fallbacks", async () => {
+    const bcrypt = await import("bcryptjs");
+    const hash = await bcrypt.default.hash("secret", 1);
+    const noGlobal = { ...user, passwordHash: hash, globalUserRoles: [] };
+    findUsersByEmail.mockResolvedValue(noGlobal ? [noGlobal] : []);
+    listUserMemberships.mockResolvedValue([{ tenant: { id: "t1" } }]);
+    resolveMembership.mockResolvedValueOnce(undefined);
+    await expect(authService.login({ email: "x", password: "secret" } as any, "web")).rejects.toThrow("Account does not have access");
+
+    resolveMembership.mockResolvedValueOnce({ id: "m1", tenantId: "t1", roles: [], branches: [] });
+    resolveAuthorization.mockResolvedValueOnce({ allowed: false, permissionKeys: [], roleIds: [], branchIds: [], tenantWide: false });
+    await expect(authService.login({ email: "x", password: "secret" } as any, "web")).rejects.toThrow("Account does not have access");
+
+    resolveMembership.mockResolvedValueOnce({ id: "m1", tenantId: "t1", roles: [{ roleId: "custom", role: null }], branches: [] });
+    resolveAuthorization.mockResolvedValueOnce({ allowed: true, permissionKeys: ["analytics:read"], roleIds: ["custom"], branchIds: [], tenantWide: false });
+    saveRefreshToken.mockResolvedValue({});
+    await expect(authService.login({ email: "x", password: "secret" } as any, "web")).resolves.toMatchObject({ accessToken: "access" });
+  });
+
+  it("covers logout without a session and session list/revoke behavior", async () => {
+    revokeRefreshToken.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ id: "rt", userId: "u1", sessionId: null });
+    await authService.logout("a"); await authService.logout("b"); expect(revokeSession).not.toHaveBeenCalled();
+    listActiveSessions.mockResolvedValue([{ id: "s1" }]);
+    await expect(authService.sessions("u1")).resolves.toEqual([{ id: "s1" }]);
+    revokeSession.mockResolvedValueOnce(undefined);
+    await expect(authService.revokeSession("u1", "s0")).rejects.toThrow("Session not found");
+    revokeSession.mockResolvedValueOnce({ id: "s1" });
+    await expect(authService.revokeSession("u1", "s1")).resolves.toEqual({ revoked: true });
+  });
+
+  it("covers every invalid refresh-session state", async () => {
+    consumeRefreshToken.mockResolvedValueOnce(undefined);
+    await expect(authService.refresh("web.x", "web")).rejects.toThrow("Invalid refresh token");
+    consumeRefreshToken.mockResolvedValueOnce({ userId: "u1", sessionId: null }); findUserById.mockResolvedValueOnce(user);
+    await expect(authService.refresh("web.x", "web")).rejects.toThrow("Invalid refresh token");
+    for (const session of [undefined, { id: "s", revokedAt: new Date(), expiresAt: new Date(Date.now()+10000) }, { id: "s", revokedAt: null, expiresAt: new Date(Date.now()-1000) }]) {
+      consumeRefreshToken.mockResolvedValueOnce({ userId: "u1", sessionId: "s" }); findUserById.mockResolvedValueOnce(user); findSession.mockResolvedValueOnce(session);
+      await expect(authService.refresh("web.x", "web")).rejects.toThrow("Invalid refresh token");
+    }
+  });
+
+  it("covers me without membership and all invalid membership states", async () => {
+    findUserById.mockResolvedValueOnce(undefined);
+    await expect(authService.me("u1")).rejects.toThrow();
+    findUserById.mockResolvedValue(user);
+    await expect(authService.me("u1")).resolves.toEqual({ user, membership: undefined });
+    for (const membership of [undefined, { id: "m", userId: "u2", status: "ACTIVE" }, { id: "m", userId: "u1", status: "INACTIVE" }]) {
+      findMembershipById.mockResolvedValueOnce(membership);
+      await expect(authService.me("u1", "m")).rejects.toThrow("Membership access denied");
+    }
+  });
+
+  it("filters inaccessible memberships and covers allowed custom membership", async () => {
+    const memberships = [{ membershipId: "m1", tenant: { id: "t1" } }, { membershipId: "m2", tenant: { id: "t2" } }, { membershipId: "m3", tenant: { id: "t3" } }];
+    listUserMemberships.mockResolvedValue(memberships);
+    resolveMembership.mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ id: "m2", roles: [], branches: [] })
+      .mockResolvedValueOnce({ id: "m3", roles: [{ roleId: "c", role: null }], branches: [] });
+    resolveAuthorization.mockResolvedValueOnce({ allowed: false, permissionKeys: [], roleIds: [], branchIds: [], tenantWide: false })
+      .mockResolvedValueOnce({ allowed: true, permissionKeys: ["analytics:read"], roleIds: ["c"], branchIds: [], tenantWide: false });
+    await expect(authService.memberships("u1", "web")).resolves.toEqual([memberships[2]]);
+  });
+
+  it("covers profile no-op and missing update", async () => {
+    findUserById.mockResolvedValue(user);
+    await expect(authService.updateProfile("u1", {})).resolves.toEqual(user);
+    updateUserProfile.mockResolvedValueOnce(undefined);
+    await expect(authService.updateProfile("u1", { firstName: "X" })).rejects.toThrow();
+  });
+
+  it("covers password user-not-found, same-password and failed-update paths", async () => {
+    findUserById.mockResolvedValueOnce(undefined);
+    await expect(authService.changePassword("u1", { currentPassword: "a", newPassword: "b" })).rejects.toThrow();
+    const bcrypt = await import("bcryptjs"); const hash = await bcrypt.default.hash("same", 1);
+    findUserById.mockResolvedValueOnce({ ...user, passwordHash: hash });
+    await expect(authService.changePassword("u1", { currentPassword: "same", newPassword: "same" })).rejects.toThrow("New password must be different");
+    findUserById.mockResolvedValueOnce({ ...user, passwordHash: hash }); updatePasswordHash.mockResolvedValueOnce(undefined);
+    await expect(authService.changePassword("u1", { currentPassword: "same", newPassword: "different" })).rejects.toThrow();
+  });
+
+  it("covers direct token issuance null user, existing session and role-description fallback", async () => {
+    await expect(authService._issueTokens(undefined as any)).rejects.toThrow("User not found");
+    saveRefreshToken.mockResolvedValue({}); touchSession.mockResolvedValue(undefined);
+    await expect(authService._issueTokens({ ...user, globalUserRoles: [{ roleId: "r1", role: { name: "OWNER", description: null, rolePermissions: [] } }] }, "web", "existing")).resolves.toMatchObject({ sessionId: "existing", user: { roles: [{ description: "" }] } });
+    expect(touchSession).toHaveBeenCalledWith("existing", expect.any(Date));
+  });
+});

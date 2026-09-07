@@ -9,7 +9,13 @@ vi.mock("../../../../shared/lib/api-client", () => ({
   apiClient: { get: mocks.get, post: mocks.post },
 }));
 
-import { fetchMemberships, login } from "@/features/auth/api/login";
+import {
+  fetchMemberships,
+  login,
+  restoreSession,
+  refreshSession,
+  logoutSession,
+} from "@/features/auth/api/login";
 
 describe("auth api", () => {
   beforeEach(() => {
@@ -23,6 +29,25 @@ describe("auth api", () => {
       email: "a@b.com",
       password: "pw",
     });
+  });
+
+  it("restores, refreshes, and logs out sessions", async () => {
+    mocks.post.mockResolvedValue({
+      data: { data: { accessToken: "restored" } },
+    });
+    mocks.get.mockResolvedValue({ data: { data: { id: "u1" } } });
+    sessionStorage.clear();
+    await expect(restoreSession()).resolves.toBe(true);
+    expect(sessionStorage.getItem("kds_token")).toBeNull();
+    expect(mocks.post).toHaveBeenCalledWith("/auth/refresh");
+    expect(mocks.get).toHaveBeenCalledWith("/auth/me");
+
+    mocks.post.mockClear();
+    await refreshSession();
+    expect(mocks.post).toHaveBeenCalledWith("/auth/refresh");
+    mocks.post.mockResolvedValue({ data: { data: undefined } });
+    await logoutSession();
+    expect(mocks.post).toHaveBeenCalledWith("/auth/logout");
   });
 
   it("fetches memberships", async () => {

@@ -1,4 +1,4 @@
-import { TableStatus } from "./tables";
+import type { TableStatus } from "./tables";
 
 export interface RestaurantTable {
   id: string;

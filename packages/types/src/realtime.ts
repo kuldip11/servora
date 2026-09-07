@@ -1,4 +1,4 @@
-import { RestaurantTable } from "./common";
+import type { RestaurantTable } from "./common";
 import type { InventoryItem } from "./inventory";
 import type { KitchenTicket, Order } from "./orders";
 

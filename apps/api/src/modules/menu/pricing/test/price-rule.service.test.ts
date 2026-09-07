@@ -22,6 +22,7 @@ const {
 const { record } = vi.hoisted(() => ({
   record: vi.fn().mockResolvedValue({ id: "event1" }),
 }));
+const { findCustomerGroup } = vi.hoisted(() => ({ findCustomerGroup: vi.fn() }));
 const { findByIdItem, findCategory, findIdsByCategory, findIdsByMenu } =
   vi.hoisted(() => ({
     findByIdItem: vi.fn(),
@@ -30,6 +31,7 @@ const { findByIdItem, findCategory, findIdsByCategory, findIdsByMenu } =
     findIdsByMenu: vi.fn(),
   }));
 
+vi.mock("@/modules/customer-groups/customer-group.repository", () => ({ customerGroupRepository: { findById: findCustomerGroup } }));
 vi.mock("../price-rule.repository", () => ({
   priceRuleRepository: {
     list,
@@ -88,6 +90,8 @@ beforeEach(() => {
   findCategory.mockResolvedValue({ id: "cat1", branchId: null });
   findIdsByCategory.mockResolvedValue(["item1", "item2"]);
   findIdsByMenu.mockResolvedValue(["item1", "item2"]);
+  findCustomerGroup.mockResolvedValue({ id: "cg1" });
+  organizationIdForTenant.mockResolvedValue("org-1");
 });
 
 describe("price-rule service ambiguity validation (D1)", () => {
@@ -428,5 +432,83 @@ describe("G7 organization price-rule authorization", () => {
       priceRuleService.remove(orgAuth, "org-rule"),
     ).resolves.toBeUndefined();
     expect(remove).toHaveBeenCalledWith("t1", "org-rule");
+  });
+});
+
+
+describe("price-rule service complete validation coverage", () => {
+  it("covers list organization and tenant scopes", async () => {
+    list.mockResolvedValue([{ id: "tenant" }]);
+    await expect(priceRuleService.list(auth, "item1")).resolves.toEqual([{ id: "tenant" }]);
+    const orgAuth = { ...auth, permissions: [...auth.permissions, "organization:manage"] };
+    listOrganization.mockResolvedValue([{ id: "org" }]);
+    await expect(priceRuleService.list(orgAuth, undefined, "org-1", "SKU")).resolves.toEqual([{ id: "org" }]);
+    organizationIdForTenant.mockResolvedValueOnce("org-2");
+    await expect(priceRuleService.list(orgAuth, undefined, "org-1")).rejects.toThrow(/outside the active tenant organization/i);
+  });
+
+  it("rejects invalid values and item scope combinations", async () => {
+    await expect(priceRuleService.create(auth, { menuItemId: "item1" } as never)).rejects.toThrow(/exactly one/i);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", price: 1, percentOff: 10 } as never)).rejects.toThrow(/exactly one/i);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", percentOff: 0 } as never)).rejects.toThrow(/greater than 0/i);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", percentOff: 101 } as never)).rejects.toThrow(/at most 100/i);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", price: -1 } as never)).rejects.toThrow(/negative/i);
+    await expect(priceRuleService.create(auth, { price: 10 } as never)).rejects.toThrow(/require menuItemId/i);
+    findByIdItem.mockResolvedValueOnce(null);
+    await expect(priceRuleService.create(auth, { menuItemId: "missing", price: 10 } as never)).rejects.toThrow(/Menu item not found/i);
+    findByIdItem.mockResolvedValueOnce({ id: "item1", branchId: null, variants: [{ id: "v1" }] });
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", variantId: "v2", price: 10 } as never)).rejects.toThrow(/Variant does not belong/i);
+    findCustomerGroup.mockResolvedValueOnce(null);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", customerGroupId: "bad", price: 10 } as never)).rejects.toThrow(/Customer group/i);
+  });
+
+  it("validates organization and per-cover scopes", async () => {
+    const orgAuth = { ...auth, permissions: [...auth.permissions, "organization:manage"] };
+    organizationIdForTenant.mockResolvedValue("org-1");
+    await expect(priceRuleService.create(orgAuth, { organizationId: "org-2", menuItemSku: "SKU", price: 10 } as never)).rejects.toThrow(/outside the active tenant organization/i);
+    await expect(priceRuleService.create(orgAuth, { organizationId: "org-1", price: 10 } as never)).rejects.toThrow(/require menuItemSku/i);
+    await expect(priceRuleService.create(orgAuth, { organizationId: "org-1", menuItemSku: "SKU", branchId: "b1", price: 10 } as never)).rejects.toThrow(/cannot target tenant-local/i);
+    await expect(priceRuleService.create(auth, { isPerCover: true, menuItemId: "item1", price: 10 } as never)).rejects.toThrow(/cannot target a menu item/i);
+    await expect(priceRuleService.create(auth, { isPerCover: true, variantId: "v1", price: 10 } as never)).rejects.toThrow(/cannot target a variant/i);
+    await expect(priceRuleService.create(auth, { isPerCover: true, percentOff: 10 } as never)).rejects.toThrow(/absolute price/i);
+    await expect(priceRuleService.create(auth, { menuItemId: "item1", coverTier: "ADULT", price: 10 } as never)).rejects.toThrow(/only valid on a per-cover/i);
+  });
+
+  it("persists conversions and organization rules", async () => {
+    await priceRuleService.create(auth, { menuItemId: "item1", price: 12.5, taxRate: 5, effectiveFrom: "2026-09-05T10:00:00.000Z", isActive: false } as never);
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ price: "12.5", taxRate: "5", effectiveFrom: expect.any(Date), isActive: false }));
+    await priceRuleService.create(auth, { menuItemId: "item1", percentOff: 15, taxRate: null, effectiveFrom: null } as never);
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ percentOff: "15", taxRate: null, effectiveFrom: null }));
+    const orgAuth = { ...auth, permissions: [...auth.permissions, "organization:manage"] };
+    organizationIdForTenant.mockResolvedValue("org-1"); listOrganization.mockResolvedValue([]);
+    await expect(priceRuleService.create(orgAuth, { organizationId: "org-1", menuItemSku: " SKU ", price: 10 } as never)).resolves.toBeDefined();
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ organizationId: "org-1", menuItemSku: "SKU", tenantId: null }));
+  });
+
+  it("covers update and happy-hour edge branches", async () => {
+    findById.mockResolvedValueOnce(undefined);
+    await expect(priceRuleService.update(auth, "missing", { price: 10 } as never)).rejects.toThrow(/not found/i);
+    findById.mockResolvedValue({ id: "r1", tenantId: "t1", organizationId: null, menuItemId: "item1", menuItemSku: null, variantId: null, branchId: null, customerGroupId: null, coverTier: null, isPerCover: false, channel: null, fulfillmentType: null, startDate: null, endDate: null, startTime: null, endTime: null, priority: 0, price: "10", percentOff: null, taxRate: null, isActive: true });
+    update.mockResolvedValueOnce(undefined);
+    await expect(priceRuleService.update(auth, "r1", { price: 11 } as never)).rejects.toThrow(/not found/i);
+    update.mockResolvedValueOnce({ id: "r1", price: "11" });
+    await expect(priceRuleService.update(auth, "r1", { price: 11 } as never)).resolves.toMatchObject({ id: "r1" });
+
+    await expect(priceRuleService.createHappyHour(auth, { categoryId: "cat1", percentOff: 0, startTime: "10:00", endTime: "11:00" })).rejects.toThrow(/greater than 0/i);
+    await expect(priceRuleService.createHappyHour(auth, { categoryId: "cat1", percentOff: 20, startTime: "10:00", endTime: "11:00", startDate: "2026-09-06", endDate: "2026-09-05" })).rejects.toThrow(/start date/i);
+    findCategory.mockResolvedValueOnce(null);
+    await expect(priceRuleService.createHappyHour(auth, { categoryId: "bad", percentOff: 20, startTime: "10:00", endTime: "11:00" })).rejects.toThrow(/category not found/i);
+    findIdsByCategory.mockResolvedValueOnce([]);
+    await expect(priceRuleService.createHappyHour(auth, { categoryId: "cat1", percentOff: 20, startTime: "10:00", endTime: "11:00" })).rejects.toThrow(/no menu items/i);
+    findIdsByMenu.mockResolvedValueOnce(null);
+    await expect(priceRuleService.createHappyHour(auth, { menuId: "bad", percentOff: 20, startTime: "10:00", endTime: "11:00" })).rejects.toThrow(/Menu not found/i);
+    findIdsByMenu.mockResolvedValueOnce(["item1"]);
+    await expect(priceRuleService.createHappyHour(auth, { menuId: "m1", percentOff: 20, startTime: "10:00", endTime: "11:00" })).resolves.toHaveLength(1);
+  });
+
+  it("returns silently when removing a missing rule", async () => {
+    findById.mockResolvedValueOnce(undefined);
+    await expect(priceRuleService.remove(auth, "missing")).resolves.toBeUndefined();
+    expect(remove).not.toHaveBeenCalled();
   });
 });

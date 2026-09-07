@@ -24,6 +24,8 @@ export default defineConfig({
         "src/**/*.spec.{ts,tsx}",
         "src/index.ts",
         "src/main.tsx",
+        "src/features/auth/index.ts",
+        "src/features/kitchen/index.ts",
         "src/vite-env.d.ts",
       ],
     },

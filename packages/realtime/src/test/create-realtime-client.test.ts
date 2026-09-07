@@ -189,4 +189,24 @@ describe("createRealtimeClient", () => {
     idle.reconnect();
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
+  it("closes on socket errors and replaces an existing reconnect timer", () => {
+    vi.useFakeTimers();
+    const client = createRealtimeClient<TestEvent>({
+      url: "wss://example.com",
+      getAccessToken: () => "token",
+      reconnectDelayMs: 25,
+    });
+    client.subscribe(() => {});
+    const ws = FakeWebSocket.instances[0]!;
+
+    ws.onerror?.();
+    expect(ws.close).toHaveBeenCalledOnce();
+    expect(FakeWebSocket.instances).toHaveLength(1);
+
+    ws.onclose?.();
+    vi.advanceTimersByTime(24);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
 });

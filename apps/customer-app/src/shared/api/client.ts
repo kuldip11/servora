@@ -1,8 +1,12 @@
-const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+export const resolveApiUrl = (
+  configuredApiUrl: string | undefined,
+  isDevelopment: boolean,
+) => {
+  const configured = configuredApiUrl?.trim();
+  return isDevelopment ? "" : (configured ?? "").replace(/\/$/, "");
+};
 
-const API_URL = import.meta.env.DEV
-  ? ""
-  : (configuredApiUrl ?? "").replace(/\/$/, "");
+const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL, import.meta.env.DEV);
 
 export async function request<T>(
   path: string,

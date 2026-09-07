@@ -27,6 +27,9 @@ import { KITCHEN_TICKETS_QUERY_KEY } from "@/features/kitchen/hooks/useKitchenTi
 describe("useUpdateTicketStatus", () => {
   it("configures mutation callbacks", async () => {
     const options = useUpdateTicketStatus() as any;
+    mocks.updateTicketStatus.mockResolvedValue(undefined);
+    await options.mutationFn({ id: "ticket-1", status: "READY" });
+    expect(mocks.updateTicketStatus).toHaveBeenCalledWith("ticket-1", "READY");
     await options.onSuccess();
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: KITCHEN_TICKETS_QUERY_KEY,

@@ -33,7 +33,7 @@ export const customerRequestService = {
           eq(orders.tenantId, session.tenantId),
           eq(orders.branchId, session.branchId),
           eq(orders.customerSessionId, session.id),
-          session.tableId ? eq(orders.tableId, session.tableId) : undefined,
+          eq(orders.tableId, session.tableId),
         ),
       });
       if (!order)

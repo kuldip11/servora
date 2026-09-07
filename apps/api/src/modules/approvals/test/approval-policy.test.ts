@@ -52,3 +52,23 @@ describe("H6 approval policy", () => {
     expect(approvalRoleMatches("Owner", "Supervisor")).toBe(true);
   });
 });
+
+describe("approval policy edge coverage", () => {
+  it("returns zero for a missing target and handles a standalone item", () => {
+    expect(approvalAdjustmentValue([], "missing")).toBe(0);
+    expect(
+      approvalAdjustmentValue(
+        [
+          { id: "one", itemStatus: "ACTIVE", subtotal: 12.5 },
+          { id: "two", itemStatus: "ACTIVE", subtotal: 99 },
+        ],
+        "one",
+      ),
+    ).toBe(12.5);
+  });
+
+  it("handles undefined thresholds and global-owner role override with whitespace/case normalization", () => {
+    expect(isApprovalRequired(100, undefined)).toBe(false);
+    expect(approvalRoleMatches(" Global Owner ", " Supervisor ")).toBe(true);
+  });
+});

@@ -4,7 +4,7 @@ import { AddStaffForm } from "./AddStaffForm";
 import { EditStaffForm } from "./EditStaffForm";
 
 vi.mock("@pos/ui", () => ({
-  Button: ({ children, ...props }: any) => (
+  Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
   Input: ({ label, ...props }: any) => (

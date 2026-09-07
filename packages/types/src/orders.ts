@@ -1,4 +1,4 @@
-import { RestaurantTable } from "./common";
+import type { RestaurantTable } from "./common";
 
 export type OrderStatus =
   "OPEN" | "BILL_REQUESTED" | "PAID" | "CLOSED" | "CANCELLED";

@@ -43,3 +43,14 @@ describe("waiter auth storage", () => {
     expect(localStorage.length).toBe(0);
   });
 });
+
+it("stores deduplicated permissions and reads permission safely", async () => {
+  const { hasPermission, saveProfile } = await import("@/features/auth/storage");
+  saveProfile({ firstName: "A", lastName: "B", roles: [{ permissions: [{ key: "orders:read" }, { key: "orders:read" }] }] } as any);
+  expect(hasPermission("orders:read")).toBe(true);
+  expect(hasPermission("orders:write")).toBe(false);
+  localStorage.removeItem("waiter_permissions");
+  expect(hasPermission("orders:read")).toBe(false);
+  localStorage.setItem("waiter_permissions", "not-json");
+  expect(hasPermission("orders:read")).toBe(false);
+});

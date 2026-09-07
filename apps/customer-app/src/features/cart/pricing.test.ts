@@ -6,6 +6,7 @@ import {
   getCartTax,
   getCartTotal,
   getLineSubtotal,
+  getItemCount,
 } from "./pricing";
 import type { CustomerMenuItem } from "@/api";
 import type { CartLine } from "./pricing";
@@ -152,5 +153,80 @@ describe("getCartSummary", () => {
       total: 294,
       itemCount: 2,
     });
+  });
+});
+
+describe("pricing branch coverage", () => {
+  const zonedItem = {
+    ...item,
+    supportsZones: true,
+    zonePricingRule: "HIGHER" as const,
+    modifierGroupLinks: [
+      {
+        sortOrder: 0,
+        group: {
+          id: "extras",
+          name: "Extras",
+          selectionType: "MULTIPLE" as const,
+          minSelections: 0,
+          maxSelections: 4,
+          options: [
+            {
+              id: "cheese",
+              name: "Cheese",
+              additionalPrice: "20",
+              isAvailable: true,
+              maxQuantity: 3,
+              variantPrices: [{ variantId: "large", additionalPrice: "25" }],
+            },
+            { id: "sauce", name: "Sauce", additionalPrice: "10", isAvailable: true, maxQuantity: 3 },
+          ],
+        },
+      },
+    ],
+  } satisfies CustomerMenuItem;
+
+  it("covers whole, left/right, scoped variant and HIGHER zone pricing", () => {
+    const line: CartLine = {
+      item: zonedItem,
+      quantity: 1,
+      variantId: "large",
+      selectedOptions: [
+        { optionId: "cheese", quantity: 1 },
+        { optionId: "cheese", quantity: 1, zoneLabel: "LEFT" },
+        { optionId: "sauce", quantity: 2, zoneLabel: "RIGHT" },
+      ],
+      fulfillmentType: "DINE_IN",
+    };
+    expect(getLineSubtotal(line)).toBe(170);
+  });
+
+  it("covers AVERAGE, HALF_SUM, unsupported-zone and empty-zone fallbacks", () => {
+    const base: CartLine = {
+      item: { ...zonedItem, zonePricingRule: "AVERAGE" },
+      quantity: 1,
+      selectedOptions: [
+        { optionId: "cheese", quantity: 1, zoneLabel: "LEFT" },
+        { optionId: "sauce", quantity: 1, zoneLabel: "RIGHT" },
+      ],
+      fulfillmentType: "DINE_IN",
+    };
+    expect(getLineSubtotal(base)).toBe(115);
+    expect(getLineSubtotal({ ...base, item: { ...zonedItem, zonePricingRule: "HALF_SUM" as any } })).toBe(115);
+    expect(getLineSubtotal({ ...base, item: { ...zonedItem, supportsZones: false } })).toBe(130);
+    expect(getLineSubtotal({ ...base, selectedOptions: [] })).toBe(100);
+  });
+
+  it("handles missing options, invalid taxes, summary helpers, item count and default line key fields", () => {
+    const line: CartLine = {
+      item: { ...item, taxRate: "not-a-number" },
+      quantity: 3,
+      selectedOptions: [{ optionId: "missing", quantity: 2, zoneLabel: "WHOLE" }],
+      fulfillmentType: "TAKEAWAY",
+    };
+    expect(getCartSummary([line])).toEqual({ subtotal: 300, tax: 0, total: 300, itemCount: 3 });
+    expect(getItemCount([line])).toBe(3);
+    const key = getCartLineKey({ item, selectedOptions: [{ optionId: "x", quantity: 1 }], fulfillmentType: "DINE_IN" });
+    expect(key).toContain('"variantId":null');
   });
 });

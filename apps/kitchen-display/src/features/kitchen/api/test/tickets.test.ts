@@ -10,6 +10,7 @@ vi.mock("../../../../shared/lib/api-client", () => ({
 }));
 
 import {
+  fetchKitchenStations,
   fetchKitchenTickets,
   updateTicketStatus,
 } from "@/features/kitchen/api/tickets";
@@ -19,10 +20,20 @@ describe("tickets api", () => {
     vi.clearAllMocks();
   });
 
-  it("fetches tickets", async () => {
+  it("fetches tickets with and without a station", async () => {
     mocks.get.mockResolvedValue({ data: { data: [{ id: "1" }] } });
     await expect(fetchKitchenTickets()).resolves.toEqual([{ id: "1" }]);
     expect(mocks.get).toHaveBeenCalledWith("/kitchen-tickets");
+    await fetchKitchenTickets("grill");
+    expect(mocks.get).toHaveBeenLastCalledWith("/kitchen-tickets", {
+      params: { stationId: "grill" },
+    });
+  });
+
+  it("fetches kitchen stations", async () => {
+    mocks.get.mockResolvedValue({ data: { data: [{ id: "s1" }] } });
+    await expect(fetchKitchenStations()).resolves.toEqual([{ id: "s1" }]);
+    expect(mocks.get).toHaveBeenCalledWith("/kitchen-tickets/stations");
   });
 
   it("updates status", async () => {

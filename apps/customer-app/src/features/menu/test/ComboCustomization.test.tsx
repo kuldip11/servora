@@ -1,0 +1,11 @@
+import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@pos/ui",()=>({BottomSheet:(p:any)=><div data-testid="sheet"><p>{p.description}</p><button onClick={p.onClose}>close</button>{p.children}<div>{p.footer}</div></div>,Button:(p:any)=><button disabled={p.disabled} onClick={p.onClick}>{p.children}</button>}));
+import { ComboCustomization } from "../ComboCustomization";
+const item=(o:any={})=>({id:"i",name:"Dish",basePrice:"10",taxRate:"10",taxMode:"EXCLUSIVE",variants:[],modifierGroupLinks:[],...o} as any);
+const combo=(o:any={})=>({id:"c",name:"Combo",description:null,pricePolicy:"FIXED",fixedPrice:"20",percentOff:null,slots:[{id:"s",name:"Main",minSelections:1,maxSelections:2,sortOrder:2,options:[{id:"o",menuItemId:"i",variantId:null,upcharge:"0"},{id:"missing",menuItemId:"missing",variantId:null,upcharge:"0"}]}],...o} as any);
+describe("ComboCustomization",()=>{
+ it("renders invalid/default description and close",()=>{const onClose=vi.fn();render(<ComboCustomization combo={combo()} menuById={new Map([["i",item()]])} selections={[]} onToggle={()=>{}} onClose={onClose} onAdd={()=>{}}/>);expect(screen.getByText(/Complete each combo/)).toBeTruthy();expect(screen.getByText(/Choose 1–2/)).toBeTruthy();expect((screen.getByRole("button",{name:/Add combo/}) as HTMLButtonElement).disabled).toBe(true);fireEvent.click(screen.getByText("close"));expect(onClose).toHaveBeenCalled();});
+ it("covers selected variant, upcharge, equal limits, valid add and description",()=>{const onToggle=vi.fn(),onAdd=vi.fn();const c=combo({description:"desc",slots:[{id:"s",name:"Main",minSelections:1,maxSelections:1,sortOrder:1,options:[{id:"o",menuItemId:"i",variantId:"v",upcharge:"2"}]}]});const m=new Map([["i",item({variants:[{id:"v",name:"Large",price:"12"}]})]]);render(<ComboCustomization combo={c} menuById={m} selections={[{slotId:"s",optionIds:["o"]}]} onToggle={onToggle} onClose={()=>{}} onAdd={onAdd}/>);expect(screen.getAllByText("desc")).toHaveLength(2);expect(screen.getByText(/Dish · Large/)).toBeTruthy();expect(screen.getByText(/upcharge/)).toBeTruthy();fireEvent.click(screen.getByText(/Dish · Large/));expect(onToggle).toHaveBeenCalledWith("s","o");fireEvent.click(screen.getByRole("button",{name:/Add combo/}));expect(onAdd).toHaveBeenCalled();});
+});

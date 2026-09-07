@@ -1,51 +1,11 @@
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
-  class FakeElysia {
-    routes: any[] = [];
-    name: string;
-    constructor(options: any = {}) {
-      this.name = options.name ?? "";
-    }
-    use(plugin: any) {
-      return this;
-    }
-    get(path: string) {
-      this.routes.push({ method: "GET", path });
-      return this;
-    }
-    post(path: string) {
-      this.routes.push({ method: "POST", path });
-      return this;
-    }
-    put(path: string) {
-      this.routes.push({ method: "PUT", path });
-      return this;
-    }
-    patch(path: string) {
-      this.routes.push({ method: "PATCH", path });
-      return this;
-    }
-    delete(path: string) {
-      this.routes.push({ method: "DELETE", path });
-      return this;
-    }
-    ws(path: string) {
-      this.routes.push({ method: "WS", path });
-      return this;
-    }
-  }
+  class FakeElysia { routes: Array<{method:string;path:string;handler: ((ctx:any)=>unknown) | undefined}> = []; constructor(_o:unknown={}){} use(_p:unknown){return this;} get(path:string,handler: ((ctx:any)=>unknown) | undefined){this.routes.push({method:"GET",path,handler});return this;} post(path:string,handler: ((ctx:any)=>unknown) | undefined){this.routes.push({method:"POST",path,handler});return this;} }
   return { ...actual, Elysia: FakeElysia };
 });
-vi.mock("../../../../core/auth", () => ({ requireAuthPlugin: () => ({}) }));
-import { describe, expect, it, vi } from "vitest";
-import * as mod from "@/modules/menu/recipes/recipes.route";
-
-describe("recipes.route routes", () => {
-  it("registers a non-empty Elysia router", () => {
-    const routers = Object.values(mod).filter(
-      (v: any) => v && Array.isArray(v.routes),
-    );
-    expect(routers.length).toBeGreaterThan(0);
-    expect((routers[0] as any).routes.length).toBeGreaterThan(0);
-  });
-});
+const mocks=vi.hoisted(()=>({getItemRecipe:vi.fn().mockResolvedValue({ok:true}),setItemRecipe:vi.fn().mockResolvedValue({ok:true})}));
+vi.mock("@/core/auth",()=>({requireAuthPlugin:()=>({})}));
+vi.mock("../recipes.controller",()=>({recipesController:mocks}));
+import {describe,expect,it,vi} from "vitest";
+import {menuRecipesRouter} from "../recipes.route";
+describe("recipes routes",()=>{it("executes both handlers",async()=>{const routes=(menuRecipesRouter as any).routes;const auth={tenantId:"t1"};const body={ingredients:[{inventoryItemId:"inv1"}]};await routes.find((r:any)=>r.method==="GET").handler({auth,params:{id:"i1"}});await routes.find((r:any)=>r.method==="POST").handler({auth,params:{id:"i1"},body});expect(mocks.getItemRecipe).toHaveBeenCalledWith(auth,"i1");expect(mocks.setItemRecipe).toHaveBeenCalledWith(auth,"i1",body.ingredients);});});

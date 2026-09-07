@@ -17,10 +17,13 @@ describe("ticket utils", () => {
     expect(
       isUrgent(new Date(now - URGENT_THRESHOLD_MS - 1).toISOString()),
     ).toBe(true);
+    expect(calculateElapsedMs(null)).toBe(0);
+    expect(isUrgent(null)).toBe(false);
     vi.restoreAllMocks();
   });
   it("formats and groups tickets", () => {
     expect(formatTicketAge(ticket.firedAt)).toContain("minute");
+    expect(formatTicketAge(null)).toBe("Held");
     expect(
       groupTicketsByStatus(
         [ticket, { ...ticket, id: "2", status: "READY" }],
@@ -45,6 +48,17 @@ describe("ticket utils", () => {
       filterTicketForStation(multi, "dessert")?.items.map((item) => item.id),
     ).toEqual(["fallback"]);
     expect(filterTicketForStation(multi)).toEqual(multi);
+    expect(
+      filterTicketForStation(
+        {
+          ...ticket,
+          items: [
+            { ...ticket.items[0]!, menuItemId: null, stationId: "grill" },
+          ],
+        },
+        "grill",
+      ),
+    ).toBeNull();
   });
 
   it("classifies in-progress voids as urgent", () => {
@@ -53,6 +67,7 @@ describe("ticket utils", () => {
       status: "PREPARING" as const,
       items: [{ ...ticket.items[0]!, itemStatus: "VOIDED" as const }],
     };
+    expect(voidUrgency(ticket)).toBe("none");
     expect(voidUrgency(voided)).toBe("danger");
     expect(voidUrgency({ ...voided, status: "FIRED" })).toBe("warning");
   });

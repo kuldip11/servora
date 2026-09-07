@@ -25,6 +25,12 @@ describe("extractApiError", () => {
     expect(extractApiError(error)).toBe("Request timed out");
   });
 
+  it("uses the stable Axios fallback when no response or message is available", () => {
+    expect(extractApiError({ isAxiosError: true, message: undefined })).toBe(
+      "Request failed",
+    );
+  });
+
   it("returns a regular Error message", () => {
     expect(extractApiError(new Error("Something failed"))).toBe(
       "Something failed",

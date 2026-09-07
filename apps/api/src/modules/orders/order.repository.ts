@@ -25,6 +25,7 @@ import {
   inventoryTransactions,
   menuItems,
   menuItemVariants,
+  restaurantTables,
 } from "@/db/schema";
 import type { PricedLine } from "./pricing/pricing.types";
 import { compact } from "@/lib/object-utils";
@@ -388,6 +389,45 @@ export const orderRepository = {
     });
   },
 
+  async searchSummaries(
+    tenantId: string,
+    branchId: string | null | undefined,
+    query: string,
+    requestedLimit?: number,
+  ) {
+    const limit = Math.min(20, Math.max(1, requestedLimit ?? 8));
+    const search = query.trim().replace(/^#/, "").toLowerCase();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        search,
+      );
+    const shortId = search.slice(-8);
+    const idPredicate = isUuid
+      ? eq(orders.id, search)
+      : sql`right(${orders.id}::text, 8) = ${shortId}`;
+
+    return db
+      .select({
+        id: orders.id,
+        status: orders.status,
+        type: orders.type,
+        createdAt: orders.createdAt,
+        tableId: restaurantTables.id,
+        tableName: restaurantTables.name,
+      })
+      .from(orders)
+      .leftJoin(restaurantTables, eq(restaurantTables.id, orders.tableId))
+      .where(
+        and(
+          eq(orders.tenantId, tenantId),
+          branchId ? eq(orders.branchId, branchId) : undefined,
+          idPredicate,
+        ),
+      )
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+  },
+
   async findMany(
     tenantId: string,
     branchId: string | null | undefined,
@@ -413,7 +453,18 @@ export const orderRepository = {
         : undefined,
       filters?.type ? eq(orders.type, filters.type as OrderType) : undefined,
       search
-        ? sql`${orders.id}::text ILIKE ${`%${search.replace(/^#/, "")}%`}`
+        ? (() => {
+            const value = search.replace(/^#/, "").toLowerCase();
+            const isUuid =
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+                value,
+              );
+            return isUuid
+              ? eq(orders.id, value)
+              : value.length >= 8
+                ? sql`right(${orders.id}::text, 8) = ${value.slice(-8)}`
+                : sql`false`;
+          })()
         : undefined,
       filters?.view === "ACTIVE"
         ? inArray(orders.status, ["OPEN", "BILL_REQUESTED"])
@@ -444,7 +495,13 @@ export const orderRepository = {
       db.query.orders.findMany({
         where,
         with: {
-          items: true,
+          items: {
+            columns: {
+              availabilitySnapshot: false,
+              pricingReplayEvidence: false,
+              availabilityReplayEvidence: false,
+            },
+          },
           kitchenTickets: {
             columns: { id: true, status: true, ticketNumber: true },
           },

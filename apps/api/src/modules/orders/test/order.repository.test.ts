@@ -137,6 +137,19 @@ describe("order repository", () => {
     await expect(
       orderRepository.findMany("t1", "b1", { status: "OPEN", type: "DINE_IN" }),
     ).resolves.toEqual({ items: [], total: 0, page: 1, limit: 25 });
+    expect(db.query.orders.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        with: expect.objectContaining({
+          items: {
+            columns: {
+              availabilitySnapshot: false,
+              pricingReplayEvidence: false,
+              availabilityReplayEvidence: false,
+            },
+          },
+        }),
+      }),
+    );
     tx.select.mockReturnValue({
       from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
     });

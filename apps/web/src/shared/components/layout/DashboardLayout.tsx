@@ -14,6 +14,7 @@ import {
   Building2,
   Menu as MenuIcon,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/auth";
@@ -24,6 +25,7 @@ import { TenantSwitcher } from "./TenantSwitcher";
 import { usePermissions } from "@/shared/auth/permissions";
 import { RealtimeNotifications } from "./RealtimeNotifications";
 import { UserMenu } from "./UserMenu";
+import { GlobalCommandPalette } from "@/features/global-command/components/GlobalCommandPalette";
 
 const navItems = [
   {
@@ -100,6 +102,7 @@ export const DashboardLayout = () => {
   const previousPathname = useRef(pathname);
   const mobileNavTriggerRef = useRef<HTMLButtonElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   useEffect(() => {
     if (previousPathname.current !== pathname) {
@@ -107,6 +110,17 @@ export const DashboardLayout = () => {
       previousPathname.current = pathname;
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const handleGlobalShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalShortcut);
+    return () => window.removeEventListener("keydown", handleGlobalShortcut);
+  }, []);
 
   function closeMobileNavigation() {
     setMobileNavOpen(false);
@@ -259,6 +273,30 @@ export const DashboardLayout = () => {
           <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
+              aria-label="Open command and search"
+              aria-haspopup="dialog"
+              aria-expanded={commandOpen}
+              onClick={() => setCommandOpen(true)}
+              className="hidden sm:flex h-9 items-center gap-2 rounded-md border border-border bg-surface px-2.5 text-sm text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Search aria-hidden="true" className="h-4 w-4" />
+              <span className="hidden lg:inline">Search</span>
+              <kbd className="hidden rounded border border-border bg-surface-secondary px-1.5 py-0.5 text-[10px] font-medium text-text-disabled lg:inline">
+                Ctrl/⌘ K
+              </kbd>
+            </button>
+            <button
+              type="button"
+              aria-label="Open command and search"
+              aria-haspopup="dialog"
+              aria-expanded={commandOpen}
+              onClick={() => setCommandOpen(true)}
+              className="sm:hidden w-9 h-9 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary transition-colors"
+            >
+              <Search aria-hidden="true" className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
               aria-label="Notifications"
               className="relative w-9 h-9 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary transition-colors"
             >
@@ -277,6 +315,10 @@ export const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      <GlobalCommandPalette
+        open={commandOpen}
+        onClose={() => setCommandOpen(false)}
+      />
     </div>
   );
 };

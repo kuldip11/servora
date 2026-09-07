@@ -99,6 +99,11 @@ export const voidOrderItemBody = t.Object({
 
 export const compOrderItemBody = voidOrderItemBody;
 
+export const orderSearchQuery = t.Object({
+  q: t.String({ minLength: 8, maxLength: 100 }),
+  limit: t.Optional(t.Integer({ minimum: 1, maximum: 20 })),
+});
+
 export const orderListQuery = t.Object({
   status: t.Optional(t.String()),
   type: t.Optional(t.String()),

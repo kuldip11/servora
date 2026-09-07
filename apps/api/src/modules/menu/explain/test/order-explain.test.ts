@@ -5,8 +5,8 @@ describe("H1 deterministic pricing replay", () => {
   it("recomputes a normal line from immutable pipeline attribution", () => {
     const replay = replayPersistedLine({
       quantity: 2,
-      unitPrice: "12.00",
-      subtotal: "24.00",
+      unitPrice: "14.00",
+      subtotal: "28.00",
       pricingAttribution: {
         BASE_PRICE: 10,
         VARIANT: 2,
@@ -19,7 +19,7 @@ describe("H1 deterministic pricing replay", () => {
       },
     });
     expect(replay.matchesSnapshot).toBe(true);
-    expect(replay.replayedSubtotal).toBe(24);
+    expect(replay.replayedSubtotal).toBe(28);
     expect(replay.priceSource?.id).toBe("rule-1");
   });
 

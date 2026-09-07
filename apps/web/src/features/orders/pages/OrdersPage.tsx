@@ -69,6 +69,9 @@ export const OrdersPage = () => {
     return () => window.clearTimeout(timer);
   }, [search]);
 
+  const effectiveSearch =
+    debouncedSearch.replace(/^#/, "").length >= 8 ? debouncedSearch : "";
+
   const {
     data: result,
     isLoading,
@@ -76,7 +79,7 @@ export const OrdersPage = () => {
   } = useOrdersPage({
     status: statusFilter,
     type: typeFilter,
-    search: debouncedSearch,
+    search: effectiveSearch,
     page,
     limit: pageSize,
     ...(sort?.columnId === "time"

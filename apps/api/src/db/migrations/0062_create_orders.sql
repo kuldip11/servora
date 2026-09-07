@@ -41,6 +41,16 @@ CREATE TABLE "orders" (
 
 CREATE INDEX "orders_tenant_branch_idx" ON "orders" USING btree ("tenant_id", "branch_id");
 
+CREATE INDEX "orders_tenant_branch_created_at_idx" ON "orders" USING btree ("tenant_id", "branch_id", "created_at");
+
+CREATE INDEX "orders_tenant_branch_status_created_at_idx" ON "orders" USING btree ("tenant_id", "branch_id", "status", "created_at");
+
+CREATE INDEX "orders_tenant_created_at_idx" ON "orders" USING btree ("tenant_id", "created_at");
+
+CREATE INDEX "orders_tenant_short_id_idx" ON "orders" USING btree ("tenant_id", (right("id"::text, 8)));
+
+CREATE INDEX "orders_tenant_branch_short_id_idx" ON "orders" USING btree ("tenant_id", "branch_id", (right("id"::text, 8)));
+
 CREATE INDEX "orders_status_idx" ON "orders" USING btree ("status");
 
 CREATE INDEX "orders_created_at_idx" ON "orders" USING btree ("created_at");

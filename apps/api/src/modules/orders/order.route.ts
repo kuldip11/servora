@@ -7,6 +7,7 @@ import {
   fireTicketBody,
   orderIdParams,
   orderListQuery,
+  orderSearchQuery,
   orderItemParams,
   voidOrderItemBody,
   compOrderItemBody,
@@ -20,6 +21,11 @@ export const ordersRouter = new Elysia()
   .get("/api/orders/", ({ auth, query }) => orderController.list(auth, query), {
     query: orderListQuery,
   })
+  .get(
+    "/api/orders/search",
+    ({ auth, query }) => orderController.search(auth, query),
+    { query: orderSearchQuery },
+  )
   .get(
     "/api/orders/:id",
     ({ auth, params }) => orderController.getById(auth, params.id),

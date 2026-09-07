@@ -10,7 +10,7 @@ vi.mock("../../../../shared/lib/api-client", () => ({
 }));
 
 describe("OrderExplainDialog", () => {
-  it("renders a human-readable deterministic trace from the order explain endpoint", async () => {
+  it("explains price, availability, order state, and inventory movement", async () => {
     api.get.mockResolvedValueOnce({
       data: {
         data: {
@@ -19,6 +19,37 @@ describe("OrderExplainDialog", () => {
           completeHistory: true,
           historyNotice:
             "Deterministic fire-time resolver evidence is complete for every line.",
+          orderState: {
+            currentState: "OPEN",
+            explanation: "Waiting on kitchen ticket #2 (Paneer Tikka).",
+            blockingTicket: {
+              ticketId: "ticket-2",
+              ticketNumber: 2,
+              status: "PREPARING",
+              stationNames: ["Grill"],
+              itemNames: ["Paneer Tikka"],
+              firedAt: "2026-08-30T11:50:00.000Z",
+              elapsedMinutes: 14,
+              targetMinutes: 10,
+              overdue: true,
+            },
+            tickets: [],
+          },
+          inventoryMovements: [
+            {
+              deductionId: "deduction-1",
+              inventoryItemName: "Paneer",
+              menuItemName: "Paneer Tikka",
+              quantitySold: 2,
+              quantityDeducted: 0.4,
+              deductionPerUnit: 0.2,
+              unit: "KG",
+              transactionType: "RECIPE_CONSUMPTION",
+              wasShort: false,
+              deductedAt: "2026-08-30T12:00:00.000Z",
+              reversedAt: null,
+            },
+          ],
           totals: {
             subtotal: 100,
             discountAmount: 10,
@@ -42,6 +73,20 @@ describe("OrderExplainDialog", () => {
                 asOf: "2026-08-30T12:00:00.000Z",
                 reason: "Daily window active",
               },
+              priceBreakdown: [
+                {
+                  kind: "BASE_PRICE",
+                  label: "Rule-resolved base price",
+                  amount: 100,
+                  source: "Tuesday happy-hour rule",
+                },
+                {
+                  kind: "PROMOTION",
+                  label: "Promotion",
+                  amount: -10,
+                  source: "Happy hour",
+                },
+              ],
               pricingReplay: {
                 priceSource: {
                   kind: "PRICE_RULE",
@@ -63,10 +108,6 @@ describe("OrderExplainDialog", () => {
                   stage: "AVAILABILITY_RESOLVER",
                   explanation: "ACTIVE: Daily window active [SCHEDULE]",
                 },
-                {
-                  stage: "PRICING_PIPELINE_STAGE_1",
-                  explanation: "Tuesday happy-hour rule",
-                },
               ],
             },
           ],
@@ -79,11 +120,18 @@ describe("OrderExplainDialog", () => {
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith("/orders/order-1/explain"),
     );
-    expect(await screen.findByText("Paneer Tikka")).toBeTruthy();
+    expect(await screen.findByText("Why this price?")).toBeTruthy();
+    expect(screen.getByText("Why is the order in this state?")).toBeTruthy();
     expect(
-      screen.getAllByText("Tuesday happy-hour rule").length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText("ACTIVE · SCHEDULE · STAFF/DINE_IN")).toBeTruthy();
-    expect(screen.getByText("Matches snapshot")).toBeTruthy();
+      screen.getByText("Waiting on kitchen ticket #2 (Paneer Tikka)."),
+    ).toBeTruthy();
+    expect(screen.getByText("Grill")).toBeTruthy();
+    expect(screen.getByText("14m")).toBeTruthy();
+    expect(screen.getByText("10m")).toBeTruthy();
+    expect(screen.getByText("Tuesday happy-hour rule")).toBeTruthy();
+    expect(screen.getByText(/Source: SCHEDULE/)).toBeTruthy();
+    expect(screen.getByText("Why did inventory move?")).toBeTruthy();
+    expect(screen.getByText(/Paneer decreased by/)).toBeTruthy();
+    expect(screen.getByText("0.2 KG")).toBeTruthy();
   });
 });

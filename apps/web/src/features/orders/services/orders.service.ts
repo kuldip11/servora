@@ -41,6 +41,7 @@ export const toCartItemPayload = (item: CartItem): CartItemPayload => {
 
 export const ordersService = {
   list: ordersApi.list,
+  search: ordersApi.search,
   detail: ordersApi.get,
   create: ordersApi.create,
   addItems(orderId: string, input: AddOrderItemsInput): Promise<Order> {

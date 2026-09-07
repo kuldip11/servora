@@ -13,6 +13,7 @@
     "dev:website": "cd apps/website && bun run dev",
     "test": "turbo run test",
     "lint": "eslint 'apps/**/*.{ts,tsx}' 'packages/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'apps/**/*.{ts,tsx}' 'packages/**/*.{ts,tsx}' --fix",
     "typecheck": "turbo run typecheck",
     "db:migrate": "cd apps/api && bun run db:migrate",
     "db:reset": "cd apps/api && bun run db:reset",
@@ -67,12 +68,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.66.0",
     "eslint": "^9.39.5",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "turbo": "^2.0.0",
-    "typescript": "^5.4.5",
     "prettier": "^3.6.2",
-    "@typescript-eslint/parser": "^8.66.0"
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=20.0.0",

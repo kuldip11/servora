@@ -45,6 +45,14 @@ vi.mock("@/shared/components/layout/RealtimeNotifications", () => ({
 vi.mock("@/shared/components/layout/UserMenu", () => ({
   UserMenu: () => <div>user-menu</div>,
 }));
+vi.mock("@/features/global-command/components/GlobalCommandPalette", () => ({
+  GlobalCommandPalette: ({ open, onClose }: any) =>
+    open ? (
+      <div data-testid="global-command">
+        <button onClick={onClose}>close command</button>
+      </div>
+    ) : null,
+}));
 vi.mock("@pos/ui", () => ({
   SkipLink: () => <a href="#main-content">skip</a>,
   Dialog: ({ open, title, children, onClose }: any) =>
@@ -113,6 +121,17 @@ describe("DashboardLayout coverage", () => {
     render(<DashboardLayout />);
     expect(screen.getAllByText("Tables").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Staff").length).toBeGreaterThan(0);
+  });
+
+  it("opens global command search from the header and keyboard shortcut", () => {
+    render(<DashboardLayout />);
+    fireEvent.click(screen.getAllByLabelText("Open command and search")[0]!);
+    expect(screen.getByTestId("global-command")).toBeTruthy();
+    fireEvent.click(screen.getByText("close command"));
+    expect(screen.queryByTestId("global-command")).toBeNull();
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByTestId("global-command")).toBeTruthy();
   });
 
   it("focuses main content after route changes", () => {

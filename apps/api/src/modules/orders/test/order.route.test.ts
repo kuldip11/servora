@@ -25,6 +25,7 @@ vi.mock("elysia", async (importOriginal) => {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const ctl = vi.hoisted(() => ({
   list: vi.fn(),
+  search: vi.fn(),
   getById: vi.fn(),
   explain: vi.fn(),
   getInventoryImpact: vi.fn(),
@@ -64,6 +65,14 @@ describe("orders routes", () => {
     };
     await find("GET", "/api/orders/")({ auth, query: { status: "OPEN" } });
     expect(ctl.list).toHaveBeenCalledWith(auth, { status: "OPEN" });
+    await find(
+      "GET",
+      "/api/orders/search",
+    )({
+      auth,
+      query: { q: "12345678", limit: 8 },
+    });
+    expect(ctl.search).toHaveBeenCalledWith(auth, { q: "12345678", limit: 8 });
     await find("GET", "/api/orders/:id")({ auth, params });
     await find("GET", "/api/orders/:id/explain")({ auth, params });
     await find("GET", "/api/orders/:id/inventory-impact")({ auth, params });

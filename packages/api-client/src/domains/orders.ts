@@ -26,6 +26,15 @@ export interface OrdersListFilters {
   sortDirection?: "asc" | "desc";
 }
 
+export interface OrderSearchResult {
+  id: string;
+  status: Order["status"];
+  type: Order["type"];
+  createdAt: string | Date;
+  tableId: string | null;
+  tableName: string | null;
+}
+
 export interface OrderAdjustmentReason {
   cancellationReasonId?: string;
   reason?: string;
@@ -46,6 +55,11 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       if (filters.sortDirection)
         params["sortDirection"] = filters.sortDirection;
       return getPaginatedDomainData<Order>(client, "/orders", { params });
+    },
+    search(query: string, limit = 8): Promise<OrderSearchResult[]> {
+      return getDomainData<OrderSearchResult[]>(client, "/orders/search", {
+        params: { q: query, limit: String(limit) },
+      });
     },
     get(orderId: string): Promise<Order> {
       return getDomainData<Order>(client, `/orders/${orderId}`);

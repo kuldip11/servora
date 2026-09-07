@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findById, list, getEffectiveItem, price } = vi.hoisted(() => ({
-  findById: vi.fn(),
-  list: vi.fn(),
-  getEffectiveItem: vi.fn(),
-  price: vi.fn(),
-}));
+const { findById, list, getEffectiveItem, price, getOrderDeductions } =
+  vi.hoisted(() => ({
+    findById: vi.fn(),
+    list: vi.fn(),
+    getEffectiveItem: vi.fn(),
+    price: vi.fn(),
+    getOrderDeductions: vi.fn(),
+  }));
 vi.mock("../../../orders/order.repository", () => ({
   orderRepository: { findById },
 }));
@@ -19,6 +21,9 @@ vi.mock("../../../orders/pricing/pricing-pipeline", () => ({
   pricingPipeline: { price },
 }));
 vi.mock("../../../../core/auth", () => ({ requirePermission: vi.fn() }));
+vi.mock("../../../inventory/inventory.service", () => ({
+  inventoryService: { getOrderDeductions },
+}));
 
 import { InternalError } from "@/core/errors";
 import { orderExplainService } from "@/modules/menu/explain/order-explain.service";
@@ -109,6 +114,7 @@ describe("H1 point-in-time order explanation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     list.mockResolvedValue([]);
+    getOrderDeductions.mockResolvedValue([]);
     const items = [
       line("schedule", "SCHEDULE", "MENU_ITEM"),
       line("override", "BRANCH_OVERRIDE", "BRANCH_OVERRIDE"),
@@ -116,6 +122,9 @@ describe("H1 point-in-time order explanation", () => {
     ];
     findById.mockResolvedValue({
       id: "order",
+      branchId: "branch",
+      status: "OPEN",
+      kitchenTickets: [],
       customerId: null,
       customerGroupId: null,
       resolutionAsOf: new Date("2026-08-30T10:00:00.000Z"),
@@ -181,6 +190,9 @@ describe("H1 point-in-time order explanation", () => {
     broken.pricingReplayEvidence = null as never;
     findById.mockResolvedValue({
       id: "order",
+      branchId: "branch",
+      status: "OPEN",
+      kitchenTickets: [],
       customerId: null,
       customerGroupId: null,
       resolutionAsOf: new Date("2026-08-30T10:00:00.000Z"),

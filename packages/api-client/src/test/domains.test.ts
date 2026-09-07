@@ -248,6 +248,10 @@ describe("orders and organizations APIs", () => {
       sortDirection: "desc",
     });
     await orders.list({ view: "ALL" });
+    await orders.search("12345678", 8);
+    expect(client.get).toHaveBeenCalledWith("/orders/search", {
+      params: { q: "12345678", limit: "8" },
+    });
     await orders.get("o1");
     await orders.create({} as never);
     await orders.addItems("o1", {} as never);

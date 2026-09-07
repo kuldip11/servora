@@ -212,11 +212,19 @@ export const AvailabilityDashboardPage = () => {
                 </div>
                 <div className="rounded-lg bg-surface-secondary p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-disabled">
-                    Why
+                    Why is this unavailable?
                   </p>
-                  <p className="mt-1 text-sm text-text-primary">{row.reason}</p>
+                  <p className="mt-1 text-sm font-medium text-text-primary">
+                    {row.reason}
+                  </p>
+                  <p className="mt-2 text-xs text-text-secondary">
+                    Source: {row.cause.replace(/_/g, " ")}
+                  </p>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Badge variant="warning">
+                    {row.cause.replace(/_/g, " ")}
+                  </Badge>
                   {scopes.map((scope) => (
                     <Badge key={scope}>{scope.replace(/_/g, " ")}</Badge>
                   ))}

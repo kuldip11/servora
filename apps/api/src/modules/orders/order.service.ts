@@ -8,6 +8,7 @@ import { orderTableService } from "./order-table.service";
 
 export const orderService = {
   list: orderQueryService.list,
+  search: orderQueryService.search,
   getById: orderQueryService.getById,
   getInventoryImpact: orderQueryService.getInventoryImpact,
   create: createOrderService.create,

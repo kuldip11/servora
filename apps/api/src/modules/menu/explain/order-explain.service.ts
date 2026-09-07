@@ -2,6 +2,8 @@ import type { AuthContext } from "@/core/auth";
 import { requirePermission } from "@/core/auth";
 import { InternalError, NotFoundError } from "@/core/errors";
 import { orderRepository } from "@/modules/orders/order.repository";
+import { assertOrderResourceAccess } from "@/modules/orders/orders-authorization";
+import { inventoryService } from "@/modules/inventory/inventory.service";
 import {
   pricingPipeline,
   type PricingReplayEvidence,
@@ -39,7 +41,8 @@ export const replayPersistedLine = (item: {
   const comboDelta = attribution.COMBO ?? 0;
   const preComboSubtotal = money(persistedSubtotal - comboDelta);
   const replayedPreComboSubtotal = money(
-    (attribution.BASE_PRICE + attribution.MODIFIER) * item.quantity,
+    (attribution.BASE_PRICE + attribution.VARIANT + attribution.MODIFIER) *
+      item.quantity,
   );
   const replayedSubtotal = money(replayedPreComboSubtotal + comboDelta);
   const promotion = attribution.PROMOTION ?? 0;
@@ -106,6 +109,102 @@ export const orderExplainService = {
     requirePermission(auth, "orders:read");
     const order = await orderRepository.findById(auth.tenantId, orderId);
     if (!order) throw new NotFoundError("Order", orderId);
+    assertOrderResourceAccess(auth, order.branchId);
+
+    const inventoryDeductions =
+      await inventoryService.getOrderDeductions(orderId);
+    const now = new Date();
+    const activeTicketStatuses = new Set(["HELD", "FIRED", "PREPARING"]);
+    const ticketStates = (order.kitchenTickets ?? []).map((ticket) => {
+      const firedAt = ticket.firedAt ?? ticket.createdAt;
+      const endAt = ticket.readyAt ?? now;
+      const elapsedMinutes = firedAt
+        ? Math.max(0, Math.floor((endAt.getTime() - firedAt.getTime()) / 60000))
+        : 0;
+      const targets = ticket.items
+        .map((ticketItem) => {
+          const evidence = isAvailabilityReplayEvidence(
+            ticketItem.availabilityReplayEvidence,
+          )
+            ? ticketItem.availabilityReplayEvidence
+            : null;
+          return evidence?.item.prepTimeMinutes ?? null;
+        })
+        .filter((value): value is number => value != null);
+      const targetMinutes = targets.length ? Math.max(...targets) : null;
+      const stationNames = [
+        ...new Set(
+          ticket.items
+            .map((ticketItem) => ticketItem.station?.name)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ];
+      return {
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        status: ticket.status,
+        stationNames,
+        itemNames: ticket.items.map((ticketItem) => ticketItem.menuItemName),
+        firedAt: firedAt?.toISOString() ?? null,
+        elapsedMinutes,
+        targetMinutes,
+        overdue:
+          targetMinutes != null &&
+          activeTicketStatuses.has(ticket.status) &&
+          elapsedMinutes > targetMinutes,
+      };
+    });
+    const blockingTickets = ticketStates.filter((ticket) =>
+      activeTicketStatuses.has(ticket.status),
+    );
+    const primaryBlocker =
+      blockingTickets
+        .slice()
+        .sort((left, right) => right.elapsedMinutes - left.elapsedMinutes)[0] ??
+      null;
+
+    const orderState = {
+      currentState: order.status,
+      explanation:
+        primaryBlocker != null
+          ? `Waiting on kitchen ticket #${primaryBlocker.ticketNumber}${primaryBlocker.itemNames[0] ? ` (${primaryBlocker.itemNames[0]})` : ""}.`
+          : order.status === "OPEN" && ticketStates.length === 0
+            ? "The order is open and has no kitchen tickets yet."
+            : order.status === "OPEN"
+              ? "All fired kitchen tickets are ready or served; the order remains open for additional rounds or billing."
+              : `No active kitchen blocker was found for the current ${order.status} state.`,
+      blockingTicket: primaryBlocker,
+      tickets: ticketStates,
+    };
+
+    const inventoryMovements = inventoryDeductions.map((deduction) => {
+      const orderItem = order.items.find(
+        (item) => item.id === deduction.orderItemId,
+      );
+      const soldQuantity = orderItem?.quantity ?? null;
+      const totalDeducted = Number(deduction.quantityDeducted);
+      return {
+        deductionId: deduction.id,
+        inventoryItemId: deduction.inventoryItemId,
+        inventoryItemName: deduction.inventoryItem.name,
+        menuItemId: deduction.menuItemId,
+        menuItemName: deduction.menuItem.name,
+        orderItemId: deduction.orderItemId,
+        quantitySold: soldQuantity,
+        quantityDeducted: totalDeducted,
+        deductionPerUnit:
+          soldQuantity && soldQuantity > 0
+            ? money(totalDeducted / soldQuantity)
+            : null,
+        unit: deduction.unit,
+        transactionType: deduction.reversedAt
+          ? "RECIPE_CONSUMPTION_REVERSED"
+          : "RECIPE_CONSUMPTION",
+        wasShort: deduction.wasShort,
+        deductedAt: deduction.deductedAt.toISOString(),
+        reversedAt: deduction.reversedAt?.toISOString() ?? null,
+      };
+    });
 
     const orderAsOf = order.resolutionAsOf ?? order.createdAt;
     const lines = [];
@@ -124,6 +223,28 @@ export const orderExplainService = {
           asOf: lineAsOf.toISOString(),
           historicalEvidenceComplete: true,
           snapshotPrice: Number(item.unitPrice),
+          priceBreakdown: [
+            {
+              kind: "BASE_PRICE",
+              label: "Grouping price",
+              amount: money(
+                persistedReplay.baseResolvedUnitPrice * item.quantity,
+              ),
+              source:
+                persistedReplay.priceSource?.description ??
+                "Stored grouping price",
+            },
+            ...(persistedReplay.comboDelta
+              ? [
+                  {
+                    kind: "COMBO",
+                    label: "Combo adjustment",
+                    amount: persistedReplay.comboDelta,
+                    source: "Combo pricing policy",
+                  },
+                ]
+              : []),
+          ],
           pricingReplay: persistedReplay,
           trace: [
             {
@@ -264,6 +385,85 @@ export const orderExplainService = {
         snapshotPrice: Number(item.unitPrice),
         snapshotTaxRate: Number(item.taxRate),
         pricingAttribution: item.pricingAttribution ?? {},
+        priceBreakdown: [
+          {
+            kind: "BASE_PRICE",
+            label:
+              persistedReplay.priceSource?.kind === "BRANCH_OVERRIDE"
+                ? "Branch-resolved base price"
+                : persistedReplay.priceSource?.kind === "PRICE_RULE"
+                  ? "Rule-resolved base price"
+                  : "Base price",
+            amount: money(
+              persistedReplay.baseResolvedUnitPrice * item.quantity,
+            ),
+            source:
+              persistedReplay.priceSource?.description ??
+              "Menu item base price",
+          },
+          ...(persistedReplay.variantDelta
+            ? [
+                {
+                  kind: "VARIANT",
+                  label: "Variant adjustment",
+                  amount: money(persistedReplay.variantDelta * item.quantity),
+                  source: item.variantName
+                    ? `Variant: ${item.variantName}`
+                    : "Selected variant",
+                },
+              ]
+            : []),
+          ...(persistedReplay.modifierDelta
+            ? [
+                {
+                  kind: "MODIFIER",
+                  label: "Modifier adjustment",
+                  amount: money(persistedReplay.modifierDelta * item.quantity),
+                  source:
+                    item.modifiers.length > 0
+                      ? item.modifiers
+                          .map((modifier) => modifier.name)
+                          .join(", ")
+                      : "Selected modifiers",
+                },
+              ]
+            : []),
+          ...(persistedReplay.comboDelta
+            ? [
+                {
+                  kind: "COMBO",
+                  label: "Combo adjustment",
+                  amount: persistedReplay.comboDelta,
+                  source: "Combo pricing policy",
+                },
+              ]
+            : []),
+          ...(persistedReplay.promotionDelta
+            ? [
+                {
+                  kind: "PROMOTION",
+                  label: "Promotion",
+                  amount: persistedReplay.promotionDelta,
+                  source:
+                    item.pricingAttribution?.PROMOTION_DETAILS?.map(
+                      (promotion) => promotion.name,
+                    ).join(", ") || "Promotion discount",
+                },
+              ]
+            : []),
+          ...(persistedReplay.loyaltyDelta
+            ? [
+                {
+                  kind: "LOYALTY",
+                  label: "Loyalty discount",
+                  amount: persistedReplay.loyaltyDelta,
+                  source:
+                    item.pricingAttribution?.LOYALTY_DETAILS?.name ??
+                    "Loyalty tier",
+                },
+              ]
+            : []),
+        ],
         pricingReplay: persistedReplay,
         authoritativePricingReplay,
         availabilityAtOrder: availability,
@@ -315,6 +515,8 @@ export const orderExplainService = {
       historyNotice: lines.every((line) => line.historicalEvidenceComplete)
         ? "Deterministic AvailabilityResolver and PricingPipeline replay matched every fire-time snapshot."
         : "Replay evidence is present for every line, but one or more resolver results differ from the stored fire-time snapshot.",
+      orderState,
+      inventoryMovements,
       totals: {
         subtotal: Number(order.subtotal),
         discountAmount: Number(order.discountAmount),

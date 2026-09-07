@@ -204,7 +204,15 @@ describe("OrdersPage coverage", () => {
     });
     act(() => vi.advanceTimersByTime(300));
     expect(mocks.useOrdersPage).toHaveBeenLastCalledWith(
-      expect.objectContaining({ search: "abc" }),
+      expect.objectContaining({ search: "" }),
+    );
+
+    fireEvent.change(screen.getByLabelText("search"), {
+      target: { value: " #12345678 " },
+    });
+    act(() => vi.advanceTimersByTime(300));
+    expect(mocks.useOrdersPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: "#12345678" }),
     );
     fireEvent.change(screen.getByLabelText("Filter orders by status"), {
       target: { value: "OPEN" },

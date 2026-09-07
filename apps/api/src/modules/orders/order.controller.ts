@@ -39,6 +39,15 @@ export const orderController = {
     });
   },
 
+  async search(
+    auth: AuthContext,
+    query: { q: string; limit?: number | undefined },
+  ) {
+    return successResponse(
+      await orderService.search(auth, query.q, query.limit),
+    );
+  },
+
   async getById(auth: AuthContext, orderId: string) {
     const order = await orderService.getById(auth, orderId);
     return successResponse(order);

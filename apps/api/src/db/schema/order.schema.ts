@@ -108,6 +108,27 @@ export const orders = pgTable(
       t.tenantId,
       t.branchId,
     ),
+    tenantBranchCreatedAtIdx: index("orders_tenant_branch_created_at_idx").on(
+      t.tenantId,
+      t.branchId,
+      t.createdAt,
+    ),
+    tenantBranchStatusCreatedAtIdx: index(
+      "orders_tenant_branch_status_created_at_idx",
+    ).on(t.tenantId, t.branchId, t.status, t.createdAt),
+    tenantCreatedAtIdx: index("orders_tenant_created_at_idx").on(
+      t.tenantId,
+      t.createdAt,
+    ),
+    tenantShortIdIdx: index("orders_tenant_short_id_idx").on(
+      t.tenantId,
+      sql`right(${t.id}::text, 8)`,
+    ),
+    tenantBranchShortIdIdx: index("orders_tenant_branch_short_id_idx").on(
+      t.tenantId,
+      t.branchId,
+      sql`right(${t.id}::text, 8)`,
+    ),
     statusIdx: index("orders_status_idx").on(t.status),
     createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
     mergedIntoIdx: index("orders_merged_into_idx").on(t.mergedIntoOrderId),

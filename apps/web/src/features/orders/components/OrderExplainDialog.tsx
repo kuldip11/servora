@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card, Modal, Spinner } from "@pos/ui";
 import { createOrdersApi } from "@pos/api-client";
 import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { formatCurrency } from "@/shared/utils/format";
 
 const ordersApi = createOrdersApi(apiClient);
-import { formatCurrency } from "@/shared/utils/format";
 
 type ExplanationTrace = {
   stage: string;
@@ -19,6 +19,13 @@ type AvailabilitySnapshot = {
   channel: string;
   fulfillmentType: string;
   asOf: string;
+};
+
+type PriceBreakdownEntry = {
+  kind: string;
+  label: string;
+  amount: number;
+  source: string;
 };
 
 type PricingReplay = {
@@ -40,6 +47,7 @@ type ExplanationLine = {
   asOf: string;
   historicalEvidenceComplete: boolean;
   availabilityAtOrder?: AvailabilitySnapshot | null;
+  priceBreakdown: PriceBreakdownEntry[];
   pricingReplay: PricingReplay;
   authoritativePricingReplay?: {
     unitPrice: number;
@@ -57,11 +65,44 @@ type ExplanationLine = {
   trace: ExplanationTrace[];
 };
 
+type TicketState = {
+  ticketId: string;
+  ticketNumber: number;
+  status: string;
+  stationNames: string[];
+  itemNames: string[];
+  firedAt: string | null;
+  elapsedMinutes: number;
+  targetMinutes: number | null;
+  overdue: boolean;
+};
+
+type InventoryMovement = {
+  deductionId: string;
+  inventoryItemName: string;
+  menuItemName: string;
+  quantitySold: number | null;
+  quantityDeducted: number;
+  deductionPerUnit: number | null;
+  unit: string;
+  transactionType: string;
+  wasShort: boolean;
+  deductedAt: string;
+  reversedAt: string | null;
+};
+
 type OrderExplanation = {
   orderId: string;
   asOf: string;
   completeHistory: boolean;
   historyNotice: string;
+  orderState: {
+    currentState: string;
+    explanation: string;
+    blockingTicket: TicketState | null;
+    tickets: TicketState[];
+  };
+  inventoryMovements: InventoryMovement[];
   totals: {
     subtotal: number;
     discountAmount: number;
@@ -72,6 +113,13 @@ type OrderExplanation = {
   };
   lines: ExplanationLine[];
 };
+
+const signedCurrency = (amount: number) => {
+  if (amount === 0) return formatCurrency(0);
+  return `${amount > 0 ? "+" : "−"}${formatCurrency(Math.abs(amount))}`;
+};
+
+const humanize = (value: string) => value.replace(/_/g, " ");
 
 export const OrderExplainDialog = ({
   open,
@@ -110,7 +158,7 @@ export const OrderExplainDialog = ({
   }, [open, orderId]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Explain this order" size="xl">
+    <Modal open={open} onClose={onClose} title="Why did this happen?" size="xl">
       {loading ? (
         <div className="flex min-h-40 items-center justify-center">
           <Spinner className="h-6 w-6" />
@@ -118,20 +166,21 @@ export const OrderExplainDialog = ({
       ) : error ? (
         <Card className="border-danger/30 bg-danger-surface">
           <p className="text-sm font-semibold text-danger">
-            Unable to reconstruct this order
+            Unable to explain this order
           </p>
           <p className="mt-1 text-sm text-text-secondary">{error}</p>
         </Card>
       ) : explanation ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-text-primary">
-                  Resolution time
-                </p>
+                <h2 className="font-semibold text-text-primary">
+                  Order explanation
+                </h2>
                 <p className="mt-1 text-sm text-text-secondary">
-                  {new Date(explanation.asOf).toLocaleString()}
+                  Servora reconstructed the pricing and availability decisions
+                  captured when this order was fired.
                 </p>
               </div>
               <Badge
@@ -142,10 +191,243 @@ export const OrderExplainDialog = ({
                   : "Replay mismatch"}
               </Badge>
             </div>
-            <p className="mt-3 text-sm text-text-secondary">
+            <p className="mt-3 text-xs text-text-secondary">
               {explanation.historyNotice}
             </p>
-            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+          </Card>
+
+          <section aria-labelledby="order-state-explanation">
+            <h2
+              id="order-state-explanation"
+              className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary"
+            >
+              Why is the order in this state?
+            </h2>
+            <Card>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge>{humanize(explanation.orderState.currentState)}</Badge>
+                {explanation.orderState.blockingTicket?.overdue && (
+                  <Badge variant="warning">Past preparation target</Badge>
+                )}
+              </div>
+              <p className="mt-3 text-sm font-medium text-text-primary">
+                {explanation.orderState.explanation}
+              </p>
+              {explanation.orderState.blockingTicket && (
+                <div className="mt-4 grid gap-3 rounded-lg bg-surface-secondary p-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <span className="text-text-secondary">Blocking item</span>
+                    <strong className="block text-text-primary">
+                      {explanation.orderState.blockingTicket.itemNames.join(
+                        ", ",
+                      ) || "Kitchen ticket"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Station</span>
+                    <strong className="block text-text-primary">
+                      {explanation.orderState.blockingTicket.stationNames.join(
+                        ", ",
+                      ) || "Unassigned"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Elapsed</span>
+                    <strong className="block text-text-primary">
+                      {explanation.orderState.blockingTicket.elapsedMinutes}m
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Target</span>
+                    <strong className="block text-text-primary">
+                      {explanation.orderState.blockingTicket.targetMinutes ==
+                      null
+                        ? "Not configured"
+                        : `${explanation.orderState.blockingTicket.targetMinutes}m`}
+                    </strong>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </section>
+
+          <section aria-labelledby="price-explanation">
+            <h2
+              id="price-explanation"
+              className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary"
+            >
+              Why this price?
+            </h2>
+            <div className="space-y-3">
+              {explanation.lines.map((line) => (
+                <Card key={line.orderItemId}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-text-primary">
+                        {line.name}
+                      </h3>
+                      <p className="mt-1 text-xs text-text-secondary">
+                        Decision captured {new Date(line.asOf).toLocaleString()}
+                      </p>
+                    </div>
+                    <strong className="text-text-primary">
+                      {formatCurrency(line.pricingReplay.payableBeforeTax)}
+                    </strong>
+                  </div>
+
+                  <div className="mt-4 divide-y divide-divider rounded-lg border border-border">
+                    {line.priceBreakdown.map((entry, index) => (
+                      <div
+                        key={`${entry.kind}:${index}`}
+                        className="flex items-start justify-between gap-4 px-3 py-2.5 text-sm"
+                      >
+                        <div>
+                          <p className="font-medium text-text-primary">
+                            {entry.label}
+                          </p>
+                          <p className="text-xs text-text-secondary">
+                            {entry.source}
+                          </p>
+                        </div>
+                        <span
+                          className={
+                            entry.amount < 0
+                              ? "text-success"
+                              : "text-text-primary"
+                          }
+                        >
+                          {signedCurrency(entry.amount)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between px-3 py-2.5 text-sm font-semibold">
+                      <span className="text-text-primary">
+                        Final before tax
+                      </span>
+                      <span className="text-text-primary">
+                        {formatCurrency(line.pricingReplay.payableBeforeTax)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {line.availabilityAtOrder && (
+                    <div className="mt-4 rounded-lg bg-surface-secondary p-3 text-sm">
+                      <p className="font-medium text-text-primary">
+                        Why was this item orderable?
+                      </p>
+                      <p className="mt-1 text-text-secondary">
+                        {humanize(line.availabilityAtOrder.effectiveStatus)} ·
+                        Source: {humanize(line.availabilityAtOrder.cause)} ·{" "}
+                        {line.availabilityAtOrder.channel}/
+                        {line.availabilityAtOrder.fulfillmentType}
+                      </p>
+                      {line.availabilityAtOrder.reason && (
+                        <p className="mt-1 text-text-secondary">
+                          {line.availabilityAtOrder.reason}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <details className="mt-4 rounded-lg border border-border px-3 py-2 text-sm">
+                    <summary className="cursor-pointer font-medium text-text-primary">
+                      Technical decision trace
+                    </summary>
+                    <ol className="mt-3 space-y-2">
+                      {line.trace.map((entry, index) => (
+                        <li
+                          key={`${entry.stage}:${index}`}
+                          className="flex gap-3"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-surface text-xs font-semibold text-primary">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <p className="font-medium text-text-primary">
+                              {humanize(entry.stage)}
+                            </p>
+                            <p className="text-text-secondary">
+                              {entry.explanation}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="inventory-explanation">
+            <h2
+              id="inventory-explanation"
+              className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary"
+            >
+              Why did inventory move?
+            </h2>
+            <Card>
+              {explanation.inventoryMovements.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  No recipe inventory deduction was recorded for this order.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {explanation.inventoryMovements.map((movement) => (
+                    <div
+                      key={movement.deductionId}
+                      className="rounded-lg border border-border p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-text-primary">
+                            {movement.inventoryItemName} decreased by{" "}
+                            {movement.quantityDeducted} {movement.unit}
+                          </p>
+                          <p className="mt-1 text-xs text-text-secondary">
+                            Order item: {movement.menuItemName} · Transaction:{" "}
+                            {humanize(movement.transactionType)}
+                          </p>
+                        </div>
+                        {movement.wasShort && (
+                          <Badge variant="warning">Insufficient stock</Badge>
+                        )}
+                      </div>
+                      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                        <div>
+                          <span className="text-text-secondary">
+                            Quantity sold
+                          </span>
+                          <strong className="block text-text-primary">
+                            {movement.quantitySold ?? "Unknown"}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-text-secondary">
+                            Recipe deduction each
+                          </span>
+                          <strong className="block text-text-primary">
+                            {movement.deductionPerUnit == null
+                              ? "Unknown"
+                              : `${movement.deductionPerUnit} ${movement.unit}`}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-text-secondary">Recorded</span>
+                          <strong className="block text-text-primary">
+                            {new Date(movement.deductedAt).toLocaleString()}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </section>
+
+          <Card>
+            <div className="grid gap-3 text-sm sm:grid-cols-3">
               <div>
                 <span className="text-text-secondary">Subtotal</span>
                 <strong className="block text-text-primary">
@@ -159,143 +441,13 @@ export const OrderExplainDialog = ({
                 </strong>
               </div>
               <div>
-                <span className="text-text-secondary">Total</span>
+                <span className="text-text-secondary">Order total</span>
                 <strong className="block text-text-primary">
                   {formatCurrency(explanation.totals.totalAmount)}
                 </strong>
               </div>
             </div>
           </Card>
-
-          {explanation.lines.map((line) => (
-            <Card key={line.orderItemId}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-text-primary">
-                    {line.name}
-                  </h3>
-                  <p className="mt-1 text-xs text-text-secondary">
-                    Resolved {new Date(line.asOf).toLocaleString()}
-                  </p>
-                </div>
-                <Badge
-                  variant={
-                    line.historicalEvidenceComplete ? "success" : "warning"
-                  }
-                >
-                  {line.historicalEvidenceComplete
-                    ? "Replay verified"
-                    : "Replay mismatch"}
-                </Badge>
-              </div>
-
-              {line.availabilityAtOrder && (
-                <div className="mt-4 rounded-lg bg-surface-secondary p-3 text-sm">
-                  <p className="font-medium text-text-primary">
-                    Availability at fire time
-                  </p>
-                  <p className="mt-1 text-text-secondary">
-                    {line.availabilityAtOrder.effectiveStatus} ·{" "}
-                    {line.availabilityAtOrder.cause} ·{" "}
-                    {line.availabilityAtOrder.channel}/
-                    {line.availabilityAtOrder.fulfillmentType}
-                  </p>
-                  {line.availabilityAtOrder.reason && (
-                    <p className="mt-1 text-text-secondary">
-                      {line.availabilityAtOrder.reason}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-                <div>
-                  <span className="text-text-secondary">
-                    Winning price source
-                  </span>
-                  <strong className="block text-text-primary">
-                    {line.pricingReplay.priceSource?.description ??
-                      "Menu-item base price"}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-text-secondary">
-                    Stored line subtotal
-                  </span>
-                  <strong className="block text-text-primary">
-                    {formatCurrency(line.pricingReplay.persistedSubtotal)}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-text-secondary">
-                    Persisted attribution check
-                  </span>
-                  <strong
-                    className={
-                      line.pricingReplay.matchesSnapshot
-                        ? "block text-success"
-                        : "block text-warning"
-                    }
-                  >
-                    {line.pricingReplay.matchesSnapshot
-                      ? "Matches snapshot"
-                      : "Attribution mismatch"}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-text-secondary">
-                    AvailabilityResolver replay
-                  </span>
-                  <strong
-                    className={
-                      line.authoritativeAvailabilityReplay?.matchesSnapshot
-                        ? "block text-success"
-                        : "block text-warning"
-                    }
-                  >
-                    {line.authoritativeAvailabilityReplay?.matchesSnapshot
-                      ? "Matches snapshot"
-                      : "Mismatch"}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-text-secondary">
-                    PricingPipeline replay
-                  </span>
-                  <strong
-                    className={
-                      line.authoritativePricingReplay?.matchesSnapshot
-                        ? "block text-success"
-                        : "block text-warning"
-                    }
-                  >
-                    {line.authoritativePricingReplay?.matchesSnapshot
-                      ? "Matches snapshot"
-                      : "Mismatch"}
-                  </strong>
-                </div>
-              </div>
-
-              <ol className="mt-4 space-y-2">
-                {line.trace.map((entry, index) => (
-                  <li
-                    key={`${entry.stage}:${index}`}
-                    className="flex gap-3 text-sm"
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-surface text-xs font-semibold text-primary">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium text-text-primary">
-                        {entry.stage.replace(/_/g, " ")}
-                      </p>
-                      <p className="text-text-secondary">{entry.explanation}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </Card>
-          ))}
 
           <div className="flex justify-end">
             <Button variant="secondary" onClick={onClose}>

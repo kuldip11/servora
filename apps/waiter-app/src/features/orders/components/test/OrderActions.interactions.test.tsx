@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@pos/ui", () => ({
-  Button: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  Button: ({ children, onClick }: any) => (
+    <button onClick={onClick}>{children}</button>
+  ),
 }));
 import { OrderActions } from "@/features/orders/components/OrderActions";
 
@@ -31,7 +33,14 @@ describe("OrderActions interactions", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<OrderActions {...base} />);
     expect(screen.getByText(/All rounds need/)).toBeTruthy();
-    for (const name of ["Request Bill", "Add More Items", "Transfer Table", "Split Bill", "Merge Table", "Cancel Order"]) {
+    for (const name of [
+      "Request Bill",
+      "Add More Items",
+      "Transfer Table",
+      "Split Bill",
+      "Merge Table",
+      "Cancel Order",
+    ]) {
       fireEvent.click(screen.getByRole("button", { name }));
     }
     expect(base.onRequestBill).toHaveBeenCalled();

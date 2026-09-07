@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ArrowLeft, ListChecks, Upload } from "lucide-react";
 import { Button, Page, PageHeader, Tabs, type TabItem } from "@pos/ui";
 import { ItemFormModal } from "@/features/menu/components/ItemFormModal";
@@ -20,7 +19,6 @@ import { useToggleItemAvailability } from "@/features/menu/hooks/useToggleItemAv
 import { useDeleteMenuItem } from "@/features/menu/hooks/useDeleteMenuItem";
 import { useDuplicateMenuItem } from "@/features/menu/hooks/useDuplicateMenuItem";
 import { useSetItemPublished } from "@/features/menu/hooks/useSetItemPublished";
-import type { MenuItem, FoodType, MenuItemStatus } from "@pos/types";
 import { MenusSection } from "@/features/menu/components/MenusSection";
 import { KitchenStationsSection } from "@/features/menu/components/KitchenStationsSection";
 import { CombosSection } from "@/features/menu/components/CombosSection";
@@ -36,31 +34,33 @@ import {
   type MenuMoreSectionId,
   type MenuTabId,
 } from "@/features/menu/constants";
+import { useMenuPageState } from "@/features/menu/hooks/useMenuPageState";
 
 export const MenuPage = () => {
-  const [tab, setTab] = useState<MenuTabId>("items");
-  const [moreSection, setMoreSection] = useState<MenuMoreSectionId | null>(
-    null,
-  );
-  const [showImport, setShowImport] = useState(false);
-  const [savingTemplateFor, setSavingTemplateFor] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [itemForm, setItemForm] = useState<{
-    categoryId: string;
-    item: MenuItem | null;
-  } | null>(null);
-  const [itemSearch, setItemSearch] = useState("");
-  const [foodTypeFilter, setFoodTypeFilter] = useState<FoodType | "ALL">("ALL");
-  const [statusFilter, setStatusFilter] = useState<MenuItemStatus | "ALL">(
-    "ALL",
-  );
-  const [publishFilter, setPublishFilter] = useState<
-    "ALL" | "PUBLISHED" | "DRAFT"
-  >("ALL");
+  const {
+    tab,
+    moreSection,
+    showImport,
+    savingTemplateFor,
+    selectMode,
+    selectedIds,
+    itemForm,
+    itemSearch,
+    foodTypeFilter,
+    statusFilter,
+    publishFilter,
+    setTab,
+    toggleSelectMode,
+    setMoreSection,
+    setShowImport,
+    setSavingTemplateFor,
+    setSelectedIds,
+    setItemForm,
+    setItemSearch,
+    setFoodTypeFilter,
+    setStatusFilter,
+    setPublishFilter,
+  } = useMenuPageState();
 
   const { data: categories, isLoading } = useMenuCategories();
   const { data: tags } = useMenuTags();
@@ -203,10 +203,7 @@ export const MenuPage = () => {
           tab === "items" ? (
             <Button
               variant={selectMode ? "primary" : "secondary"}
-              onClick={() => {
-                setSelectMode((value) => !value);
-                setSelectedIds([]);
-              }}
+              onClick={toggleSelectMode}
             >
               <ListChecks className="w-4 h-4" />
               {selectMode ? "Done selecting" : "Select items"}
@@ -218,11 +215,7 @@ export const MenuPage = () => {
       <Tabs
         items={tabItems}
         value={tab}
-        onValueChange={(value) => {
-          const next = value as MenuTabId;
-          setTab(next);
-          if (next !== "more") setMoreSection(null);
-        }}
+        onValueChange={(value) => setTab(value as MenuTabId)}
       />
 
       {showImport && <ImportWizard onClose={() => setShowImport(false)} />}

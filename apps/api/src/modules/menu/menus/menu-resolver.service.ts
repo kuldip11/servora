@@ -35,7 +35,10 @@ export const isEffectiveAt = (effectiveFrom: Date | null, asOf: Date) => {
 };
 
 export const itemIsPublishedAt = (
-  item: Pick<typeof menuItems.$inferSelect, "isPublished" | "deletedAt" | "effectiveFrom">,
+  item: Pick<
+    typeof menuItems.$inferSelect,
+    "isPublished" | "deletedAt" | "effectiveFrom"
+  >,
   asOf: Date,
 ) => {
   return (
@@ -129,7 +132,10 @@ const inheritedOrganizationMenus = async (
   if (!skus.length) return [];
   const localItems = (
     await db.query.menuItems.findMany({
-      where: and(eq(menuItems.tenantId, tenantId), inArray(menuItems.sku, skus)),
+      where: and(
+        eq(menuItems.tenantId, tenantId),
+        inArray(menuItems.sku, skus),
+      ),
     })
   ).filter((item) => itemIsPublishedAt(item, asOf));
   const itemBySku = new Map(

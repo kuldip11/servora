@@ -251,7 +251,6 @@ describe("multi-bill splitting", () => {
     }
   });
 
-
   it("rejects invalid split counts and every item-allocation validation failure", () => {
     expect(() => splitMoneyEvenly(10, 0)).toThrow(ValidationError);
     expect(() => groupOrderItemsForEvenBills([{ id: "a" }], 1.5)).toThrow(
@@ -267,35 +266,41 @@ describe("multi-bill splitting", () => {
   });
 
   it("validates fractional item shares and combo atomicity", () => {
+    expect(validateItemShareAllocations(["a"], [{ itemShares: [] }])).toEqual({
+      ok: false,
+      reason: "EMPTY_BILL",
+    });
     expect(
-      validateItemShareAllocations(["a"], [{ itemShares: [] }]),
-    ).toEqual({ ok: false, reason: "EMPTY_BILL" });
-    expect(
-      validateItemShareAllocations(["a"], [
-        { itemShares: [{ orderItemId: "missing", shareRatio: 1 }] },
-      ]),
+      validateItemShareAllocations(
+        ["a"],
+        [{ itemShares: [{ orderItemId: "missing", shareRatio: 1 }] }],
+      ),
     ).toEqual({ ok: false, reason: "UNKNOWN_ITEM" });
     for (const ratio of [0, 1.1, Number.NaN]) {
       expect(
-        validateItemShareAllocations(["a"], [
-          { itemShares: [{ orderItemId: "a", shareRatio: ratio }] },
-        ]),
+        validateItemShareAllocations(
+          ["a"],
+          [{ itemShares: [{ orderItemId: "a", shareRatio: ratio }] }],
+        ),
       ).toEqual({ ok: false, reason: "INVALID_RATIO" });
     }
     expect(
-      validateItemShareAllocations(["a"], [
-        { itemShares: [{ orderItemId: "a", shareRatio: 0.5 }] },
-      ]),
+      validateItemShareAllocations(
+        ["a"],
+        [{ itemShares: [{ orderItemId: "a", shareRatio: 0.5 }] }],
+      ),
     ).toEqual({ ok: false, reason: "UNASSIGNED_ITEM" });
     expect(
-      validateItemShareAllocations(["a"], [
-        { itemShares: [{ orderItemId: "a", shareRatio: 1 }] },
-      ]),
+      validateItemShareAllocations(
+        ["a"],
+        [{ itemShares: [{ orderItemId: "a", shareRatio: 1 }] }],
+      ),
     ).toEqual({ ok: true });
     expect(
-      validateItemShareAllocations(["a", "b"], [
-        { itemShares: [{ orderItemId: "a", shareRatio: 1 }] },
-      ]),
+      validateItemShareAllocations(
+        ["a", "b"],
+        [{ itemShares: [{ orderItemId: "a", shareRatio: 1 }] }],
+      ),
     ).toEqual({ ok: false, reason: "UNASSIGNED_ITEM" });
 
     const comboItems = [
@@ -331,7 +336,6 @@ describe("multi-bill splitting", () => {
       ]),
     ).toEqual({ ok: false, reason: "SPLIT_COMBO_GROUP" });
   });
-
 });
 
 describe("G5 fractional shared-dish splitting", () => {
@@ -483,20 +487,45 @@ describe("G5 fractional shared-dish splitting", () => {
     });
   });
 
-
   it("covers no-seat and inclusive-tax weighting branches", () => {
     expect(
       buildSeatAllocationPlan(
-        [{ id: "shared", seatLabel: null, subtotal: 5, taxRate: 20, taxMode: "INCLUSIVE" }],
+        [
+          {
+            id: "shared",
+            seatLabel: null,
+            subtotal: 5,
+            taxRate: 20,
+            taxMode: "INCLUSIVE",
+          },
+        ],
         "EVEN_SPLIT",
       ),
     ).toEqual({ status: "no_seats" });
 
     const seatPlan = buildSeatAllocationPlan(
       [
-        { id: "seat-a", seatLabel: "A", subtotal: 10, taxRate: 0, taxMode: "EXCLUSIVE" },
-        { id: "seat-b", seatLabel: "B", subtotal: 10, taxRate: 0, taxMode: "EXCLUSIVE" },
-        { id: "shared-inclusive", seatLabel: null, subtotal: 5, taxRate: 20, taxMode: "INCLUSIVE" },
+        {
+          id: "seat-a",
+          seatLabel: "A",
+          subtotal: 10,
+          taxRate: 0,
+          taxMode: "EXCLUSIVE",
+        },
+        {
+          id: "seat-b",
+          seatLabel: "B",
+          subtotal: 10,
+          taxRate: 0,
+          taxMode: "EXCLUSIVE",
+        },
+        {
+          id: "shared-inclusive",
+          seatLabel: null,
+          subtotal: 5,
+          taxRate: 20,
+          taxMode: "INCLUSIVE",
+        },
       ],
       "EVEN_SPLIT",
     );
@@ -538,5 +567,4 @@ describe("G5 fractional shared-dish splitting", () => {
     );
     expect(fractional?.status).toBe("complete");
   });
-
 });

@@ -91,13 +91,19 @@ const requirePermission = (permission: string) => {
 const contextRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/context",
-  beforeLoad: () => { throw redirect({ to: "/business" }); },
+  beforeLoad: () => {
+    throw redirect({ to: "/business" });
+  },
 });
 
 const businessRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/business",
-  component: lazyPage(() => import("../features/business/pages/BusinessPage").then((m) => ({ default: m.BusinessPage }))),
+  component: lazyPage(() =>
+    import("../features/business/pages/BusinessPage").then((m) => ({
+      default: m.BusinessPage,
+    })),
+  ),
 });
 
 const dashboardRoute = createRoute({
@@ -236,13 +242,19 @@ const settingsRoute = createRoute({
 const profileRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/profile",
-  component: lazyPage(() => import("../features/profile/pages/ProfilePage").then((m) => ({ default: m.ProfilePage }))),
+  component: lazyPage(() =>
+    import("../features/profile/pages/ProfilePage").then((m) => ({
+      default: m.ProfilePage,
+    })),
+  ),
 });
 
 const branchesRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/branches",
-  beforeLoad: () => { throw redirect({ to: "/business" }); },
+  beforeLoad: () => {
+    throw redirect({ to: "/business" });
+  },
 });
 
 const indexRoute = createRoute({

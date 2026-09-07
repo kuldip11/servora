@@ -1,3 +1,33 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
-const s=vi.hoisted(()=>({list:vi.fn(),create:vi.fn(),update:vi.fn(),deactivate:vi.fn()}));vi.mock("../category.service",()=>({categoryService:s}));import { categoryController } from "@/modules/menu/categories/category.controller";const auth={tenantId:"t1"} as any;
-describe("categoryController coverage",()=>{beforeEach(()=>{vi.clearAllMocks();s.list.mockResolvedValue([]);s.create.mockResolvedValue({id:"c1"});s.update.mockResolvedValue({id:"c1"});s.deactivate.mockResolvedValue(undefined);});it("delegates all handlers",async()=>{await expect(categoryController.list(auth)).resolves.toMatchObject({success:true,data:[]});await expect(categoryController.create(auth,{name:"Drinks"})).resolves.toMatchObject({success:true,data:{id:"c1"}});await categoryController.update(auth,"c1",{name:"B"});await expect(categoryController.deactivate(auth,"c1")).resolves.toMatchObject({data:null});expect(s.update).toHaveBeenCalledWith(auth,"c1",{name:"B"});});});
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const s = vi.hoisted(() => ({
+  list: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  deactivate: vi.fn(),
+}));
+vi.mock("../category.service", () => ({ categoryService: s }));
+import { categoryController } from "@/modules/menu/categories/category.controller";
+const auth = { tenantId: "t1" } as any;
+describe("categoryController coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    s.list.mockResolvedValue([]);
+    s.create.mockResolvedValue({ id: "c1" });
+    s.update.mockResolvedValue({ id: "c1" });
+    s.deactivate.mockResolvedValue(undefined);
+  });
+  it("delegates all handlers", async () => {
+    await expect(categoryController.list(auth)).resolves.toMatchObject({
+      success: true,
+      data: [],
+    });
+    await expect(
+      categoryController.create(auth, { name: "Drinks" }),
+    ).resolves.toMatchObject({ success: true, data: { id: "c1" } });
+    await categoryController.update(auth, "c1", { name: "B" });
+    await expect(
+      categoryController.deactivate(auth, "c1"),
+    ).resolves.toMatchObject({ data: null });
+    expect(s.update).toHaveBeenCalledWith(auth, "c1", { name: "B" });
+  });
+});

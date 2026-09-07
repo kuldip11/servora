@@ -43,7 +43,11 @@ export const LoginPage = () => {
         title: `Welcome back, ${result.user.firstName}!`,
         tone: "success",
       });
-      router.navigate({ to: restored ? getAuthorizedHomePath(useAuthStore.getState().user) : "/business" });
+      router.navigate({
+        to: restored
+          ? getAuthorizedHomePath(useAuthStore.getState().user)
+          : "/business",
+      });
     } catch (err: unknown) {
       const msg = extractApiError(err);
       toast({ title: msg, tone: "danger" });

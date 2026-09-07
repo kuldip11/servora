@@ -37,11 +37,7 @@ export interface CostMarginRow {
 }
 
 export type MenuEngineeringQuadrant =
-  | "STAR"
-  | "PUZZLE"
-  | "PLOWHORSE"
-  | "DOG"
-  | "COST_MISSING";
+  "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG" | "COST_MISSING";
 export interface MenuEngineeringRow extends CostMarginRow {
   salesVolume: number;
   quadrant: MenuEngineeringQuadrant;

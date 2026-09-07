@@ -1,6 +1,19 @@
-import { Bike, Globe, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import {
+  Bike,
+  Globe,
+  ShoppingBag,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
 
-export const BRANCH_CAPABILITY_BADGES = [
+type BranchCapabilityBadge = {
+  key:
+    "dineInEnabled" | "takeawayEnabled" | "deliveryEnabled" | "onlineEnabled";
+  label: string;
+  icon: LucideIcon;
+};
+
+export const BRANCH_CAPABILITY_BADGES: readonly BranchCapabilityBadge[] = [
   { key: "dineInEnabled" as const, label: "Dine In", icon: UtensilsCrossed },
   { key: "takeawayEnabled" as const, label: "Takeaway", icon: ShoppingBag },
   { key: "deliveryEnabled" as const, label: "Delivery", icon: Bike },

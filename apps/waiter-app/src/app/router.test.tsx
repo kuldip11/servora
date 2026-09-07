@@ -146,7 +146,7 @@ describe("waiter router coverage", () => {
     ).toBe(true);
   });
 
-  it("renders authenticated layout status and navigates primary actions", () => {
+  it("renders authenticated layout status and navigates primary actions", async () => {
     const Root = rootConfig().component;
     const { unmount } = render(<Root />);
     expect(screen.getByText("Outlet content")).toBeTruthy();
@@ -164,7 +164,9 @@ describe("waiter router coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /HomeIcon Home/ }));
     fireEvent.click(screen.getByRole("button", { name: /OrdersIcon Orders/ }));
     fireEvent.click(screen.getByRole("button", { name: "Create new order" }));
-    fireEvent.click(screen.getByRole("button", { name: "Home new order" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Home new order" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Home view orders" }));
     fireEvent.click(screen.getByRole("button", { name: "Home select order" }));
 
@@ -209,7 +211,7 @@ describe("waiter router coverage", () => {
     );
   });
 
-  it("covers disconnected/fallback header and route callback navigation", () => {
+  it("covers disconnected/fallback header and route callback navigation", async () => {
     mocks.connected = false;
     mocks.branch = undefined;
     mocks.waiterName = "";
@@ -223,7 +225,9 @@ describe("waiter router coverage", () => {
     expect(
       screen.getByRole("button", { name: "Open profile" }).textContent,
     ).toBe("W");
-    fireEvent.click(screen.getByRole("button", { name: "Select list order" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Select list order" }),
+    );
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/orders/$orderId",
       params: { orderId: "o-list" },
@@ -232,7 +236,7 @@ describe("waiter router coverage", () => {
 
     const MenuRoute = routeByPath("/menu").component;
     render(<MenuRoute />);
-    fireEvent.click(screen.getByRole("button", { name: "Menu back" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Menu back" }));
     fireEvent.click(screen.getByRole("button", { name: "Place menu order" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" });
     expect(mocks.navigate).toHaveBeenCalledWith({
@@ -245,7 +249,7 @@ describe("waiter router coverage", () => {
   it("covers detail, add-items and profile routes including logout finally", async () => {
     const Detail = routeByPath("/orders/$orderId").component;
     const { unmount } = render(<Detail />);
-    expect(screen.getByText("Detail order-42")).toBeTruthy();
+    expect(await screen.findByText("Detail order-42")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Detail back" }));
     fireEvent.click(screen.getByRole("button", { name: "Detail add items" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/orders" });
@@ -257,7 +261,7 @@ describe("waiter router coverage", () => {
 
     const Add = routeByPath("/orders/$orderId/add").component;
     render(<Add />);
-    expect(screen.getByText("Menu order-42")).toBeTruthy();
+    expect(await screen.findByText("Menu order-42")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Menu back" }));
     fireEvent.click(screen.getByRole("button", { name: "Place menu order" }));
     expect(mocks.navigate).toHaveBeenCalledWith({
@@ -278,7 +282,9 @@ describe("waiter router coverage", () => {
     });
     const Profile = routeByPath("/profile").component;
     render(<Profile />);
-    fireEvent.click(screen.getByRole("button", { name: "Profile back" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Profile back" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Profile logout" }));
     await waitFor(() => expect(mocks.logout).toHaveBeenCalled());
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" });

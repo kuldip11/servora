@@ -1,4 +1,10 @@
-import { AlertTriangle, ChefHat, Package, ShoppingBag } from "lucide-react";
+import {
+  AlertTriangle,
+  ChefHat,
+  Package,
+  ShoppingBag,
+  type LucideIcon,
+} from "lucide-react";
 
 export const ANALYTICS_STATUS_TONE: Partial<
   Record<string, "info" | "warning" | "neutral" | "danger">
@@ -9,7 +15,14 @@ export const ANALYTICS_STATUS_TONE: Partial<
   CANCELLED: "danger",
 };
 
-export const DASHBOARD_QUICK_ACTIONS = [
+type DashboardQuickAction = {
+  label: string;
+  icon: LucideIcon;
+  to: "/orders" | "/inventory";
+  search?: { view: "kitchen" } | { filter: "low" };
+};
+
+export const DASHBOARD_QUICK_ACTIONS: readonly DashboardQuickAction[] = [
   { label: "New Order", icon: ShoppingBag, to: "/orders" as const },
   {
     label: "Kitchen Queue",

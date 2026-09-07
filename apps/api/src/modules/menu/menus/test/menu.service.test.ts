@@ -127,49 +127,119 @@ describe("menu service", () => {
   });
 });
 
-
 describe("menu service comprehensive coverage", () => {
   it("gets an existing menu and rejects missing menus", async () => {
     findById.mockResolvedValueOnce({ id: "m1" });
-    await expect(menuService.getById(auth(["menu:read"]), "m1")).resolves.toEqual({ id: "m1" });
+    await expect(
+      menuService.getById(auth(["menu:read"]), "m1"),
+    ).resolves.toEqual({ id: "m1" });
     findById.mockResolvedValueOnce(undefined);
-    await expect(menuService.getById(auth(["menu:read"]), "missing")).rejects.toThrow();
+    await expect(
+      menuService.getById(auth(["menu:read"]), "missing"),
+    ).rejects.toThrow();
   });
   it("returns no active menus without a branch", async () => {
-    await expect(menuService.listActive(auth(["menu:read"]), "STAFF", "DINE_IN")).resolves.toEqual([]);
+    await expect(
+      menuService.listActive(auth(["menu:read"]), "STAFF", "DINE_IN"),
+    ).resolves.toEqual([]);
     expect(listActive).not.toHaveBeenCalled();
   });
   it("updates effective dates for string, null, and omitted values and handles races", async () => {
     findById.mockResolvedValue({ id: "m1", name: "Old" });
     update.mockResolvedValue({ id: "m1", name: "New" });
-    await menuService.update(auth(["menu:update"]), "m1", { name: "New", effectiveFrom: "2026-09-01T00:00:00.000Z" });
-    expect(update).toHaveBeenLastCalledWith("t1", "m1", expect.objectContaining({ effectiveFrom: expect.any(Date) }));
-    await menuService.update(auth(["menu:update"]), "m1", { effectiveFrom: null });
-    expect(update).toHaveBeenLastCalledWith("t1", "m1", { effectiveFrom: null });
+    await menuService.update(auth(["menu:update"]), "m1", {
+      name: "New",
+      effectiveFrom: "2026-09-01T00:00:00.000Z",
+    });
+    expect(update).toHaveBeenLastCalledWith(
+      "t1",
+      "m1",
+      expect.objectContaining({ effectiveFrom: expect.any(Date) }),
+    );
+    await menuService.update(auth(["menu:update"]), "m1", {
+      effectiveFrom: null,
+    });
+    expect(update).toHaveBeenLastCalledWith("t1", "m1", {
+      effectiveFrom: null,
+    });
     await menuService.update(auth(["menu:update"]), "m1", { name: "Only" });
     expect(update).toHaveBeenLastCalledWith("t1", "m1", { name: "Only" });
     update.mockResolvedValueOnce(undefined);
-    await expect(menuService.update(auth(["menu:update"]), "m1", { name: "Race" })).rejects.toThrow();
+    await expect(
+      menuService.update(auth(["menu:update"]), "m1", { name: "Race" }),
+    ).rejects.toThrow();
   });
   it("handles publish/unpublish update races and normal removal", async () => {
     findById.mockResolvedValue({ id: "m1", isDefault: false });
-    update.mockResolvedValueOnce(undefined);await expect(menuService.publish(auth(["menu:publish"]), "m1")).rejects.toThrow();
-    update.mockResolvedValueOnce(undefined);await expect(menuService.unpublish(auth(["menu:publish"]), "m1")).rejects.toThrow();
-    remove.mockResolvedValue(undefined);await menuService.remove(auth(["menu:delete"]), "m1");expect(remove).toHaveBeenCalledWith("t1","m1");
+    update.mockResolvedValueOnce(undefined);
+    await expect(
+      menuService.publish(auth(["menu:publish"]), "m1"),
+    ).rejects.toThrow();
+    update.mockResolvedValueOnce(undefined);
+    await expect(
+      menuService.unpublish(auth(["menu:publish"]), "m1"),
+    ).rejects.toThrow();
+    remove.mockResolvedValue(undefined);
+    await menuService.remove(auth(["menu:delete"]), "m1");
+    expect(remove).toHaveBeenCalledWith("t1", "m1");
   });
   it("lists, validates, creates, and deletes schedules", async () => {
-    findById.mockResolvedValue({ id: "m1", isDefault: false });listSchedules.mockResolvedValue([{id:"s1"}]);
-    await expect(menuService.listSchedules(auth(["menu:read"]), "m1")).resolves.toEqual([{id:"s1"}]);
+    findById.mockResolvedValue({ id: "m1", isDefault: false });
+    listSchedules.mockResolvedValue([{ id: "s1" }]);
+    await expect(
+      menuService.listSchedules(auth(["menu:read"]), "m1"),
+    ).resolves.toEqual([{ id: "s1" }]);
     for (const input of [
-      {scheduleType:"DAILY"}, {scheduleType:"WEEKLY",startTime:"09:00",endTime:"10:00"}, {scheduleType:"SPECIFIC_DATE"}, {scheduleType:"HOLIDAY"}
-    ] as any[]) await expect(menuService.createSchedule(auth(["menu:read"]), "m1", input)).rejects.toThrow();
-    createSchedule.mockResolvedValue({id:"s1"});
-    await menuService.createSchedule(auth(["menu:read"]), "m1", {scheduleType:"WEEKLY",startTime:"09:00",endTime:"10:00",dayOfWeek:1,startDate:"2026-09-01",endDate:"2026-09-30",holidayName:"X",isActive:false});
-    expect(createSchedule).toHaveBeenCalledWith(expect.objectContaining({tenantId:"t1",menuId:"m1",dayOfWeek:1,isActive:false}));
-    await menuService.createSchedule(auth(["menu:read"]), "m1", {scheduleType:"HOLIDAY",holidayName:"Festival"});
-    expect(createSchedule).toHaveBeenLastCalledWith({tenantId:"t1",menuId:"m1",scheduleType:"HOLIDAY",holidayName:"Festival"});
-    await menuService.createSchedule(auth(["menu:read"]), "m1", {scheduleType:"SPECIFIC_DATE",startDate:"2026-09-05"});
-    expect(createSchedule).toHaveBeenLastCalledWith({tenantId:"t1",menuId:"m1",scheduleType:"SPECIFIC_DATE",startDate:"2026-09-05"});
-    deleteSchedule.mockResolvedValue(undefined);await expect(menuService.deleteSchedule(auth(["menu:read"]),"s1")).resolves.toBeUndefined();
+      { scheduleType: "DAILY" },
+      { scheduleType: "WEEKLY", startTime: "09:00", endTime: "10:00" },
+      { scheduleType: "SPECIFIC_DATE" },
+      { scheduleType: "HOLIDAY" },
+    ] as any[])
+      await expect(
+        menuService.createSchedule(auth(["menu:read"]), "m1", input),
+      ).rejects.toThrow();
+    createSchedule.mockResolvedValue({ id: "s1" });
+    await menuService.createSchedule(auth(["menu:read"]), "m1", {
+      scheduleType: "WEEKLY",
+      startTime: "09:00",
+      endTime: "10:00",
+      dayOfWeek: 1,
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      holidayName: "X",
+      isActive: false,
+    });
+    expect(createSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "t1",
+        menuId: "m1",
+        dayOfWeek: 1,
+        isActive: false,
+      }),
+    );
+    await menuService.createSchedule(auth(["menu:read"]), "m1", {
+      scheduleType: "HOLIDAY",
+      holidayName: "Festival",
+    });
+    expect(createSchedule).toHaveBeenLastCalledWith({
+      tenantId: "t1",
+      menuId: "m1",
+      scheduleType: "HOLIDAY",
+      holidayName: "Festival",
+    });
+    await menuService.createSchedule(auth(["menu:read"]), "m1", {
+      scheduleType: "SPECIFIC_DATE",
+      startDate: "2026-09-05",
+    });
+    expect(createSchedule).toHaveBeenLastCalledWith({
+      tenantId: "t1",
+      menuId: "m1",
+      scheduleType: "SPECIFIC_DATE",
+      startDate: "2026-09-05",
+    });
+    deleteSchedule.mockResolvedValue(undefined);
+    await expect(
+      menuService.deleteSchedule(auth(["menu:read"]), "s1"),
+    ).resolves.toBeUndefined();
   });
 });

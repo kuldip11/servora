@@ -29,7 +29,10 @@ const auth = {
 describe("billing controller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createPayment.mockResolvedValue({ payment: { id: "p1" }, bill: { id: "b1" } });
+    mocks.createPayment.mockResolvedValue({
+      payment: { id: "p1" },
+      bill: { id: "b1" },
+    });
     mocks.createRefund.mockResolvedValue({ id: "r1" });
     mocks.getBill.mockResolvedValue({ id: "b1" });
     mocks.splitOrder.mockResolvedValue([{ id: "b1" }, { id: "b2" }]);
@@ -41,10 +44,21 @@ describe("billing controller", () => {
 
   it("delegates payment/refund creation and bill reads", async () => {
     await expect(
-      billingController.createPayment(auth, { orderId: "o1", method: "CARD", amount: 10 }),
-    ).resolves.toEqual({ success: true, data: { payment: { id: "p1" }, bill: { id: "b1" } } });
+      billingController.createPayment(auth, {
+        orderId: "o1",
+        method: "CARD",
+        amount: 10,
+      }),
+    ).resolves.toEqual({
+      success: true,
+      data: { payment: { id: "p1" }, bill: { id: "b1" } },
+    });
     await expect(
-      billingController.createRefund(auth, { paymentId: "p1", amount: 5, reason: "return" }),
+      billingController.createRefund(auth, {
+        paymentId: "p1",
+        amount: 5,
+        reason: "return",
+      }),
     ).resolves.toEqual({ success: true, data: { id: "r1" } });
     await expect(billingController.getBill(auth, "b1")).resolves.toEqual({
       success: true,
@@ -75,10 +89,18 @@ describe("billing controller", () => {
     });
 
     expect(mocks.splitOrder).toHaveBeenCalledWith(auth, "o1", 2);
-    expect(mocks.splitOrderByItems).toHaveBeenCalledWith(auth, "o1", allocations);
+    expect(mocks.splitOrderByItems).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      allocations,
+    );
     expect(mocks.splitOrderBySeat).toHaveBeenCalledWith(auth, "o1", "MANUAL");
-    expect(mocks.setItemSeatShares).toHaveBeenCalledWith(auth, "o1", "oi1", shares);
+    expect(mocks.setItemSeatShares).toHaveBeenCalledWith(
+      auth,
+      "o1",
+      "oi1",
+      shares,
+    );
     expect(mocks.getOrderBills).toHaveBeenCalledWith(auth, "o1");
   });
-
 });

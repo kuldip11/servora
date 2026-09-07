@@ -174,26 +174,45 @@ describe("customer session and order persistence", () => {
         { itemId: 2, quantity: 1 },
         { itemId: "a", quantity: 0 },
         { itemId: "b", quantity: 1.5 },
-        { itemId: "ok", quantity: 1, selectedOptions: [], fulfillmentType: "DINE_IN" },
+        {
+          itemId: "ok",
+          quantity: 1,
+          selectedOptions: [],
+          fulfillmentType: "DINE_IN",
+        },
       ]),
     );
     expect(loadPersistedCart(scope)).toHaveLength(1);
 
-    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
+    const get = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("blocked");
+      });
     expect(loadPersistedSession(scope)).toBeNull();
     get.mockRestore();
-    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
-    expect(() => savePersistedSession(scope, {
-      token: "t", mode: "DINE_IN", table: null, area: "", restaurant: "", estimatedTime: "", expiresAt: "",
-    })).not.toThrow();
+    const set = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("blocked");
+      });
+    expect(() =>
+      savePersistedSession(scope, {
+        token: "t",
+        mode: "DINE_IN",
+        table: null,
+        area: "",
+        restaurant: "",
+        estimatedTime: "",
+        expiresAt: "",
+      }),
+    ).not.toThrow();
     set.mockRestore();
-    const remove = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
+    const remove = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementation(() => {
+        throw new Error("blocked");
+      });
     expect(() => clearPersistedSession(scope)).not.toThrow();
     remove.mockRestore();
   });
@@ -203,26 +222,45 @@ describe("customer session and order persistence", () => {
     localStorage.setItem(
       "servora:customer:qr:restore:cart",
       JSON.stringify([
-        { itemId: item.id, quantity: 1, variantId: "missing", selectedOptions: [], fulfillmentType: "DINE_IN" },
-        { itemId: item.id, quantity: 1, variantId: "variant-1", selectedOptions: [
-          { optionId: "option-1", quantity: 2 },
-          { optionId: "option-1", quantity: 3 },
-          { optionId: "missing", quantity: 1 },
-          { optionId: "option-1", quantity: 0 },
-          { optionId: "option-1", quantity: 1.5 },
-        ], fulfillmentType: "DINE_IN" },
+        {
+          itemId: item.id,
+          quantity: 1,
+          variantId: "missing",
+          selectedOptions: [],
+          fulfillmentType: "DINE_IN",
+        },
+        {
+          itemId: item.id,
+          quantity: 1,
+          variantId: "variant-1",
+          selectedOptions: [
+            { optionId: "option-1", quantity: 2 },
+            { optionId: "option-1", quantity: 3 },
+            { optionId: "missing", quantity: 1 },
+            { optionId: "option-1", quantity: 0 },
+            { optionId: "option-1", quantity: 1.5 },
+          ],
+          fulfillmentType: "DINE_IN",
+        },
       ]),
     );
     const restored = restoreCart(scope, [item], "DINE_IN");
     expect(restored.droppedCount).toBe(1);
     expect(restored.cart).toHaveLength(1);
-    expect(restored.cart[0]!.selectedOptions).toEqual([{ optionId: "option-1", quantity: 2 }]);
+    expect(restored.cart[0]!.selectedOptions).toEqual([
+      { optionId: "option-1", quantity: 2 },
+    ]);
   });
 
   it("returns early for empty persistence and saves lines without variant", () => {
     const scope = "qr:empty";
-    expect(restoreCart(scope, [item], "DINE_IN")).toEqual({ cart: [], droppedCount: 0 });
-    savePersistedCart(scope, [{ item, quantity: 1, selectedOptions: [], fulfillmentType: "DINE_IN" }]);
+    expect(restoreCart(scope, [item], "DINE_IN")).toEqual({
+      cart: [],
+      droppedCount: 0,
+    });
+    savePersistedCart(scope, [
+      { item, quantity: 1, selectedOptions: [], fulfillmentType: "DINE_IN" },
+    ]);
     expect(loadPersistedCart(scope)[0]!.variantId).toBeUndefined();
   });
 });

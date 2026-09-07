@@ -181,7 +181,10 @@ export const tenantService = {
       ...repositoryChanges,
       ...(changes.name !== undefined ? { name: changes.name.trim() } : {}),
       ...(changes.defaultCurrency !== undefined
-        ? { defaultCurrency: changes.defaultCurrency?.trim().toUpperCase() || null }
+        ? {
+            defaultCurrency:
+              changes.defaultCurrency?.trim().toUpperCase() || null,
+          }
         : {}),
       ...(changes.defaultTimezone !== undefined
         ? { defaultTimezone: changes.defaultTimezone?.trim() || null }

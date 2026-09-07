@@ -1,39 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCustomerRequest,
-  createCustomerSession,
-  getCustomerMenu,
   getCustomerOrder,
-  type CustomerCombo,
-  type CustomerMenuItem,
   type CustomerOrder,
   type CustomerRequestType,
 } from "@/api";
-import type { CartLine } from "@/features/cart/pricing";
-import {
-  clearPersistedOrderId,
-  clearPersistedSession,
-  getCustomerStorageScope,
-  loadPersistedOrderId,
-  loadPersistedSession,
-  restoreCart,
-  savePersistedCart,
-  savePersistedOrderId,
-  savePersistedSession,
-} from "@/features/cart/persistence";
+import { getCustomerStorageScope } from "@/features/cart/persistence";
 import { useCustomerOrderRealtime } from "@/features/ordering/useCustomerOrderRealtime";
+import {
+  orderQueryKey,
+  useCustomerBootstrap,
+} from "@/features/session/useCustomerBootstrap";
+import { useCustomerPersistence } from "@/features/session/useCustomerPersistence";
 
-export type CustomerSessionState = {
-  token: string;
-  mode: "DINE_IN" | "TAKEAWAY";
-  table: string | null;
-  area: string;
-  restaurant: string;
-  estimatedTime: string;
-  expiresAt: string;
-};
+export type { CustomerSessionState } from "@/features/session/useCustomerBootstrap";
 
 export const useCustomerSession = () => {
+  const queryClient = useQueryClient();
   const qrToken = useMemo(
     () => new URLSearchParams(window.location.search).get("qr"),
     [],
@@ -42,181 +26,97 @@ export const useCustomerSession = () => {
     () => getCustomerStorageScope(qrToken),
     [qrToken],
   );
-  const [session, setSession] = useState<CustomerSessionState | null>(null);
-  const [menu, setMenu] = useState<CustomerMenuItem[]>([]);
-  const [combos, setCombos] = useState<CustomerCombo[]>([]);
-  const [categories, setCategories] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
-  const [cart, setCart] = useState<CartLine[]>([]);
-  const [placedOrder, setPlacedOrder] = useState<CustomerOrder | null>(null);
-  const [loading, setLoading] = useState(Boolean(qrToken));
-  const [error, setError] = useState<string | null>(null);
-  const [requestBusy, setRequestBusy] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
-  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
-  const [cartHydrated, setCartHydrated] = useState(false);
 
-  useEffect(() => {
-    if (!qrToken) {
-      setLoading(false);
-      setError(
-        "Open this page from a restaurant table QR code to start an ordering session.",
-      );
-      return;
-    }
+  const bootstrapQuery = useCustomerBootstrap(qrToken, storageScope);
+  const bootstrapData = bootstrapQuery.data;
+  const session = bootstrapData?.session ?? null;
+  const persistence = useCustomerPersistence({
+    bootstrapData,
+    storageScope,
+    queryClient,
+  });
 
-    let cancelled = false;
-    const token = qrToken;
-    async function bootstrap() {
-      try {
-        setLoading(true);
-        setCartHydrated(false);
-        setError(null);
-        const persisted = storageScope
-          ? loadPersistedSession(storageScope)
-          : null;
-        let sessionToken = persisted?.token;
-        let created: Awaited<ReturnType<typeof createCustomerSession>> | null =
-          null;
-        let menuResponse:
-          Awaited<ReturnType<typeof getCustomerMenu>> | undefined;
+  const setPlacedOrder = useCallback(
+    (
+      value:
+        | CustomerOrder
+        | null
+        | ((current: CustomerOrder | null) => CustomerOrder | null),
+    ) => {
+      const current = persistence.placedOrderId
+        ? (queryClient.getQueryData<CustomerOrder>(
+            orderQueryKey(session?.token, persistence.placedOrderId),
+          ) ?? null)
+        : null;
+      const next = typeof value === "function" ? value(current) : value;
 
-        if (sessionToken) {
-          try {
-            menuResponse = await getCustomerMenu(sessionToken);
-          } catch {
-            if (storageScope) clearPersistedSession(storageScope);
-            sessionToken = undefined;
-          }
-        }
-        if (!menuResponse) {
-          created = await createCustomerSession(token);
-          sessionToken = created.sessionToken;
-          menuResponse = await getCustomerMenu(sessionToken);
-        }
-        if (cancelled || !sessionToken) return;
-
-        const resolvedSession: CustomerSessionState = {
-          token: sessionToken,
-          mode: menuResponse.mode,
-          table: menuResponse.table?.name ?? null,
-          area:
-            menuResponse.table?.section ??
-            (menuResponse.mode === "TAKEAWAY" ? "Takeaway" : "Dining"),
-          restaurant: menuResponse.restaurant.name,
-          estimatedTime: "15–25 min",
-          expiresAt:
-            created?.expiresAt ??
-            persisted?.expiresAt ??
-            new Date(Date.now() + 12 * 60 * 60_000).toISOString(),
-        };
-        setSession(resolvedSession);
-        setMenu(menuResponse.items);
-        setCombos(menuResponse.combos ?? []);
-        setCategories([
-          { id: "popular", name: "Popular" },
-          ...menuResponse.categories.map((category) => ({
-            id: category.id,
-            name: category.name,
-          })),
-        ]);
-
-        if (storageScope) {
-          savePersistedSession(storageScope, resolvedSession);
-          const persistedOrderId = loadPersistedOrderId(storageScope);
-          if (persistedOrderId) {
-            try {
-              const existingOrder = await getCustomerOrder(
-                sessionToken,
-                persistedOrderId,
-              );
-              if (!cancelled) setPlacedOrder(existingOrder);
-            } catch {
-              clearPersistedOrderId(storageScope);
-            }
-          }
-          const restored = restoreCart(
-            storageScope,
-            menuResponse.items,
-            menuResponse.mode,
-          );
-          if (!cancelled) {
-            setCart(restored.cart);
-            setCartHydrated(true);
-            if (restored.droppedCount > 0) {
-              setError(
-                "Some saved cart items are no longer available and were removed.",
-              );
-            }
-          }
-        } else {
-          setCartHydrated(true);
-        }
-      } catch (bootstrapError) {
-        if (!cancelled) {
-          setError(
-            bootstrapError instanceof Error
-              ? bootstrapError.message
-              : "Unable to load this ordering session",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!next) {
+        persistence.setPlacedOrderId(null);
+        return;
       }
-    }
 
-    void bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [qrToken, bootstrapAttempt, storageScope]);
+      persistence.setPlacedOrderId(next.id);
+      if (session?.token) {
+        queryClient.setQueryData(orderQueryKey(session.token, next.id), next);
+      }
+    },
+    [persistence, queryClient, session?.token],
+  );
 
-  useEffect(() => {
-    if (!storageScope || !cartHydrated) return;
-    savePersistedCart(storageScope, cart);
-  }, [storageScope, cart, cartHydrated]);
-
-  useEffect(() => {
-    if (!storageScope || !placedOrder) return;
-    savePersistedOrderId(storageScope, placedOrder.id);
-  }, [storageScope, placedOrder]);
-
-  const handleRealtimeOrder = useCallback((order: CustomerOrder) => {
-    setPlacedOrder(order);
-  }, []);
+  const handleRealtimeOrder = useCallback(
+    (order: CustomerOrder) => {
+      persistence.setPlacedOrderId(order.id);
+      if (session?.token) {
+        queryClient.setQueryData(orderQueryKey(session.token, order.id), order);
+      }
+    },
+    [persistence, queryClient, session?.token],
+  );
   const handleRealtimeMenuAvailability = useCallback(() => {
-    setBootstrapAttempt((attempt) => attempt + 1);
-  }, []);
+    void bootstrapQuery.refetch();
+  }, [bootstrapQuery]);
+
   const live = useCustomerOrderRealtime(
     session?.token,
-    placedOrder?.id,
+    persistence.placedOrderId ?? undefined,
     handleRealtimeOrder,
     handleRealtimeMenuAvailability,
   );
 
-  useEffect(() => {
-    if (!placedOrder || !session || live) return;
-    let cancelled = false;
-    const interval = window.setInterval(async () => {
-      try {
-        const refreshed = await getCustomerOrder(session.token, placedOrder.id);
-        if (!cancelled) handleRealtimeOrder(refreshed);
-      } catch {}
-    }, 15_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [placedOrder?.id, session, live, handleRealtimeOrder]);
+  const orderQuery = useQuery({
+    queryKey: orderQueryKey(
+      session?.token,
+      persistence.placedOrderId ?? undefined,
+    ),
+    queryFn: () => getCustomerOrder(session!.token, persistence.placedOrderId!),
+    enabled: Boolean(session && persistence.placedOrderId),
+    initialData: () =>
+      persistence.placedOrderId
+        ? queryClient.getQueryData<CustomerOrder>(
+            orderQueryKey(session?.token, persistence.placedOrderId),
+          )
+        : undefined,
+    staleTime: 15_000,
+    refetchInterval: live ? false : 15_000,
+    retry: false,
+  });
+  const placedOrder = orderQuery.data ?? null;
+
+  const requestMutation = useMutation({
+    mutationFn: (type: CustomerRequestType) => {
+      if (!session) throw new Error("Ordering session is unavailable");
+      return createCustomerRequest(session.token, type, placedOrder?.id);
+    },
+  });
 
   const requestHelp = useCallback(
     async (type: CustomerRequestType) => {
       if (!session) return;
+      setRequestMessage(null);
       try {
-        setRequestBusy(true);
-        setRequestMessage(null);
-        await createCustomerRequest(session.token, type, placedOrder?.id);
+        await requestMutation.mutateAsync(type);
         setRequestMessage(
           type === "BILL"
             ? "Your waiter has been asked to bring the bill."
@@ -228,32 +128,39 @@ export const useCustomerSession = () => {
             ? requestError.message
             : "Could not send request",
         );
-      } finally {
-        setRequestBusy(false);
       }
     },
-    [placedOrder?.id, session],
+    [requestMutation, session],
   );
 
   const retryBootstrap = useCallback(() => {
-    setError(null);
-    setBootstrapAttempt((value) => value + 1);
-  }, []);
+    persistence.setLocalError(null);
+    void bootstrapQuery.refetch();
+  }, [bootstrapQuery, persistence]);
+
+  const missingQrError = qrToken
+    ? null
+    : "Open this page from a restaurant table QR code to start an ordering session.";
+  const bootstrapError = bootstrapQuery.error
+    ? bootstrapQuery.error instanceof Error
+      ? bootstrapQuery.error.message
+      : "Unable to load this ordering session"
+    : null;
 
   return {
     session,
-    menu,
-    combos,
-    categories,
-    cart,
-    setCart,
+    menu: bootstrapData?.menu ?? [],
+    combos: bootstrapData?.combos ?? [],
+    categories: bootstrapData?.categories ?? [],
+    cart: persistence.cart,
+    setCart: persistence.setCart,
     placedOrder,
     setPlacedOrder,
-    loading,
-    setLoading,
-    error,
-    setError,
-    requestBusy,
+    loading: isActionLoading || (Boolean(qrToken) && bootstrapQuery.isPending),
+    setLoading: setIsActionLoading,
+    error: persistence.localError ?? bootstrapError ?? missingQrError,
+    setError: persistence.setLocalError,
+    requestBusy: requestMutation.isPending,
     requestMessage,
     storageScope,
     live,

@@ -94,45 +94,78 @@ describe("kitchen station service edge coverage", () => {
   });
 
   it("requires a branch and handles repository create failure", async () => {
-    await expect(stationService.create({ ...auth, branchId: null }, { name: "G" })).rejects.toThrow("A branch is required");
+    await expect(
+      stationService.create({ ...auth, branchId: null }, { name: "G" }),
+    ).rejects.toThrow("A branch is required");
     repository.create.mockResolvedValue(undefined);
-    await expect(stationService.create(auth, { name: "G", branchId: "b2" })).rejects.toThrow("could not be created");
+    await expect(
+      stationService.create(auth, { name: "G", branchId: "b2" }),
+    ).rejects.toThrow("could not be created");
   });
 
   it("updates an existing station and rejects a missing one", async () => {
     repository.findById.mockResolvedValue(undefined);
-    await expect(stationService.update(auth, "missing", { name: "X" })).rejects.toThrow("Kitchen station not found");
-    repository.findById.mockResolvedValue({ id: "s1" }); repository.update.mockResolvedValue({ id: "s1", name: "X" });
-    await expect(stationService.update(auth, "s1", { name: "X" })).resolves.toMatchObject({ name: "X" });
+    await expect(
+      stationService.update(auth, "missing", { name: "X" }),
+    ).rejects.toThrow("Kitchen station not found");
+    repository.findById.mockResolvedValue({ id: "s1" });
+    repository.update.mockResolvedValue({ id: "s1", name: "X" });
+    await expect(
+      stationService.update(auth, "s1", { name: "X" }),
+    ).resolves.toMatchObject({ name: "X" });
   });
 
   it("removes an existing station and rejects a missing one", async () => {
     repository.remove.mockResolvedValue(undefined);
-    await expect(stationService.remove(auth, "missing")).rejects.toThrow("Kitchen station not found");
+    await expect(stationService.remove(auth, "missing")).rejects.toThrow(
+      "Kitchen station not found",
+    );
     repository.remove.mockResolvedValue({ id: "s1" });
     await expect(stationService.remove(auth, "s1")).resolves.toBeUndefined();
   });
 
   it("lists routes and validates every routing resource", async () => {
     repository.listRoutes.mockResolvedValue([{ id: "r1" }]);
-    await expect(stationService.listRoutes(auth, "i1")).resolves.toEqual([{ id: "r1" }]);
+    await expect(stationService.listRoutes(auth, "i1")).resolves.toEqual([
+      { id: "r1" },
+    ]);
     for (const resources of [
       { item: null, station: { branchId: "b1" }, modifier: {} },
       { item: { branchId: null }, station: null, modifier: {} },
       { item: { branchId: null }, station: { branchId: "b1" }, modifier: null },
     ]) {
       repository.findRoutingResources.mockResolvedValue(resources);
-      await expect(stationService.setRoute(auth, "i1", { stationId: "s1", modifierOptionId: "m1" })).rejects.toThrow("not found");
+      await expect(
+        stationService.setRoute(auth, "i1", {
+          stationId: "s1",
+          modifierOptionId: "m1",
+        }),
+      ).rejects.toThrow("not found");
     }
   });
 
   it("sets valid item/default and modifier routes and removes them", async () => {
-    repository.findRoutingResources.mockResolvedValue({ item: { branchId: null }, station: { branchId: "b1" }, modifier: null });
+    repository.findRoutingResources.mockResolvedValue({
+      item: { branchId: null },
+      station: { branchId: "b1" },
+      modifier: null,
+    });
     repository.setRoute.mockResolvedValue({ id: "r1" });
-    await expect(stationService.setRoute(auth, "i1", { stationId: "s1" })).resolves.toEqual({ id: "r1" });
-    repository.findRoutingResources.mockResolvedValue({ item: { branchId: "b1" }, station: { branchId: "b1" }, modifier: { id: "m1" } });
-    await stationService.setRoute(auth, "i1", { stationId: "s1", modifierOptionId: "m1" });
+    await expect(
+      stationService.setRoute(auth, "i1", { stationId: "s1" }),
+    ).resolves.toEqual({ id: "r1" });
+    repository.findRoutingResources.mockResolvedValue({
+      item: { branchId: "b1" },
+      station: { branchId: "b1" },
+      modifier: { id: "m1" },
+    });
+    await stationService.setRoute(auth, "i1", {
+      stationId: "s1",
+      modifierOptionId: "m1",
+    });
     repository.removeRoute.mockResolvedValue({ id: "r1" });
-    await expect(stationService.removeRoute(auth, "i1", "m1")).resolves.toEqual({ id: "r1" });
+    await expect(stationService.removeRoute(auth, "i1", "m1")).resolves.toEqual(
+      { id: "r1" },
+    );
   });
 });

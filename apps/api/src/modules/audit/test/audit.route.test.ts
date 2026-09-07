@@ -14,8 +14,15 @@ const mocks = vi.hoisted(() => {
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: Function | undefined; options: unknown }> = [];
-    use() { return this; }
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: Function | undefined;
+      options: unknown;
+    }> = [];
+    use() {
+      return this;
+    }
     get(path: string, handler: Function | undefined, options: unknown) {
       this.routes.push({ method: "GET", path, handler, options });
       return this;
@@ -42,16 +49,25 @@ describe("audit route", () => {
   it("registers the audit endpoint with query validation", () => {
     expect((auditRouter as any).routes).toHaveLength(1);
     expect((auditRouter as any).routes[0]).toEqual(
-      expect.objectContaining({ method: "GET", path: "/", options: expect.anything() }),
+      expect.objectContaining({
+        method: "GET",
+        path: "/",
+        options: expect.anything(),
+      }),
     );
   });
 
   it("requires permission and returns no rows when auth has no tenant", async () => {
-    await expect(handler()({ auth: { tenantId: "" }, query: {} })).resolves.toEqual({
+    await expect(
+      handler()({ auth: { tenantId: "" }, query: {} }),
+    ).resolves.toEqual({
       success: true,
       data: [],
     });
-    expect(mocks.requirePermission).toHaveBeenCalledWith({ tenantId: "" }, "audit:read");
+    expect(mocks.requirePermission).toHaveBeenCalledWith(
+      { tenantId: "" },
+      "audit:read",
+    );
     expect(mocks.select).not.toHaveBeenCalled();
   });
 

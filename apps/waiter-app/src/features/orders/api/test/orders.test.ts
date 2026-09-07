@@ -86,9 +86,15 @@ describe("orders API", () => {
     await expect(fetchCancellationReasons()).resolves.toEqual([
       { id: "r1", label: "Guest request" },
     ]);
-    await expect(refireOrderItem("o1", "i1", "Cold")).resolves.toMatchObject({ id: "o1" });
-    await expect(refireOrderItem("o1", "i1", "Cold", false)).resolves.toMatchObject({ id: "o1" });
-    await expect(refillOrderItem("o1", "i1")).resolves.toMatchObject({ id: "o1" });
+    await expect(refireOrderItem("o1", "i1", "Cold")).resolves.toMatchObject({
+      id: "o1",
+    });
+    await expect(
+      refireOrderItem("o1", "i1", "Cold", false),
+    ).resolves.toMatchObject({ id: "o1" });
+    await expect(refillOrderItem("o1", "i1")).resolves.toMatchObject({
+      id: "o1",
+    });
     await setOrderItemSeatShares("o1", "i1", [
       { seatLabel: "S1", shareRatio: 0.5 },
       { seatLabel: "S2", shareRatio: 0.5 },
@@ -99,28 +105,37 @@ describe("orders API", () => {
     await expect(
       compOrderItem("o1", "i1", { cancellationReasonId: "r1" }),
     ).resolves.toMatchObject({ id: "o1" });
-    await expect(transferOrderTable("o1", "t2", " move ")).resolves.toMatchObject({ id: "o1" });
-    await expect(transferOrderTable("o1", "t2", "   ")).resolves.toMatchObject({ id: "o1" });
+    await expect(
+      transferOrderTable("o1", "t2", " move "),
+    ).resolves.toMatchObject({ id: "o1" });
+    await expect(transferOrderTable("o1", "t2", "   ")).resolves.toMatchObject({
+      id: "o1",
+    });
     await splitOrderBill("o1", 2);
-    await splitOrderBillByItems("o1", [
-      { label: "A", orderItemIds: ["i1"] },
-    ]);
-    await expect(splitOrderBillBySeat("o1", "EVEN_SPLIT")).resolves.toMatchObject({ id: "o1" });
+    await splitOrderBillByItems("o1", [{ label: "A", orderItemIds: ["i1"] }]);
+    await expect(
+      splitOrderBillBySeat("o1", "EVEN_SPLIT"),
+    ).resolves.toMatchObject({ id: "o1" });
     await mergeOrders("o1", "o2");
 
     expect(apiClient.put).toHaveBeenCalledWith(
       "/orders/o1/items/i1/seat-shares",
-      { shares: [{ seatLabel: "S1", shareRatio: 0.5 }, { seatLabel: "S2", shareRatio: 0.5 }] },
+      {
+        shares: [
+          { seatLabel: "S1", shareRatio: 0.5 },
+          { seatLabel: "S2", shareRatio: 0.5 },
+        ],
+      },
     );
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/orders/o1/transfer-table",
-      { newTableId: "t2", reason: "move" },
-    );
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/orders/o1/transfer-table",
-      { newTableId: "t2" },
-    );
-    expect(apiClient.post).toHaveBeenCalledWith("/orders/o1/merge", { targetOrderId: "o2" });
+    expect(apiClient.post).toHaveBeenCalledWith("/orders/o1/transfer-table", {
+      newTableId: "t2",
+      reason: "move",
+    });
+    expect(apiClient.post).toHaveBeenCalledWith("/orders/o1/transfer-table", {
+      newTableId: "t2",
+    });
+    expect(apiClient.post).toHaveBeenCalledWith("/orders/o1/merge", {
+      targetOrderId: "o2",
+    });
   });
-
 });

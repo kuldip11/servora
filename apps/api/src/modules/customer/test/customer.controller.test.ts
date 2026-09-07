@@ -38,7 +38,11 @@ describe("customerController", () => {
       data: { items: [] },
     });
     await customerController.createOrder("s1", { items: [] } as never, "req1");
-    expect(service.createOrder).toHaveBeenCalledWith("s1", { items: [] }, "req1");
+    expect(service.createOrder).toHaveBeenCalledWith(
+      "s1",
+      { items: [] },
+      "req1",
+    );
     await customerController.checkout("s1", { orderId: "o1", method: "CASH" });
     expect(service.checkout).toHaveBeenCalledWith("s1", {
       orderId: "o1",
@@ -70,7 +74,11 @@ describe("customerController", () => {
     });
     service.initiateTakeawayPayment.mockResolvedValue({ id: "rp1" });
     await customerController.initiateTakeawayPayment("s1", "o1");
-    expect(service.initiateTakeawayPayment).toHaveBeenCalledWith("t1", "b1", "o1");
+    expect(service.initiateTakeawayPayment).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      "o1",
+    );
 
     service.getSession.mockResolvedValue({
       mode: "DINE_IN",

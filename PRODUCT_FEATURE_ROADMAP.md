@@ -971,16 +971,16 @@ These are particularly important for larger restaurants and multi-branch organiz
 
 Before implementing any item, score it against:
 
-| Dimension | Question |
-| --- | --- |
-| Customer value | Does this solve a frequent real restaurant problem? |
-| Operational impact | Does it reduce mistakes, delays, or manual work? |
-| Revenue impact | Does it improve activation, retention, upsell, or transaction volume? |
-| Breadth | How many Servora customer types benefit? |
-| Dependency readiness | Does the current backend/domain model support it cleanly? |
-| Complexity | How much cross-app/database/realtime work is required? |
-| Risk | Could failure affect orders, payments, inventory, or reporting correctness? |
-| Evidence | Do customer interviews/production usage support the need? |
+| Dimension            | Question                                                                    |
+| -------------------- | --------------------------------------------------------------------------- |
+| Customer value       | Does this solve a frequent real restaurant problem?                         |
+| Operational impact   | Does it reduce mistakes, delays, or manual work?                            |
+| Revenue impact       | Does it improve activation, retention, upsell, or transaction volume?       |
+| Breadth              | How many Servora customer types benefit?                                    |
+| Dependency readiness | Does the current backend/domain model support it cleanly?                   |
+| Complexity           | How much cross-app/database/realtime work is required?                      |
+| Risk                 | Could failure affect orders, payments, inventory, or reporting correctness? |
+| Evidence             | Do customer interviews/production usage support the need?                   |
 
 A feature should move from this roadmap into an implementation plan only after its scope, dependencies, data model, UX, failure modes, tests, and acceptance criteria are explicitly defined.
 

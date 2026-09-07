@@ -4,9 +4,17 @@ import type { KitchenTicketStatus } from "@pos/types";
 import { ticket } from "@/features/kitchen/test/fixtures";
 
 const mocks = vi.hoisted(() => ({ footerProps: undefined as any }));
-vi.mock("@pos/ui", () => ({ Card: ({ children, className }: any) => <div className={className}>{children}</div> }));
-vi.mock("@/features/kitchen/components/TicketHeader", () => ({ TicketHeader: () => <div>header</div> }));
-vi.mock("@/features/kitchen/components/TicketItems", () => ({ TicketItems: () => <div>items</div> }));
+vi.mock("@pos/ui", () => ({
+  Card: ({ children, className }: any) => (
+    <div className={className}>{children}</div>
+  ),
+}));
+vi.mock("@/features/kitchen/components/TicketHeader", () => ({
+  TicketHeader: () => <div>header</div>,
+}));
+vi.mock("@/features/kitchen/components/TicketItems", () => ({
+  TicketItems: () => <div>items</div>,
+}));
 vi.mock("@/features/kitchen/components/TicketFooter", () => ({
   TicketFooter: (props: any) => {
     mocks.footerProps = props;
@@ -45,7 +53,10 @@ describe("TicketCard coverage", () => {
     expect(html).toContain("ring-2");
     expect(html).toContain("URGENT VOID — stop preparation");
     mocks.footerProps.onAdvance();
-    expect(onUpdateStatus).toHaveBeenCalledWith("t1", "READY" satisfies KitchenTicketStatus);
+    expect(onUpdateStatus).toHaveBeenCalledWith(
+      "t1",
+      "READY" satisfies KitchenTicketStatus,
+    );
     vi.restoreAllMocks();
   });
 

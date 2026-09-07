@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findById, update, setVariants, validateVariantSync } = vi.hoisted(() => ({
-  findById: vi.fn(),
-  update: vi.fn(),
-  setVariants: vi.fn(),
-  validateVariantSync: vi.fn(),
-}));
+const { findById, update, setVariants, validateVariantSync } = vi.hoisted(
+  () => ({
+    findById: vi.fn(),
+    update: vi.fn(),
+    setVariants: vi.fn(),
+    validateVariantSync: vi.fn(),
+  }),
+);
 const { record } = vi.hoisted(() => ({ record: vi.fn() }));
 
 vi.mock("../item.repository", () => ({
@@ -110,5 +112,4 @@ describe("item variant updates", () => {
     expect(update).not.toHaveBeenCalled();
     expect(setVariants).not.toHaveBeenCalled();
   });
-
 });

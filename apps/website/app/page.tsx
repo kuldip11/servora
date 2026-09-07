@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BarChart3, ChefHat, ShoppingBag } from "lucide-react";
-import { InteractiveProductDemos } from "@/components/marketing/InteractiveProductDemos";
+import { InteractiveProductDemosLazy } from "@/components/marketing/InteractiveProductDemosLazy";
 
 export const metadata: Metadata = {
   title: "Servora — Every order. Every team. One flow.",
@@ -251,7 +251,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      <InteractiveProductDemos />
+      <InteractiveProductDemosLazy />
 
       <section className="bg-[#174e36] py-20 text-white sm:py-24">
         <div className="mx-auto grid max-w-7xl gap-12 px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">

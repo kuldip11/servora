@@ -2,138 +2,41 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useNavigate,
 } from "@tanstack/react-router";
-import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
-import { Home, ClipboardList, Plus } from "lucide-react";
-import {
-  LoginPage,
-  getToken,
-  getWaiterName,
-  logout,
-  logoutSession,
-  restoreSession,
-} from "@/features/auth";
-import { HomePage } from "@/features/home/pages/HomePage";
-import { OrdersPage } from "@/features/orders/pages/OrdersPage";
-import { MenuPage } from "@/features/menu";
-import { OrderDetailPage } from "@/features/orders/pages/OrderDetailPage";
-import { ProfilePage } from "@/features/profile/pages/ProfilePage";
-import { useWaiterAttention } from "@/features/orders/hooks/useWaiterAttention";
-import { useConnectionStatus } from "@/shared/lib/realtime";
-import { useMyBranch } from "@/features/menu/hooks/useMyBranch";
+import { lazy, Suspense, type ReactNode } from "react";
+import { getWaiterName, logout, logoutSession } from "@/features/auth";
+import { AppLayout } from "./AppLayout";
+import { AuthBoundary } from "./AuthBoundary";
+import { RouteFallback } from "./RouteFallback";
 
-const AuthBoundary = () => {
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(() =>
-    getToken() ? true : null,
-  );
+const HomePage = lazy(() =>
+  import("@/features/home/pages/HomePage").then((module) => ({
+    default: module.HomePage,
+  })),
+);
+const OrdersPage = lazy(() =>
+  import("@/features/orders/pages/OrdersPage").then((module) => ({
+    default: module.OrdersPage,
+  })),
+);
+const MenuPage = lazy(() =>
+  import("@/features/menu").then((module) => ({ default: module.MenuPage })),
+);
+const OrderDetailPage = lazy(() =>
+  import("@/features/orders/pages/OrderDetailPage").then((module) => ({
+    default: module.OrderDetailPage,
+  })),
+);
+const ProfilePage = lazy(() =>
+  import("@/features/profile/pages/ProfilePage").then((module) => ({
+    default: module.ProfilePage,
+  })),
+);
 
-  useEffect(() => {
-    if (loggedIn !== null) return;
-    restoreSession()
-      .then(() => setLoggedIn(true))
-      .catch(() => {
-        logout();
-        setLoggedIn(false);
-      });
-  }, [loggedIn]);
-
-  if (loggedIn === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-text-secondary">
-        Restoring session…
-      </div>
-    );
-  }
-
-  if (!loggedIn) {
-    return <LoginPage onLogin={() => setLoggedIn(true)} />;
-  }
-
-  return <Outlet />;
-};
-
-const AppLayout = ({ children }: { children?: ReactNode }) => {
-  const navigate = useNavigate();
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
-  const isHome = pathname === "/";
-  const isOrders = pathname === "/orders" || pathname.startsWith("/orders/");
-  const isMenu = pathname === "/menu";
-  const connected = useConnectionStatus();
-  const { data: branch } = useMyBranch();
-  const waiterName = getWaiterName();
-  useWaiterAttention();
-
-  return (
-    <div className="flex h-screen flex-col bg-background shadow-sm">
-      <header className="flex items-center justify-between gap-3 border-b border-divider bg-surface px-[18px] pb-3.5 pt-[18px] safe-area-top">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary">
-            <span
-              className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-success" : "bg-warning"}`}
-            />
-            {branch?.name ?? "Current branch"} ·{" "}
-            {connected ? "Live" : "Reconnecting"}
-          </p>
-          <p className="mt-0.5 truncate text-base font-medium text-text-primary">
-            {waiterName}&apos;s service
-          </p>
-        </div>
-        <button
-          type="button"
-          aria-label="Open profile"
-          onClick={() => navigate({ to: "/profile" })}
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-primary-surface text-sm font-medium text-primary"
-        >
-          {waiterName
-            .split(" ")
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join("")
-            .toUpperCase() || "W"}
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {children ?? <Outlet />}
-      </div>
-
-      <nav
-        aria-label="Primary"
-        className="grid grid-cols-3 border-t border-border bg-surface safe-area-bottom"
-      >
-        <button
-          onClick={() => navigate({ to: "/" })}
-          aria-current={isHome ? "page" : undefined}
-          className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isHome ? "text-primary" : "text-text-secondary"}`}
-        >
-          <Home className="w-5 h-5" />
-          Home
-        </button>
-        <button
-          onClick={() => navigate({ to: "/orders" })}
-          aria-current={isOrders ? "page" : undefined}
-          className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isOrders ? "text-primary" : "text-text-secondary"}`}
-        >
-          <ClipboardList className="w-5 h-5" />
-          Orders
-        </button>
-        <button
-          onClick={() => navigate({ to: "/menu" })}
-          aria-label="Create new order"
-          aria-current={isMenu ? "page" : undefined}
-          className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isMenu ? "text-primary" : "text-text-secondary"}`}
-        >
-          <Plus className="h-5 w-5" />
-          <span>New order</span>
-        </button>
-      </nav>
-    </div>
-  );
-};
+const withSuspense = (content: ReactNode) => (
+  <Suspense fallback={<RouteFallback />}>{content}</Suspense>
+);
 
 const rootRoute = createRootRoute({
   component: AuthBoundary,
@@ -146,13 +49,15 @@ const homeRoute = createRoute({
     const navigate = useNavigate();
     return (
       <AppLayout>
-        <HomePage
-          onNewOrder={() => navigate({ to: "/menu" })}
-          onViewOrders={() => navigate({ to: "/orders" })}
-          onSelectOrder={(orderId) =>
-            navigate({ to: "/orders/$orderId", params: { orderId } })
-          }
-        />
+        {withSuspense(
+          <HomePage
+            onNewOrder={() => navigate({ to: "/menu" })}
+            onViewOrders={() => navigate({ to: "/orders" })}
+            onSelectOrder={(orderId) =>
+              navigate({ to: "/orders/$orderId", params: { orderId } })
+            }
+          />,
+        )}
       </AppLayout>
     );
   },
@@ -165,16 +70,18 @@ const menuRoute = createRoute({
     const navigate = useNavigate();
     return (
       <AppLayout>
-        <MenuPage
-          onBack={() => navigate({ to: "/" })}
-          onOrderPlaced={(orderId) =>
-            navigate({
-              to: "/orders/$orderId",
-              params: { orderId },
-              replace: true,
-            })
-          }
-        />
+        {withSuspense(
+          <MenuPage
+            onBack={() => navigate({ to: "/" })}
+            onOrderPlaced={(orderId) =>
+              navigate({
+                to: "/orders/$orderId",
+                params: { orderId },
+                replace: true,
+              })
+            }
+          />,
+        )}
       </AppLayout>
     );
   },
@@ -187,11 +94,13 @@ const ordersRoute = createRoute({
     const navigate = useNavigate();
     return (
       <AppLayout>
-        <OrdersPage
-          onSelectOrder={(orderId) =>
-            navigate({ to: "/orders/$orderId", params: { orderId } })
-          }
-        />
+        {withSuspense(
+          <OrdersPage
+            onSelectOrder={(orderId) =>
+              navigate({ to: "/orders/$orderId", params: { orderId } })
+            }
+          />,
+        )}
       </AppLayout>
     );
   },
@@ -203,14 +112,14 @@ const orderDetailRoute = createRoute({
   component: () => {
     const navigate = useNavigate();
     const { orderId } = orderDetailRoute.useParams();
-    return (
+    return withSuspense(
       <OrderDetailPage
         orderId={orderId}
         onBack={() => navigate({ to: "/orders" })}
         onAddItems={(id) =>
           navigate({ to: "/orders/$orderId/add", params: { orderId: id } })
         }
-      />
+      />,
     );
   },
 });
@@ -221,7 +130,7 @@ const addItemsRoute = createRoute({
   component: () => {
     const navigate = useNavigate();
     const { orderId } = addItemsRoute.useParams();
-    return (
+    return withSuspense(
       <MenuPage
         existingOrderId={orderId}
         onBack={() => navigate({ to: "/orders/$orderId", params: { orderId } })}
@@ -232,7 +141,7 @@ const addItemsRoute = createRoute({
             replace: true,
           })
         }
-      />
+      />,
     );
   },
 });
@@ -242,7 +151,7 @@ const profileRoute = createRoute({
   path: "/profile",
   component: () => {
     const navigate = useNavigate();
-    return (
+    return withSuspense(
       <ProfilePage
         waiterName={getWaiterName()}
         onBack={() => navigate({ to: "/" })}
@@ -255,7 +164,7 @@ const profileRoute = createRoute({
             window.location.reload();
           }
         }}
-      />
+      />,
     );
   },
 });

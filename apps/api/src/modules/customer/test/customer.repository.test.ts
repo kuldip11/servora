@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
   insertValues: vi.fn(),
   insertReturning: vi.fn(),
   itemAvailability: vi.fn((item) => ({ ...item, effectiveStatus: "ACTIVE" })),
-  modifierAvailability: vi.fn((option) => ({ ...option, effectiveStatus: "ACTIVE" })),
+  modifierAvailability: vi.fn((option) => ({
+    ...option,
+    effectiveStatus: "ACTIVE",
+  })),
 }));
 
 vi.mock("@/db", () => ({
@@ -43,7 +46,9 @@ describe("customerRepository coverage", () => {
     mocks.findTicket.mockResolvedValue({ id: "kt1" });
     mocks.findOrder.mockResolvedValue({ id: "o1", status: "OPEN" });
     mocks.findSession.mockResolvedValue({ id: "s1" });
-    mocks.findCategories.mockResolvedValue([{ id: "c1", name: "Food", sortOrder: 2 }]);
+    mocks.findCategories.mockResolvedValue([
+      { id: "c1", name: "Food", sortOrder: 2 },
+    ]);
     mocks.findItems.mockResolvedValue([
       {
         id: "mi1",
@@ -65,11 +70,21 @@ describe("customerRepository coverage", () => {
   });
 
   it("looks up branches, tables, request tickets, open orders and sessions", async () => {
-    await expect(customerRepository.findBranchByTakeawayQrToken("qr")).resolves.toEqual({ id: "b1" });
-    await expect(customerRepository.findTableByQrToken("qr")).resolves.toEqual({ id: "table1" });
-    await expect(customerRepository.findCustomerRequestTicket("o1", "req1")).resolves.toEqual({ id: "kt1" });
-    await expect(customerRepository.findOpenOrderBySession("t1", "b1", "s1")).resolves.toEqual({ id: "o1", status: "OPEN" });
-    await expect(customerRepository.findSession("tok")).resolves.toEqual({ id: "s1" });
+    await expect(
+      customerRepository.findBranchByTakeawayQrToken("qr"),
+    ).resolves.toEqual({ id: "b1" });
+    await expect(customerRepository.findTableByQrToken("qr")).resolves.toEqual({
+      id: "table1",
+    });
+    await expect(
+      customerRepository.findCustomerRequestTicket("o1", "req1"),
+    ).resolves.toEqual({ id: "kt1" });
+    await expect(
+      customerRepository.findOpenOrderBySession("t1", "b1", "s1"),
+    ).resolves.toEqual({ id: "o1", status: "OPEN" });
+    await expect(customerRepository.findSession("tok")).resolves.toEqual({
+      id: "s1",
+    });
 
     expect(mocks.findBranch).toHaveBeenCalledOnce();
     expect(mocks.findTable).toHaveBeenCalledOnce();
@@ -101,8 +116,13 @@ describe("customerRepository coverage", () => {
   it("lists menu categories/items and resolves nested effective availability", async () => {
     const result = await customerRepository.listMenu("t1", "b1");
 
-    expect(result.categories).toEqual([{ id: "c1", name: "Food", sortOrder: 2 }]);
-    expect(result.items[0]).toMatchObject({ id: "mi1", effectiveStatus: "ACTIVE" });
+    expect(result.categories).toEqual([
+      { id: "c1", name: "Food", sortOrder: 2 },
+    ]);
+    expect(result.items[0]).toMatchObject({
+      id: "mi1",
+      effectiveStatus: "ACTIVE",
+    });
     expect(result.items[0]?.modifierGroupLinks[0]?.group.options).toEqual([
       { id: "m1", effectiveStatus: "ACTIVE" },
       { id: "m2", effectiveStatus: "ACTIVE" },
@@ -118,14 +138,12 @@ describe("customerRepository coverage", () => {
     const itemOptions = mocks.findItems.mock.calls[0]?.[0];
     const asc = vi.fn((value) => `asc:${String(value)}`);
 
-    expect(categoryOptions.orderBy({ sortOrder: "sort", name: "name" }, { asc })).toEqual([
-      "asc:sort",
-      "asc:name",
-    ]);
-    expect(itemOptions.orderBy({ sortOrder: "sort", name: "name" }, { asc })).toEqual([
-      "asc:sort",
-      "asc:name",
-    ]);
+    expect(
+      categoryOptions.orderBy({ sortOrder: "sort", name: "name" }, { asc }),
+    ).toEqual(["asc:sort", "asc:name"]);
+    expect(
+      itemOptions.orderBy({ sortOrder: "sort", name: "name" }, { asc }),
+    ).toEqual(["asc:sort", "asc:name"]);
     expect(asc).toHaveBeenCalledTimes(4);
   });
 });

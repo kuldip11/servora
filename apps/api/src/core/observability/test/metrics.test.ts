@@ -13,9 +13,7 @@ describe("metrics", () => {
 
     const output = metrics.renderPrometheus();
     expect(output).toContain(`# TYPE ${name} counter`);
-    expect(output).toContain(
-      `${name}{a="true",z="quote\\"slash\\\\"} 3`,
-    );
+    expect(output).toContain(`${name}{a="true",z="quote\\"slash\\\\"} 3`);
     expect(output).not.toContain("ignored=");
   });
 

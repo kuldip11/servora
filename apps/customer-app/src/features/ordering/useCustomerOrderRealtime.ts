@@ -62,9 +62,7 @@ export const useCustomerOrderRealtime = (
       socket = new WebSocket(`${wsBase}/customer/events`);
 
       socket.onopen = () => {
-        socket?.send(
-          JSON.stringify({ type: "auth", session: sessionToken }),
-        );
+        socket?.send(JSON.stringify({ type: "auth", session: sessionToken }));
       };
 
       socket.onmessage = (event) => {

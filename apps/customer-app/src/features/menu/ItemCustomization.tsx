@@ -1,28 +1,23 @@
 import { memo, useState } from "react";
-import { Plus, Minus } from "lucide-react";
-import { Badge, BottomSheet, Button, IconButton } from "@pos/ui";
+import { BottomSheet } from "@pos/ui";
+
 import type { CustomerMenuItem } from "@/api";
+import { validateItemConfiguration } from "@/features/cart/configuration";
 import type { SelectedOption } from "@/features/cart/pricing";
 import { getLineSubtotal } from "@/features/cart/pricing";
-import { validateItemConfiguration } from "@/features/cart/configuration";
+import { ItemCustomizationFooter } from "@/features/menu/ItemCustomizationFooter";
+import { ItemCustomizationOverview } from "@/features/menu/ItemCustomizationOverview";
+import { ItemModifierGroups } from "@/features/menu/ItemModifierGroups";
 
-import { formatMoney } from "@/shared/utils/money";
+type Zone = "LEFT" | "RIGHT" | "WHOLE";
 
 type Props = {
   item: CustomerMenuItem;
   selectedOptions: SelectedOption[];
   variantId?: string;
   onVariantChange: (variantId: string | undefined) => void;
-  onToggle: (
-    optionId: string,
-    groupId: string,
-    zoneLabel?: "LEFT" | "RIGHT" | "WHOLE",
-  ) => void;
-  onOptionQuantity: (
-    optionId: string,
-    delta: number,
-    zoneLabel?: "LEFT" | "RIGHT" | "WHOLE",
-  ) => void;
+  onToggle: (optionId: string, groupId: string, zoneLabel?: Zone) => void;
+  onOptionQuantity: (optionId: string, delta: number, zoneLabel?: Zone) => void;
   onClose: () => void;
   onAdd: () => void;
   quantity: number;
@@ -43,17 +38,12 @@ export const ItemCustomization = memo(function ItemCustomization({
   onQuantityChange,
   editing = false,
 }: Props) {
-  const [activeZone, setActiveZone] = useState<"LEFT" | "RIGHT" | "WHOLE">(
-    "LEFT",
-  );
+  const [activeZone, setActiveZone] = useState<Zone>("LEFT");
   const validationError = validateItemConfiguration(
     item,
     variantId,
     selectedOptions,
   );
-  const valid = validationError === null;
-  const staffPriced =
-    item.pricingMode === "WEIGHT_BASED" || item.pricingMode === "OPEN";
   const configuredTotal = getLineSubtotal({
     item,
     quantity,
@@ -73,287 +63,31 @@ export const ItemCustomization = memo(function ItemCustomization({
       bodyClassName="customer-scrollbar-hidden px-4 pb-6 sm:px-7"
       footerClassName="bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-7"
       footer={
-        <div className="flex w-full items-center gap-3">
-          <div className="flex h-12 shrink-0 items-center rounded-2xl bg-surface-secondary p-1">
-            <IconButton
-              aria-label="Decrease quantity"
-              icon={Minus}
-              size="sm"
-              disabled={quantity <= 1}
-              onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            />
-            <span className="w-8 text-center text-sm font-bold">
-              {quantity}
-            </span>
-            <IconButton
-              aria-label="Increase quantity"
-              icon={Plus}
-              size="sm"
-              onClick={() => onQuantityChange(quantity + 1)}
-            />
-          </div>
-          <Button
-            size="lg"
-            className="h-12 flex-1 rounded-2xl"
-            disabled={!valid}
-            onClick={onAdd}
-          >
-            {editing ? "Update order" : "Add to order"} ·{" "}
-            {formatMoney(configuredTotal)}
-          </Button>
-        </div>
+        <ItemCustomizationFooter
+          editing={editing}
+          quantity={quantity}
+          total={configuredTotal}
+          valid={validationError === null}
+          onAdd={onAdd}
+          onQuantityChange={onQuantityChange}
+        />
       }
     >
       <div className="space-y-7">
-        {item.imageUrl || item.images[0]?.url ? (
-          <img
-            src={item.imageUrl ?? item.images[0]?.url}
-            alt={item.name}
-            className="h-52 w-full rounded-3xl object-cover sm:h-64"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : null}
-        <div>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="customer-display text-3xl font-bold text-text-primary">
-                {item.name}
-              </h2>
-              {item.description && (
-                <p className="mt-1 text-sm leading-6 text-text-secondary">
-                  {item.description}
-                </p>
-              )}
-            </div>
-            <span className="shrink-0 font-bold text-text-primary">
-              {item.pricingMode === "OPEN"
-                ? "Staff priced"
-                : item.pricingMode === "WEIGHT_BASED"
-                  ? `${formatMoney(Number(item.basePrice))}/${String(item.weightUnit ?? "unit").toLowerCase()}`
-                  : formatMoney(Number(item.basePrice))}
-            </span>
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <Badge
-              variant={
-                item.foodType === "VEG"
-                  ? "success"
-                  : item.foodType === "EGG"
-                    ? "warning"
-                    : "danger"
-              }
-            >
-              {item.foodType === "VEG"
-                ? "Vegetarian"
-                : item.foodType === "EGG"
-                  ? "Contains egg"
-                  : "Non-vegetarian"}
-            </Badge>
-            {item.spiceLevel && item.spiceLevel !== "NONE" && (
-              <Badge>{item.spiceLevel.toLowerCase()} spice</Badge>
-            )}
-          </div>
-        </div>
-
-        {item.variants.length > 0 && (
-          <fieldset>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <legend className="font-bold text-text-primary">
-                Choose a size
-              </legend>
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#d45d24]">
-                Required
-              </span>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-border bg-surface px-4">
-              {item.variants.map((variant) => (
-                <label
-                  key={variant.id}
-                  className={`flex min-h-14 items-center justify-between border-b border-border py-3 last:border-b-0 ${(variant.manualOverrideStatus ?? variant.status ?? "ACTIVE") !== "ACTIVE" ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                >
-                  <span className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name={`variant-${item.id}`}
-                      checked={variantId === variant.id}
-                      disabled={
-                        (variant.manualOverrideStatus ??
-                          variant.status ??
-                          "ACTIVE") !== "ACTIVE"
-                      }
-                      onChange={() => onVariantChange(variant.id)}
-                    />
-                    <span className="font-medium text-text-primary">
-                      {variant.name}
-                      {(variant.manualOverrideStatus ??
-                        variant.status ??
-                        "ACTIVE") !== "ACTIVE"
-                        ? " — unavailable"
-                        : ""}
-                    </span>
-                  </span>
-                  <span className="text-sm text-text-secondary">
-                    {formatMoney(Number(variant.price))}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        )}
-
-        {staffPriced && (
-          <p className="rounded-lg border border-warning/20 bg-warning-surface p-3 text-sm text-warning">
-            {item.pricingMode === "WEIGHT_BASED"
-              ? `Sold by weight (${item.weightUnit ?? "configured unit"}).`
-              : "Price is entered by staff for this item."}{" "}
-            Please ask a staff member to add it to your order.
-          </p>
-        )}
-        {item.supportsZones && (
-          <div className="rounded-lg border border-border p-3">
-            <p className="mb-2 text-sm font-semibold text-text-primary">
-              Choose toppings by zone
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["LEFT", "RIGHT", "WHOLE"] as const).map((zone) => (
-                <button
-                  key={zone}
-                  type="button"
-                  onClick={() => setActiveZone(zone)}
-                  className={`rounded-xl px-3 py-2.5 text-xs font-semibold ${activeZone === zone ? "bg-primary text-primary-foreground" : "bg-surface-secondary text-text-secondary"}`}
-                >
-                  {zone === "WHOLE"
-                    ? "Whole"
-                    : zone === "LEFT"
-                      ? "Left half"
-                      : "Right half"}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {item.displayMode === "GUIDED_BUILDER" && (
-          <p className="rounded-lg bg-primary-surface p-3 text-sm font-medium text-primary">
-            Build your dish · complete each required step
-          </p>
-        )}
-        {item.modifierGroupLinks
-          .filter(
-            ({ group }) =>
-              !group.dependsOnOptionId ||
-              selectedOptions.some(
-                (option) => option.optionId === group.dependsOnOptionId,
-              ),
-          )
-          .map(({ group }, groupIndex) => (
-            <fieldset key={group.id}>
-              <div className="mb-3 flex items-start justify-between gap-4">
-                <legend className="font-bold text-text-primary">
-                  {item.displayMode === "GUIDED_BUILDER"
-                    ? `Step ${groupIndex + 1}: `
-                    : ""}
-                  {group.name}
-                </legend>
-                <span
-                  className={`text-[10px] font-extrabold uppercase tracking-[0.1em] ${group.minSelections > 0 ? "text-[#d45d24]" : "text-text-secondary"}`}
-                >
-                  {group.minSelections > 0
-                    ? `Choose ${group.minSelections}${group.maxSelections ? `–${group.maxSelections}` : "+"}`
-                    : "Optional"}
-                </span>
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-border bg-surface px-4">
-                {group.options
-                  .filter((option) => option.isAvailable)
-                  .map((option) => {
-                    const selected = selectedOptions.find(
-                      (selection) =>
-                        selection.optionId === option.id &&
-                        (!item.supportsZones ||
-                          (selection.zoneLabel ?? "WHOLE") === activeZone),
-                    );
-                    const multiple = group.selectionType === "MULTIPLE";
-                    const canIncrease =
-                      multiple &&
-                      selected != null &&
-                      selected.quantity < option.maxQuantity;
-                    return (
-                      <div
-                        key={option.id}
-                        className="flex min-h-14 items-center justify-between border-b border-border py-3 last:border-b-0"
-                      >
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 text-left"
-                          onClick={() =>
-                            onToggle(
-                              option.id,
-                              group.id,
-                              item.supportsZones ? activeZone : undefined,
-                            )
-                          }
-                        >
-                          <span className="block font-medium text-text-primary">
-                            {option.name}
-                          </span>
-                          <span className="text-sm text-text-secondary">
-                            +
-                            {formatMoney(
-                              Number(
-                                (variantId
-                                  ? option.variantPrices?.find(
-                                      (price) => price.variantId === variantId,
-                                    )?.additionalPrice
-                                  : undefined) ?? option.additionalPrice,
-                              ),
-                            )}
-                          </span>
-                        </button>
-                        {multiple && selected ? (
-                          <div className="ml-3 flex items-center gap-2">
-                            <IconButton
-                              aria-label={`Decrease ${option.name}`}
-                              icon={Minus}
-                              size="sm"
-                              onClick={() =>
-                                onOptionQuantity(
-                                  option.id,
-                                  -1,
-                                  item.supportsZones ? activeZone : undefined,
-                                )
-                              }
-                            />
-                            <span className="w-5 text-center text-sm font-semibold">
-                              {selected.quantity}
-                            </span>
-                            <IconButton
-                              aria-label={`Increase ${option.name}`}
-                              icon={Plus}
-                              size="sm"
-                              disabled={!canIncrease}
-                              onClick={() =>
-                                onOptionQuantity(
-                                  option.id,
-                                  1,
-                                  item.supportsZones ? activeZone : undefined,
-                                )
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <span
-                            aria-hidden="true"
-                            className={`ml-3 h-5 w-5 rounded-full border-2 ${selected ? "border-primary bg-primary shadow-[inset_0_0_0_4px_var(--surface)]" : "border-border"}`}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            </fieldset>
-          ))}
-
+        <ItemCustomizationOverview
+          item={item}
+          variantId={variantId}
+          onVariantChange={onVariantChange}
+        />
+        <ItemModifierGroups
+          item={item}
+          selectedOptions={selectedOptions}
+          variantId={variantId}
+          activeZone={activeZone}
+          onZoneChange={setActiveZone}
+          onToggle={onToggle}
+          onOptionQuantity={onOptionQuantity}
+        />
         {validationError && (
           <p role="alert" className="text-sm text-danger">
             {validationError}

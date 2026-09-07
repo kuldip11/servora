@@ -1,5 +1,101 @@
-vi.mock("elysia",async(importOriginal)=>{const actual=await importOriginal<typeof import("elysia")>();class FakeElysia{routes:any[]=[];constructor(_o:any={}){}use(_p:any){return this;}get(path:string,handler?:any){this.routes.push({method:"GET",path,handler});return this;}post(path:string,handler?:any){this.routes.push({method:"POST",path,handler});return this;}patch(path:string,handler?:any){this.routes.push({method:"PATCH",path,handler});return this;}delete(path:string,handler?:any){this.routes.push({method:"DELETE",path,handler});return this;}put(path:string,handler?:any){this.routes.push({method:"PUT",path,handler});return this;}}return{...actual,Elysia:FakeElysia};});
-const m=vi.hoisted(()=>({create:vi.fn().mockResolvedValue({}),listByStatus:vi.fn().mockResolvedValue({}),getById:vi.fn().mockResolvedValue({}),update:vi.fn().mockResolvedValue({}),remove:vi.fn().mockResolvedValue({}),duplicate:vi.fn().mockResolvedValue({}),publish:vi.fn().mockResolvedValue({}),unpublish:vi.fn().mockResolvedValue({}),updateStatus:vi.fn().mockResolvedValue({}),updateAvailability:vi.fn().mockResolvedValue({})}));
-vi.mock("@/core/auth",()=>({requireAuthPlugin:()=>({})}));vi.mock("../item.controller",()=>({itemController:m}));
-import{describe,expect,it,vi}from"vitest";import{menuItemsRouter}from"../item.route";
-describe("item routes comprehensive coverage",()=>{it("executes every route handler",async()=>{const rs=(menuItemsRouter as any).routes;const r=(method:string,path:string)=>rs.find((x:any)=>x.method===method&&x.path===path);const auth={tenantId:"t1"};let set:any={};await r("POST","/").handler({auth,body:{categoryId:"c",name:"N",basePrice:1},set});expect(set.status).toBe(201);await r("GET","/status/:status").handler({auth,params:{status:"ACTIVE"},query:{categoryId:"c"}});await r("GET","/:id").handler({auth,params:{id:"i"}});await r("PATCH","/:id").handler({auth,params:{id:"i"},body:{name:"N"}});await r("DELETE","/:id").handler({auth,params:{id:"i"}});set={};await r("POST","/:id/duplicate").handler({auth,params:{id:"i"},body:undefined,set});expect(set.status).toBe(201);await r("POST","/:id/duplicate").handler({auth,params:{id:"i"},body:{name:"Copy"},set:{}});await r("PATCH","/:id/publish").handler({auth,params:{id:"i"}});await r("PATCH","/:id/unpublish").handler({auth,params:{id:"i"}});await r("PUT","/:id/status").handler({auth,params:{id:"i"},body:{status:"ACTIVE",reason:"r"}});await r("PATCH","/:id/availability").handler({auth,params:{id:"i"},body:{isAvailable:false,reason:"r"}});expect(m.updateAvailability).toHaveBeenCalledWith(auth,"i",false,"r");});});
+vi.mock("elysia", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("elysia")>();
+  class FakeElysia {
+    routes: any[] = [];
+    constructor(_o: any = {}) {}
+    use(_p: any) {
+      return this;
+    }
+    get(path: string, handler?: any) {
+      this.routes.push({ method: "GET", path, handler });
+      return this;
+    }
+    post(path: string, handler?: any) {
+      this.routes.push({ method: "POST", path, handler });
+      return this;
+    }
+    patch(path: string, handler?: any) {
+      this.routes.push({ method: "PATCH", path, handler });
+      return this;
+    }
+    delete(path: string, handler?: any) {
+      this.routes.push({ method: "DELETE", path, handler });
+      return this;
+    }
+    put(path: string, handler?: any) {
+      this.routes.push({ method: "PUT", path, handler });
+      return this;
+    }
+  }
+  return { ...actual, Elysia: FakeElysia };
+});
+const m = vi.hoisted(() => ({
+  create: vi.fn().mockResolvedValue({}),
+  listByStatus: vi.fn().mockResolvedValue({}),
+  getById: vi.fn().mockResolvedValue({}),
+  update: vi.fn().mockResolvedValue({}),
+  remove: vi.fn().mockResolvedValue({}),
+  duplicate: vi.fn().mockResolvedValue({}),
+  publish: vi.fn().mockResolvedValue({}),
+  unpublish: vi.fn().mockResolvedValue({}),
+  updateStatus: vi.fn().mockResolvedValue({}),
+  updateAvailability: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/core/auth", () => ({ requireAuthPlugin: () => ({}) }));
+vi.mock("../item.controller", () => ({ itemController: m }));
+import { describe, expect, it, vi } from "vitest";
+import { menuItemsRouter } from "../item.route";
+describe("item routes comprehensive coverage", () => {
+  it("executes every route handler", async () => {
+    const rs = (menuItemsRouter as any).routes;
+    const r = (method: string, path: string) =>
+      rs.find((x: any) => x.method === method && x.path === path);
+    const auth = { tenantId: "t1" };
+    let set: any = {};
+    await r("POST", "/").handler({
+      auth,
+      body: { categoryId: "c", name: "N", basePrice: 1 },
+      set,
+    });
+    expect(set.status).toBe(201);
+    await r("GET", "/status/:status").handler({
+      auth,
+      params: { status: "ACTIVE" },
+      query: { categoryId: "c" },
+    });
+    await r("GET", "/:id").handler({ auth, params: { id: "i" } });
+    await r("PATCH", "/:id").handler({
+      auth,
+      params: { id: "i" },
+      body: { name: "N" },
+    });
+    await r("DELETE", "/:id").handler({ auth, params: { id: "i" } });
+    set = {};
+    await r("POST", "/:id/duplicate").handler({
+      auth,
+      params: { id: "i" },
+      body: undefined,
+      set,
+    });
+    expect(set.status).toBe(201);
+    await r("POST", "/:id/duplicate").handler({
+      auth,
+      params: { id: "i" },
+      body: { name: "Copy" },
+      set: {},
+    });
+    await r("PATCH", "/:id/publish").handler({ auth, params: { id: "i" } });
+    await r("PATCH", "/:id/unpublish").handler({ auth, params: { id: "i" } });
+    await r("PUT", "/:id/status").handler({
+      auth,
+      params: { id: "i" },
+      body: { status: "ACTIVE", reason: "r" },
+    });
+    await r("PATCH", "/:id/availability").handler({
+      auth,
+      params: { id: "i" },
+      body: { isAvailable: false, reason: "r" },
+    });
+    expect(m.updateAvailability).toHaveBeenCalledWith(auth, "i", false, "r");
+  });
+});

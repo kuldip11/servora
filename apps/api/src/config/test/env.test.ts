@@ -38,7 +38,9 @@ describe("loadApiEnv", () => {
         TRUST_PROXY_HOPS: "99",
         JWT_SECRET: "short",
       }),
-    ).toThrow(/Invalid API environment: .*PORT:.*TRUST_PROXY_HOPS:.*JWT_SECRET:/);
+    ).toThrow(
+      /Invalid API environment: .*PORT:.*TRUST_PROXY_HOPS:.*JWT_SECRET:/,
+    );
   });
 
   it("requires strong production JWT and metrics secrets", () => {
@@ -62,7 +64,9 @@ describe("loadApiEnv", () => {
         METRICS_TOKEN: "m".repeat(32),
         CORS_ORIGIN: " https://pos.example.com, * ,",
       }),
-    ).toThrow("Invalid API environment: wildcard CORS is forbidden in production");
+    ).toThrow(
+      "Invalid API environment: wildcard CORS is forbidden in production",
+    );
   });
 
   it.each([

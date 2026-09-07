@@ -346,7 +346,8 @@ export const itemRepository = {
         columns: { id: true, variantId: true },
       }),
     ]);
-    const blockedVariantId = comboReference?.variantId ?? orderReference?.variantId;
+    const blockedVariantId =
+      comboReference?.variantId ?? orderReference?.variantId;
     if (blockedVariantId) {
       return {
         ok: false as const,

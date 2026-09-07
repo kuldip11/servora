@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  MapPin,
-  SlidersHorizontal,
-  UserRound,
-  X,
-} from "lucide-react";
-import { Modal, SelectMenu } from "@pos/ui";
+import { MapPin } from "lucide-react";
+import { Modal } from "@pos/ui";
 import { ALL_ORDER_TYPES } from "@/features/menu/constants";
+import { CustomerBillingOptions } from "@/features/menu/components/order-options/CustomerBillingOptions";
+import { OrderTableSelector } from "@/features/menu/components/order-options/OrderTableSelector";
 import type { LoyaltyCustomer } from "@pos/types";
 import type { RestaurantTableDto } from "@pos/api-client";
 
@@ -96,10 +92,6 @@ export const OrderOptionsPanel = ({
     !needsTable ||
     Boolean(selectedTable && selectedTable.status === "AVAILABLE");
   const [editingContext, setEditingContext] = useState(!contextReady);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tableSearch, setTableSearch] = useState("");
-  const [tableStatusFilter, setTableStatusFilter] = useState("ALL");
-  const [visibleTableCount, setVisibleTableCount] = useState(30);
   const orderTypeLabel =
     availableOrderTypes.find((type) => type.value === orderType)?.label ??
     orderType.replace("_", " ");
@@ -116,14 +108,6 @@ export const OrderOptionsPanel = ({
   ]
     .filter(Boolean)
     .join(" · ");
-  const filteredTables = (tables ?? []).filter((table) => {
-    const query = tableSearch.trim().toLowerCase();
-    return (
-      (!query ||
-        `${table.name} ${table.section ?? ""}`.toLowerCase().includes(query)) &&
-      (tableStatusFilter === "ALL" || table.status === tableStatusFilter)
-    );
-  });
 
   return (
     <>
@@ -214,108 +198,11 @@ export const OrderOptionsPanel = ({
           )}
 
           {needsTable && tables && tables.length > 0 && (
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  Select table
-                </p>
-                <span className="text-xs text-text-disabled">
-                  {
-                    tables.filter((table) => table.status === "AVAILABLE")
-                      .length
-                  }{" "}
-                  available
-                </span>
-              </div>
-              <input
-                type="search"
-                value={tableSearch}
-                onChange={(event) => {
-                  setTableSearch(event.target.value);
-                  setVisibleTableCount(30);
-                }}
-                placeholder="Search table or section…"
-                aria-label="Search tables"
-                className="min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <div className="scrollbar-hidden flex gap-1.5 overflow-x-auto">
-                {["ALL", "AVAILABLE", "OCCUPIED", "RESERVED", "CLEANING"].map(
-                  (status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => {
-                        setTableStatusFilter(status);
-                        setVisibleTableCount(30);
-                      }}
-                      className={`min-h-9 shrink-0 rounded-full border px-3 text-[11px] font-semibold ${
-                        tableStatusFilter === status
-                          ? "border-primary bg-primary-surface text-primary"
-                          : "border-border bg-surface text-text-secondary"
-                      }`}
-                    >
-                      {status === "ALL"
-                        ? "All"
-                        : status.charAt(0) + status.slice(1).toLowerCase()}
-                    </button>
-                  ),
-                )}
-              </div>
-              <div
-                className="scrollbar-hidden grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3"
-                onScroll={(event) => {
-                  const target = event.currentTarget;
-                  if (
-                    target.scrollHeight -
-                      target.scrollTop -
-                      target.clientHeight <
-                    120
-                  )
-                    setVisibleTableCount((current) =>
-                      Math.min(filteredTables.length, current + 30),
-                    );
-                }}
-              >
-                {filteredTables.slice(0, visibleTableCount).map((table) => {
-                  const status = table.status ?? "AVAILABLE";
-                  const available = status === "AVAILABLE";
-                  const selected = table.id === tableId;
-                  return (
-                    <button
-                      key={table.id}
-                      type="button"
-                      disabled={!available}
-                      onClick={() => onTableChange(table.id)}
-                      className={`min-h-20 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${
-                        selected
-                          ? "border-primary bg-primary-surface ring-1 ring-primary"
-                          : "border-border bg-surface"
-                      }`}
-                    >
-                      <span className="block truncate text-sm font-semibold text-text-primary">
-                        {table.name}
-                      </span>
-                      <span className="mt-1 block truncate text-[11px] text-text-secondary">
-                        {available
-                          ? `${table.capacity} seats${table.section ? ` · ${table.section}` : ""}`
-                          : status.charAt(0) + status.slice(1).toLowerCase()}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {!filteredTables.length && (
-                <p className="rounded-xl bg-surface-secondary p-3 text-center text-xs text-text-secondary">
-                  No tables match these filters.
-                </p>
-              )}
-              {!tables.some((table) => table.status === "AVAILABLE") && (
-                <p className="mt-2 rounded-xl bg-warning-surface p-3 text-xs text-warning">
-                  No table is currently available. Reserved, occupied, and
-                  cleaning tables cannot be selected.
-                </p>
-              )}
-            </div>
+            <OrderTableSelector
+              tables={tables}
+              tableId={tableId}
+              onTableChange={onTableChange}
+            />
           )}
 
           {needsTable && tables && tables.length === 0 && (
@@ -325,145 +212,25 @@ export const OrderOptionsPanel = ({
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((value) => !value)}
-            aria-expanded={showAdvanced}
-            className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-border px-3 text-left text-sm font-medium text-text-secondary"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Customer and billing
-            {customerName && (
-              <span className="ml-1 truncate text-xs text-primary">
-                · {customerName}
-              </span>
-            )}
-            <ChevronDown
-              className={`ml-auto h-4 w-4 shrink-0 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
-            />
-          </button>
-
-          {showAdvanced && (
-            <div className="space-y-3 rounded-2xl bg-surface-secondary p-3">
-              {customerId ? (
-                <div className="flex min-h-11 items-center justify-between rounded-xl border border-primary-border bg-primary-surface px-3">
-                  <span className="flex items-center gap-2 text-sm font-medium text-primary">
-                    <UserRound className="h-4 w-4" /> {customerName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onClearCustomer}
-                    aria-label="Remove customer"
-                  >
-                    <X className="h-4 w-4 text-primary" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search customer by name or phone…"
-                    value={customerSearch}
-                    onChange={(event) =>
-                      onCustomerSearchChange(event.target.value)
-                    }
-                    aria-label="Search customer by name or phone"
-                    className="min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  {customerResults && customerResults.length > 0 && (
-                    <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-36 overflow-y-auto rounded-xl border border-border bg-surface shadow-md">
-                      {customerResults.map((customer) => (
-                        <button
-                          type="button"
-                          key={customer.id}
-                          onClick={() =>
-                            onSelectCustomer(customer.id, customer.name)
-                          }
-                          className="w-full border-b border-divider px-4 py-2.5 text-left last:border-0"
-                        >
-                          <p className="text-sm font-medium text-text-primary">
-                            {customer.name}
-                          </p>
-                          <p className="text-xs text-text-disabled">
-                            {customer.phone || customer.email || "No contact"}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SelectMenu
-                  label="Customer group"
-                  placeholder="No customer group"
-                  value={customerGroupId || undefined}
-                  onChange={onCustomerGroupChange}
-                  className="min-h-11 rounded-xl"
-                  options={[
-                    { value: "", label: "No customer group" },
-                    ...customerGroups.map((group) => ({
-                      value: group.id,
-                      label: group.name,
-                    })),
-                  ]}
-                />
-                <SelectMenu
-                  label="Billing mode"
-                  value={billingMode}
-                  onChange={(value) =>
-                    onBillingModeChange(value as "LINE_ITEMS" | "PER_COVER")
-                  }
-                  className="min-h-11 rounded-xl"
-                  options={[
-                    {
-                      value: "LINE_ITEMS",
-                      label: "Line items",
-                      description: "Charge for ordered items",
-                    },
-                    {
-                      value: "PER_COVER",
-                      label: "Per cover",
-                      description: "Charge by guest count",
-                      disabled: !perCoverRules.length,
-                    },
-                  ]}
-                />
-              </div>
-
-              {billingMode === "PER_COVER" && (
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="text-xs font-medium text-text-secondary">
-                    Covers
-                    <input
-                      type="number"
-                      min={1}
-                      value={coverCount}
-                      onChange={(event) =>
-                        onCoverCountChange(
-                          Math.max(1, Number(event.target.value) || 1),
-                        )
-                      }
-                      className="mt-1 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
-                    />
-                  </label>
-                  <SelectMenu
-                    label="Rate"
-                    placeholder="Select a rate…"
-                    value={perCoverPriceRuleId || undefined}
-                    onChange={onPerCoverPriceRuleChange}
-                    className="min-h-11 rounded-xl"
-                    options={perCoverRules.map((rule) => ({
-                      value: rule.id,
-                      label: rule.coverTier ?? "Any cover",
-                      description: `₹${Number(rule.price ?? 0).toFixed(2)}`,
-                    }))}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+          <CustomerBillingOptions
+            customerId={customerId}
+            customerName={customerName}
+            onClearCustomer={onClearCustomer}
+            customerSearch={customerSearch}
+            onCustomerSearchChange={onCustomerSearchChange}
+            customerResults={customerResults}
+            onSelectCustomer={onSelectCustomer}
+            customerGroups={customerGroups}
+            customerGroupId={customerGroupId}
+            onCustomerGroupChange={onCustomerGroupChange}
+            billingMode={billingMode}
+            onBillingModeChange={onBillingModeChange}
+            coverCount={coverCount}
+            onCoverCountChange={onCoverCountChange}
+            perCoverRules={perCoverRules}
+            perCoverPriceRuleId={perCoverPriceRuleId}
+            onPerCoverPriceRuleChange={onPerCoverPriceRuleChange}
+          />
         </div>
       </Modal>
     </>

@@ -1,40 +1,401 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m=vi.hoisted(()=>({
- groupFindMany:vi.fn(),groupFindFirst:vi.fn(),tagFindMany:vi.fn(),optionFindFirst:vi.fn(),allergenFindMany:vi.fn(),
- insert:vi.fn(),values:vi.fn(),returning:vi.fn(),update:vi.fn(),set:vi.fn(),updateWhere:vi.fn(),del:vi.fn(),deleteWhere:vi.fn(),
- select:vi.fn(),from:vi.fn(),innerJoin:vi.fn(),selectWhere:vi.fn(),transaction:vi.fn(),txOptionFindMany:vi.fn(),txGroupFindFirst:vi.fn(),
+const m = vi.hoisted(() => ({
+  groupFindMany: vi.fn(),
+  groupFindFirst: vi.fn(),
+  tagFindMany: vi.fn(),
+  optionFindFirst: vi.fn(),
+  allergenFindMany: vi.fn(),
+  insert: vi.fn(),
+  values: vi.fn(),
+  returning: vi.fn(),
+  update: vi.fn(),
+  set: vi.fn(),
+  updateWhere: vi.fn(),
+  del: vi.fn(),
+  deleteWhere: vi.fn(),
+  select: vi.fn(),
+  from: vi.fn(),
+  innerJoin: vi.fn(),
+  selectWhere: vi.fn(),
+  transaction: vi.fn(),
+  txOptionFindMany: vi.fn(),
+  txGroupFindFirst: vi.fn(),
 }));
-vi.mock("@/db",()=>{
- const tx:any={query:{modifierOptions:{findMany:m.txOptionFindMany},modifierGroups:{findFirst:m.txGroupFindFirst}},insert:m.insert,update:m.update,delete:m.del};
- m.transaction.mockImplementation(async(fn:(tx:any)=>unknown)=>fn(tx));
- m.insert.mockImplementation(()=>({values:m.values}));
- m.values.mockImplementation(()=>({returning:m.returning}));
- m.update.mockImplementation(()=>({set:m.set}));
- m.set.mockImplementation(()=>({where:m.updateWhere}));
- m.del.mockImplementation(()=>({where:m.deleteWhere}));
- const builder:any={from:m.from,innerJoin:m.innerJoin,where:m.selectWhere};
- m.select.mockImplementation(()=>builder);m.from.mockImplementation(()=>builder);m.innerJoin.mockImplementation(()=>builder);
- return{db:{query:{modifierGroups:{findMany:m.groupFindMany,findFirst:m.groupFindFirst},menuTags:{findMany:m.tagFindMany},modifierOptions:{findFirst:m.optionFindFirst},menuAllergens:{findMany:m.allergenFindMany}},insert:m.insert,update:m.update,delete:m.del,select:m.select,transaction:m.transaction}};
+vi.mock("@/db", () => {
+  const tx: any = {
+    query: {
+      modifierOptions: { findMany: m.txOptionFindMany },
+      modifierGroups: { findFirst: m.txGroupFindFirst },
+    },
+    insert: m.insert,
+    update: m.update,
+    delete: m.del,
+  };
+  m.transaction.mockImplementation(async (fn: (tx: any) => unknown) => fn(tx));
+  m.insert.mockImplementation(() => ({ values: m.values }));
+  m.values.mockImplementation(() => ({ returning: m.returning }));
+  m.update.mockImplementation(() => ({ set: m.set }));
+  m.set.mockImplementation(() => ({ where: m.updateWhere }));
+  m.del.mockImplementation(() => ({ where: m.deleteWhere }));
+  const builder: any = {
+    from: m.from,
+    innerJoin: m.innerJoin,
+    where: m.selectWhere,
+  };
+  m.select.mockImplementation(() => builder);
+  m.from.mockImplementation(() => builder);
+  m.innerJoin.mockImplementation(() => builder);
+  return {
+    db: {
+      query: {
+        modifierGroups: {
+          findMany: m.groupFindMany,
+          findFirst: m.groupFindFirst,
+        },
+        menuTags: { findMany: m.tagFindMany },
+        modifierOptions: { findFirst: m.optionFindFirst },
+        menuAllergens: { findMany: m.allergenFindMany },
+      },
+      insert: m.insert,
+      update: m.update,
+      delete: m.del,
+      select: m.select,
+      transaction: m.transaction,
+    },
+  };
 });
-import{modifierRepository}from"../modifier.repository";
-beforeEach(()=>{vi.clearAllMocks();m.updateWhere.mockReturnValue({returning:m.returning});m.deleteWhere.mockResolvedValue(undefined);m.txOptionFindMany.mockResolvedValue([]);m.txGroupFindFirst.mockResolvedValue(undefined);});
+import { modifierRepository } from "../modifier.repository";
+beforeEach(() => {
+  vi.clearAllMocks();
+  m.updateWhere.mockReturnValue({ returning: m.returning });
+  m.deleteWhere.mockResolvedValue(undefined);
+  m.txOptionFindMany.mockResolvedValue([]);
+  m.txGroupFindFirst.mockResolvedValue(undefined);
+});
 
-describe("modifier repository comprehensive coverage",()=>{
- it("lists and reads groups with effective option availability",async()=>{m.groupFindMany.mockResolvedValueOnce([{id:"g1",options:[{id:"o1",computedAvailability:true,manualOverrideAvailability:null},{id:"o2",computedAvailability:true,manualOverrideAvailability:false}]}]);const groups=await modifierRepository.findModifierGroups("t1","b1");expect(groups[0]!.options.map((o:any)=>o.isAvailable)).toEqual([true,false]);const call=m.groupFindMany.mock.calls[0][0];const orderBy=call.with.options.orderBy;const asc=vi.fn((value:any)=>value);expect(orderBy({sortOrder:"sort"},{asc})).toEqual(["sort"]);expect(asc).toHaveBeenCalledWith("sort");m.groupFindMany.mockResolvedValueOnce([]);await modifierRepository.findModifierGroups("t1");m.groupFindFirst.mockResolvedValue({id:"g1"});await expect(modifierRepository.findModifierGroup("t1","g1")).resolves.toEqual({id:"g1"});});
- it("filters owned group and tag ids and handles empty ids",async()=>{await expect(modifierRepository.findOwnedModifierGroupIds("t1","b1",[])).resolves.toEqual(new Set());m.groupFindMany.mockResolvedValueOnce([{id:"g1",branchId:null},{id:"g2",branchId:"b1"},{id:"g3",branchId:"b2"}]);await expect(modifierRepository.findOwnedModifierGroupIds("t1","b1",["g1","g2","g3"])).resolves.toEqual(new Set(["g1","g2"]));await expect(modifierRepository.findOwnedTagIds("t1",[])).resolves.toEqual(new Set());m.tagFindMany.mockResolvedValueOnce([{id:"t1"},{id:"t2"}]);await expect(modifierRepository.findOwnedTagIds("t1",["t1","t2"])).resolves.toEqual(new Set(["t1","t2"]));});
- it("creates groups with defaults, options and variant prices",async()=>{m.returning.mockResolvedValueOnce([{id:"g1"}]).mockResolvedValueOnce([{id:"o1"}]).mockResolvedValueOnce([{id:"o2"}]);m.txGroupFindFirst.mockResolvedValueOnce({id:"g1",options:[{id:"o1",computedAvailability:true,manualOverrideAvailability:null}]});const out=await modifierRepository.createModifierGroup({tenantId:"t1",branchId:"b1",name:"G",options:[{name:"A",additionalPrice:"1",variantPrices:[{variantId:"v1",additionalPrice:"2"}]},{name:"B",additionalPrice:"0"}]});expect(out).toMatchObject({id:"g1",options:[expect.objectContaining({isAvailable:true})]});expect(m.values).toHaveBeenCalledWith(expect.objectContaining({selectionType:"SINGLE",minSelections:0,maxSelections:null,dependsOnOptionId:null,groupType:"ADDON"}));m.returning.mockResolvedValueOnce([{id:"g2"}]);m.txGroupFindFirst.mockResolvedValueOnce(undefined);await expect(modifierRepository.createModifierGroup({tenantId:"t1",name:"Empty",selectionType:"MULTIPLE",minSelections:1,maxSelections:2,dependsOnOptionId:"o1",groupType:"SUBSTITUTION"})).resolves.toBeUndefined();});
- it("updates and deletes groups",async()=>{m.returning.mockResolvedValueOnce([{id:"g1",name:"New"}]);await expect(modifierRepository.updateModifierGroup("t1","g1",{name:"New",maxSelections:null})).resolves.toMatchObject({id:"g1"});await modifierRepository.deleteModifierGroup("t1","g1");expect(m.del).toHaveBeenCalled();});
- it("validates retained option ownership",async()=>{m.txOptionFindMany.mockResolvedValueOnce([{id:"o1"}]);await expect(modifierRepository.setModifierGroupOptions("g1",[{id:"bad",name:"Bad",additionalPrice:"0"}])).rejects.toThrow("does not belong");});
- it("updates/removes/creates options and variant prices across availability states",async()=>{m.txOptionFindMany.mockResolvedValueOnce([{id:"o1",maxQuantity:2,isDefault:false,replacesDefaultComponent:"old"},{id:"remove",maxQuantity:1,isDefault:false,replacesDefaultComponent:null}]);m.returning.mockResolvedValueOnce([{id:"new1"}]).mockResolvedValueOnce([{id:"new2"}]);await modifierRepository.setModifierGroupOptions("g1",[
- {id:"o1",name:"Existing",additionalPrice:"3",isAvailable:false,maxQuantity:5,isDefault:true,replacesDefaultComponent:"",variantPrices:[{variantId:"v1",additionalPrice:"4"}]},
- {name:"New",additionalPrice:"1",isAvailable:false,replacesDefaultComponent:"Base",variantPrices:[{variantId:"v2",additionalPrice:"2"}]},
- {name:"Defaulted",additionalPrice:"0"},
- ]);expect(m.del).toHaveBeenCalled();expect(m.set).toHaveBeenCalledWith(expect.objectContaining({manualOverrideAvailability:false,maxQuantity:5,isDefault:true,replacesDefaultComponent:null}));
- m.txOptionFindMany.mockResolvedValueOnce([{id:"o1",maxQuantity:2,isDefault:true,replacesDefaultComponent:"x"}]);await modifierRepository.setModifierGroupOptions("g1",[{id:"o1",name:"Keep",additionalPrice:"0",isAvailable:true,variantPrices:[]}]);expect(m.set).toHaveBeenLastCalledWith(expect.objectContaining({manualOverrideAvailability:null,maxQuantity:2,isDefault:true,replacesDefaultComponent:"x"}));
- m.txOptionFindMany.mockResolvedValueOnce([{id:"o1",maxQuantity:2,isDefault:true,replacesDefaultComponent:null}]);await modifierRepository.setModifierGroupOptions("g1",[{id:"o1",name:"NoAvailabilityPatch",additionalPrice:"0"}]);expect(m.set).toHaveBeenLastCalledWith(expect.not.objectContaining({manualOverrideAvailability:expect.anything()}));
- });
- it("finds eligible variants and handles empty ids",async()=>{await expect(modifierRepository.findEligibleVariantIdsForGroup("t1","g1",[])).resolves.toEqual(new Set());m.selectWhere.mockResolvedValueOnce([{id:"v1"},{id:"v2"}]);await expect(modifierRepository.findEligibleVariantIdsForGroup("t1","g1",["v1","v2"])).resolves.toEqual(new Set(["v1","v2"]));});
- it("finds options only in tenant and sets availability",async()=>{m.optionFindFirst.mockResolvedValueOnce(undefined);await expect(modifierRepository.findModifierOption("t1","o1")).resolves.toBeNull();m.optionFindFirst.mockResolvedValueOnce({id:"o1",modifierGroupId:"g1",group:{tenantId:"other",branchId:null}});await expect(modifierRepository.findModifierOption("t1","o1")).resolves.toBeNull();m.optionFindFirst.mockResolvedValueOnce({id:"o1",modifierGroupId:"g1",group:{tenantId:"t1",branchId:"b1"}});await expect(modifierRepository.findModifierOption("t1","o1")).resolves.toEqual({id:"o1",modifierGroupId:"g1",branchId:"b1"});
- m.optionFindFirst.mockResolvedValueOnce(undefined);await expect(modifierRepository.setOptionAvailability("t1","o1",false)).resolves.toBeNull();m.optionFindFirst.mockResolvedValueOnce({id:"o1",computedAvailability:false,group:{tenantId:"other"}});await expect(modifierRepository.setOptionAvailability("t1","o1",false)).resolves.toBeNull();m.optionFindFirst.mockResolvedValueOnce({id:"o1",computedAvailability:true,group:{tenantId:"t1"}});m.returning.mockResolvedValueOnce([{id:"o1",computedAvailability:true,manualOverrideAvailability:null}]);await expect(modifierRepository.setOptionAvailability("t1","o1",true)).resolves.toMatchObject({isAvailable:true});m.optionFindFirst.mockResolvedValueOnce({id:"o1",computedAvailability:true,group:{tenantId:"t1"}});m.returning.mockResolvedValueOnce([{id:"o1",computedAvailability:true,manualOverrideAvailability:false}]);await expect(modifierRepository.setOptionAvailability("t1","o1",false)).resolves.toMatchObject({isAvailable:false});m.optionFindFirst.mockResolvedValueOnce({id:"o1",computedAvailability:true,group:{tenantId:"t1"}});m.returning.mockResolvedValueOnce([]);await expect(modifierRepository.setOptionAvailability("t1","o1",true)).resolves.toBeUndefined();});
- it("lists, creates, deletes tags and lists allergens",async()=>{m.tagFindMany.mockResolvedValue([{id:"t1"}]);await expect(modifierRepository.findTags("t1")).resolves.toEqual([{id:"t1"}]);m.returning.mockResolvedValueOnce([{id:"t2"}]);await expect(modifierRepository.createTag("t1","Hot")).resolves.toEqual({id:"t2"});m.returning.mockResolvedValueOnce([{id:"t3"}]);await modifierRepository.createTag("t1","Cool","#fff");await modifierRepository.deleteTag("t1","t1");m.allergenFindMany.mockResolvedValue([{id:"a1"}]);await expect(modifierRepository.findAllergens()).resolves.toEqual([{id:"a1"}]);});
+describe("modifier repository comprehensive coverage", () => {
+  it("lists and reads groups with effective option availability", async () => {
+    m.groupFindMany.mockResolvedValueOnce([
+      {
+        id: "g1",
+        options: [
+          {
+            id: "o1",
+            computedAvailability: true,
+            manualOverrideAvailability: null,
+          },
+          {
+            id: "o2",
+            computedAvailability: true,
+            manualOverrideAvailability: false,
+          },
+        ],
+      },
+    ]);
+    const groups = await modifierRepository.findModifierGroups("t1", "b1");
+    expect(groups[0]!.options.map((o: any) => o.isAvailable)).toEqual([
+      true,
+      false,
+    ]);
+    const call = m.groupFindMany.mock.calls[0][0];
+    const orderBy = call.with.options.orderBy;
+    const asc = vi.fn((value: any) => value);
+    expect(orderBy({ sortOrder: "sort" }, { asc })).toEqual(["sort"]);
+    expect(asc).toHaveBeenCalledWith("sort");
+    m.groupFindMany.mockResolvedValueOnce([]);
+    await modifierRepository.findModifierGroups("t1");
+    m.groupFindFirst.mockResolvedValue({ id: "g1" });
+    await expect(
+      modifierRepository.findModifierGroup("t1", "g1"),
+    ).resolves.toEqual({ id: "g1" });
+  });
+  it("filters owned group and tag ids and handles empty ids", async () => {
+    await expect(
+      modifierRepository.findOwnedModifierGroupIds("t1", "b1", []),
+    ).resolves.toEqual(new Set());
+    m.groupFindMany.mockResolvedValueOnce([
+      { id: "g1", branchId: null },
+      { id: "g2", branchId: "b1" },
+      { id: "g3", branchId: "b2" },
+    ]);
+    await expect(
+      modifierRepository.findOwnedModifierGroupIds("t1", "b1", [
+        "g1",
+        "g2",
+        "g3",
+      ]),
+    ).resolves.toEqual(new Set(["g1", "g2"]));
+    await expect(modifierRepository.findOwnedTagIds("t1", [])).resolves.toEqual(
+      new Set(),
+    );
+    m.tagFindMany.mockResolvedValueOnce([{ id: "t1" }, { id: "t2" }]);
+    await expect(
+      modifierRepository.findOwnedTagIds("t1", ["t1", "t2"]),
+    ).resolves.toEqual(new Set(["t1", "t2"]));
+  });
+  it("creates groups with defaults, options and variant prices", async () => {
+    m.returning
+      .mockResolvedValueOnce([{ id: "g1" }])
+      .mockResolvedValueOnce([{ id: "o1" }])
+      .mockResolvedValueOnce([{ id: "o2" }]);
+    m.txGroupFindFirst.mockResolvedValueOnce({
+      id: "g1",
+      options: [
+        {
+          id: "o1",
+          computedAvailability: true,
+          manualOverrideAvailability: null,
+        },
+      ],
+    });
+    const out = await modifierRepository.createModifierGroup({
+      tenantId: "t1",
+      branchId: "b1",
+      name: "G",
+      options: [
+        {
+          name: "A",
+          additionalPrice: "1",
+          variantPrices: [{ variantId: "v1", additionalPrice: "2" }],
+        },
+        { name: "B", additionalPrice: "0" },
+      ],
+    });
+    expect(out).toMatchObject({
+      id: "g1",
+      options: [expect.objectContaining({ isAvailable: true })],
+    });
+    expect(m.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectionType: "SINGLE",
+        minSelections: 0,
+        maxSelections: null,
+        dependsOnOptionId: null,
+        groupType: "ADDON",
+      }),
+    );
+    m.returning.mockResolvedValueOnce([{ id: "g2" }]);
+    m.txGroupFindFirst.mockResolvedValueOnce(undefined);
+    await expect(
+      modifierRepository.createModifierGroup({
+        tenantId: "t1",
+        name: "Empty",
+        selectionType: "MULTIPLE",
+        minSelections: 1,
+        maxSelections: 2,
+        dependsOnOptionId: "o1",
+        groupType: "SUBSTITUTION",
+      }),
+    ).resolves.toBeUndefined();
+  });
+  it("updates and deletes groups", async () => {
+    m.returning.mockResolvedValueOnce([{ id: "g1", name: "New" }]);
+    await expect(
+      modifierRepository.updateModifierGroup("t1", "g1", {
+        name: "New",
+        maxSelections: null,
+      }),
+    ).resolves.toMatchObject({ id: "g1" });
+    await modifierRepository.deleteModifierGroup("t1", "g1");
+    expect(m.del).toHaveBeenCalled();
+  });
+  it("validates retained option ownership", async () => {
+    m.txOptionFindMany.mockResolvedValueOnce([{ id: "o1" }]);
+    await expect(
+      modifierRepository.setModifierGroupOptions("g1", [
+        { id: "bad", name: "Bad", additionalPrice: "0" },
+      ]),
+    ).rejects.toThrow("does not belong");
+  });
+  it("updates/removes/creates options and variant prices across availability states", async () => {
+    m.txOptionFindMany.mockResolvedValueOnce([
+      {
+        id: "o1",
+        maxQuantity: 2,
+        isDefault: false,
+        replacesDefaultComponent: "old",
+      },
+      {
+        id: "remove",
+        maxQuantity: 1,
+        isDefault: false,
+        replacesDefaultComponent: null,
+      },
+    ]);
+    m.returning
+      .mockResolvedValueOnce([{ id: "new1" }])
+      .mockResolvedValueOnce([{ id: "new2" }]);
+    await modifierRepository.setModifierGroupOptions("g1", [
+      {
+        id: "o1",
+        name: "Existing",
+        additionalPrice: "3",
+        isAvailable: false,
+        maxQuantity: 5,
+        isDefault: true,
+        replacesDefaultComponent: "",
+        variantPrices: [{ variantId: "v1", additionalPrice: "4" }],
+      },
+      {
+        name: "New",
+        additionalPrice: "1",
+        isAvailable: false,
+        replacesDefaultComponent: "Base",
+        variantPrices: [{ variantId: "v2", additionalPrice: "2" }],
+      },
+      { name: "Defaulted", additionalPrice: "0" },
+    ]);
+    expect(m.del).toHaveBeenCalled();
+    expect(m.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        manualOverrideAvailability: false,
+        maxQuantity: 5,
+        isDefault: true,
+        replacesDefaultComponent: null,
+      }),
+    );
+    m.txOptionFindMany.mockResolvedValueOnce([
+      {
+        id: "o1",
+        maxQuantity: 2,
+        isDefault: true,
+        replacesDefaultComponent: "x",
+      },
+    ]);
+    await modifierRepository.setModifierGroupOptions("g1", [
+      {
+        id: "o1",
+        name: "Keep",
+        additionalPrice: "0",
+        isAvailable: true,
+        variantPrices: [],
+      },
+    ]);
+    expect(m.set).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        manualOverrideAvailability: null,
+        maxQuantity: 2,
+        isDefault: true,
+        replacesDefaultComponent: "x",
+      }),
+    );
+    m.txOptionFindMany.mockResolvedValueOnce([
+      {
+        id: "o1",
+        maxQuantity: 2,
+        isDefault: true,
+        replacesDefaultComponent: null,
+      },
+    ]);
+    await modifierRepository.setModifierGroupOptions("g1", [
+      { id: "o1", name: "NoAvailabilityPatch", additionalPrice: "0" },
+    ]);
+    expect(m.set).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({
+        manualOverrideAvailability: expect.anything(),
+      }),
+    );
+  });
+  it("finds eligible variants and handles empty ids", async () => {
+    await expect(
+      modifierRepository.findEligibleVariantIdsForGroup("t1", "g1", []),
+    ).resolves.toEqual(new Set());
+    m.selectWhere.mockResolvedValueOnce([{ id: "v1" }, { id: "v2" }]);
+    await expect(
+      modifierRepository.findEligibleVariantIdsForGroup("t1", "g1", [
+        "v1",
+        "v2",
+      ]),
+    ).resolves.toEqual(new Set(["v1", "v2"]));
+  });
+  it("finds options only in tenant and sets availability", async () => {
+    m.optionFindFirst.mockResolvedValueOnce(undefined);
+    await expect(
+      modifierRepository.findModifierOption("t1", "o1"),
+    ).resolves.toBeNull();
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      modifierGroupId: "g1",
+      group: { tenantId: "other", branchId: null },
+    });
+    await expect(
+      modifierRepository.findModifierOption("t1", "o1"),
+    ).resolves.toBeNull();
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      modifierGroupId: "g1",
+      group: { tenantId: "t1", branchId: "b1" },
+    });
+    await expect(
+      modifierRepository.findModifierOption("t1", "o1"),
+    ).resolves.toEqual({ id: "o1", modifierGroupId: "g1", branchId: "b1" });
+    m.optionFindFirst.mockResolvedValueOnce(undefined);
+    await expect(
+      modifierRepository.setOptionAvailability("t1", "o1", false),
+    ).resolves.toBeNull();
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      computedAvailability: false,
+      group: { tenantId: "other" },
+    });
+    await expect(
+      modifierRepository.setOptionAvailability("t1", "o1", false),
+    ).resolves.toBeNull();
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      computedAvailability: true,
+      group: { tenantId: "t1" },
+    });
+    m.returning.mockResolvedValueOnce([
+      {
+        id: "o1",
+        computedAvailability: true,
+        manualOverrideAvailability: null,
+      },
+    ]);
+    await expect(
+      modifierRepository.setOptionAvailability("t1", "o1", true),
+    ).resolves.toMatchObject({ isAvailable: true });
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      computedAvailability: true,
+      group: { tenantId: "t1" },
+    });
+    m.returning.mockResolvedValueOnce([
+      {
+        id: "o1",
+        computedAvailability: true,
+        manualOverrideAvailability: false,
+      },
+    ]);
+    await expect(
+      modifierRepository.setOptionAvailability("t1", "o1", false),
+    ).resolves.toMatchObject({ isAvailable: false });
+    m.optionFindFirst.mockResolvedValueOnce({
+      id: "o1",
+      computedAvailability: true,
+      group: { tenantId: "t1" },
+    });
+    m.returning.mockResolvedValueOnce([]);
+    await expect(
+      modifierRepository.setOptionAvailability("t1", "o1", true),
+    ).resolves.toBeUndefined();
+  });
+  it("lists, creates, deletes tags and lists allergens", async () => {
+    m.tagFindMany.mockResolvedValue([{ id: "t1" }]);
+    await expect(modifierRepository.findTags("t1")).resolves.toEqual([
+      { id: "t1" },
+    ]);
+    m.returning.mockResolvedValueOnce([{ id: "t2" }]);
+    await expect(modifierRepository.createTag("t1", "Hot")).resolves.toEqual({
+      id: "t2",
+    });
+    m.returning.mockResolvedValueOnce([{ id: "t3" }]);
+    await modifierRepository.createTag("t1", "Cool", "#fff");
+    await modifierRepository.deleteTag("t1", "t1");
+    m.allergenFindMany.mockResolvedValue([{ id: "a1" }]);
+    await expect(modifierRepository.findAllergens()).resolves.toEqual([
+      { id: "a1" },
+    ]);
+  });
 });

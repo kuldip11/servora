@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useInfiniteQuery: (options: any) => { mocks.options.push(options); return mocks.infiniteQuery(options); },
+  useInfiniteQuery: (options: any) => {
+    mocks.options.push(options);
+    return mocks.infiniteQuery(options);
+  },
 }));
 vi.mock("@/features/audit/services/audit.service", () => ({
   auditService: { list: mocks.auditList, menuHistory: mocks.menuHistory },
@@ -19,11 +22,20 @@ vi.mock("lucide-react", () => ({ ShieldCheck: () => <span>shield</span> }));
 vi.mock("@pos/ui", () => ({
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Button: ({ children, onClick, loading }: any) => (
-    <button data-loading={String(Boolean(loading))} onClick={onClick}>{children}</button>
+    <button data-loading={String(Boolean(loading))} onClick={onClick}>
+      {children}
+    </button>
   ),
-  Card: ({ children }: React.PropsWithChildren) => <section>{children}</section>,
+  Card: ({ children }: React.PropsWithChildren) => (
+    <section>{children}</section>
+  ),
   Page: ({ children }: React.PropsWithChildren) => <main>{children}</main>,
-  PageHeader: ({ title, description }: any) => <header><h1>{title}</h1><p>{description}</p></header>,
+  PageHeader: ({ title, description }: any) => (
+    <header>
+      <h1>{title}</h1>
+      <p>{description}</p>
+    </header>
+  ),
 }));
 
 import { AuditLogPage } from "../AuditLogPage";
@@ -48,8 +60,12 @@ const menuEvent = {
 };
 
 const result = (overrides: Record<string, unknown> = {}) => ({
-  data: { pages: [[]] }, isLoading: false, isError: false,
-  hasNextPage: false, fetchNextPage: vi.fn(), isFetchingNextPage: false,
+  data: { pages: [[]] },
+  isLoading: false,
+  isError: false,
+  hasNextPage: false,
+  fetchNextPage: vi.fn(),
+  isFetchingNextPage: false,
   ...overrides,
 });
 
@@ -85,8 +101,36 @@ describe("AuditLogPage coverage", () => {
     const fetchMenu = vi.fn();
     mocks.infiniteQuery.mockReset();
     mocks.infiniteQuery
-      .mockReturnValueOnce(result({ data: { pages: [[auditEvent, { ...auditEvent, id: "a2", userId: "u1", userName: "Ada", entityId: null, metadata: "not-json" }]] }, hasNextPage: true, fetchNextPage: fetchAudit, isFetchingNextPage: true }))
-      .mockReturnValueOnce(result({ data: { pages: [[menuEvent]] }, hasNextPage: true, fetchNextPage: fetchMenu, isFetchingNextPage: true }))
+      .mockReturnValueOnce(
+        result({
+          data: {
+            pages: [
+              [
+                auditEvent,
+                {
+                  ...auditEvent,
+                  id: "a2",
+                  userId: "u1",
+                  userName: "Ada",
+                  entityId: null,
+                  metadata: "not-json",
+                },
+              ],
+            ],
+          },
+          hasNextPage: true,
+          fetchNextPage: fetchAudit,
+          isFetchingNextPage: true,
+        }),
+      )
+      .mockReturnValueOnce(
+        result({
+          data: { pages: [[menuEvent]] },
+          hasNextPage: true,
+          fetchNextPage: fetchMenu,
+          isFetchingNextPage: true,
+        }),
+      )
       .mockReturnValue(result());
 
     render(<AuditLogPage />);
@@ -103,10 +147,20 @@ describe("AuditLogPage coverage", () => {
     expect(fetchAudit).toHaveBeenCalled();
     expect(fetchMenu).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Entity type"), { target: { value: "MENU" } });
-    fireEvent.change(screen.getByLabelText("Change type"), { target: { value: "UPDATED" } });
-    expect(screen.getByLabelText("Entity type")).toHaveProperty("value", "MENU");
-    expect(screen.getByLabelText("Change type")).toHaveProperty("value", "UPDATED");
+    fireEvent.change(screen.getByLabelText("Entity type"), {
+      target: { value: "MENU" },
+    });
+    fireEvent.change(screen.getByLabelText("Change type"), {
+      target: { value: "UPDATED" },
+    });
+    expect(screen.getByLabelText("Entity type")).toHaveProperty(
+      "value",
+      "MENU",
+    );
+    expect(screen.getByLabelText("Change type")).toHaveProperty(
+      "value",
+      "UPDATED",
+    );
   });
 
   it("executes query functions and pagination cursors for audit and filtered menu history", async () => {
@@ -116,16 +170,29 @@ describe("AuditLogPage coverage", () => {
     expect(mocks.options).toHaveLength(2);
     await mocks.options[0].queryFn({ pageParam: "audit-before" });
     expect(mocks.auditList).toHaveBeenCalledWith(50, "audit-before");
-    const auditFull = Array.from({ length: 50 }, (_, index) => ({ createdAt: `date-${index}` }));
+    const auditFull = Array.from({ length: 50 }, (_, index) => ({
+      createdAt: `date-${index}`,
+    }));
     expect(mocks.options[0].getNextPageParam(auditFull)).toBe("date-49");
     expect(mocks.options[0].getNextPageParam([])).toBeUndefined();
 
-    fireEvent.change(screen.getByLabelText("Entity type"), { target: { value: "MENU_ITEM" } });
-    fireEvent.change(screen.getByLabelText("Change type"), { target: { value: "UPDATED" } });
+    fireEvent.change(screen.getByLabelText("Entity type"), {
+      target: { value: "MENU_ITEM" },
+    });
+    fireEvent.change(screen.getByLabelText("Change type"), {
+      target: { value: "UPDATED" },
+    });
     const latestMenuOptions = mocks.options[mocks.options.length - 1];
     await latestMenuOptions.queryFn({ pageParam: "menu-before" });
-    expect(mocks.menuHistory).toHaveBeenCalledWith({ entityType: "MENU_ITEM", changeType: "UPDATED", before: "menu-before", limit: 50 });
-    const menuFull = Array.from({ length: 50 }, (_, index) => ({ changedAt: `changed-${index}` }));
+    expect(mocks.menuHistory).toHaveBeenCalledWith({
+      entityType: "MENU_ITEM",
+      changeType: "UPDATED",
+      before: "menu-before",
+      limit: 50,
+    });
+    const menuFull = Array.from({ length: 50 }, (_, index) => ({
+      changedAt: `changed-${index}`,
+    }));
     expect(latestMenuOptions.getNextPageParam(menuFull)).toBe("changed-49");
     expect(latestMenuOptions.getNextPageParam([])).toBeUndefined();
   });
@@ -133,11 +200,14 @@ describe("AuditLogPage coverage", () => {
   it("covers metadata-null and empty audit rendering", () => {
     mocks.infiniteQuery.mockReset();
     mocks.infiniteQuery
-      .mockReturnValueOnce(result({ data: { pages: [[{ ...auditEvent, id: "a-null", metadata: null }]] } }))
+      .mockReturnValueOnce(
+        result({
+          data: { pages: [[{ ...auditEvent, id: "a-null", metadata: null }]] },
+        }),
+      )
       .mockReturnValueOnce(result());
     render(<AuditLogPage />);
     expect(screen.getByText("Order Status Updated")).toBeTruthy();
     expect(screen.getByText("No matching menu changes yet.")).toBeTruthy();
   });
-
 });

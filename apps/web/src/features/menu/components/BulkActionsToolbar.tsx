@@ -111,7 +111,8 @@ export const BulkActionsToolbar = ({
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </Button>
-          <button type="button"
+          <button
+            type="button"
             onClick={onClear}
             className="p-1.5 hover:bg-primary-hover rounded-md ml-1"
             title="Clear selection"
@@ -229,7 +230,8 @@ export const BulkActionsToolbar = ({
           ) : (
             <div className="flex flex-wrap gap-2">
               {tags.map((t) => (
-                <button type="button"
+                <button
+                  type="button"
                   key={t.id}
                   onClick={() => toggleTag(t.id)}
                   className="px-3 py-1.5 rounded-full text-xs font-medium transition-opacity"

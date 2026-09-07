@@ -13,10 +13,7 @@ export const assertTrustedAuthOrigin = (origin: string | undefined): void => {
     return;
   }
 
-  if (
-    !configuredOrigins.includes("*") &&
-    !configuredOrigins.includes(origin)
-  ) {
+  if (!configuredOrigins.includes("*") && !configuredOrigins.includes(origin)) {
     throw new ForbiddenError("Request origin is not allowed");
   }
 };

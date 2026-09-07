@@ -13,6 +13,7 @@ import { notifyError, notifySuccess } from "@/shared/lib/notify";
 
 import { INVENTORY_UNITS } from "@/features/menu/constants";
 type IngredientDraft = {
+  clientKey: string;
   source: "inventory" | "sub";
   sourceId: string;
   quantity: string;
@@ -61,6 +62,7 @@ export const SubRecipeManager = () => {
       setIngredients((rows) => [
         ...rows,
         {
+          clientKey: crypto.randomUUID(),
           source: "inventory",
           sourceId: firstInventory.id,
           quantity: "1",
@@ -74,6 +76,7 @@ export const SubRecipeManager = () => {
       setIngredients((rows) => [
         ...rows,
         {
+          clientKey: crypto.randomUUID(),
           source: "sub",
           sourceId: firstSubRecipe.id,
           quantity: "1",
@@ -193,7 +196,7 @@ export const SubRecipeManager = () => {
           <div className="space-y-2">
             {ingredients.map((row, index) => (
               <div
-                key={index}
+                key={row.clientKey}
                 className="grid gap-2 sm:grid-cols-[8rem_1fr_8rem_8rem_auto] items-center"
               >
                 <select

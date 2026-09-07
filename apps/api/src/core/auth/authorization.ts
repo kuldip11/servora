@@ -115,7 +115,9 @@ export const resolveAuthorization = async (
     .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
     .where(inArray(rolePermissions.roleId, roleIds));
 
-  const resolvedPermissionKeys: string[] = [...new Set(rows.map((row) => row.key))];
+  const resolvedPermissionKeys: string[] = [
+    ...new Set(rows.map((row) => row.key)),
+  ];
 
   return {
     allowed: true,

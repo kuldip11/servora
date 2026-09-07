@@ -1,7 +1,52 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m=vi.hoisted(()=>({getById:vi.fn(),create:vi.fn(),update:vi.fn(),remove:vi.fn(),duplicate:vi.fn(),publish:vi.fn(),unpublish:vi.fn(),updateStatus:vi.fn(),updateAvailability:vi.fn(),listByStatus:vi.fn()}));
-vi.mock("../item.service",()=>({itemService:m}));
+const m = vi.hoisted(() => ({
+  getById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn(),
+  duplicate: vi.fn(),
+  publish: vi.fn(),
+  unpublish: vi.fn(),
+  updateStatus: vi.fn(),
+  updateAvailability: vi.fn(),
+  listByStatus: vi.fn(),
+}));
+vi.mock("../item.service", () => ({ itemService: m }));
 import { itemController } from "../item.controller";
-const auth={} as any;
-beforeEach(()=>{vi.clearAllMocks();for(const fn of Object.values(m)) (fn as any).mockResolvedValue({id:"i1"});m.remove.mockResolvedValue(undefined);m.listByStatus.mockResolvedValue([{id:"i1"}]);});
-describe("item controller comprehensive coverage",()=>{it("delegates every method and wraps responses",async()=>{await expect(itemController.getById(auth,"i1")).resolves.toMatchObject({success:true,data:{id:"i1"}});await expect(itemController.create(auth,{categoryId:"c",name:"N",basePrice:1})).resolves.toMatchObject({success:true,data:{id:"i1"}});await expect(itemController.update(auth,"i1",{})).resolves.toMatchObject({success:true});await expect(itemController.remove(auth,"i1")).resolves.toEqual({success:true,data:null});await expect(itemController.duplicate(auth,"i1",{})).resolves.toMatchObject({success:true});await itemController.publish(auth,"i1");await itemController.unpublish(auth,"i1");await itemController.updateStatus(auth,"i1","ACTIVE",undefined);await itemController.updateAvailability(auth,"i1",false,"r");await expect(itemController.listByStatus(auth,"ACTIVE","c1")).resolves.toMatchObject({success:true,data:[{id:"i1"}]});expect(m.listByStatus).toHaveBeenCalledWith(auth,["ACTIVE"],"c1");});});
+const auth = {} as any;
+beforeEach(() => {
+  vi.clearAllMocks();
+  for (const fn of Object.values(m))
+    (fn as any).mockResolvedValue({ id: "i1" });
+  m.remove.mockResolvedValue(undefined);
+  m.listByStatus.mockResolvedValue([{ id: "i1" }]);
+});
+describe("item controller comprehensive coverage", () => {
+  it("delegates every method and wraps responses", async () => {
+    await expect(itemController.getById(auth, "i1")).resolves.toMatchObject({
+      success: true,
+      data: { id: "i1" },
+    });
+    await expect(
+      itemController.create(auth, { categoryId: "c", name: "N", basePrice: 1 }),
+    ).resolves.toMatchObject({ success: true, data: { id: "i1" } });
+    await expect(itemController.update(auth, "i1", {})).resolves.toMatchObject({
+      success: true,
+    });
+    await expect(itemController.remove(auth, "i1")).resolves.toEqual({
+      success: true,
+      data: null,
+    });
+    await expect(
+      itemController.duplicate(auth, "i1", {}),
+    ).resolves.toMatchObject({ success: true });
+    await itemController.publish(auth, "i1");
+    await itemController.unpublish(auth, "i1");
+    await itemController.updateStatus(auth, "i1", "ACTIVE", undefined);
+    await itemController.updateAvailability(auth, "i1", false, "r");
+    await expect(
+      itemController.listByStatus(auth, "ACTIVE", "c1"),
+    ).resolves.toMatchObject({ success: true, data: [{ id: "i1" }] });
+    expect(m.listByStatus).toHaveBeenCalledWith(auth, ["ACTIVE"], "c1");
+  });
+});

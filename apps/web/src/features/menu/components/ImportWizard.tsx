@@ -102,13 +102,15 @@ export const ImportWizard = ({ onClose }: Props) => {
       <div className="space-y-4">
         <div className="flex items-center gap-3 text-sm">
           <span className="text-text-secondary">New here?</span>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => downloadTemplate("csv")}
             className="flex items-center gap-1 text-primary hover:text-primary-hover font-medium"
           >
             <Download className="w-3.5 h-3.5" /> CSV template
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => downloadTemplate("xlsx")}
             className="flex items-center gap-1 text-primary hover:text-primary-hover font-medium"
           >
@@ -117,7 +119,8 @@ export const ImportWizard = ({ onClose }: Props) => {
         </div>
 
         {!file && (
-          <button type="button"
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="w-full border-2 border-dashed border-border rounded-lg py-10 flex flex-col items-center gap-2 text-text-disabled hover:border-primary/40 hover:text-primary transition-colors duration-fast ease-standard"
           >

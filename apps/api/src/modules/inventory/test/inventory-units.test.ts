@@ -27,6 +27,10 @@ describe("inventory unit conversion", () => {
 it("rejects non-finite inventory quantities and covers packet compatibility", () => {
   expect(areInventoryUnitsCompatible("PACKETS", "PACKETS")).toBe(true);
   expect(convertInventoryQuantity(2, "PACKETS", "PACKETS")).toBe(2);
-  expect(() => convertInventoryQuantity(Number.NaN, "KG", "GRAMS")).toThrow("must be finite");
-  expect(() => convertInventoryQuantity(Number.POSITIVE_INFINITY, "KG", "GRAMS")).toThrow("must be finite");
+  expect(() => convertInventoryQuantity(Number.NaN, "KG", "GRAMS")).toThrow(
+    "must be finite",
+  );
+  expect(() =>
+    convertInventoryQuantity(Number.POSITIVE_INFINITY, "KG", "GRAMS"),
+  ).toThrow("must be finite");
 });

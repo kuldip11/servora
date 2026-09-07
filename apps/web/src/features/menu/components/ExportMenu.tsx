@@ -32,7 +32,8 @@ export const ExportMenu = () => {
       onOpenChange={setOpen}
       align="end"
       trigger={
-        <button type="button"
+        <button
+          type="button"
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-text-secondary border border-border rounded-md hover:border-primary/40 hover:text-primary transition-colors"
         >
@@ -52,7 +53,8 @@ export const ExportMenu = () => {
               {(["csv", "xlsx"] as MenuExportFormat[]).map((format) => {
                 const key = `${e.value}-${format}`;
                 return (
-                  <button type="button"
+                  <button
+                    type="button"
                     key={format}
                     onClick={() => handleDownload(e.value, format)}
                     disabled={downloadingKey === key}

@@ -47,8 +47,12 @@ describe("security middleware", () => {
     expect(response.headers.get("x-frame-options")).toBe("DENY");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("permissions-policy")).toContain("camera=()");
-    expect(response.headers.get("cross-origin-opener-policy")).toBe("same-origin");
-    expect(response.headers.get("cross-origin-resource-policy")).toBe("same-site");
+    expect(response.headers.get("cross-origin-opener-policy")).toBe(
+      "same-origin",
+    );
+    expect(response.headers.get("cross-origin-resource-policy")).toBe(
+      "same-site",
+    );
     expect(response.headers.get("content-security-policy")).toContain(
       "default-src 'none'",
     );
@@ -64,15 +68,19 @@ describe("security middleware", () => {
     );
   });
 
-  it.each(["/health", "/health/live", "/swagger", "/swagger/json", "/ws", "/ws/orders"])(
-    "exempts %s from global rate limiting",
-    async (path) => {
-      const app = new Elysia().use(rateLimitPlugin()).get(path, () => "ok");
-      const response = await app.handle(new Request(`http://localhost${path}`));
-      expect(response.status).toBe(200);
-      expect(state.incr).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    "/health",
+    "/health/live",
+    "/swagger",
+    "/swagger/json",
+    "/ws",
+    "/ws/orders",
+  ])("exempts %s from global rate limiting", async (path) => {
+    const app = new Elysia().use(rateLimitPlugin()).get(path, () => "ok");
+    const response = await app.handle(new Request(`http://localhost${path}`));
+    expect(response.status).toBe(200);
+    expect(state.incr).not.toHaveBeenCalled();
+  });
 
   it("increments a bucket, sets expiry on first hit, and returns remaining quota", async () => {
     vi.spyOn(Date, "now").mockReturnValue(120_000);

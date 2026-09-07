@@ -1,37 +1,384 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContext } from "@/core/auth";
 
-const m=vi.hoisted(()=>({
-  findMembership:vi.fn(), findMembershipsByUserId:vi.fn(), create:vi.fn(), update:vi.fn(), listTenants:vi.fn(), listMenus:vi.fn(), createMenu:vi.fn(), updateMenu:vi.fn(), deleteMenu:vi.fn(),
-  listOrganizationTiers:vi.fn(), createOrganizationTier:vi.fn(), findOrganizationTier:vi.fn(), updateOrganizationTier:vi.fn(), removeOrganizationTier:vi.fn(), writeAudit:vi.fn(),
+const m = vi.hoisted(() => ({
+  findMembership: vi.fn(),
+  findMembershipsByUserId: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  listTenants: vi.fn(),
+  listMenus: vi.fn(),
+  createMenu: vi.fn(),
+  updateMenu: vi.fn(),
+  deleteMenu: vi.fn(),
+  listOrganizationTiers: vi.fn(),
+  createOrganizationTier: vi.fn(),
+  findOrganizationTier: vi.fn(),
+  updateOrganizationTier: vi.fn(),
+  removeOrganizationTier: vi.fn(),
+  writeAudit: vi.fn(),
 }));
-vi.mock("../organization.repository",()=>({organizationRepository:{findMembership:m.findMembership,findMembershipsByUserId:m.findMembershipsByUserId,create:m.create,update:m.update,listTenants:m.listTenants,listMenus:m.listMenus,createMenu:m.createMenu,updateMenu:m.updateMenu,deleteMenu:m.deleteMenu}}));
-vi.mock("@/modules/loyalty/loyalty.repository",()=>({loyaltyRepository:{listOrganizationTiers:m.listOrganizationTiers,createOrganizationTier:m.createOrganizationTier,findOrganizationTier:m.findOrganizationTier,updateOrganizationTier:m.updateOrganizationTier,removeOrganizationTier:m.removeOrganizationTier}}));
-vi.mock("@/core/audit",()=>({writeAudit:m.writeAudit}));
+vi.mock("../organization.repository", () => ({
+  organizationRepository: {
+    findMembership: m.findMembership,
+    findMembershipsByUserId: m.findMembershipsByUserId,
+    create: m.create,
+    update: m.update,
+    listTenants: m.listTenants,
+    listMenus: m.listMenus,
+    createMenu: m.createMenu,
+    updateMenu: m.updateMenu,
+    deleteMenu: m.deleteMenu,
+  },
+}));
+vi.mock("@/modules/loyalty/loyalty.repository", () => ({
+  loyaltyRepository: {
+    listOrganizationTiers: m.listOrganizationTiers,
+    createOrganizationTier: m.createOrganizationTier,
+    findOrganizationTier: m.findOrganizationTier,
+    updateOrganizationTier: m.updateOrganizationTier,
+    removeOrganizationTier: m.removeOrganizationTier,
+  },
+}));
+vi.mock("@/core/audit", () => ({ writeAudit: m.writeAudit }));
 import { organizationService } from "../organization.service";
 import { organizationController } from "../organization.controller";
 
-const auth=(overrides:Partial<AuthContext>={}):AuthContext=>({userId:"u1",tenantId:"t1",email:"u@example.com",branchId:"b1",tenantWide:true,permissions:["organization:manage"],roles:["OWNER"],requestId:"r1",ipAddress:"127.0.0.1",...overrides} as AuthContext);
-const membership={id:"m1",organization:{id:"o1",name:"Org",isActive:true}};
-const tier=(overrides:Record<string,unknown>={})=>({id:"tier1",name:"Gold",discountPercent:"10.00",discountFixed:null,...overrides});
-const menu=(overrides:Record<string,unknown>={})=>({id:"menu1",name:"Main",status:"DRAFT",...overrides});
+const auth = (overrides: Partial<AuthContext> = {}): AuthContext =>
+  ({
+    userId: "u1",
+    tenantId: "t1",
+    email: "u@example.com",
+    branchId: "b1",
+    tenantWide: true,
+    permissions: ["organization:manage"],
+    roles: ["OWNER"],
+    requestId: "r1",
+    ipAddress: "127.0.0.1",
+    ...overrides,
+  }) as AuthContext;
+const membership = {
+  id: "m1",
+  organization: { id: "o1", name: "Org", isActive: true },
+};
+const tier = (overrides: Record<string, unknown> = {}) => ({
+  id: "tier1",
+  name: "Gold",
+  discountPercent: "10.00",
+  discountFixed: null,
+  ...overrides,
+});
+const menu = (overrides: Record<string, unknown> = {}) => ({
+  id: "menu1",
+  name: "Main",
+  status: "DRAFT",
+  ...overrides,
+});
 
-describe("organization service/controller comprehensive coverage",()=>{
- beforeEach(()=>{vi.clearAllMocks();m.findMembership.mockResolvedValue(membership);m.findMembershipsByUserId.mockResolvedValue([membership]);m.create.mockResolvedValue({organization:membership.organization,membership:{id:"m1"}});m.update.mockResolvedValue(membership.organization);m.listTenants.mockResolvedValue([{id:"t1"}]);m.listMenus.mockResolvedValue([menu()]);m.createMenu.mockResolvedValue(menu());m.updateMenu.mockResolvedValue(menu({status:"PUBLISHED"}));m.deleteMenu.mockResolvedValue({id:"menu1"});m.listOrganizationTiers.mockResolvedValue([tier()]);m.createOrganizationTier.mockResolvedValue(tier());m.findOrganizationTier.mockResolvedValue(tier());m.updateOrganizationTier.mockResolvedValue(tier());m.removeOrganizationTier.mockResolvedValue(undefined);m.writeAudit.mockResolvedValue(undefined);});
+describe("organization service/controller comprehensive coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.findMembership.mockResolvedValue(membership);
+    m.findMembershipsByUserId.mockResolvedValue([membership]);
+    m.create.mockResolvedValue({
+      organization: membership.organization,
+      membership: { id: "m1" },
+    });
+    m.update.mockResolvedValue(membership.organization);
+    m.listTenants.mockResolvedValue([{ id: "t1" }]);
+    m.listMenus.mockResolvedValue([menu()]);
+    m.createMenu.mockResolvedValue(menu());
+    m.updateMenu.mockResolvedValue(menu({ status: "PUBLISHED" }));
+    m.deleteMenu.mockResolvedValue({ id: "menu1" });
+    m.listOrganizationTiers.mockResolvedValue([tier()]);
+    m.createOrganizationTier.mockResolvedValue(tier());
+    m.findOrganizationTier.mockResolvedValue(tier());
+    m.updateOrganizationTier.mockResolvedValue(tier());
+    m.removeOrganizationTier.mockResolvedValue(undefined);
+    m.writeAudit.mockResolvedValue(undefined);
+  });
 
- it("lists organizations and delegates controller",async()=>{await expect(organizationService.list(auth())).resolves.toEqual([membership.organization]);await expect(organizationController.list(auth())).resolves.toEqual({success:true,data:[membership.organization]});});
+  it("lists organizations and delegates controller", async () => {
+    await expect(organizationService.list(auth())).resolves.toEqual([
+      membership.organization,
+    ]);
+    await expect(organizationController.list(auth())).resolves.toEqual({
+      success: true,
+      data: [membership.organization],
+    });
+  });
 
- it("creates normalized organizations and rejects non-owner",async()=>{const input={name:"  Org  ",country:" in ",currency:" inr ",businessEmail:" X@Y.COM ",gstin:" ab12 ",pan:" abcde1234f "};await organizationService.create(auth(),input);expect(m.create).toHaveBeenCalledWith(expect.objectContaining({name:"Org",country:"IN",currency:"INR",businessEmail:"x@y.com",gstin:"AB12",pan:"ABCDE1234F",createdBy:"u1"}));await expect(organizationController.create(auth(),{name:"X"})).resolves.toMatchObject({success:true});await expect(organizationService.create(auth({roles:[]}),{name:"X"})).rejects.toThrow("global Owner");await organizationService.create(auth(),{name:"X",country:null,currency:null,businessEmail:null,gstin:null,pan:null});});
+  it("creates normalized organizations and rejects non-owner", async () => {
+    const input = {
+      name: "  Org  ",
+      country: " in ",
+      currency: " inr ",
+      businessEmail: " X@Y.COM ",
+      gstin: " ab12 ",
+      pan: " abcde1234f ",
+    };
+    await organizationService.create(auth(), input);
+    expect(m.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Org",
+        country: "IN",
+        currency: "INR",
+        businessEmail: "x@y.com",
+        gstin: "AB12",
+        pan: "ABCDE1234F",
+        createdBy: "u1",
+      }),
+    );
+    await expect(
+      organizationController.create(auth(), { name: "X" }),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      organizationService.create(auth({ roles: [] }), { name: "X" }),
+    ).rejects.toThrow("global Owner");
+    await organizationService.create(auth(), {
+      name: "X",
+      country: null,
+      currency: null,
+      businessEmail: null,
+      gstin: null,
+      pan: null,
+    });
+  });
 
- it("guards organization management and covers update/archive/list tenants/menus",async()=>{await expect(organizationService.update(auth(),"o1",{name:" New ",country:" us ",currency:" usd ",businessEmail:" A@B.COM ",gstin:" g ",pan:" p "})).resolves.toMatchObject({id:"o1"});expect(m.update).toHaveBeenCalledWith("o1",expect.objectContaining({name:"New",country:"US",currency:"USD",businessEmail:"a@b.com",gstin:"G",pan:"P"}));await organizationService.update(auth(),"o1",{country:null,currency:null,businessEmail:null,gstin:null,pan:null});await expect(organizationController.update(auth(),"o1",{})).resolves.toMatchObject({success:true});await expect(organizationService.listTenants(auth(),"o1")).resolves.toEqual([{id:"t1"}]);await expect(organizationController.listTenants(auth(),"o1")).resolves.toMatchObject({success:true});await expect(organizationService.listMenus(auth(),"o1")).resolves.toHaveLength(1);await expect(organizationController.listMenus(auth(),"o1")).resolves.toMatchObject({success:true});await expect(organizationService.archive(auth(),"o1")).resolves.toMatchObject({id:"o1"});await expect(organizationController.archive(auth(),"o1")).resolves.toMatchObject({success:true});
- m.findMembership.mockResolvedValueOnce(undefined);await expect(organizationService.update(auth(),"missing",{})).rejects.toThrow();await expect(organizationService.update(auth({permissions:[]}),"o1",{})).rejects.toThrow();m.update.mockResolvedValueOnce(undefined);await expect(organizationService.update(auth(),"o1",{})).rejects.toThrow();m.update.mockResolvedValueOnce(undefined);await expect(organizationService.archive(auth(),"o1")).rejects.toThrow();});
+  it("guards organization management and covers update/archive/list tenants/menus", async () => {
+    await expect(
+      organizationService.update(auth(), "o1", {
+        name: " New ",
+        country: " us ",
+        currency: " usd ",
+        businessEmail: " A@B.COM ",
+        gstin: " g ",
+        pan: " p ",
+      }),
+    ).resolves.toMatchObject({ id: "o1" });
+    expect(m.update).toHaveBeenCalledWith(
+      "o1",
+      expect.objectContaining({
+        name: "New",
+        country: "US",
+        currency: "USD",
+        businessEmail: "a@b.com",
+        gstin: "G",
+        pan: "P",
+      }),
+    );
+    await organizationService.update(auth(), "o1", {
+      country: null,
+      currency: null,
+      businessEmail: null,
+      gstin: null,
+      pan: null,
+    });
+    await expect(
+      organizationController.update(auth(), "o1", {}),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      organizationService.listTenants(auth(), "o1"),
+    ).resolves.toEqual([{ id: "t1" }]);
+    await expect(
+      organizationController.listTenants(auth(), "o1"),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      organizationService.listMenus(auth(), "o1"),
+    ).resolves.toHaveLength(1);
+    await expect(
+      organizationController.listMenus(auth(), "o1"),
+    ).resolves.toMatchObject({ success: true });
+    await expect(
+      organizationService.archive(auth(), "o1"),
+    ).resolves.toMatchObject({ id: "o1" });
+    await expect(
+      organizationController.archive(auth(), "o1"),
+    ).resolves.toMatchObject({ success: true });
+    m.findMembership.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.update(auth(), "missing", {}),
+    ).rejects.toThrow();
+    await expect(
+      organizationService.update(auth({ permissions: [] }), "o1", {}),
+    ).rejects.toThrow();
+    m.update.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.update(auth(), "o1", {}),
+    ).rejects.toThrow();
+    m.update.mockResolvedValueOnce(undefined);
+    await expect(organizationService.archive(auth(), "o1")).rejects.toThrow();
+  });
 
- it("covers organization loyalty tier CRUD, normalization, and validation",async()=>{await expect(organizationService.listLoyaltyTiers(auth(),"o1")).resolves.toHaveLength(1);await expect(organizationController.listLoyaltyTiers(auth(),"o1")).resolves.toMatchObject({success:true});await organizationService.createLoyaltyTier(auth(),"o1",{name:" Gold ",discountPercent:10});expect(m.createOrganizationTier).toHaveBeenCalledWith("o1",{name:"Gold",discountPercent:"10.00",discountFixed:null});await organizationController.createLoyaltyTier(auth(),"o1",{name:"Fixed",discountFixed:5});expect(m.writeAudit).toHaveBeenCalledWith(expect.objectContaining({action:"ORGANIZATION_LOYALTY_TIER_CREATED"}));
- for(const input of [{name:"X"},{name:"X",discountPercent:10,discountFixed:5},{name:"X",discountPercent:0},{name:"X",discountPercent:101},{name:"X",discountFixed:0}] as any[]) await expect(organizationService.createLoyaltyTier(auth(),"o1",input)).rejects.toThrow();
- m.findOrganizationTier.mockResolvedValueOnce(tier());await organizationService.updateLoyaltyTier(auth(),"o1","tier1",{name:"New"});m.findOrganizationTier.mockResolvedValueOnce(tier({discountPercent:null,discountFixed:"5.00"}));await organizationService.updateLoyaltyTier(auth(),"o1","tier1",{discountFixed:7});m.findOrganizationTier.mockResolvedValueOnce(tier({discountPercent:null,discountFixed:"5.00"}));await organizationService.updateLoyaltyTier(auth(),"o1","tier1",{name:"Fixed Existing"});m.findOrganizationTier.mockResolvedValueOnce(tier());await organizationService.updateLoyaltyTier(auth(),"o1","tier1",{discountPercent:null,discountFixed:5});await organizationController.updateLoyaltyTier(auth(),"o1","tier1",{name:"X",discountPercent:10});m.findOrganizationTier.mockResolvedValueOnce(undefined);await expect(organizationService.updateLoyaltyTier(auth(),"o1","missing",{})).rejects.toThrow("not found");m.findOrganizationTier.mockResolvedValueOnce(tier());m.updateOrganizationTier.mockResolvedValueOnce(undefined);await expect(organizationService.updateLoyaltyTier(auth(),"o1","tier1",{name:"X"})).rejects.toThrow("not found");
- await organizationService.deleteLoyaltyTier(auth(),"o1","tier1");await expect(organizationController.deleteLoyaltyTier(auth(),"o1","tier1")).resolves.toEqual({success:true,data:null});m.findOrganizationTier.mockResolvedValueOnce(undefined);await expect(organizationService.deleteLoyaltyTier(auth(),"o1","missing")).rejects.toThrow("not found");});
+  it("covers organization loyalty tier CRUD, normalization, and validation", async () => {
+    await expect(
+      organizationService.listLoyaltyTiers(auth(), "o1"),
+    ).resolves.toHaveLength(1);
+    await expect(
+      organizationController.listLoyaltyTiers(auth(), "o1"),
+    ).resolves.toMatchObject({ success: true });
+    await organizationService.createLoyaltyTier(auth(), "o1", {
+      name: " Gold ",
+      discountPercent: 10,
+    });
+    expect(m.createOrganizationTier).toHaveBeenCalledWith("o1", {
+      name: "Gold",
+      discountPercent: "10.00",
+      discountFixed: null,
+    });
+    await organizationController.createLoyaltyTier(auth(), "o1", {
+      name: "Fixed",
+      discountFixed: 5,
+    });
+    expect(m.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "ORGANIZATION_LOYALTY_TIER_CREATED" }),
+    );
+    for (const input of [
+      { name: "X" },
+      { name: "X", discountPercent: 10, discountFixed: 5 },
+      { name: "X", discountPercent: 0 },
+      { name: "X", discountPercent: 101 },
+      { name: "X", discountFixed: 0 },
+    ] as any[])
+      await expect(
+        organizationService.createLoyaltyTier(auth(), "o1", input),
+      ).rejects.toThrow();
+    m.findOrganizationTier.mockResolvedValueOnce(tier());
+    await organizationService.updateLoyaltyTier(auth(), "o1", "tier1", {
+      name: "New",
+    });
+    m.findOrganizationTier.mockResolvedValueOnce(
+      tier({ discountPercent: null, discountFixed: "5.00" }),
+    );
+    await organizationService.updateLoyaltyTier(auth(), "o1", "tier1", {
+      discountFixed: 7,
+    });
+    m.findOrganizationTier.mockResolvedValueOnce(
+      tier({ discountPercent: null, discountFixed: "5.00" }),
+    );
+    await organizationService.updateLoyaltyTier(auth(), "o1", "tier1", {
+      name: "Fixed Existing",
+    });
+    m.findOrganizationTier.mockResolvedValueOnce(tier());
+    await organizationService.updateLoyaltyTier(auth(), "o1", "tier1", {
+      discountPercent: null,
+      discountFixed: 5,
+    });
+    await organizationController.updateLoyaltyTier(auth(), "o1", "tier1", {
+      name: "X",
+      discountPercent: 10,
+    });
+    m.findOrganizationTier.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.updateLoyaltyTier(auth(), "o1", "missing", {}),
+    ).rejects.toThrow("not found");
+    m.findOrganizationTier.mockResolvedValueOnce(tier());
+    m.updateOrganizationTier.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.updateLoyaltyTier(auth(), "o1", "tier1", {
+        name: "X",
+      }),
+    ).rejects.toThrow("not found");
+    await organizationService.deleteLoyaltyTier(auth(), "o1", "tier1");
+    await expect(
+      organizationController.deleteLoyaltyTier(auth(), "o1", "tier1"),
+    ).resolves.toEqual({ success: true, data: null });
+    m.findOrganizationTier.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.deleteLoyaltyTier(auth(), "o1", "missing"),
+    ).rejects.toThrow("not found");
+  });
 
- it("creates organization menus with SKU validation and effective dates",async()=>{const input={name:" Main ",description:null,status:"PUBLISHED" as const,isDefault:true,effectiveFrom:"2026-01-01T00:00:00.000Z",items:[{itemSku:" SKU1 ",categoryName:"Cat",sortOrder:2},{itemSku:"SKU2"}]};await organizationService.createMenu(auth(),"o1",input);expect(m.createMenu).toHaveBeenCalledWith(expect.objectContaining({organizationId:"o1",name:"Main",effectiveFrom:new Date(input.effectiveFrom),items:[expect.objectContaining({itemSku:"SKU1"}),expect.objectContaining({itemSku:"SKU2"})]}));await organizationController.createMenu(auth(),"o1",{name:"X",effectiveFrom:null,items:[]});expect(m.writeAudit).toHaveBeenCalledWith(expect.objectContaining({action:"ORGANIZATION_MENU_CREATED"}));await expect(organizationService.createMenu(auth(),"o1",{name:"X",items:[{itemSku:"   "}]})).rejects.toThrow("cannot be blank");await expect(organizationService.createMenu(auth(),"o1",{name:"X",items:[{itemSku:"A"},{itemSku:" A "}]})).rejects.toThrow("Duplicate");m.createMenu.mockResolvedValueOnce(undefined);await expect(organizationService.createMenu(auth(),"o1",{name:"X",items:[]})).rejects.toThrow("Organization menu");});
+  it("creates organization menus with SKU validation and effective dates", async () => {
+    const input = {
+      name: " Main ",
+      description: null,
+      status: "PUBLISHED" as const,
+      isDefault: true,
+      effectiveFrom: "2026-01-01T00:00:00.000Z",
+      items: [
+        { itemSku: " SKU1 ", categoryName: "Cat", sortOrder: 2 },
+        { itemSku: "SKU2" },
+      ],
+    };
+    await organizationService.createMenu(auth(), "o1", input);
+    expect(m.createMenu).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "o1",
+        name: "Main",
+        effectiveFrom: new Date(input.effectiveFrom),
+        items: [
+          expect.objectContaining({ itemSku: "SKU1" }),
+          expect.objectContaining({ itemSku: "SKU2" }),
+        ],
+      }),
+    );
+    await organizationController.createMenu(auth(), "o1", {
+      name: "X",
+      effectiveFrom: null,
+      items: [],
+    });
+    expect(m.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "ORGANIZATION_MENU_CREATED" }),
+    );
+    await expect(
+      organizationService.createMenu(auth(), "o1", {
+        name: "X",
+        items: [{ itemSku: "   " }],
+      }),
+    ).rejects.toThrow("cannot be blank");
+    await expect(
+      organizationService.createMenu(auth(), "o1", {
+        name: "X",
+        items: [{ itemSku: "A" }, { itemSku: " A " }],
+      }),
+    ).rejects.toThrow("Duplicate");
+    m.createMenu.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.createMenu(auth(), "o1", { name: "X", items: [] }),
+    ).rejects.toThrow("Organization menu");
+  });
 
- it("updates/deletes organization menus through every normalization branch",async()=>{await organizationService.updateMenu(auth(),"o1","menu1",{name:" Updated ",effectiveFrom:"2026-02-01T00:00:00.000Z",items:[{itemSku:" SKU1 "}]});expect(m.updateMenu).toHaveBeenLastCalledWith("o1","menu1",expect.objectContaining({name:"Updated",effectiveFrom:new Date("2026-02-01T00:00:00.000Z"),items:[expect.objectContaining({itemSku:"SKU1"})]}));await organizationService.updateMenu(auth(),"o1","menu1",{items:[{itemSku:"SKU3"}]});await organizationService.updateMenu(auth(),"o1","menu1",{name:" Name ",effectiveFrom:null});await organizationService.updateMenu(auth(),"o1","menu1",{effectiveFrom:"2026-03-01T00:00:00.000Z"});await organizationService.updateMenu(auth(),"o1","menu1",{description:"d"});await organizationController.updateMenu(auth(),"o1","menu1",{});m.updateMenu.mockResolvedValueOnce(undefined);await expect(organizationService.updateMenu(auth(),"o1","missing",{})).rejects.toThrow("Organization menu");await organizationService.deleteMenu(auth(),"o1","menu1");await expect(organizationController.deleteMenu(auth(),"o1","menu1")).resolves.toEqual({success:true,data:null});m.deleteMenu.mockResolvedValueOnce(undefined);await expect(organizationService.deleteMenu(auth(),"o1","missing")).rejects.toThrow("Organization menu");});
+  it("updates/deletes organization menus through every normalization branch", async () => {
+    await organizationService.updateMenu(auth(), "o1", "menu1", {
+      name: " Updated ",
+      effectiveFrom: "2026-02-01T00:00:00.000Z",
+      items: [{ itemSku: " SKU1 " }],
+    });
+    expect(m.updateMenu).toHaveBeenLastCalledWith(
+      "o1",
+      "menu1",
+      expect.objectContaining({
+        name: "Updated",
+        effectiveFrom: new Date("2026-02-01T00:00:00.000Z"),
+        items: [expect.objectContaining({ itemSku: "SKU1" })],
+      }),
+    );
+    await organizationService.updateMenu(auth(), "o1", "menu1", {
+      items: [{ itemSku: "SKU3" }],
+    });
+    await organizationService.updateMenu(auth(), "o1", "menu1", {
+      name: " Name ",
+      effectiveFrom: null,
+    });
+    await organizationService.updateMenu(auth(), "o1", "menu1", {
+      effectiveFrom: "2026-03-01T00:00:00.000Z",
+    });
+    await organizationService.updateMenu(auth(), "o1", "menu1", {
+      description: "d",
+    });
+    await organizationController.updateMenu(auth(), "o1", "menu1", {});
+    m.updateMenu.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.updateMenu(auth(), "o1", "missing", {}),
+    ).rejects.toThrow("Organization menu");
+    await organizationService.deleteMenu(auth(), "o1", "menu1");
+    await expect(
+      organizationController.deleteMenu(auth(), "o1", "menu1"),
+    ).resolves.toEqual({ success: true, data: null });
+    m.deleteMenu.mockResolvedValueOnce(undefined);
+    await expect(
+      organizationService.deleteMenu(auth(), "o1", "missing"),
+    ).rejects.toThrow("Organization menu");
+  });
 });

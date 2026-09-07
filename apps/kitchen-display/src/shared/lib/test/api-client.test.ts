@@ -38,7 +38,9 @@ describe("api client", () => {
     const config = mocks.createApiClient.mock.calls[0]![0];
     saveTokens("token");
     sessionStorage.setItem("kds_tenant", "tenant-1");
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     config.onRefreshFailure?.();
     expect(getToken()).toBeNull();
     expect(sessionStorage.getItem("kds_tenant")).toBeNull();

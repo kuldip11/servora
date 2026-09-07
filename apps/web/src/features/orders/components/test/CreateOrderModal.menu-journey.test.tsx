@@ -136,7 +136,9 @@ describe("menu to order real-user journey", () => {
 
     renderModal();
 
-    expect(await screen.findByRole("button", { name: /Chicken Tikka/ })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Chicken Tikka/ }),
+    ).toBeTruthy();
     expect(screen.queryByText("Draft Curry")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Chicken Tikka/ }));

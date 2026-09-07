@@ -7,7 +7,8 @@ import { cn } from "@/shared/utils";
 import { persistActiveContext } from "@/shared/auth/active-context";
 
 export const BranchSwitcher = () => {
-  const { memberships, membershipId, branchId, setContext, user } = useAuthStore();
+  const { memberships, membershipId, branchId, setContext, user } =
+    useAuthStore();
   const membership = memberships.find(
     (item) => item.membershipId === membershipId,
   );

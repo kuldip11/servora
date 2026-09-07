@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider, Toaster } from "@pos/ui";
+import { ThemeProvider, Toaster, AppErrorBoundary } from "@pos/ui";
 import { queryClient } from "./shared/lib/query-client";
 import { WaiterApp } from "./app/WaiterApp";
 import "./index.css";
@@ -13,7 +13,9 @@ createRoot(root).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <WaiterApp />
+        <AppErrorBoundary appName="Servora Waiter">
+          <WaiterApp />
+        </AppErrorBoundary>
         {}
         <Toaster />
       </QueryClientProvider>

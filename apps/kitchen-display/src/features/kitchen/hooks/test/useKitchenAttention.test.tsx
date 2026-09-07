@@ -125,7 +125,9 @@ describe("useKitchenAttention", () => {
     mocks.filterEnabled = true;
     mocks.filtered = null;
     mocks.toast.mockClear();
-    mocks.callbacks.get("order.item.voided")?.({ payload: { status: "FIRED" } });
+    mocks.callbacks.get("order.item.voided")?.({
+      payload: { status: "FIRED" },
+    });
     expect(mocks.toast).not.toHaveBeenCalled();
 
     mocks.filterEnabled = false;

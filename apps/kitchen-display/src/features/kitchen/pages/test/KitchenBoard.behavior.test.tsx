@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KitchenTicket } from "@pos/types";
 import { ticket } from "@/features/kitchen/test/fixtures";
 
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
 const mocks = vi.hoisted(() => ({
   stations: undefined as undefined | Array<{ id: string; name: string }>,
   tickets: undefined as undefined | KitchenTicket[],
@@ -30,7 +34,12 @@ vi.mock("@pos/ui", () => ({
   IconButton: ({ icon: _icon, ...props }: any) => <button {...props} />,
   Spinner: (props: any) => <span {...props}>loading</span>,
   EmptyState: ({ title }: any) => <span>{title}</span>,
-  Popover: ({ trigger, children }: any) => <div>{trigger}{children}</div>,
+  Popover: ({ trigger, children }: any) => (
+    <div>
+      {trigger}
+      {children}
+    </div>
+  ),
   ThemeSwitcher: ({ label }: any) => <span>{label}</span>,
 }));
 vi.mock("@/features/kitchen/hooks/useKitchenTickets", () => ({
@@ -59,7 +68,8 @@ vi.mock("@/features/kitchen/hooks/useKitchenRealtime", () => ({
   },
 }));
 vi.mock("@/features/kitchen/hooks/useKitchenAttention", () => ({
-  useKitchenAttention: (stationId?: string) => mocks.attentionArgs.push(stationId),
+  useKitchenAttention: (stationId?: string) =>
+    mocks.attentionArgs.push(stationId),
 }));
 vi.mock("@/features/kitchen/terminal-storage", () => ({
   getTerminalStationId: mocks.getTerminalStationId,
@@ -112,7 +122,8 @@ beforeEach(() => {
     mocks.onLogout,
     mocks.setTerminalStationId,
     mocks.setVoidAlertsEnabled,
-  ]) fn.mockClear();
+  ])
+    fn.mockClear();
   mocks.stationArgs.length = 0;
   mocks.realtimeArgs.length = 0;
   mocks.attentionArgs.length = 0;
@@ -136,7 +147,8 @@ describe("KitchenBoard interaction coverage", () => {
     expect(container.textContent).toContain("Polling");
     expect(container.textContent).toContain("loading");
     expect(
-      container.querySelector('button[aria-label="Refresh tickets"]')?.className,
+      container.querySelector('button[aria-label="Refresh tickets"]')
+        ?.className,
     ).toContain("animate-spin");
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith(undefined);
   });
@@ -152,7 +164,10 @@ describe("KitchenBoard interaction coverage", () => {
       ...ticket,
       id: `ticket-${i}`,
       status: i === 0 ? ("READY" as const) : ("FIRED" as const),
-      firedAt: i === 1 ? new Date(now - 20 * 60_000).toISOString() : new Date(now).toISOString(),
+      firedAt:
+        i === 1
+          ? new Date(now - 20 * 60_000).toISOString()
+          : new Date(now).toISOString(),
     }));
     mocks.tickets = values;
     mocks.connected = true;
@@ -164,10 +179,20 @@ describe("KitchenBoard interaction coverage", () => {
     expect(container.textContent).toContain("201 active tickets");
     expect(container.textContent).toContain("1 urgent");
     expect(container.textContent).toContain("1 ready");
-    expect(container.textContent).toContain("High kitchen load: 201 active tickets");
+    expect(container.textContent).toContain(
+      "High kitchen load: 201 active tickets",
+    );
     expect(container.textContent).toContain("Live");
-    expect(container.querySelector('[data-ticket="ticket-0"]')?.getAttribute("data-updating")).toBe("true");
-    expect(container.querySelector('[data-ticket="ticket-1"]')?.getAttribute("data-updating")).toBe("false");
+    expect(
+      container
+        .querySelector('[data-ticket="ticket-0"]')
+        ?.getAttribute("data-updating"),
+    ).toBe("true");
+    expect(
+      container
+        .querySelector('[data-ticket="ticket-1"]')
+        ?.getAttribute("data-updating"),
+    ).toBe("false");
   });
 
   it("handles station, void-alert, refresh, ticket update, and logout interactions", async () => {
@@ -175,7 +200,9 @@ describe("KitchenBoard interaction coverage", () => {
     mocks.tickets = [{ ...ticket, id: "interactive", status: "FIRED" }];
     await mount();
 
-    const select = container.querySelector('select[aria-label="KDS station"]') as HTMLSelectElement;
+    const select = container.querySelector(
+      'select[aria-label="KDS station"]',
+    ) as HTMLSelectElement;
     await act(async () => {
       select.value = "grill";
       select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -189,19 +216,36 @@ describe("KitchenBoard interaction coverage", () => {
     });
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith(undefined);
 
-    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = container.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
     await act(async () => {
       checkbox.click();
     });
     expect(mocks.setVoidAlertsEnabled).toHaveBeenCalledWith(false);
 
     await act(async () => {
-      (container.querySelector('button[aria-label="Refresh tickets"]') as HTMLButtonElement).click();
-      (container.querySelector('[data-ticket="interactive"]') as HTMLButtonElement).click();
-      (container.querySelector('button[aria-label="Log out"]') as HTMLButtonElement).click();
+      (
+        container.querySelector(
+          'button[aria-label="Refresh tickets"]',
+        ) as HTMLButtonElement
+      ).click();
+      (
+        container.querySelector(
+          '[data-ticket="interactive"]',
+        ) as HTMLButtonElement
+      ).click();
+      (
+        container.querySelector(
+          'button[aria-label="Log out"]',
+        ) as HTMLButtonElement
+      ).click();
     });
     expect(mocks.refetch).toHaveBeenCalled();
-    expect(mocks.mutate).toHaveBeenCalledWith({ id: "interactive", status: "PREPARING" });
+    expect(mocks.mutate).toHaveBeenCalledWith({
+      id: "interactive",
+      status: "PREPARING",
+    });
     expect(mocks.onLogout).toHaveBeenCalled();
   });
 

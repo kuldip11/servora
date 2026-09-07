@@ -40,8 +40,12 @@ describe("customerService facade", () => {
     expect(customerService.getSession).toBe(mocks.getSession);
     expect(customerService.getMenu).toBe(mocks.getMenu);
     expect(customerService.createOrder).toBe(mocks.createOrder);
-    expect(customerService.initiateTakeawayPayment).toBe(mocks.initiateTakeawayPayment);
-    expect(customerService.verifyTakeawayPayment).toBe(mocks.verifyTakeawayPayment);
+    expect(customerService.initiateTakeawayPayment).toBe(
+      mocks.initiateTakeawayPayment,
+    );
+    expect(customerService.verifyTakeawayPayment).toBe(
+      mocks.verifyTakeawayPayment,
+    );
     expect(customerService.checkout).toBe(mocks.checkout);
     expect(customerService.getOrder).toBe(mocks.getOrder);
   });

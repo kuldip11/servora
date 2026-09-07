@@ -25,7 +25,13 @@ for (const [name, target] of Object.entries(requiredTargets)) {
       headers: { "user-agent": "servora-production-smoke/1.0" },
     });
     const durationMs = Math.round((performance.now() - started) * 100) / 100;
-    results.push({ name, target, status: response.status, durationMs, ok: response.ok });
+    results.push({
+      name,
+      target,
+      status: response.status,
+      durationMs,
+      ok: response.ok,
+    });
   } catch (error) {
     results.push({
       name,
@@ -40,4 +46,6 @@ for (const [name, target] of Object.entries(requiredTargets)) {
 
 console.table(results);
 if (results.some((result) => !result.ok)) process.exit(1);
-console.log("Production HTTP smoke passed. Run the POS Playwright critical path against the same deployment before release.");
+console.log(
+  "Production HTTP smoke passed. Run the POS Playwright critical path against the same deployment before release.",
+);

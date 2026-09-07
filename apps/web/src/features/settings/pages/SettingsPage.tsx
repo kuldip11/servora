@@ -203,7 +203,6 @@ export const SettingsPage = () => {
           </div>
         </Card>
       </Grid>
-
     </Page>
   );
 };

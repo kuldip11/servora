@@ -116,5 +116,4 @@ export const MENU_ADVANCED_SECTION = {
 } as const;
 
 export type MenuMoreSectionId =
-  | (typeof MENU_MORE_SECTIONS)[number]["id"]
-  | typeof MENU_ADVANCED_SECTION.id;
+  (typeof MENU_MORE_SECTIONS)[number]["id"] | typeof MENU_ADVANCED_SECTION.id;

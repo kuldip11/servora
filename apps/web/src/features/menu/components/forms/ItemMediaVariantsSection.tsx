@@ -1,6 +1,6 @@
 import { Button } from "@pos/ui";
 import { X } from "lucide-react";
-type Variant = { id?: string; name: string; price: string };
+type Variant = { id?: string; clientKey?: string; name: string; price: string };
 export const ItemMediaVariantsSection = ({
   imageUrls,
   newImageUrl,
@@ -34,7 +34,7 @@ export const ItemMediaVariantsSection = ({
         {imageUrls.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {imageUrls.map((url, i) => (
-              <div key={i} className="relative">
+              <div key={url} className="relative">
                 <img
                   src={url}
                   alt=""
@@ -60,7 +60,12 @@ export const ItemMediaVariantsSection = ({
             onChange={(e) => onNewImageUrl(e.target.value)}
             className="flex-1 px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <Button type="button" variant="secondary" size="sm" onClick={onAddImage}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onAddImage}
+          >
             Add
           </Button>
         </div>
@@ -83,7 +88,10 @@ export const ItemMediaVariantsSection = ({
         </p>
         <div className="space-y-2">
           {variants.map((v, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div
+              key={v.id ?? v.clientKey ?? `${v.name}:${v.price}`}
+              className="flex items-center gap-2"
+            >
               <input
                 placeholder="Variant name (e.g. Half)"
                 value={v.name}

@@ -1,65 +1,33 @@
 import { usePermissions } from "@/shared/auth/permissions";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  createInventoryItemSchema,
-  updateInventoryStockSchema,
-  type CreateInventoryItemInput,
-  type UpdateInventoryStockInput,
-} from "@pos/validation";
-import {
-  Plus,
-  AlertTriangle,
-  Package,
-  Building2,
-  History,
-  MoreHorizontal,
-} from "lucide-react";
+import { Plus, AlertTriangle, Package, Building2 } from "lucide-react";
 import {
   Button,
   Card,
-  Modal,
-  Input,
-  Select,
   StatCard,
-  StatusBadge,
   Badge,
   Page,
   PageHeader,
   Grid,
-  Table,
   FilterBar,
   SearchInput,
   SelectMenu,
   Pagination,
-  DropdownMenu,
-  IconButton,
-  type Column,
 } from "@pos/ui";
-import { formatCurrency } from "@/shared/utils";
 import { useAuthStore } from "@/store/auth";
 import { useBranches } from "@/features/branches/hooks/useBranches";
 import {
   useInventoryItems,
   useLowStockItems,
 } from "@/features/inventory/hooks/useInventoryItems";
-import { useAddInventoryItem } from "@/features/inventory/hooks/useAddInventoryItem";
-import { useUpdateInventoryStock } from "@/features/inventory/hooks/useUpdateInventoryStock";
 import { useInventoryRealtimeSync } from "@/features/inventory/hooks/useInventoryRealtimeSync";
 import { useInventoryTransactions } from "@/features/inventory/hooks/useInventoryTransactions";
-import { useWasteReasons } from "@/features/inventory/hooks/useWasteReasons";
-import { useInventoryRecipeImpact } from "@/features/inventory/hooks/useInventoryRecipeImpact";
-import {
-  useCreateWasteReason,
-  useLogInventoryWaste,
-} from "@/features/inventory/hooks/useLogInventoryWaste";
 import type { InventoryItem } from "@pos/types";
-
-import {
-  INVENTORY_TRANSACTION_OPTIONS,
-  INVENTORY_UNIT_OPTIONS,
-} from "@/features/inventory/constants";
+import { InventoryImpactDialog } from "@/features/inventory/components/InventoryImpactDialog";
+import { InventoryWasteDialog } from "@/features/inventory/components/InventoryWasteDialog";
+import { InventoryTable } from "@/features/inventory/components/InventoryTable";
+import { InventoryActivity } from "@/features/inventory/components/InventoryActivity";
+import { InventoryItemDialogs } from "@/features/inventory/components/InventoryItemDialogs";
 
 export const InventoryPage = () => {
   const { has } = usePermissions();
@@ -70,10 +38,6 @@ export const InventoryPage = () => {
   const [showUpdate, setShowUpdate] = useState<InventoryItem | null>(null);
   const [showWaste, setShowWaste] = useState<InventoryItem | null>(null);
   const [showImpact, setShowImpact] = useState<InventoryItem | null>(null);
-  const [wasteQuantity, setWasteQuantity] = useState("1");
-  const [wasteReasonId, setWasteReasonId] = useState("");
-  const [newWasteReason, setNewWasteReason] = useState("");
-  const [wasteNotes, setWasteNotes] = useState("");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -86,32 +50,6 @@ export const InventoryPage = () => {
     );
     return () => window.clearTimeout(timer);
   }, [search]);
-  const {
-    register: registerAdd,
-    handleSubmit: handleSubmitAdd,
-    reset: resetAdd,
-    formState: { errors: addErrors },
-  } = useForm<CreateInventoryItemInput>({
-    resolver: zodResolver(createInventoryItemSchema),
-    defaultValues: {
-      name: "",
-      unit: "KG",
-      currentStock: 0,
-      minimumStock: 0,
-      reorderPoint: 0,
-      costPerUnit: 0,
-      branchId: undefined,
-    },
-  });
-  const {
-    register: registerStock,
-    handleSubmit: handleSubmitStock,
-    reset: resetStock,
-    formState: { errors: stockErrors },
-  } = useForm<UpdateInventoryStockInput>({
-    resolver: zodResolver(updateInventoryStockSchema),
-    defaultValues: { quantity: 0, transactionType: "IN", notes: "" },
-  });
 
   const { data: branches } = useBranches({ enabled: isAggregate });
 
@@ -126,62 +64,8 @@ export const InventoryPage = () => {
   const totalItems = inventoryPage?.pagination.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
   const { data: transactions } = useInventoryTransactions();
-  const { data: wasteReasons } = useWasteReasons();
-  const { data: recipeImpact, isLoading: recipeImpactLoading } =
-    useInventoryRecipeImpact(showImpact?.id);
+
   useInventoryRealtimeSync();
-
-  const addMutation = useAddInventoryItem();
-  const updateStockMutation = useUpdateInventoryStock();
-  const logWasteMutation = useLogInventoryWaste();
-  const createWasteReasonMutation = useCreateWasteReason();
-
-  function handleAdd(values: CreateInventoryItemInput) {
-    addMutation.mutate(
-      {
-        ...values,
-        currentStock: String(values.currentStock),
-        minimumStock: String(values.minimumStock),
-        reorderPoint: String(values.reorderPoint),
-        costPerUnit: String(values.costPerUnit),
-        ...(values.branchId ? { branchId: values.branchId } : {}),
-      },
-      {
-        onSuccess: () => {
-          setShowAdd(false);
-          resetAdd({
-            name: "",
-            unit: "KG",
-            currentStock: 0,
-            minimumStock: 0,
-            reorderPoint: 0,
-            costPerUnit: 0,
-            branchId: undefined,
-          });
-        },
-      },
-    );
-  }
-
-  function handleUpdateStock(values: UpdateInventoryStockInput) {
-    if (!showUpdate) return;
-    updateStockMutation.mutate(
-      {
-        itemId: showUpdate.id,
-        input: {
-          ...values,
-          quantity: String(values.quantity),
-          notes: values.notes ?? "",
-        },
-      },
-      {
-        onSuccess: () => {
-          setShowUpdate(null);
-          resetStock({ quantity: 0, transactionType: "IN", notes: "" });
-        },
-      },
-    );
-  }
 
   const groupedByBranch = isAggregate
     ? Object.entries(
@@ -347,475 +231,25 @@ export const InventoryPage = () => {
         </Card>
       )}
 
-      <Card padding="md">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-              <History className="h-4 w-4" /> Recent stock activity
-            </h2>
-            <p className="mt-1 text-xs text-text-secondary">
-              Latest restocks, usage, waste and corrections in the current
-              scope.
-            </p>
-          </div>
-          <Badge>{transactions?.length ?? 0} changes</Badge>
-        </div>
-        {!transactions?.length ? (
-          <p className="py-6 text-center text-sm text-text-disabled">
-            No stock changes recorded yet
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {transactions.slice(0, 12).map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center gap-3 py-3 text-sm"
-              >
-                <StatusBadge
-                  label={
-                    transaction.reversalOfDeductionId
-                      ? "VOID REVERSAL"
-                      : transaction.transactionType.replace("_", " ")
-                  }
-                  tone={
-                    transaction.transactionType === "IN"
-                      ? "success"
-                      : transaction.transactionType === "WASTE"
-                        ? "danger"
-                        : "neutral"
-                  }
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-text-primary">
-                    {transaction.inventoryItem?.name ?? "Inventory item"}
-                  </p>
-                  <p className="truncate text-xs text-text-secondary">
-                    {transaction.wasteReason?.label
-                      ? `${transaction.wasteReason.label}${transaction.notes ? ` · ${transaction.notes}` : ""}`
-                      : transaction.notes || "No note"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-text-primary">
-                    {transaction.quantity}{" "}
-                    {transaction.inventoryItem?.unit ?? ""}
-                  </p>
-                  <p className="text-xs text-text-disabled">
-                    {new Date(transaction.createdAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <InventoryActivity transactions={transactions} />
 
-      {}
-      <Modal
-        open={showAdd}
-        onClose={() => setShowAdd(false)}
-        title="Add Inventory Item"
-      >
-        <form onSubmit={handleSubmitAdd(handleAdd)} className="space-y-4">
-          <Input
-            label="Item name"
-            placeholder="e.g. Chicken Breast"
-            error={addErrors.name?.message}
-            {...registerAdd("name")}
-          />
-          <Select
-            label="Unit"
-            options={INVENTORY_UNIT_OPTIONS}
-            error={addErrors.unit?.message}
-            {...registerAdd("unit")}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Current Stock"
-              type="number"
-              min="0"
-              step="0.001"
-              error={addErrors.currentStock?.message}
-              {...registerAdd("currentStock", { valueAsNumber: true })}
-            />
-            <Input
-              label="Minimum Stock"
-              type="number"
-              min="0"
-              step="0.001"
-              error={addErrors.minimumStock?.message}
-              {...registerAdd("minimumStock", { valueAsNumber: true })}
-            />
-            <Input
-              label="Reorder Point"
-              type="number"
-              min="0"
-              step="0.001"
-              error={addErrors.reorderPoint?.message}
-              {...registerAdd("reorderPoint", { valueAsNumber: true })}
-            />
-            <Input
-              label="Cost per Unit (₹)"
-              type="number"
-              min="0"
-              step="0.01"
-              error={addErrors.costPerUnit?.message}
-              {...registerAdd("costPerUnit", { valueAsNumber: true })}
-            />
-          </div>
-          {isAggregate && (
-            <Select
-              label="Branch"
-              options={[
-                { value: "", label: "Select branch" },
-                ...(branches?.map((b) => ({ value: b.id, label: b.name })) ??
-                  []),
-              ]}
-              error={addErrors.branchId?.message}
-              {...registerAdd("branchId")}
-            />
-          )}
-          <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={addMutation.isPending}>
-              Add Item
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <InventoryItemDialogs
+        addOpen={showAdd}
+        updateItem={showUpdate}
+        aggregate={isAggregate}
+        branches={branches ?? []}
+        onCloseAdd={() => setShowAdd(false)}
+        onCloseUpdate={() => setShowUpdate(null)}
+      />
 
-      {}
-      <Modal
-        open={!!showUpdate}
-        onClose={() => setShowUpdate(null)}
-        title={`Update Stock: ${showUpdate?.name}`}
-        size="sm"
-      >
-        <form
-          onSubmit={handleSubmitStock(handleUpdateStock)}
-          className="space-y-4"
-        >
-          <Select
-            label="Transaction Type"
-            options={INVENTORY_TRANSACTION_OPTIONS}
-            error={stockErrors.transactionType?.message}
-            {...registerStock("transactionType")}
-          />
-          <Input
-            label="Quantity"
-            type="number"
-            min="0.001"
-            step="0.001"
-            error={stockErrors.quantity?.message}
-            hint={`Current stock: ${parseFloat(String(showUpdate?.currentStock ?? 0)).toFixed(2)} ${showUpdate?.unit}`}
-            {...registerStock("quantity", { valueAsNumber: true })}
-          />
-          <Input
-            label="Notes (optional)"
-            placeholder="Reason for update..."
-            error={stockErrors.notes?.message}
-            {...registerStock("notes")}
-          />
-          <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowUpdate(null)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={updateStockMutation.isPending}>
-              Update
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal
-        open={!!showImpact}
+      <InventoryImpactDialog
+        item={showImpact}
         onClose={() => setShowImpact(null)}
-        title={`Recipe impact: ${showImpact?.name ?? "Inventory item"}`}
-        size="sm"
-      >
-        {recipeImpactLoading ? (
-          <p className="py-6 text-center text-sm text-text-secondary">
-            Loading recipe impact…
-          </p>
-        ) : !recipeImpact?.impacts.length ? (
-          <p className="py-6 text-center text-sm text-text-secondary">
-            This ingredient is not currently a required auto-deduction input for
-            any menu item, variant, or modifier.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {recipeImpact.impacts.map((impact) => (
-              <div
-                key={`${impact.kind}:${impact.entityId}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-text-primary">
-                    {impact.kind === "ITEM"
-                      ? impact.entityName
-                      : `${impact.menuItemName} · ${impact.entityName}`}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    {impact.kind === "ITEM"
-                      ? "Base item"
-                      : impact.kind === "VARIANT"
-                        ? "Variant"
-                        : "Modifier option"}
-                  </p>
-                </div>
-                <StatusBadge
-                  tone={impact.computedAvailable ? "success" : "danger"}
-                  label={impact.computedAvailable ? "Available" : "Auto 86"}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        open={!!showWaste}
+      />
+      <InventoryWasteDialog
+        item={showWaste}
         onClose={() => setShowWaste(null)}
-        title={`Log Waste: ${showWaste?.name}`}
-        size="sm"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Quantity wasted"
-            type="number"
-            min="0.001"
-            step="0.001"
-            value={wasteQuantity}
-            onChange={(e) => setWasteQuantity(e.target.value)}
-            hint={`Current stock: ${parseFloat(String(showWaste?.currentStock ?? 0)).toFixed(2)} ${showWaste?.unit ?? ""}`}
-          />
-          <Select
-            label="Waste reason"
-            value={wasteReasonId}
-            onChange={(e) => setWasteReasonId(e.target.value)}
-            options={[
-              { value: "", label: "Select reason" },
-              ...(wasteReasons ?? []).map((reason) => ({
-                value: reason.id,
-                label: reason.label,
-              })),
-            ]}
-          />
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-xs font-medium text-text-secondary">
-              Need a new reason?
-            </p>
-            <div className="flex gap-2">
-              <Input
-                aria-label="New waste reason"
-                value={newWasteReason}
-                onChange={(e) => setNewWasteReason(e.target.value)}
-                placeholder="e.g. Prep trim"
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={
-                  !newWasteReason.trim() || createWasteReasonMutation.isPending
-                }
-                onClick={() =>
-                  createWasteReasonMutation.mutate(newWasteReason.trim(), {
-                    onSuccess: (reason) => {
-                      setWasteReasonId(reason.id);
-                      setNewWasteReason("");
-                    },
-                  })
-                }
-              >
-                Add
-              </Button>
-            </div>
-          </div>
-          <Input
-            label="Notes (optional)"
-            value={wasteNotes}
-            onChange={(e) => setWasteNotes(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowWaste(null)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!wasteReasonId || !(Number(wasteQuantity) > 0)}
-              loading={logWasteMutation.isPending}
-              onClick={() => {
-                if (!showWaste) return;
-                logWasteMutation.mutate(
-                  {
-                    itemId: showWaste.id,
-                    quantity: Number(wasteQuantity),
-                    wasteReasonId,
-                    ...(wasteNotes ? { notes: wasteNotes } : {}),
-                  },
-                  {
-                    onSuccess: () => {
-                      setShowWaste(null);
-                      setWasteQuantity("1");
-                      setWasteReasonId("");
-                      setWasteNotes("");
-                    },
-                  },
-                );
-              }}
-            >
-              Log Waste
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      />
     </Page>
   );
 };
-
-function InventoryTable({
-  items,
-  loading,
-  onUpdateStock,
-  onLogWaste,
-  onViewImpact,
-  onAddItem,
-}: {
-  items: InventoryItem[];
-  loading: boolean;
-  onUpdateStock: (item: InventoryItem) => void;
-  onLogWaste: (item: InventoryItem) => void;
-  onViewImpact: (item: InventoryItem) => void;
-  onAddItem?: () => void;
-}) {
-  const columns: Column<InventoryItem>[] = [
-    {
-      id: "name",
-      header: "Item",
-      cell: (item) => (
-        <span className="font-medium text-text-primary">{item.name}</span>
-      ),
-      sortable: true,
-      sortValue: (item) => item.name,
-    },
-    {
-      id: "unit",
-      header: "Unit",
-      cell: (item) => <span className="text-text-secondary">{item.unit}</span>,
-    },
-    {
-      id: "currentStock",
-      header: "Current Stock",
-      sortable: true,
-      sortValue: (item) => parseFloat(String(item.currentStock)),
-      cell: (item) => {
-        const current = parseFloat(String(item.currentStock));
-        const minimum = parseFloat(String(item.minimumStock));
-        const isLow = current <= minimum;
-        return (
-          <span
-            className={
-              isLow
-                ? "font-semibold text-danger"
-                : "font-semibold text-text-primary"
-            }
-          >
-            {current.toFixed(2)}
-          </span>
-        );
-      },
-    },
-    {
-      id: "minimumStock",
-      header: "Min Stock",
-      cell: (item) => (
-        <span className="text-text-secondary">
-          {parseFloat(String(item.minimumStock)).toFixed(2)}
-        </span>
-      ),
-    },
-    {
-      id: "costPerUnit",
-      header: "Cost/Unit",
-      cell: (item) => (
-        <span className="text-text-primary">
-          {formatCurrency(parseFloat(String(item.costPerUnit)))}
-        </span>
-      ),
-    },
-    {
-      id: "status",
-      header: "Status",
-      cell: (item) => {
-        const current = parseFloat(String(item.currentStock));
-        const minimum = parseFloat(String(item.minimumStock));
-        const isLow = current <= minimum;
-        return isLow ? (
-          <StatusBadge tone="danger" label="Low Stock" />
-        ) : (
-          <StatusBadge tone="success" label="In Stock" />
-        );
-      },
-    },
-    {
-      id: "actions",
-      header: "",
-      align: "right",
-      cell: (item) => (
-        <div className="flex justify-end gap-1">
-          <Button size="sm" onClick={() => onUpdateStock(item)}>
-            Update Stock
-          </Button>
-          <DropdownMenu
-            align="end"
-            trigger={
-              <IconButton
-                icon={MoreHorizontal}
-                size="sm"
-                variant="ghost"
-                aria-label={`More actions for ${item.name}`}
-              />
-            }
-            items={[
-              { label: "Log waste", onSelect: () => onLogWaste(item) },
-              {
-                label: "Recipe impact",
-                onSelect: () => onViewImpact(item),
-              },
-            ]}
-          />
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <Table
-      columns={columns}
-      data={items}
-      getRowId={(item) => item.id}
-      loading={loading}
-      maxHeight="min(55vh, 36rem)"
-      emptyIcon={Package}
-      emptyTitle="No inventory items"
-      emptyDescription="Start tracking your ingredients and supplies."
-      emptyAction={
-        onAddItem ? (
-          <Button onClick={onAddItem}>
-            <Plus className="w-4 h-4" /> Add Item
-          </Button>
-        ) : undefined
-      }
-    />
-  );
-}

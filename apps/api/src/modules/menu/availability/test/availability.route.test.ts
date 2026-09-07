@@ -1,13 +1,31 @@
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: ((context: any) => unknown) | undefined }> = [];
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: ((context: any) => unknown) | undefined;
+    }> = [];
     constructor(_options: unknown = {}) {}
-    use(_plugin: unknown) { return this; }
-    get(path: string, handler: ((context: any) => unknown) | undefined) { this.routes.push({ method: "GET", path, handler }); return this; }
-    post(path: string, handler: ((context: any) => unknown) | undefined) { this.routes.push({ method: "POST", path, handler }); return this; }
-    put(path: string, handler: ((context: any) => unknown) | undefined) { this.routes.push({ method: "PUT", path, handler }); return this; }
-    delete(path: string, handler: ((context: any) => unknown) | undefined) { this.routes.push({ method: "DELETE", path, handler }); return this; }
+    use(_plugin: unknown) {
+      return this;
+    }
+    get(path: string, handler: ((context: any) => unknown) | undefined) {
+      this.routes.push({ method: "GET", path, handler });
+      return this;
+    }
+    post(path: string, handler: ((context: any) => unknown) | undefined) {
+      this.routes.push({ method: "POST", path, handler });
+      return this;
+    }
+    put(path: string, handler: ((context: any) => unknown) | undefined) {
+      this.routes.push({ method: "PUT", path, handler });
+      return this;
+    }
+    delete(path: string, handler: ((context: any) => unknown) | undefined) {
+      this.routes.push({ method: "DELETE", path, handler });
+      return this;
+    }
   }
   return { ...actual, Elysia: FakeElysia };
 });
@@ -36,17 +54,35 @@ const controller = vi.hoisted(() => ({
   deleteHoliday: vi.fn().mockResolvedValue({ ok: true }),
 }));
 vi.mock("@/core/auth", () => ({ requireAuthPlugin: () => ({}) }));
-vi.mock("../availability.controller", () => ({ availabilityController: controller }));
+vi.mock("../availability.controller", () => ({
+  availabilityController: controller,
+}));
 
 import { describe, expect, it, vi } from "vitest";
 import { menuAvailabilityRouter } from "../availability.route";
 
 describe("availability.route routes", () => {
   it("executes every registered route handler", async () => {
-    const routes = (menuAvailabilityRouter as any).routes as Array<{ method: string; path: string; handler: ((context: any) => unknown) | undefined }>;
-    const route = (method: string, path: string) => routes.find((candidate) => candidate.method === method && candidate.path === path)!;
+    const routes = (menuAvailabilityRouter as any).routes as Array<{
+      method: string;
+      path: string;
+      handler: ((context: any) => unknown) | undefined;
+    }>;
+    const route = (method: string, path: string) =>
+      routes.find(
+        (candidate) => candidate.method === method && candidate.path === path,
+      )!;
     const auth = { tenantId: "t1" };
-    const base = { auth, params: { id: "i1", scheduleId: "s1", branchId: "b1" }, query: { timestamp: "2026-01-01T00:00:00.000Z", year: "2026", region: "IN" }, body: { status: "ACTIVE" } };
+    const base = {
+      auth,
+      params: { id: "i1", scheduleId: "s1", branchId: "b1" },
+      query: {
+        timestamp: "2026-01-01T00:00:00.000Z",
+        year: "2026",
+        region: "IN",
+      },
+      body: { status: "ACTIVE" },
+    };
 
     const cases: Array<[string, string, keyof typeof controller]> = [
       ["GET", "/availability/dashboard", "dashboard"],
@@ -79,10 +115,26 @@ describe("availability.route routes", () => {
     }
 
     expect(controller.dashboard).toHaveBeenCalledWith(auth, base.query);
-    expect(controller.setVariantOverride).toHaveBeenCalledWith(auth, "i1", base.body);
-    expect(controller.setStockCount).toHaveBeenCalledWith(auth, "i1", base.body);
-    expect(controller.updateSchedule).toHaveBeenCalledWith(auth, "s1", base.body);
-    expect(controller.getCurrentStatus).toHaveBeenCalledWith(auth, "i1", base.query.timestamp);
+    expect(controller.setVariantOverride).toHaveBeenCalledWith(
+      auth,
+      "i1",
+      base.body,
+    );
+    expect(controller.setStockCount).toHaveBeenCalledWith(
+      auth,
+      "i1",
+      base.body,
+    );
+    expect(controller.updateSchedule).toHaveBeenCalledWith(
+      auth,
+      "s1",
+      base.body,
+    );
+    expect(controller.getCurrentStatus).toHaveBeenCalledWith(
+      auth,
+      "i1",
+      base.query.timestamp,
+    );
     expect(controller.getEffectiveItem).toHaveBeenCalledWith(auth, "i1", "b1");
     expect(controller.listHolidays).toHaveBeenCalledWith(auth, "2026", "IN");
   });

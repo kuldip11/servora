@@ -53,7 +53,9 @@ describe("menu adversarial tenant and branch access", () => {
   it("never looks up an item outside the authenticated tenant", async () => {
     repository.findById.mockResolvedValue(null);
 
-    await expect(itemService.getById(auth(), "foreign-item-id")).rejects.toThrow();
+    await expect(
+      itemService.getById(auth(), "foreign-item-id"),
+    ).rejects.toThrow();
 
     expect(repository.findById).toHaveBeenCalledWith(
       "tenant-a",

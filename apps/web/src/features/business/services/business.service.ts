@@ -1,4 +1,8 @@
-import { createBranchesApi, createOrganizationsApi, type BranchInput } from "@pos/api-client";
+import {
+  createBranchesApi,
+  createOrganizationsApi,
+  type BranchInput,
+} from "@pos/api-client";
 import type { Branch, OrganizationSummary, Tenant } from "@pos/types";
 import type {
   BusinessBranchFormValues,
@@ -11,7 +15,9 @@ import { authService } from "@/features/auth/services/auth.service";
 const organizationsApi = createOrganizationsApi(apiClient);
 const branchesApi = createBranchesApi(apiClient);
 
-const normalizeOptionalStrings = <T extends Record<string, unknown>>(input: T) =>
+const normalizeOptionalStrings = <T extends Record<string, unknown>>(
+  input: T,
+) =>
   Object.fromEntries(
     Object.entries(input).map(([key, value]) => [
       key,
@@ -29,10 +35,7 @@ export const businessService = {
       organization: OrganizationSummary;
       membershipId: string;
     }>(normalizeOptionalStrings(input)),
-  updateOrganization: (
-    id: string,
-    input: OrganizationBusinessFormValues,
-  ) =>
+  updateOrganization: (id: string, input: OrganizationBusinessFormValues) =>
     organizationsApi.update<OrganizationSummary>(
       id,
       normalizeOptionalStrings(input),

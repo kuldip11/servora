@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Input, Select } from "@pos/ui";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { usePromotionFormState } from "@/features/menu/hooks/usePromotionFormState";
 
 const menuApi = createMenuApi(apiClient);
 import type {
@@ -38,29 +38,52 @@ export const PromotionsSection = () => {
       label: `${item.name} · ${category.name}`,
     })),
   );
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [ruleType, setRuleType] = useState<Promotion["ruleType"]>("PERCENTAGE");
-  const [scope, setScope] = useState<Promotion["scope"]>("ORDER");
-  const [value, setValue] = useState("10");
-  const [couponCode, setCouponCode] = useState("");
-  const [targetId, setTargetId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [maxUsesTotal, setMaxUsesTotal] = useState("");
-  const [maxUsesPerCustomer, setMaxUsesPerCustomer] = useState("");
-  const [triggerType, setTriggerType] = useState<"ITEM" | "CATEGORY">("ITEM");
-  const [triggerId, setTriggerId] = useState("");
-  const [rewardType, setRewardType] = useState<"SAME" | "ITEM" | "CATEGORY">(
-    "SAME",
-  );
-  const [rewardId, setRewardId] = useState("");
-  const [triggerQuantity, setTriggerQuantity] = useState("2");
-  const [rewardQuantity, setRewardQuantity] = useState("1");
-  const [rewardDiscountPercent, setRewardDiscountPercent] = useState("100");
-  const [stackableWithLoyalty, setStackableWithLoyalty] = useState(true);
+  const {
+    editingId,
+    name,
+    ruleType,
+    scope,
+    value,
+    couponCode,
+    targetId,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    maxUsesTotal,
+    maxUsesPerCustomer,
+    triggerType,
+    triggerId,
+    rewardType,
+    rewardId,
+    triggerQuantity,
+    rewardQuantity,
+    rewardDiscountPercent,
+    stackableWithLoyalty,
+    beginEdit,
+    resetAfterSave,
+    setName,
+    setRuleType,
+    setScope,
+    setValue,
+    setCouponCode,
+    setTargetId,
+    setStartDate,
+    setEndDate,
+    setStartTime,
+    setEndTime,
+    setMaxUsesTotal,
+    setMaxUsesPerCustomer,
+    setTriggerType,
+    setTriggerId,
+    setRewardType,
+    setRewardId,
+    setTriggerQuantity,
+    setRewardQuantity,
+    setRewardDiscountPercent,
+    setStackableWithLoyalty,
+    setEditingId,
+  } = usePromotionFormState();
   const key = ["menu", "promotions"];
   const { data: promotions = [] } = useQuery<Promotion[]>({
     queryKey: key,
@@ -109,12 +132,7 @@ export const PromotionsSection = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: key });
-      setEditingId(null);
-      setName("");
-      setCouponCode("");
-      setTargetId("");
-      setTriggerId("");
-      setRewardId("");
+      resetAfterSave();
     },
   });
   const update = useMutation({
@@ -126,44 +144,6 @@ export const PromotionsSection = () => {
     mutationFn: (id: string) => menuApi.removePromotion(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   });
-
-  const beginEdit = (promotion: Promotion) => {
-    setEditingId(promotion.id);
-    setName(promotion.name);
-    setRuleType(promotion.ruleType);
-    setScope(promotion.scope);
-    setValue(promotion.value ?? "10");
-    setCouponCode(promotion.couponCode ?? "");
-    setTargetId(promotion.scopeCategoryId ?? promotion.scopeMenuItemId ?? "");
-    setStartDate(promotion.startDate ?? "");
-    setEndDate(promotion.endDate ?? "");
-    setStartTime(promotion.startTime ?? "");
-    setEndTime(promotion.endTime ?? "");
-    setMaxUsesTotal(
-      promotion.maxUsesTotal == null ? "" : String(promotion.maxUsesTotal),
-    );
-    setMaxUsesPerCustomer(
-      promotion.maxUsesPerCustomer == null
-        ? ""
-        : String(promotion.maxUsesPerCustomer),
-    );
-    setTriggerType(promotion.triggerCategoryId ? "CATEGORY" : "ITEM");
-    setTriggerId(
-      promotion.triggerCategoryId ?? promotion.triggerMenuItemId ?? "",
-    );
-    setRewardType(
-      promotion.rewardCategoryId
-        ? "CATEGORY"
-        : promotion.rewardMenuItemId
-          ? "ITEM"
-          : "SAME",
-    );
-    setRewardId(promotion.rewardCategoryId ?? promotion.rewardMenuItemId ?? "");
-    setTriggerQuantity(String(promotion.triggerQuantity ?? 2));
-    setRewardQuantity(String(promotion.rewardQuantity ?? 1));
-    setRewardDiscountPercent(String(promotion.rewardDiscountPercent ?? 100));
-    setStackableWithLoyalty(promotion.stackableWithLoyalty);
-  };
 
   const bogoValid =
     ruleType !== "BOGO" ||
@@ -228,7 +208,11 @@ export const PromotionsSection = () => {
             label={scope === "CATEGORY" ? "Category" : "Menu item"}
             value={targetId}
             options={[
-              { value: "", label: scope === "CATEGORY" ? "Choose a category" : "Choose an item" },
+              {
+                value: "",
+                label:
+                  scope === "CATEGORY" ? "Choose a category" : "Choose an item",
+              },
               ...(scope === "CATEGORY" ? categoryOptions : itemOptions),
             ]}
             onChange={(e) => setTargetId(e.target.value)}
@@ -253,7 +237,10 @@ export const PromotionsSection = () => {
               options={[
                 {
                   value: "",
-                  label: triggerType === "ITEM" ? "Choose an item" : "Choose a category",
+                  label:
+                    triggerType === "ITEM"
+                      ? "Choose an item"
+                      : "Choose a category",
                 },
                 ...(triggerType === "ITEM" ? itemOptions : categoryOptions),
               ]}
@@ -279,12 +266,17 @@ export const PromotionsSection = () => {
             />
             {rewardType !== "SAME" && (
               <Select
-                label={rewardType === "ITEM" ? "Reward item" : "Reward category"}
+                label={
+                  rewardType === "ITEM" ? "Reward item" : "Reward category"
+                }
                 value={rewardId}
                 options={[
                   {
                     value: "",
-                    label: rewardType === "ITEM" ? "Choose an item" : "Choose a category",
+                    label:
+                      rewardType === "ITEM"
+                        ? "Choose an item"
+                        : "Choose a category",
                   },
                   ...(rewardType === "ITEM" ? itemOptions : categoryOptions),
                 ]}

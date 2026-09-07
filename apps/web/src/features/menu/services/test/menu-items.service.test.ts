@@ -68,7 +68,10 @@ describe("menuItemsService", () => {
 
     await menuItemsService.saveItem({ id: "item-1" } as never, payload);
     const { categoryId: _categoryId, ...expectedUpdate } = payload;
-    expect(api.patch).toHaveBeenCalledWith("/menu/items/item-1", expectedUpdate);
+    expect(api.patch).toHaveBeenCalledWith(
+      "/menu/items/item-1",
+      expectedUpdate,
+    );
   });
 
   it("covers availability, deletion, duplication, and publish state", async () => {

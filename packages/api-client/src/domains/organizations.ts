@@ -20,11 +20,20 @@ export const createOrganizationsApi = (client: DomainHttpClient) => {
     create<T>(input: Record<string, unknown>): Promise<T> {
       return postDomainData<T>(client, "/organizations", input);
     },
-    update<T>(organizationId: string, input: Record<string, unknown>): Promise<T> {
-      return patchDomainData<T>(client, `/organizations/${organizationId}`, input);
+    update<T>(
+      organizationId: string,
+      input: Record<string, unknown>,
+    ): Promise<T> {
+      return patchDomainData<T>(
+        client,
+        `/organizations/${organizationId}`,
+        input,
+      );
     },
     archive(organizationId: string): Promise<void> {
-      return voidDomainRequest(client.delete(`/organizations/${organizationId}`));
+      return voidDomainRequest(
+        client.delete(`/organizations/${organizationId}`),
+      );
     },
     menus<T>(organizationId: string): Promise<T[]> {
       return getDomainData<T[]>(

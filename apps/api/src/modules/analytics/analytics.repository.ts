@@ -175,7 +175,13 @@ export const analyticsRepository = {
         or(eq(menuItems.branchId, branchId), isNull(menuItems.branchId)),
         categoryId ? eq(menuItems.categoryId, categoryId) : undefined,
       ),
-      columns: { id: true, name: true, categoryId: true, branchId: true, manualCost: true },
+      columns: {
+        id: true,
+        name: true,
+        categoryId: true,
+        branchId: true,
+        manualCost: true,
+      },
       with: {
         category: { columns: { id: true, name: true } },
         variants: { columns: { id: true, name: true } },

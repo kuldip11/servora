@@ -11,26 +11,53 @@ const mocks = vi.hoisted(() => ({
 vi.mock("elysia", async (importOriginal) => {
   const actual = await importOriginal<typeof import("elysia")>();
   class FakeElysia {
-    routes: Array<{ method: string; path: string; handler: Function | undefined; options: unknown }> = [];
+    routes: Array<{
+      method: string;
+      path: string;
+      handler: Function | undefined;
+      options: unknown;
+    }> = [];
     prefix: string;
     constructor(options: { prefix?: string } = {}) {
       this.prefix = options.prefix ?? "";
     }
-    use() { return this; }
+    use() {
+      return this;
+    }
     get(path: string, handler: Function | undefined, options: unknown) {
-      this.routes.push({ method: "GET", path: `${this.prefix}${path}`, handler, options });
+      this.routes.push({
+        method: "GET",
+        path: `${this.prefix}${path}`,
+        handler,
+        options,
+      });
       return this;
     }
     post(path: string, handler: Function | undefined, options: unknown) {
-      this.routes.push({ method: "POST", path: `${this.prefix}${path}`, handler, options });
+      this.routes.push({
+        method: "POST",
+        path: `${this.prefix}${path}`,
+        handler,
+        options,
+      });
       return this;
     }
     patch(path: string, handler: Function | undefined, options: unknown) {
-      this.routes.push({ method: "PATCH", path: `${this.prefix}${path}`, handler, options });
+      this.routes.push({
+        method: "PATCH",
+        path: `${this.prefix}${path}`,
+        handler,
+        options,
+      });
       return this;
     }
     delete(path: string, handler: Function | undefined, options: unknown) {
-      this.routes.push({ method: "DELETE", path: `${this.prefix}${path}`, handler, options });
+      this.routes.push({
+        method: "DELETE",
+        path: `${this.prefix}${path}`,
+        handler,
+        options,
+      });
       return this;
     }
   }
@@ -66,7 +93,12 @@ describe("customerGroupsRouter", () => {
   });
 
   it("registers all customer-group endpoints", () => {
-    expect((customerGroupsRouter as any).routes.map((entry: any) => [entry.method, entry.path])).toEqual([
+    expect(
+      (customerGroupsRouter as any).routes.map((entry: any) => [
+        entry.method,
+        entry.path,
+      ]),
+    ).toEqual([
       ["GET", "/api/customer-groups/"],
       ["GET", "/api/customer-groups/:id"],
       ["POST", "/api/customer-groups/"],
@@ -76,11 +108,34 @@ describe("customerGroupsRouter", () => {
   });
 
   it("executes list/find/create/update/delete handlers and wraps responses", async () => {
-    await expect(route("GET", "/api/customer-groups/").handler({ auth })).resolves.toMatchObject({ success: true, data: [{ id: "g1" }] });
-    await expect(route("GET", "/api/customer-groups/:id").handler({ auth, params: { id: "g1" } })).resolves.toMatchObject({ success: true, data: { id: "g1" } });
-    await expect(route("POST", "/api/customer-groups/").handler({ auth, body: { name: "VIP" } })).resolves.toMatchObject({ success: true, data: { id: "g1" } });
-    await expect(route("PATCH", "/api/customer-groups/:id").handler({ auth, params: { id: "g1" }, body: { name: "VIP 2" } })).resolves.toMatchObject({ success: true, data: { name: "VIP 2" } });
-    await expect(route("DELETE", "/api/customer-groups/:id").handler({ auth, params: { id: "g1" } })).resolves.toMatchObject({ success: true, data: null });
+    await expect(
+      route("GET", "/api/customer-groups/").handler({ auth }),
+    ).resolves.toMatchObject({ success: true, data: [{ id: "g1" }] });
+    await expect(
+      route("GET", "/api/customer-groups/:id").handler({
+        auth,
+        params: { id: "g1" },
+      }),
+    ).resolves.toMatchObject({ success: true, data: { id: "g1" } });
+    await expect(
+      route("POST", "/api/customer-groups/").handler({
+        auth,
+        body: { name: "VIP" },
+      }),
+    ).resolves.toMatchObject({ success: true, data: { id: "g1" } });
+    await expect(
+      route("PATCH", "/api/customer-groups/:id").handler({
+        auth,
+        params: { id: "g1" },
+        body: { name: "VIP 2" },
+      }),
+    ).resolves.toMatchObject({ success: true, data: { name: "VIP 2" } });
+    await expect(
+      route("DELETE", "/api/customer-groups/:id").handler({
+        auth,
+        params: { id: "g1" },
+      }),
+    ).resolves.toMatchObject({ success: true, data: null });
 
     expect(mocks.list).toHaveBeenCalledWith(auth);
     expect(mocks.findById).toHaveBeenCalledWith(auth, "g1");

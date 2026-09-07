@@ -43,10 +43,7 @@ describe("customerMenuService", () => {
     mocks.getActiveMenus.mockResolvedValue([
       {
         id: "menu1",
-        memberships: [
-          { menuItemId: "i1" },
-          { menuItemId: "i3" },
-        ],
+        memberships: [{ menuItemId: "i1" }, { menuItemId: "i3" }],
       },
     ]);
     mocks.listMenu.mockResolvedValue({

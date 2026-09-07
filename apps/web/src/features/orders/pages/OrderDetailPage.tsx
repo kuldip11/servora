@@ -1,24 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "@tanstack/react-router";
-import { Clock, MapPin, Plus, CheckCircle2, RotateCcw } from "lucide-react";
-import {
-  Button,
-  Badge,
-  Card,
-  Spinner,
-  StatusBadge,
-  Page,
-  PageHeader,
-  Breadcrumbs,
-  Grid,
-  Modal,
-  Input,
-} from "@pos/ui";
-import { formatCurrency, formatTime } from "@/shared/utils/format";
-import {
-  getOrderStatusColor,
-  getOrderStatusLabel,
-} from "@/shared/utils/order-status";
+import { Link, useParams } from "@tanstack/react-router";
+import { Breadcrumbs, Button, Grid, Page, PageHeader, Spinner } from "@pos/ui";
+import { formatTime } from "@/shared/utils/format";
 import { useOrder } from "@/features/orders/hooks/useOrder";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
 import { useUpdateTicketStatus } from "@/features/orders/hooks/useUpdateTicketStatus";
@@ -33,9 +16,14 @@ import {
 } from "@/features/orders/components/ManagerApprovalDialog";
 import { extractApiError } from "@/shared/lib/api-client";
 import { AddItemsModal } from "@/features/orders/components/AddItemsModal";
+import { RefireItemDialog } from "@/features/orders/components/RefireItemDialog";
+import { SeatShareDialog } from "@/features/orders/components/SeatShareDialog";
 import { OrderExplainDialog } from "@/features/orders/components/OrderExplainDialog";
-import { useRefireOrderItem } from "@/features/orders/hooks/useRefireOrderItem";
-import { useSetOrderItemSeatShares } from "@/features/orders/hooks/useSetOrderItemSeatShares";
+import { OrderFinancialSummary } from "@/features/orders/components/OrderFinancialSummary";
+import { OrderSidebar } from "@/features/orders/components/OrderSidebar";
+import { OrderStatusBadge } from "@/features/orders/components/OrderStatusBadge";
+import { OrderStatusHistory } from "@/features/orders/components/OrderStatusHistory";
+import { OrderTicketsSection } from "@/features/orders/components/OrderTicketsSection";
 import { useOrdersRealtimeSync } from "@/features/orders/hooks/useOrdersRealtimeSync";
 import { useAuthStore } from "@/store/auth";
 import { getRoundActionPermissions } from "@/features/orders/utils/round-actions";
@@ -48,64 +36,29 @@ const STATUS_TRANSITIONS: Record<string, { label: string; next: string }[]> = {
   CANCELLED: [],
 };
 
-const STATUS_TONE: Partial<
-  Record<string, "info" | "warning" | "neutral" | "danger">
-> = {
-  OPEN: "info",
-  BILL_REQUESTED: "warning",
-  CLOSED: "neutral",
-  CANCELLED: "danger",
-};
+type ReasonAction =
+  { type: "cancel" } | { type: "void" | "comp"; itemId: string } | null;
 
-const TICKET_STATUS_TONE: Record<
-  string,
-  "info" | "warning" | "success" | "neutral"
-> = {
-  HELD: "neutral",
-  FIRED: "info",
-  PREPARING: "warning",
-  READY: "success",
-  SERVED: "neutral",
-};
-
-const OrderStatusBadge = ({ status }: { status: string }) => {
-  const tone = STATUS_TONE[status];
-  if (!tone) {
-    return (
-      <Badge className={getOrderStatusColor(status)}>
-        {getOrderStatusLabel(status)}
-      </Badge>
-    );
-  }
-  return <StatusBadge label={getOrderStatusLabel(status)} tone={tone} />;
+type SeatShareTarget = {
+  itemId: string;
+  shares: Array<{ seatLabel: string; shareRatio: string | number }>;
 };
 
 export const OrderDetailPage = () => {
   useOrdersRealtimeSync();
   const { orderId } = useParams({ strict: false }) as { orderId: string };
   const [showAddItems, setShowAddItems] = useState(false);
-  const [reasonAction, setReasonAction] = useState<
-    { type: "cancel" } | { type: "void" | "comp"; itemId: string } | null
-  >(null);
+  const [reasonAction, setReasonAction] = useState<ReasonAction>(null);
   const [pendingApproval, setPendingApproval] =
     useState<ManagerApprovalRequest | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [refireItemId, setRefireItemId] = useState<string | null>(null);
+  const [seatShareTarget, setSeatShareTarget] =
+    useState<SeatShareTarget | null>(null);
 
   const { data: order, isLoading } = useOrder(orderId);
   const updateStatusMutation = useUpdateOrderStatus(orderId);
   const updateTicketMutation = useUpdateTicketStatus(orderId);
-  const refireItemMutation = useRefireOrderItem(orderId);
-  const [refireItemId, setRefireItemId] = useState<string | null>(null);
-  const [refireReason, setRefireReason] = useState("");
-  const [zeroPriceReplacement, setZeroPriceReplacement] = useState(true);
-  const [seatShareItemId, setSeatShareItemId] = useState<string | null>(null);
-  const [seatShares, setSeatShares] = useState<
-    Array<{ seatLabel: string; shareRatio: string }>
-  >([
-    { seatLabel: "1", shareRatio: "0.5" },
-    { seatLabel: "2", shareRatio: "0.5" },
-  ]);
-  const setSeatSharesMutation = useSetOrderItemSeatShares(orderId);
   const voidItemMutation = useVoidOrderItem(orderId);
   const compItemMutation = useCompOrderItem(orderId);
   const { has } = usePermissions();
@@ -163,23 +116,13 @@ export const OrderDetailPage = () => {
   }
 
   const tickets = order.kitchenTickets ?? [];
-  const replacementByOriginalId = new Map<string, { id: string }>(
-    (order.items ?? []).flatMap((item) =>
-      item.refiresOrderItemId
-        ? [[item.refiresOrderItemId, { id: item.id }] as const]
-        : [],
-    ),
-  );
   const allTicketsServed =
-    tickets.length > 0 && tickets.every((t) => t.status === "SERVED");
-
+    tickets.length > 0 && tickets.every((ticket) => ticket.status === "SERVED");
   const transitions = [...(STATUS_TRANSITIONS[order.status] ?? [])];
-
   if (order.status === "OPEN" && allTicketsServed) {
     transitions.unshift({ label: "Request Bill", next: "BILL_REQUESTED" });
   }
   const canAddItems = order.status === "OPEN";
-  const total = parseFloat(String(order.totalAmount));
 
   return (
     <Page>
@@ -220,408 +163,33 @@ export const OrderDetailPage = () => {
       )}
 
       <Grid columns={{ base: 1, lg: 3 }} gap="lg">
-        {}
         <div className="lg:col-span-2 space-y-4">
-          {tickets.map((ticket) => (
-            <Card key={ticket.id}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-text-primary">
-                  {ticket.course
-                    ? `Course ${ticket.course.courseNumber}${ticket.course.name ? ` · ${ticket.course.name}` : ""}`
-                    : `Round ${ticket.ticketNumber}`}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <StatusBadge
-                    label={
-                      ticket.status.charAt(0) +
-                      ticket.status.slice(1).toLowerCase()
-                    }
-                    tone={TICKET_STATUS_TONE[ticket.status] ?? "neutral"}
-                  />
-                  {ticket.status === "HELD" && canFire && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      loading={
-                        updateTicketMutation.isPending &&
-                        updateTicketMutation.variables?.ticketId === ticket.id
-                      }
-                      onClick={() =>
-                        updateTicketMutation.mutate({
-                          ticketId: ticket.id,
-                          status: "FIRED",
-                        })
-                      }
-                    >
-                      Fire Course Now
-                    </Button>
-                  )}
-                  {ticket.status === "FIRED" && canKitchen && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={
-                        updateTicketMutation.isPending &&
-                        updateTicketMutation.variables?.ticketId === ticket.id
-                      }
-                      onClick={() =>
-                        updateTicketMutation.mutate({
-                          ticketId: ticket.id,
-                          status: "PREPARING",
-                        })
-                      }
-                    >
-                      Start Preparing
-                    </Button>
-                  )}
-                  {ticket.status === "PREPARING" && canKitchen && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={
-                        updateTicketMutation.isPending &&
-                        updateTicketMutation.variables?.ticketId === ticket.id
-                      }
-                      onClick={() =>
-                        updateTicketMutation.mutate({
-                          ticketId: ticket.id,
-                          status: "READY",
-                        })
-                      }
-                    >
-                      Mark Ready
-                    </Button>
-                  )}
-                  {ticket.status === "READY" && canServe && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={
-                        updateTicketMutation.isPending &&
-                        updateTicketMutation.variables?.ticketId === ticket.id
-                      }
-                      onClick={() =>
-                        updateTicketMutation.mutate({
-                          ticketId: ticket.id,
-                          status: "SERVED",
-                        })
-                      }
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Mark Served
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {ticket.notes && (
-                <p className="text-xs text-warning bg-warning-surface rounded px-2 py-1.5 mb-3">
-                  📝 {ticket.notes}
-                </p>
-              )}
-
-              <div className="space-y-3">
-                {ticket.items?.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-start justify-between py-2 border-b border-divider last:border-0 ${item.itemStatus === "VOIDED" ? "opacity-60 line-through" : ""}`}
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">
-                        {item.quantity}× {item.menuItemName}
-                        {item.variantName && (
-                          <span className="text-text-secondary font-normal">
-                            {" "}
-                            · {item.variantName}
-                          </span>
-                        )}
-                      </p>
-                      {item.chefNotes && (
-                        <p className="text-xs text-warning mt-0.5">
-                          📝 {item.chefNotes}
-                        </p>
-                      )}
-                      {item.station?.name && (
-                        <p className="text-xs text-text-secondary">
-                          Prepared at {item.station.name}
-                        </p>
-                      )}
-                      {item.itemStatus === "VOIDED" && (
-                        <p className="text-xs text-danger no-underline">
-                          Voided
-                          {item.voidedReason ? ` · ${item.voidedReason}` : ""}
-                        </p>
-                      )}
-                      {item.itemStatus === "REFIRED" && (
-                        <p className="text-xs font-semibold text-warning">
-                          Refired → replacement #
-                          {replacementByOriginalId.get(item.id)?.id.slice(-6) ??
-                            "pending"}
-                          {item.refireReason ? ` · ${item.refireReason}` : ""}
-                          {item.compedAt ? " · original comped" : ""}
-                        </p>
-                      )}
-                      {item.refiresOrderItemId && (
-                        <p className="text-xs font-semibold text-warning">
-                          REFIRE replacement of #
-                          {item.refiresOrderItemId.slice(-6)}
-                        </p>
-                      )}
-                      {item.itemStatus === "COMPED" && (
-                        <p className="text-xs text-success">
-                          Comped
-                          {item.compedReason ? ` · ${item.compedReason}` : ""}
-                        </p>
-                      )}
-                      {item.modifiers?.map((m) => (
-                        <p
-                          key={m.modifierId}
-                          className="text-xs text-text-secondary"
-                        >
-                          + {m.name}
-                          {m.quantity > 1 ? ` ×${m.quantity}` : ""}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-text-primary">
-                        {formatCurrency(parseFloat(String(item.subtotal)))}
-                      </p>
-                      {order.status === "OPEN" &&
-                        item.itemStatus === "ACTIVE" &&
-                        item.menuItemId &&
-                        has("orders:update") && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            loading={refireItemMutation.isPending}
-                            onClick={() => {
-                              setRefireItemId(item.id);
-                              setRefireReason("");
-                              setZeroPriceReplacement(true);
-                            }}
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" /> Refire
-                          </Button>
-                        )}
-                      {order.status === "OPEN" &&
-                        item.itemStatus === "ACTIVE" &&
-                        has("billing:create") && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              setSeatShareItemId(item.id);
-                              setSeatShares(
-                                item.seatShares?.length
-                                  ? item.seatShares.map((share) => ({
-                                      seatLabel: share.seatLabel,
-                                      shareRatio: String(share.shareRatio),
-                                    }))
-                                  : [
-                                      { seatLabel: "1", shareRatio: "0.5" },
-                                      { seatLabel: "2", shareRatio: "0.5" },
-                                    ],
-                              );
-                            }}
-                          >
-                            Split across seats
-                          </Button>
-                        )}
-                      {order.status === "OPEN" &&
-                        item.itemStatus === "ACTIVE" &&
-                        has("orders:void") && (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            loading={voidItemMutation.isPending}
-                            onClick={() =>
-                              setReasonAction({ type: "void", itemId: item.id })
-                            }
-                          >
-                            Void
-                          </Button>
-                        )}
-                      {order.status === "OPEN" &&
-                        item.itemStatus === "ACTIVE" &&
-                        has("orders:comp") && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            loading={compItemMutation.isPending}
-                            onClick={() =>
-                              setReasonAction({ type: "comp", itemId: item.id })
-                            }
-                          >
-                            Comp
-                          </Button>
-                        )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))}
-
-          <Card>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm text-text-secondary">
-                <span>Subtotal</span>
-                <span>
-                  {formatCurrency(parseFloat(String(order.subtotal)))}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm text-text-secondary">
-                <span>
-                  {order.items?.some((item) => item.taxMode === "INCLUSIVE")
-                    ? order.items?.some((item) => item.taxMode === "EXCLUSIVE")
-                      ? "Tax (mixed included/exclusive)"
-                      : "Tax included"
-                    : "Tax"}
-                </span>
-                <span>
-                  {formatCurrency(parseFloat(String(order.taxAmount)))}
-                </span>
-              </div>
-              {parseFloat(String(order.serviceChargeAmount ?? 0)) > 0 && (
-                <div className="flex justify-between text-sm text-text-secondary">
-                  <span>Service charge</span>
-                  <span>
-                    {formatCurrency(
-                      parseFloat(String(order.serviceChargeAmount)),
-                    )}
-                  </span>
-                </div>
-              )}
-              {Math.abs(parseFloat(String(order.roundingAdjustment ?? 0))) >=
-                0.005 && (
-                <div className="flex justify-between text-sm text-text-secondary">
-                  <span>Rounding</span>
-                  <span>
-                    {formatCurrency(
-                      parseFloat(String(order.roundingAdjustment)),
-                    )}
-                  </span>
-                </div>
-              )}
-              {parseFloat(String(order.discountAmount)) > 0 && (
-                <div className="flex justify-between text-sm text-success">
-                  <span>Discount</span>
-                  <span>
-                    -{formatCurrency(parseFloat(String(order.discountAmount)))}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between text-base font-bold text-text-primary pt-2 border-t border-border">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
-            </div>
-          </Card>
-
-          {}
-          <Card>
-            <h2 className="text-base font-semibold text-text-primary mb-4">
-              Status History
-            </h2>
-            <div className="space-y-2">
-              {order.statusHistory?.map((h) => (
-                <div key={h.id} className="flex items-center gap-3 text-sm">
-                  <Clock className="w-4 h-4 text-text-disabled flex-shrink-0" />
-                  <span className="text-text-secondary">
-                    {formatTime(h.changedAt)}
-                  </span>
-                  <OrderStatusBadge status={h.newStatus} />
-                  {h.reason && (
-                    <span className="text-text-disabled text-xs">
-                      · {h.reason}
-                    </span>
-                  )}
-                  {h.cancellationReason?.label && (
-                    <span className="text-text-disabled text-xs">
-                      · {h.cancellationReason.label}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
+          <OrderTicketsSection
+            order={order}
+            canFire={canFire}
+            canKitchen={canKitchen}
+            canServe={canServe}
+            hasPermission={has}
+            updateTicketMutation={updateTicketMutation}
+            voidItemMutation={voidItemMutation}
+            compItemMutation={compItemMutation}
+            onRefire={setRefireItemId}
+            onSeatShare={setSeatShareTarget}
+            onVoid={(itemId) => setReasonAction({ type: "void", itemId })}
+            onComp={(itemId) => setReasonAction({ type: "comp", itemId })}
+          />
+          <OrderFinancialSummary order={order} />
+          <OrderStatusHistory order={order} />
         </div>
 
-        {}
-        <div className="space-y-4">
-          <Card>
-            <h2 className="text-base font-semibold text-text-primary mb-3">
-              Order Info
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="w-4 h-4 text-text-disabled" />
-                <span className="text-text-secondary">
-                  Type:{" "}
-                  <span className="font-medium text-text-primary">
-                    {order.type?.replace("_", " ")}
-                  </span>
-                </span>
-              </div>
-              {order.table && (
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-text-disabled" />
-                  <span className="text-text-secondary">
-                    Table:{" "}
-                    <span className="font-medium text-text-primary">
-                      {order.table.name}
-                    </span>
-                  </span>
-                </div>
-              )}
-              {order.notes && (
-                <div className="text-sm">
-                  <p className="text-text-secondary text-xs mb-1">Notes</p>
-                  <p className="text-text-primary bg-surface-secondary rounded p-2 text-xs">
-                    {order.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {}
-          {(transitions.length > 0 || canAddItems) && (
-            <Card>
-              <h2 className="text-base font-semibold text-text-primary mb-3">
-                Actions
-              </h2>
-              <div className="space-y-2">
-                {canAddItems && (
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => setShowAddItems(true)}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add More Items
-                  </Button>
-                )}
-                {transitions.map((t) => (
-                  <Button
-                    key={t.next}
-                    variant={t.next === "CANCELLED" ? "danger" : "primary"}
-                    className="w-full"
-                    loading={updateStatusMutation.isPending}
-                    onClick={() =>
-                      t.next === "CANCELLED"
-                        ? setReasonAction({ type: "cancel" })
-                        : updateStatusMutation.mutate({ status: t.next })
-                    }
-                  >
-                    {t.label}
-                  </Button>
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
+        <OrderSidebar
+          order={order}
+          transitions={transitions}
+          canAddItems={canAddItems}
+          updateStatusMutation={updateStatusMutation}
+          onAddItems={() => setShowAddItems(true)}
+          onCancel={() => setReasonAction({ type: "cancel" })}
+        />
       </Grid>
 
       {showAddItems && (
@@ -630,187 +198,26 @@ export const OrderDetailPage = () => {
           onClose={() => setShowAddItems(false)}
         />
       )}
-      <Modal
-        open={seatShareItemId !== null}
-        onClose={() => setSeatShareItemId(null)}
-        title="Split item across seats"
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-text-secondary">
-            Ratios must total exactly 1.00. Use equal shares or enter an
-            intentional unequal split.
-          </p>
-          {seatShares.map((share, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-[1fr_1fr_auto] items-end gap-2"
-            >
-              <Input
-                label={`Seat ${index + 1}`}
-                value={share.seatLabel}
-                onChange={(event) =>
-                  setSeatShares((current) =>
-                    current.map((value, valueIndex) =>
-                      valueIndex === index
-                        ? { ...value, seatLabel: event.target.value }
-                        : value,
-                    ),
-                  )
-                }
-              />
-              <Input
-                label="Share ratio"
-                type="number"
-                min="0.01"
-                max="1"
-                step="0.01"
-                value={share.shareRatio}
-                onChange={(event) =>
-                  setSeatShares((current) =>
-                    current.map((value, valueIndex) =>
-                      valueIndex === index
-                        ? { ...value, shareRatio: event.target.value }
-                        : value,
-                    ),
-                  )
-                }
-              />
-              {seatShares.length > 2 && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() =>
-                    setSeatShares((current) =>
-                      current.filter((_, valueIndex) => valueIndex !== index),
-                    )
-                  }
-                >
-                  Remove
-                </Button>
-              )}
-            </div>
-          ))}
-          <div className="flex items-center justify-between">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                setSeatShares((current) => [
-                  ...current,
-                  { seatLabel: String(current.length + 1), shareRatio: "0" },
-                ])
-              }
-            >
-              + Seat
-            </Button>
-            <span
-              className={`text-sm font-medium ${Math.abs(seatShares.reduce((sum, share) => sum + Number(share.shareRatio || 0), 0) - 1) < 0.000001 ? "text-success" : "text-danger"}`}
-            >
-              Total{" "}
-              {seatShares
-                .reduce((sum, share) => sum + Number(share.shareRatio || 0), 0)
-                .toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setSeatShareItemId(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              loading={setSeatSharesMutation.isPending}
-              disabled={
-                !seatShareItemId ||
-                seatShares.some(
-                  (share) =>
-                    !share.seatLabel.trim() || Number(share.shareRatio) <= 0,
-                ) ||
-                Math.abs(
-                  seatShares.reduce(
-                    (sum, share) => sum + Number(share.shareRatio || 0),
-                    0,
-                  ) - 1,
-                ) >= 0.000001
-              }
-              onClick={() =>
-                seatShareItemId &&
-                setSeatSharesMutation.mutate(
-                  {
-                    itemId: seatShareItemId,
-                    shares: seatShares.map((share) => ({
-                      seatLabel: share.seatLabel.trim(),
-                      shareRatio: Number(share.shareRatio),
-                    })),
-                  },
-                  { onSuccess: () => setSeatShareItemId(null) },
-                )
-              }
-            >
-              Save split
-            </Button>
-          </div>
-        </div>
-      </Modal>
-      <Modal
-        open={refireItemId !== null}
-        onClose={() => setRefireItemId(null)}
-        title="Refire item"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Reason"
-            value={refireReason}
-            onChange={(event) => setRefireReason(event.target.value)}
-            placeholder="Kitchen error / remake"
-          />
-          <label className="flex items-center gap-2 text-sm text-text-primary">
-            <input
-              type="checkbox"
-              checked={zeroPriceReplacement}
-              onChange={(event) =>
-                setZeroPriceReplacement(event.target.checked)
-              }
-            />{" "}
-            Also comp original (kitchen error; bill replacement once)
-          </label>
-          <p className="text-xs text-text-secondary">
-            Turn this off for a legitimate reorder; both the original and refire
-            are billed.
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setRefireItemId(null)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!refireReason.trim()}
-              loading={refireItemMutation.isPending}
-              onClick={() =>
-                refireItemId &&
-                refireItemMutation.mutate(
-                  {
-                    itemId: refireItemId,
-                    reason: refireReason.trim(),
-                    alsoCompOriginal: zeroPriceReplacement,
-                  },
-                  { onSuccess: () => setRefireItemId(null) },
-                )
-              }
-            >
-              Refire
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {seatShareTarget && (
+        <SeatShareDialog
+          orderId={orderId}
+          itemId={seatShareTarget.itemId}
+          initialShares={seatShareTarget.shares}
+          onClose={() => setSeatShareTarget(null)}
+        />
+      )}
+      {refireItemId && (
+        <RefireItemDialog
+          orderId={orderId}
+          itemId={refireItemId}
+          onClose={() => setRefireItemId(null)}
+        />
+      )}
       <OrderExplainDialog
         open={showExplanation}
         orderId={orderId}
         onClose={() => setShowExplanation(false)}
       />
-
       <ManagerApprovalDialog
         open={pendingApproval !== null}
         orderId={orderId}
@@ -844,13 +251,13 @@ export const OrderDetailPage = () => {
               { status: "CANCELLED", ...reason },
               { onSuccess: () => setReasonAction(null) },
             );
-          } else {
-            submitLineAdjustment({
-              action: reasonAction.type,
-              itemId: reasonAction.itemId,
-              reason,
-            });
+            return;
           }
+          submitLineAdjustment({
+            action: reasonAction.type,
+            itemId: reasonAction.itemId,
+            reason,
+          });
         }}
       />
     </Page>

@@ -5,19 +5,21 @@ import { metrics } from "@/core/observability/metrics";
 import { metricsRouter } from "@/core/observability/metrics.route";
 
 describe("metricsRouter", () => {
-  it.each([undefined, "Basic abc", "Bearer wrong", `Bearer ${env.METRICS_TOKEN}x`])(
-    "hides metrics for invalid authorization %s",
-    async (authorization) => {
-      const app = new Elysia().use(metricsRouter);
-      const response = await app.handle(
-        new Request("http://localhost/metrics", {
-          headers: authorization ? { authorization } : undefined,
-        }),
-      );
-      expect(response.status).toBe(404);
-      expect(await response.text()).toBe("Not Found");
-    },
-  );
+  it.each([
+    undefined,
+    "Basic abc",
+    "Bearer wrong",
+    `Bearer ${env.METRICS_TOKEN}x`,
+  ])("hides metrics for invalid authorization %s", async (authorization) => {
+    const app = new Elysia().use(metricsRouter);
+    const response = await app.handle(
+      new Request("http://localhost/metrics", {
+        headers: authorization ? { authorization } : undefined,
+      }),
+    );
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Not Found");
+  });
 
   it("returns Prometheus text for the exact bearer token", async () => {
     metrics.increment("coverage_route_counter");

@@ -6,7 +6,10 @@ export const resolveApiUrl = (
   return isDevelopment ? "" : (configured ?? "").replace(/\/$/, "");
 };
 
-const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL, import.meta.env.DEV);
+const API_URL = resolveApiUrl(
+  import.meta.env.VITE_API_URL,
+  import.meta.env.DEV,
+);
 
 export async function request<T>(
   path: string,

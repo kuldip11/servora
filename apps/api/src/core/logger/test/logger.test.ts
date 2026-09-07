@@ -95,5 +95,4 @@ describe("Logger", () => {
     });
     expect(payload.meta.error.stack).toBeUndefined();
   });
-
 });

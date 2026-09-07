@@ -101,7 +101,9 @@ describe("customerPaymentService coverage", () => {
     mocks.txFindBill.mockResolvedValue({ id: "bill1", totalAmount: "105.00" });
     mocks.txFindBills.mockResolvedValue([]);
     mocks.txInsert.mockReturnValue({ values: mocks.txInsertValues });
-    mocks.txInsertValues.mockReturnValue({ returning: mocks.txInsertReturning });
+    mocks.txInsertValues.mockReturnValue({
+      returning: mocks.txInsertReturning,
+    });
     mocks.txInsertReturning.mockResolvedValue([
       { id: "p1", billId: "bill1", method: "RAZORPAY", status: "PENDING" },
     ]);
@@ -147,7 +149,10 @@ describe("customerPaymentService coverage", () => {
       status: "PENDING",
       gatewayOrderId: "go-existing",
     };
-    mocks.txFindOrder.mockResolvedValueOnce({ ...baseOrder, payments: [pending] });
+    mocks.txFindOrder.mockResolvedValueOnce({
+      ...baseOrder,
+      payments: [pending],
+    });
     await expect(
       customerPaymentService.initiateTakeawayPayment("t1", "b1", "o1"),
     ).resolves.toBe(pending);
@@ -432,7 +437,9 @@ describe("customerPaymentService coverage", () => {
       ...baseOrder,
       kitchenTickets: [{ id: "kt1", status: "FIRED" }],
     });
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     await customerPaymentService.verifyTakeawayPayment("tok", {
       orderId: "o1",
       razorpayOrderId: "go1",
@@ -451,7 +458,12 @@ describe("customerPaymentService coverage", () => {
     mocks.findOrder.mockResolvedValue({
       ...baseOrder,
       payments: [
-        { id: "p1", gatewayOrderId: "go1", status: "PENDING", amount: "105.00" },
+        {
+          id: "p1",
+          gatewayOrderId: "go1",
+          status: "PENDING",
+          amount: "105.00",
+        },
       ],
     });
     mocks.txFindPayment.mockResolvedValue(null);
@@ -549,13 +561,15 @@ describe("customerPaymentService coverage", () => {
 
   it("gets only an order belonging to the customer session", async () => {
     mocks.findOrder.mockResolvedValueOnce(null);
-    await expect(customerPaymentService.getOrder("tok", "missing")).rejects.toThrow(
-      "Order does not belong to this customer session",
-    );
+    await expect(
+      customerPaymentService.getOrder("tok", "missing"),
+    ).rejects.toThrow("Order does not belong to this customer session");
 
     const order = { ...baseOrder, id: "o2" };
     mocks.findOrder.mockResolvedValueOnce(order);
-    await expect(customerPaymentService.getOrder("tok", "o2")).resolves.toBe(order);
+    await expect(customerPaymentService.getOrder("tok", "o2")).resolves.toBe(
+      order,
+    );
   });
   it("rejects verification when the signing secret disappears before signature validation", async () => {
     mocks.findOrder.mockResolvedValue({
@@ -613,5 +627,4 @@ describe("customerPaymentService coverage", () => {
       "b1",
     );
   });
-
 });

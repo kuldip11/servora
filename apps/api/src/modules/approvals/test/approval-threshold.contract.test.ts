@@ -6,11 +6,11 @@ describe("H6 approval token contract", () => {
     new URL("../approval.service.ts", import.meta.url),
     "utf8",
   );
+  const normalizedService = service.replace(/\s+/g, " ");
 
   it("preserves permission-only behavior when no threshold is configured", () => {
-    expect(service).toContain("isApprovalRequired(lineValue");
-    expect(service).toContain(
-      "threshold ? Number(threshold.thresholdAmount) : null",
+    expect(normalizedService).toContain(
+      "isApprovalRequired( lineValue, threshold ? Number(threshold.thresholdAmount) : null, )",
     );
   });
 

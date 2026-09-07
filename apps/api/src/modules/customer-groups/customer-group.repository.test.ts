@@ -43,7 +43,9 @@ describe("customerGroupRepository", () => {
   });
 
   it("lists tenant groups and exercises name ordering", async () => {
-    await expect(customerGroupRepository.list("t1")).resolves.toEqual([{ id: "g1" }]);
+    await expect(customerGroupRepository.list("t1")).resolves.toEqual([
+      { id: "g1" },
+    ]);
     const options = mocks.findMany.mock.calls[0]?.[0];
     expect(options).toBeDefined();
     const asc = vi.fn((value: unknown) => value);
@@ -52,7 +54,9 @@ describe("customerGroupRepository", () => {
   });
 
   it("finds a tenant-scoped group", async () => {
-    await expect(customerGroupRepository.findById("t1", "g1")).resolves.toEqual({ id: "g1" });
+    await expect(customerGroupRepository.findById("t1", "g1")).resolves.toEqual(
+      { id: "g1" },
+    );
     expect(mocks.findFirst).toHaveBeenCalledOnce();
   });
 
@@ -82,7 +86,11 @@ describe("customerGroupRepository", () => {
       discountFixed: null,
     });
     expect(mocks.updateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "VIP 2", discountPercent: "20", discountFixed: null }),
+      expect.objectContaining({
+        name: "VIP 2",
+        discountPercent: "20",
+        discountFixed: null,
+      }),
     );
 
     await customerGroupRepository.update("t1", "g1", {
@@ -101,12 +109,18 @@ describe("customerGroupRepository", () => {
 
   it("returns undefined when an update affects no row", async () => {
     mocks.updateReturning.mockResolvedValueOnce([]);
-    await expect(customerGroupRepository.update("t1", "missing", {})).resolves.toBeUndefined();
+    await expect(
+      customerGroupRepository.update("t1", "missing", {}),
+    ).resolves.toBeUndefined();
   });
 
   it("removes a tenant-scoped group and returns the deleted id", async () => {
-    await expect(customerGroupRepository.remove("t1", "g1")).resolves.toEqual({ id: "g1" });
+    await expect(customerGroupRepository.remove("t1", "g1")).resolves.toEqual({
+      id: "g1",
+    });
     mocks.deleteReturning.mockResolvedValueOnce([]);
-    await expect(customerGroupRepository.remove("t1", "missing")).resolves.toBeUndefined();
+    await expect(
+      customerGroupRepository.remove("t1", "missing"),
+    ).resolves.toBeUndefined();
   });
 });

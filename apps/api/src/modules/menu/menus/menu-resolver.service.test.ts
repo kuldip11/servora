@@ -110,7 +110,6 @@ describe("default menu fallback", () => {
   });
 });
 
-
 describe("adversarial menu visibility", () => {
   it("rejects a menu scoped to another channel, order type, or branch", () => {
     const menu = {
@@ -138,7 +137,6 @@ describe("adversarial menu visibility", () => {
     expect(itemMatchesBranch(null, "branch-a")).toBe(true);
   });
 });
-
 
 describe("orderable membership publication", () => {
   const asOf = new Date("2026-09-01T12:00:00.000Z");

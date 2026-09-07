@@ -7,11 +7,7 @@ const analyticsApi = createAnalyticsApi(apiClient);
 import { formatCurrency } from "@/shared/utils/format";
 
 type EngineeringQuadrant =
-  | "STAR"
-  | "PUZZLE"
-  | "PLOWHORSE"
-  | "DOG"
-  | "COST_MISSING";
+  "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG" | "COST_MISSING";
 type EngineeringSort = "margin" | "volume" | "name";
 
 type EngineeringRow = {

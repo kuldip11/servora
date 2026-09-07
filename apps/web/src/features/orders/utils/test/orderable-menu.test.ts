@@ -94,10 +94,7 @@ describe("orderable menu filtering", () => {
     ["hidden", { status: "HIDDEN" }],
     ["out of stock", { status: "OUT_OF_STOCK", isAvailable: false }],
     ["computed unavailable", { isAvailable: false }],
-    [
-      "future effective date",
-      { effectiveFrom: "2026-09-02T00:00:00.000Z" },
-    ],
+    ["future effective date", { effectiveFrom: "2026-09-02T00:00:00.000Z" }],
   ])("hides a %s item from the order picker", (_name, overrides) => {
     expect(
       isOrderableMenuItem(

@@ -4,13 +4,21 @@ import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
 
 vi.mock("../../../features/auth/services/auth.service", () => ({
-  authService: { refresh: vi.fn() },
+  authService: { refresh: vi.fn(), memberships: vi.fn() },
 }));
+
+const axiosError = (status: number) =>
+  Object.assign(new Error("request failed"), {
+    isAxiosError: true,
+    response: { status },
+  });
 
 describe("bootstrapAuthSession", () => {
   beforeEach(() => {
     useAuthStore.getState().logout();
     vi.mocked(authService.refresh).mockReset();
+    vi.mocked(authService.memberships).mockReset();
+    vi.mocked(authService.memberships).mockResolvedValue([]);
   });
 
   it("refreshes through the HttpOnly cookie and restores the session", async () => {
@@ -25,16 +33,26 @@ describe("bootstrapAuthSession", () => {
       accessToken: "access-1",
       expiresIn: 900,
     });
-    await bootstrapAuthSession();
+
+    await expect(bootstrapAuthSession()).resolves.toBe("ready");
     expect(authService.refresh).toHaveBeenCalledOnce();
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().accessToken).toBe("access-1");
   });
 
-  it("leaves the app logged out when no valid refresh cookie is present", async () => {
+  it("logs out when no valid refresh cookie is present", async () => {
     useAuthStore.getState().setAccessToken("access-1");
-    vi.mocked(authService.refresh).mockRejectedValue(new Error("expired"));
-    await bootstrapAuthSession();
+    vi.mocked(authService.refresh).mockRejectedValue(axiosError(401));
+
+    await expect(bootstrapAuthSession()).resolves.toBe("unauthenticated");
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it("preserves auth state when the service is temporarily unavailable", async () => {
+    useAuthStore.getState().setAccessToken("access-1");
+    vi.mocked(authService.refresh).mockRejectedValue(axiosError(503));
+
+    await expect(bootstrapAuthSession()).resolves.toBe("unavailable");
+    expect(useAuthStore.getState().accessToken).toBe("access-1");
   });
 });

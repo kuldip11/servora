@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import type {
   AvailableMembership,
   OrganizationSummary,
@@ -41,8 +42,13 @@ export const createAuthApi = (client: DomainHttpClient) => {
     login(input: LoginInput): Promise<AuthResponse> {
       return postDomainData<AuthResponse>(client, "/auth/login", input);
     },
-    refresh(): Promise<AuthResponse> {
-      return postDomainData<AuthResponse>(client, "/auth/refresh");
+    refresh(config?: AxiosRequestConfig): Promise<AuthResponse> {
+      return postDomainData<AuthResponse>(
+        client,
+        "/auth/refresh",
+        undefined,
+        config,
+      );
     },
     logout(): Promise<{ loggedOut: boolean }> {
       return postDomainData<{ loggedOut: boolean }>(client, "/auth/logout");

@@ -29,8 +29,11 @@ for (const key of ["privacy", "terms", "cookies"]) {
   const segment = legalSeo.split(`${key}: {`)[1]?.split("},")[0] ?? "";
   if (!segment.includes("index: false")) failures.push(`website: placeholder legal metadata ${key} must stay noindex`);
 }
-const layout = readFileSync("apps/website/app/layout.tsx", "utf8");
-if (!layout.includes("BRAND_ASSETS.websiteOg")) failures.push("website: missing static fallback OG image");
+for (const file of ["apps/website/app/opengraph-image.png", "apps/website/app/twitter-image.png"]) {
+  try { readFileSync(file); } catch { failures.push(`website: missing Next.js metadata image ${file}`); }
+}
+const seoAdapter = readFileSync("apps/website/lib/seo.ts", "utf8");
+if (seoAdapter.includes("images:")) failures.push("website: page metadata helper must not override file-based social images");
 const manifest = readFileSync("apps/website/app/manifest.ts", "utf8");
 if (!manifest.includes("maskableIcon512")) failures.push("website: manifest missing maskable icon");
 

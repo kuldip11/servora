@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  BRAND_ASSETS,
-  createPageMetadata,
-  getAbsoluteUrl,
-  getOgImageUrl,
-} from "@/lib/seo";
+import { createPageMetadata, getAbsoluteUrl } from "@/lib/seo";
 
 describe("website SEO adapter", () => {
   it("creates canonical, Open Graph and Twitter metadata for indexable pages", () => {
@@ -14,14 +9,18 @@ describe("website SEO adapter", () => {
       path: "/pricing",
       ogTitle: "A setup that fits your restaurant.",
     });
+
     expect(metadata.alternates).toEqual({ canonical: "/pricing" });
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
-    expect(metadata.openGraph).toMatchObject({ url: "/pricing" });
+    expect(metadata.openGraph).toMatchObject({
+      url: "/pricing",
+      title: "A setup that fits your restaurant.",
+    });
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
-    expect(JSON.stringify(metadata)).toContain(
-      getAbsoluteUrl(BRAND_ASSETS.websiteOg),
-    );
-    expect(JSON.stringify(metadata)).not.toContain("/og?");
+
+    // Images are intentionally owned by Next.js file-based metadata.
+    expect(metadata.openGraph?.images).toBeUndefined();
+    expect(metadata.twitter?.images).toBeUndefined();
   });
 
   it("keeps utility pages noindex and out of canonical metadata", () => {
@@ -35,19 +34,7 @@ describe("website SEO adapter", () => {
     expect(metadata.robots).toMatchObject({ index: false, follow: false });
   });
 
-  it("keeps dynamic OG generation available only when explicitly requested", () => {
-    const metadata = createPageMetadata({
-      title: "Kitchen Display",
-      description: "Kitchen display.",
-      path: "/product/kitchen-display",
-      staticImage: false,
-    });
-
-    expect(JSON.stringify(metadata)).toContain("/og?");
-  });
-
-  it("builds stable social and absolute URLs", () => {
-    expect(getOgImageUrl({ title: "Kitchen Display", eyebrow: "Kitchen" })).toContain("/og?");
+  it("builds stable absolute URLs for schema and canonical helpers", () => {
     expect(getAbsoluteUrl("/pricing")).toMatch(/^https?:\/\//);
   });
 });

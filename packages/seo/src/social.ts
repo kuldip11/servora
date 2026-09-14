@@ -7,4 +7,3 @@ export const SOCIAL_IMAGE = {
   format: "png",
 } as const;
 
-export const getStaticOgPath = () => "/social/og-website.png";

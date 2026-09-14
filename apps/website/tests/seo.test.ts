@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createPageMetadata, getAbsoluteUrl, getOgImageUrl } from "@/lib/seo";
+import {
+  BRAND_ASSETS,
+  createPageMetadata,
+  getAbsoluteUrl,
+  getOgImageUrl,
+} from "@/lib/seo";
 
 describe("website SEO adapter", () => {
   it("creates canonical, Open Graph and Twitter metadata for indexable pages", () => {
@@ -13,6 +18,10 @@ describe("website SEO adapter", () => {
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
     expect(metadata.openGraph).toMatchObject({ url: "/pricing" });
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
+    expect(JSON.stringify(metadata)).toContain(
+      getAbsoluteUrl(BRAND_ASSETS.websiteOg),
+    );
+    expect(JSON.stringify(metadata)).not.toContain("/og?");
   });
 
   it("keeps utility pages noindex and out of canonical metadata", () => {
@@ -24,6 +33,17 @@ describe("website SEO adapter", () => {
     });
     expect(metadata.alternates).toBeUndefined();
     expect(metadata.robots).toMatchObject({ index: false, follow: false });
+  });
+
+  it("keeps dynamic OG generation available only when explicitly requested", () => {
+    const metadata = createPageMetadata({
+      title: "Kitchen Display",
+      description: "Kitchen display.",
+      path: "/product/kitchen-display",
+      staticImage: false,
+    });
+
+    expect(JSON.stringify(metadata)).toContain("/og?");
   });
 
   it("builds stable social and absolute URLs", () => {

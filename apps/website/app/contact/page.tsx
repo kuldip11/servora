@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import { ContactForm } from "@/components/forms/ContactForm";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Contact the Servora team.",
-};
+export const metadata = createPageMetadata(websitePageSeo.contact);
 
 export default function Contact() {
   return (

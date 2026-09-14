@@ -1,34 +1,15 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { productSeoBySlug } from "@/content/seo";
 import { ProductDetail } from "@/components/marketing/ProductDetail";
 import { modules } from "@/content/modules";
 const module = modules.find((item) => item.slug === "menu-management")!;
-export const metadata: Metadata = {
-  title: "Restaurant menu management software",
-  description:
-    "Manage restaurant categories, items, modifiers, variants and availability from one connected system.",
-  alternates: { canonical: "/product/menu-management" },
-  openGraph: {
-    title: "Restaurant menu management software | Servora",
-    description:
-      "Manage restaurant categories, items, modifiers, variants and availability from one connected system.",
-    url: "/product/menu-management",
-    images: [
-      {
-        url: "/og?title=menu-management",
-        width: 1200,
-        height: 630,
-        alt: "Menu Management — Servora",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Restaurant menu management software | Servora",
-    description:
-      "Manage restaurant categories, items, modifiers, variants and availability from one connected system.",
-    images: ["/og?title=menu-management"],
-  },
-};
+const seo = productSeoBySlug["menu-management"];
+export const metadata = createPageMetadata({
+  ...seo,
+  path: "/product/menu-management",
+  ogTitle: seo.title,
+  imageAlt: `${seo.title} — Servora`,
+});
 export default function Page() {
   return <ProductDetail module={module} />;
 }

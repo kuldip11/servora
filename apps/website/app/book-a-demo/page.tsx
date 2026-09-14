@@ -1,9 +1,7 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import { DemoRequestForm } from "@/components/forms/DemoRequestForm";
-export const metadata: Metadata = {
-  title: "Book a Demo",
-  description: "Request a Servora product walkthrough for your restaurant.",
-};
+export const metadata = createPageMetadata(websitePageSeo.demo);
 export default function Demo() {
   return (
     <section className="mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">

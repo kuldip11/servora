@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
-    "build": "next build",
+    "build": "node scripts/validate-production-env.mjs && next build",
     "validate:production-env": "node scripts/validate-production-env.mjs",
     "start": "next start --port 3001",
     "typecheck": "tsc --noEmit",
@@ -19,7 +19,8 @@
     "react-dom": "^19.0.0",
     "lucide-react": "^0.395.0",
     "@pos/ui": "workspace:*",
-    "@pos/config": "workspace:*"
+    "@pos/config": "workspace:*",
+    "@pos/seo": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

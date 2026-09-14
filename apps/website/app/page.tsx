@@ -1,28 +1,11 @@
-import type { Metadata } from "next";
+import { createPageMetadata, getSiteUrl } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
+import { createOrganizationSchema, createSoftwareApplicationSchema, createWebSiteSchema } from "@pos/seo";
 import Link from "next/link";
 import { ArrowRight, BarChart3, ChefHat, ShoppingBag } from "lucide-react";
 import { InteractiveProductDemosLazy } from "@/components/marketing/InteractiveProductDemosLazy";
 
-export const metadata: Metadata = {
-  title: "Servora — Every order. Every team. One flow.",
-  description:
-    "Connect guest ordering, front of house, kitchen execution, billing and business control with Servora's restaurant operating platform.",
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: "Servora — Every order. Every team. One flow.",
-    description:
-      "A connected restaurant operating platform for guests, waiters, kitchens and growing restaurant businesses.",
-    url: "/",
-    images: [
-      {
-        url: "/og?title=home",
-        width: 1200,
-        height: 630,
-        alt: "Servora restaurant operating platform",
-      },
-    ],
-  },
-};
+export const metadata = createPageMetadata(websitePageSeo.home);
 
 const workflow = [
   ["Guest orders", "QR or staff-assisted"],
@@ -193,8 +176,28 @@ const HeroProductPreview = () => (
 );
 
 export default function Home() {
+  const siteUrl = getSiteUrl();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      createOrganizationSchema(siteUrl),
+      createWebSiteSchema(siteUrl),
+      createSoftwareApplicationSchema({
+        baseUrl: siteUrl,
+        name: "Servora",
+        path: "",
+        description:
+          "A connected restaurant operating platform for ordering, kitchen execution, billing, staff, inventory, analytics and multi-branch operations.",
+      }),
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <section className="relative overflow-hidden bg-[#f6f2e8] text-[#142219]">
         <div className="pointer-events-none absolute -right-48 -top-64 size-[620px] rounded-full bg-[radial-gradient(circle,rgba(200,235,134,0.35),transparent_68%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-16 pt-20 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:pb-20 lg:pt-28">

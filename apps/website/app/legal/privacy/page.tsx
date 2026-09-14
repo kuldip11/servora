@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-export const metadata: Metadata = {
-  title: "Privacy",
-  description: "Servora privacy information.",
-};
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
+export const metadata = createPageMetadata(websitePageSeo.privacy);
 export default function Privacy() {
   return (
     <Legal title="Privacy Policy">

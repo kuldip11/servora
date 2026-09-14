@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 
-export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to the Servora application.",
-};
+export const metadata = createPageMetadata(websitePageSeo.login);
 
 export default function Login() {
   redirect(process.env.NEXT_PUBLIC_APP_SIGNIN_URL ?? "/app/login");

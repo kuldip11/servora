@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "Servora restaurant operating platform",
-        type: "image/png",
+        // type: "image/png",
       },
     ],
   },

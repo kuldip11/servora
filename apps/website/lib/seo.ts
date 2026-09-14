@@ -61,10 +61,13 @@ export const createPageMetadata = ({
   imageAlt = `${title} — ${SITE_NAME}`,
   index = true,
   absoluteTitle = false,
-  staticImage = false,
+  staticImage = true,
 }: PageMetadataInput): Metadata => {
   assertCanonicalPath(path);
-  const image = staticImage ? BRAND_ASSETS.websiteOg : getOgImageUrl({ title: ogTitle, eyebrow: ogEyebrow });
+  const imagePath = staticImage
+    ? BRAND_ASSETS.websiteOg
+    : getOgImageUrl({ title: ogTitle, eyebrow: ogEyebrow });
+  const image = getAbsoluteUrl(imagePath);
   const socialTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
   return {
     title: absoluteTitle ? { absolute: title } : title,
@@ -75,7 +78,15 @@ export const createPageMetadata = ({
       : { index: false, follow: false, noarchive: true, nosnippet: true },
     openGraph: {
       type: "website", siteName: SITE_NAME, title: socialTitle, description, url: path,
-      images: [{ url: image, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: imageAlt }],
+      images: [
+        {
+          url: image,
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          alt: imageAlt,
+          type: "image/png",
+        },
+      ],
     },
     twitter: { card: TWITTER_CARD, title: socialTitle, description, images: [image] },
   };

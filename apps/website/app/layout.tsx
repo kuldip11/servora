@@ -6,6 +6,7 @@ import {
   BRAND_ASSETS,
   DEFAULT_DESCRIPTION,
   DEFAULT_TITLE,
+  getAbsoluteUrl,
   getSiteUrl,
 } from "@/lib/seo";
 import type { Metadata } from "next";
@@ -33,10 +34,11 @@ export const metadata: Metadata = {
     description: DEFAULT_DESCRIPTION,
     images: [
       {
-        url: BRAND_ASSETS.websiteOg,
+        url: getAbsoluteUrl(BRAND_ASSETS.websiteOg),
         width: 1200,
         height: 630,
         alt: "Servora restaurant operating platform",
+        type: "image/png",
       },
     ],
   },
@@ -44,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    images: [BRAND_ASSETS.websiteOg],
+    images: [getAbsoluteUrl(BRAND_ASSETS.websiteOg)],
   },
 };
 

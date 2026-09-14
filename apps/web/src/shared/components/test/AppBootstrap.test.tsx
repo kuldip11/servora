@@ -74,6 +74,28 @@ describe("AppBootstrap", () => {
     expect(container.textContent).toContain("taking a little longer than usual");
   });
 
+  it("keeps the startup screen visible while a cold service is still waking", async () => {
+    vi.mocked(bootstrapAuthSession).mockReturnValue(
+      new Promise<never>(() => undefined),
+    );
+
+    await act(async () => {
+      root.render(
+        <AppBootstrap>
+          <div>dashboard</div>
+        </AppBootstrap>,
+      );
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+    });
+
+    expect(container.textContent).toContain("Connecting to Servora services");
+    expect(container.textContent).not.toContain("Unable to connect");
+    expect(container.textContent).not.toContain("dashboard");
+  });
+
   it("shows a retry state and retries unavailable bootstrap", async () => {
     vi.mocked(bootstrapAuthSession)
       .mockResolvedValueOnce("unavailable")

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { bootstrapAuthSession } from "@/shared/auth/bootstrap";
+import {
+  AUTH_BOOTSTRAP_TIMEOUT_MS,
+  bootstrapAuthSession,
+} from "@/shared/auth/bootstrap";
 import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
 
@@ -36,6 +39,9 @@ describe("bootstrapAuthSession", () => {
 
     await expect(bootstrapAuthSession()).resolves.toBe("ready");
     expect(authService.refresh).toHaveBeenCalledOnce();
+    expect(authService.refresh).toHaveBeenCalledWith({
+      timeout: AUTH_BOOTSTRAP_TIMEOUT_MS,
+    });
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().accessToken).toBe("access-1");
   });

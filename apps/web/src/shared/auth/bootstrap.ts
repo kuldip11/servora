@@ -5,9 +5,13 @@ import { restoreActiveContext } from "@/shared/auth/active-context";
 
 export type AuthBootstrapResult = "ready" | "unauthenticated" | "unavailable";
 
+export const AUTH_BOOTSTRAP_TIMEOUT_MS = 75_000;
+
 export const bootstrapAuthSession = async (): Promise<AuthBootstrapResult> => {
   try {
-    const result = await authService.refresh();
+    const result = await authService.refresh({
+      timeout: AUTH_BOOTSTRAP_TIMEOUT_MS,
+    });
     useAuthStore.getState().setAuth(result);
 
     try {

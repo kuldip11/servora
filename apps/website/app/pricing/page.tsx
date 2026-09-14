@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import { PricingCta } from "@/components/marketing/PricingCta";
-export const metadata: Metadata = {
-  title: "Pricing",
-  description:
-    "Talk to Servora about the right setup for your restaurant operation.",
-};
+export const metadata = createPageMetadata(websitePageSeo.pricing);
 export default function Pricing() {
   return (
     <section className="mx-auto max-w-5xl px-6 py-20 lg:px-8">

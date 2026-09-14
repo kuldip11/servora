@@ -1,13 +1,9 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import { ArrowUpRight } from "lucide-react";
 import { servoraApps } from "@/lib/servora-apps";
 
-export const metadata: Metadata = {
-  title: "Servora Apps",
-  description:
-    "Open the Servora management, kitchen, waiter and customer applications from one place.",
-  alternates: { canonical: "/apps" },
-};
+export const metadata = createPageMetadata(websitePageSeo.apps);
 
 export default function AppsPage() {
   return (

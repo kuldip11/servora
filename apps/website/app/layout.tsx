@@ -1,26 +1,50 @@
-import { CookieConsent } from "@/components/privacy/CookieConsent";
 import { Analytics } from "@/components/analytics/Analytics";
-import type { Metadata } from "next";
-import { SiteHeader } from "@/components/navigation/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { SiteHeader } from "@/components/navigation/SiteHeader";
+import { CookieConsent } from "@/components/privacy/CookieConsent";
+import {
+  BRAND_ASSETS,
+  DEFAULT_DESCRIPTION,
+  DEFAULT_TITLE,
+  getSiteUrl,
+} from "@/lib/seo";
+import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://servora.example",
-  ),
+  metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Servora — Restaurant operations, connected.",
+    default: DEFAULT_TITLE,
     template: "%s | Servora",
   },
-  description:
-    "Servora connects restaurant orders, kitchen operations, billing, staff, inventory, analytics and customer QR ordering.",
+  description: DEFAULT_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: BRAND_ASSETS.faviconSvg, type: "image/svg+xml" },
+      { url: BRAND_ASSETS.faviconIco },
+    ],
+    apple: BRAND_ASSETS.appleTouchIcon,
+  },
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
     siteName: "Servora",
-    title: "Servora — Restaurant operations, connected.",
-    description: "A connected platform for restaurant operations.",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [
+      {
+        url: BRAND_ASSETS.websiteOg,
+        width: 1200,
+        height: 630,
+        alt: "Servora restaurant operating platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [BRAND_ASSETS.websiteOg],
   },
 };
 

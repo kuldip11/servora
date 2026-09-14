@@ -69,7 +69,15 @@ describe("core web coverage", () => {
     expect(authService.refresh).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
 
-    vi.mocked(authService.refresh).mockRejectedValueOnce(new Error("expired"));
+    vi.mocked(authService.refresh).mockRejectedValueOnce(
+      new AxiosError("expired", undefined, undefined, undefined, {
+        status: 401,
+        statusText: "Unauthorized",
+        headers: {},
+        config: {} as never,
+        data: null,
+      }),
+    );
     await bootstrapAuthSession();
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });

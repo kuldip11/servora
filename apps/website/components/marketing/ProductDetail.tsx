@@ -4,34 +4,26 @@ import type { Module } from "@/content/modules";
 import { moduleBySlug } from "@/content/modules";
 import { CtaBanner } from "./CtaBanner";
 import { ProductPreview } from "./ProductPreview";
+import { getSiteUrl } from "@/lib/seo";
+import { createBreadcrumbSchema, createOrganizationSchema, createSoftwareApplicationSchema } from "@pos/seo";
 
 export const ProductDetail = ({ module }: { module: Module }) => {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://servora.example";
-  const url = `${base}/product/${module.slug}`;
+  const base = getSiteUrl();
+  const path = `/product/${module.slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "Organization", name: "Servora", url: base },
-      {
-        "@type": "SoftwareApplication",
+      createOrganizationSchema(base),
+      createSoftwareApplicationSchema({
+        baseUrl: base,
         name: `Servora ${module.name}`,
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
-        url: url,
+        path,
         description: module.description,
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Product",
-            item: `${base}/product`,
-          },
-          { "@type": "ListItem", position: 2, name: module.name, item: url },
-        ],
-      },
+      }),
+      createBreadcrumbSchema(base, [
+        { name: "Product", path: "/product" },
+        { name: module.name, path },
+      ]),
     ],
   };
   return (
@@ -91,7 +83,7 @@ export const ProductDetail = ({ module }: { module: Module }) => {
         </div>
 
         <div className="mt-20 grid gap-5 md:grid-cols-3">
-          {module.capabilities.map((capability) => (
+          {module.capabilities.map((capability, index) => (
             <article
               key={capability}
               className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm"
@@ -103,8 +95,7 @@ export const ProductDetail = ({ module }: { module: Module }) => {
               />
               <h2 className="mt-5 text-lg font-semibold">{capability}</h2>
               <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                A capability represented in the current Servora product
-                architecture.
+                {module.capabilityDescriptions[index]}
               </p>
             </article>
           ))}
@@ -155,8 +146,7 @@ export const ProductDetail = ({ module }: { module: Module }) => {
               ))}
             </div>
             <p className="mt-7 text-sm leading-6 text-[var(--text-secondary)]">
-              Servora keeps this capability connected to the wider restaurant
-              operation instead of treating it as an isolated tool.
+              {module.name} stays connected to ordering, kitchen and business context so teams can work from the same operational record instead of isolated tools.
             </p>
           </section>
         </div>

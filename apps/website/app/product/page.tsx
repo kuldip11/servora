@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import { modules } from "@/content/modules";
 import { ModuleCard } from "@/components/marketing/ModuleCard";
 import { CtaBanner } from "@/components/marketing/CtaBanner";
-export const metadata: Metadata = {
-  title: "Product",
-  description:
-    "Explore the connected restaurant operations capabilities in Servora.",
-};
+export const metadata = createPageMetadata(websitePageSeo.product);
 export default function ProductPage() {
   return (
     <>

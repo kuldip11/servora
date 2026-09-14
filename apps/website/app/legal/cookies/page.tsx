@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-export const metadata: Metadata = {
-  title: "Cookies",
-  description: "Servora cookie information.",
-};
+import { createPageMetadata } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
+export const metadata = createPageMetadata(websitePageSeo.cookies);
 export default function Cookies() {
   return (
     <section className="mx-auto max-w-3xl px-6 py-20 lg:px-8">

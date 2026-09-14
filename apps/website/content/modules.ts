@@ -4,6 +4,7 @@ export type Module = {
   eyebrow: string;
   description: string;
   capabilities: string[];
+  capabilityDescriptions: string[];
   workflow: string[];
   roles: string[];
   related: string[];
@@ -20,6 +21,11 @@ export const modules: Module[] = [
       "Order creation and management",
       "Tables and order context",
       "Order status workflows",
+    ],
+    capabilityDescriptions: [
+      "Create and manage dine-in or counter orders while keeping the order record consistent from capture through service.",
+      "Keep table, guest and order context together so front-of-house teams can act without switching between disconnected tools.",
+      "Move orders through clear operational states that stay visible to the teams responsible for the next step.",
     ],
     workflow: [
       "Capture the order",
@@ -40,6 +46,11 @@ export const modules: Module[] = [
       "Modifiers and variants",
       "Availability and scheduling",
     ],
+    capabilityDescriptions: [
+      "Organize restaurant menus into clear categories and maintain item details from one connected catalog.",
+      "Configure choices, add-ons and variants so guests and staff can build the right order without manual workarounds.",
+      "Control when items are available so ordering surfaces reflect what the restaurant can actually serve.",
+    ],
     workflow: [
       "Organize the catalog",
       "Configure item choices",
@@ -59,6 +70,11 @@ export const modules: Module[] = [
       "Menu browsing and search",
       "Cart and order status",
     ],
+    capabilityDescriptions: [
+      "Start a table-aware ordering session from a restaurant QR code without requiring guests to install an app.",
+      "Help guests find dishes quickly with a mobile-friendly menu experience connected to current restaurant availability.",
+      "Let guests customize a cart, submit an order and follow its progress through the restaurant workflow.",
+    ],
     workflow: [
       "Guest opens the QR experience",
       "Browses and customizes items",
@@ -74,6 +90,11 @@ export const modules: Module[] = [
     description:
       "Give kitchen teams a focused view of tickets and order progress.",
     capabilities: ["Kitchen tickets", "Operational status", "Realtime updates"],
+    capabilityDescriptions: [
+      "Present incoming orders as focused kitchen tickets with the item context needed for preparation.",
+      "Keep preparation stages clear so kitchen and front-of-house teams share the same view of order progress.",
+      "Receive live order changes without relying on manual refreshes or verbal handoffs between teams.",
+    ],
     workflow: [
       "Receive the ticket",
       "Work the kitchen queue",
@@ -92,6 +113,11 @@ export const modules: Module[] = [
       "Billing workflows",
       "Payment method support",
       "Refund workflows",
+    ],
+    capabilityDescriptions: [
+      "Keep bill preparation connected to the underlying restaurant order instead of recreating checkout information separately.",
+      "Record the payment methods supported by the operation while preserving the order and billing context.",
+      "Handle supported refund flows with a traceable connection back to the original transaction and order.",
     ],
     workflow: [
       "Prepare the bill",
@@ -112,6 +138,11 @@ export const modules: Module[] = [
       "Role-based access",
       "Tenant and branch context",
     ],
+    capabilityDescriptions: [
+      "Maintain restaurant team members and operational access from one administrative workspace.",
+      "Match permissions to restaurant responsibilities so staff see and perform the actions appropriate to their role.",
+      "Keep access aligned with the correct organization, franchise and branch context in multi-location operations.",
+    ],
     workflow: [
       "Manage team members",
       "Assign role-aware access",
@@ -127,6 +158,11 @@ export const modules: Module[] = [
     description:
       "Connect restaurant operations to inventory and recipe-aware workflows.",
     capabilities: ["Inventory management", "Recipes", "Availability workflows"],
+    capabilityDescriptions: [
+      "Track restaurant stock information alongside the operational workflows that consume it.",
+      "Connect recipe definitions to menu and inventory context so ingredient usage is easier to reason about.",
+      "Use stock and operational signals to support more accurate item availability decisions across ordering channels.",
+    ],
     workflow: [
       "Maintain stock information",
       "Connect recipes to operations",
@@ -145,6 +181,11 @@ export const modules: Module[] = [
       "Dashboard analytics",
       "Order and sales insights",
     ],
+    capabilityDescriptions: [
+      "Review restaurant activity through reports that stay connected to the same operational data used by the product.",
+      "Bring important restaurant signals into dashboards that help managers understand current performance faster.",
+      "Explore order and sales patterns to support day-to-day and branch-level decisions with better context.",
+    ],
     workflow: [
       "Collect operational activity",
       "Review restaurant-level signals",
@@ -160,6 +201,11 @@ export const modules: Module[] = [
     description:
       "Support restaurant organizations operating across branches and shared tenant context.",
     capabilities: ["Branch management", "Tenant context", "Role-aware access"],
+    capabilityDescriptions: [
+      "Organize multiple restaurant branches without losing the distinction between local operations and shared business control.",
+      "Preserve tenant and franchise context as users move between locations and administrative workflows.",
+      "Apply role-aware access across branches so permissions follow both responsibility and organizational scope.",
+    ],
     workflow: [
       "Organize branches",
       "Keep tenant and branch context clear",
@@ -175,6 +221,11 @@ export const modules: Module[] = [
     description:
       "A trust layer built around authentication, authorization and responsible product claims.",
     capabilities: ["Authentication", "RBAC", "Tenant isolation architecture"],
+    capabilityDescriptions: [
+      "Require authenticated access before users enter operational Servora workspaces.",
+      "Use role-based authorization to limit actions to the responsibilities assigned to each restaurant user.",
+      "Keep tenant and branch context explicit in the application architecture to support isolation between restaurant organizations.",
+    ],
     workflow: [
       "Authenticate users",
       "Authorize actions by role",

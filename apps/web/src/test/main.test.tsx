@@ -26,6 +26,9 @@ vi.mock("../shared/lib/query-client", () => ({ queryClient: {} }));
 vi.mock("../shared/auth/bootstrap", () => ({
   bootstrapAuthSession: h.bootstrap,
 }));
+vi.mock("../shared/components/AppBootstrap", () => ({
+  AppBootstrap: ({ children }: any) => <>{children}</>,
+}));
 vi.mock("../shared/components/PerformanceProfiler", () => ({
   PerformanceProfiler: ({ children }: any) => <>{children}</>,
 }));
@@ -52,5 +55,16 @@ describe("main bootstrap coverage", () => {
     document.body.innerHTML = "";
     await expect(import("../main")).rejects.toThrow("Root element not found");
     expect(h.bootstrap).not.toHaveBeenCalled();
+  });
+
+  it("mounts React immediately", async () => {
+    await import("../main");
+    expect(h.createRoot).toHaveBeenCalledWith(document.getElementById("root"));
+    expect(h.render).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when the root element is missing", async () => {
+    document.body.innerHTML = "";
+    await expect(import("../main")).rejects.toThrow("Root element not found");
   });
 });

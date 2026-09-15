@@ -192,6 +192,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@pos/config": "workspace:*",
+        "@pos/seo": "workspace:*",
         "@pos/ui": "workspace:*",
         "lucide-react": "^0.395.0",
         "next": "^15.5.7",
@@ -230,6 +231,15 @@
     },
     "packages/config": {
       "name": "@pos/config",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@vitest/coverage-v8": "^1.6.0",
+        "typescript": "^5.4.5",
+        "vitest": "^1.6.0",
+      },
+    },
+    "packages/seo": {
+      "name": "@pos/seo",
       "version": "0.1.0",
       "devDependencies": {
         "@vitest/coverage-v8": "^1.6.0",
@@ -584,6 +594,8 @@
     "@pos/kitchen-display": ["@pos/kitchen-display@workspace:apps/kitchen-display"],
 
     "@pos/realtime": ["@pos/realtime@workspace:packages/realtime"],
+
+    "@pos/seo": ["@pos/seo@workspace:packages/seo"],
 
     "@pos/types": ["@pos/types@workspace:packages/types"],
 

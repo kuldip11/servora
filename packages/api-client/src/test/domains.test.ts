@@ -151,6 +151,7 @@ describe("auth, billing, customer, inventory and staff APIs", () => {
     });
     await auth.login({ email: "a@b.com", password: "secret" });
     await auth.refresh();
+    await auth.refresh({ timeout: 75_000 });
     await auth.logout();
     await auth.memberships();
     await auth.organizations();

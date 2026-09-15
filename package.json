@@ -64,7 +64,12 @@
     "demo:reset": "cd apps/api && bun run demo:reset",
     "test:coverage:config": "cd packages/config && bun run test:coverage",
     "test:coverage:types": "cd packages/types && bun run test:coverage",
-    "test:coverage:website": "cd apps/website && bun run test:coverage"
+    "test:coverage:website": "cd apps/website && bun run test:coverage",
+    "verify:seo": "bun run seo:check && bun run seo:assets",
+    "seo:check": "node scripts/seo/validate-seo.mjs",
+    "seo:assets": "node scripts/seo/validate-assets.mjs",
+    "seo:audit": "node scripts/seo/audit-built-pages.mjs",
+    "seo:sync-assets": "node scripts/seo/sync-assets.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

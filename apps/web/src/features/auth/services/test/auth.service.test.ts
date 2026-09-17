@@ -51,12 +51,12 @@ describe("authService", () => {
     const data = { accessToken: "a2", expiresIn: 60, user };
     api.post.mockResolvedValue({ data: { data } });
 
-    await expect(authService.refresh({ timeout: 75_000 })).resolves.toEqual(data);
-    expect(api.post).toHaveBeenCalledWith(
-      "/auth/refresh",
-      undefined,
-      { timeout: 75_000 },
+    await expect(authService.refresh({ timeout: 75_000 })).resolves.toEqual(
+      data,
     );
+    expect(api.post).toHaveBeenCalledWith("/auth/refresh", undefined, {
+      timeout: 75_000,
+    });
   });
 
   it("loads organizations and memberships, creates a tenant under an organization, and loads the current user", async () => {

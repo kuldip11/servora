@@ -7,6 +7,7 @@ export * from "./components/Card";
 export * from "./components/Spinner";
 export * from "./components/EmptyState";
 export * from "./components/AppErrorBoundary";
+export * from "./components/ConnectivityBanner";
 export * from "./components/StatCard";
 export * from "./theme/ThemeProvider";
 

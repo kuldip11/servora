@@ -23,5 +23,4 @@ export const BRAND_ASSETS = {
   icon192: "/icon-192.png",
   icon512: "/icon-512.png",
   maskableIcon512: "/maskable-icon-512.png",
-  websiteOg: "/social/og-website.png",
 } as const;

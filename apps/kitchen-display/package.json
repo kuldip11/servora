@@ -30,7 +30,8 @@
     "@pos/ui": "workspace:*",
     "@pos/api-client": "workspace:*",
     "@pos/realtime": "workspace:*",
-    "@pos/validation": "workspace:*"
+    "@pos/validation": "workspace:*",
+    "@pos/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

@@ -8,6 +8,7 @@ import { securityHeadersPlugin, rateLimitPlugin } from "./core/security";
 import {
   metrics,
   metricsRouter,
+  frontendTelemetryRouter,
   requestLoggingPlugin,
 } from "./core/observability";
 import { AppError } from "./core/errors";
@@ -108,6 +109,7 @@ let app = new Elysia()
   .use(rateLimitPlugin())
   .use(requestLoggingPlugin())
   .use(metricsRouter)
+  .use(frontendTelemetryRouter)
 
   .get("/health", () => ({
     status: "ok",

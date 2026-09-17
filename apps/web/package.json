@@ -14,7 +14,9 @@
     "test:a11y": "playwright test tests/accessibility",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:visual": "VISUAL_REGRESSION=1 playwright test tests/critical-order-flow.spec.ts --grep \"owner can\"",
+    "test:visual:update": "VISUAL_REGRESSION=1 playwright test tests/critical-order-flow.spec.ts --grep \"owner can\" --update-snapshots"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -37,7 +39,8 @@
     "@hookform/resolvers": "^3.6.0",
     "react-hook-form": "^7.52.0",
     "zod": "^3.23.8",
-    "@pos/config": "workspace:*"
+    "@pos/config": "workspace:*",
+    "@pos/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

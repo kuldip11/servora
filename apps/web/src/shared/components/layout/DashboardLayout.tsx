@@ -14,6 +14,8 @@ import {
   Building2,
   Menu as MenuIcon,
   Sparkles,
+  Activity,
+  HeartPulse,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/auth";
@@ -24,6 +26,7 @@ import { TenantSwitcher } from "./TenantSwitcher";
 import { usePermissions } from "@/shared/auth/permissions";
 import { RealtimeNotifications } from "./RealtimeNotifications";
 import { UserMenu } from "./UserMenu";
+import { CommandPalette } from "@/shared/components/command/CommandPalette";
 
 const navItems = [
   {
@@ -36,6 +39,18 @@ const navItems = [
     to: "/menu-engineering",
     label: "Menu Engineering",
     icon: Sparkles,
+    permission: "analytics:read",
+  },
+  {
+    to: "/operations",
+    label: "Operations",
+    icon: Activity,
+    permission: "analytics:read",
+  },
+  {
+    to: "/branch-health",
+    label: "Branch Health",
+    icon: HeartPulse,
     permission: "analytics:read",
   },
   {
@@ -257,6 +272,7 @@ export const DashboardLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <CommandPalette />
             <button
               type="button"
               aria-label="Notifications"

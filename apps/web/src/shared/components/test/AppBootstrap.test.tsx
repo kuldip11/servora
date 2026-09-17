@@ -71,7 +71,9 @@ describe("AppBootstrap", () => {
     });
 
     expect(container.textContent).toContain("Connecting to Servora services");
-    expect(container.textContent).toContain("taking a little longer than usual");
+    expect(container.textContent).toContain(
+      "taking a little longer than usual",
+    );
   });
 
   it("keeps the startup screen visible while a cold service is still waking", async () => {
@@ -112,8 +114,8 @@ describe("AppBootstrap", () => {
 
     expect(container.textContent).toContain("Unable to connect");
 
-    const retry = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Try again"),
+    const retry = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Try again"),
     );
     expect(retry).toBeTruthy();
 

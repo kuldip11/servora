@@ -75,7 +75,8 @@ export const tenantRepository = {
         .insert(tenantMemberships)
         .values({ userId, tenantId })
         .returning();
-      if (!membership) throw new InternalError("Tenant membership creation failed");
+      if (!membership)
+        throw new InternalError("Tenant membership creation failed");
 
       await tx
         .insert(membershipRoles)

@@ -7,7 +7,12 @@ import {
   resolveMembership,
 } from "@/core/auth/authorization";
 import { db } from "@/db";
-import { ConflictError, ForbiddenError, ValidationError, InternalError } from "@/core/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  ValidationError,
+  InternalError,
+} from "@/core/errors";
 import { signAccessToken } from "@/lib/jwt";
 import {
   hasAppRoleAccess,

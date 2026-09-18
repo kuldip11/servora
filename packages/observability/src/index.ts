@@ -159,10 +159,12 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
     );
   };
   const onReactError = (event: Event) => {
-    const detail = (event as CustomEvent<{
-      message?: string;
-      componentStack?: string;
-    }>).detail;
+    const detail = (
+      event as CustomEvent<{
+        message?: string;
+        componentStack?: string;
+      }>
+    ).detail;
     emit(
       {
         type: "react-error",

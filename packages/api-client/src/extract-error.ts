@@ -4,7 +4,12 @@ const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 export const extractApiError = (error: unknown, fallback?: string): string => {
   const normalized = toApiClientError(error);
-  const message = normalized.message || fallback || DEFAULT_ERROR_MESSAGE;
+  const message =
+    fallback &&
+    normalized.code === "UNEXPECTED_ERROR" &&
+    !(error instanceof Error)
+      ? fallback
+      : normalized.message || fallback || DEFAULT_ERROR_MESSAGE;
   const shouldShowReference =
     Boolean(normalized.requestId) &&
     (normalized.status === undefined ||

@@ -216,7 +216,8 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
         ),
         with: { slots: { with: { options: true } } },
       });
-      if (!canonical) throw new InternalError("Created combo could not be reloaded");
+      if (!canonical)
+        throw new InternalError("Created combo could not be reloaded");
       return createdResponse(toComboResponse(canonical));
     },
     {
@@ -335,7 +336,8 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
         entityId: params.id,
         metadata: { name: input.name, pricePolicy: input.pricePolicy },
       });
-      if (!updated) throw new InternalError("Updated combo could not be reloaded");
+      if (!updated)
+        throw new InternalError("Updated combo could not be reloaded");
       return successResponse(toComboResponse(updated));
     },
     {

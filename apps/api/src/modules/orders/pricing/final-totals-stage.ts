@@ -123,7 +123,8 @@ export const finalizePricing = async (
 ): Promise<FinalPricingResult> => {
   const discounts = await applyDiscountStages(context, lines, options);
   const tenant = await tenantRepository.findById(context.tenantId);
-  if (!tenant) throw new InternalError("Tenant not found while finalizing pricing");
+  if (!tenant)
+    throw new InternalError("Tenant not found while finalizing pricing");
   const final = calculateTaxServiceAndRounding(discounts.lines, {
     serviceChargePercent: tenant.serviceChargePercent,
     serviceChargeTaxable: tenant.serviceChargeTaxable,

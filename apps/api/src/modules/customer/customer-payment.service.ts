@@ -312,10 +312,14 @@ export const customerPaymentService = {
           );
         }
       } catch (err) {
-        logger.error("customer_payment.inventory_deduction_failed", toError(err), {
-          orderId: order.id,
-          branchId: session.branchId,
-        });
+        logger.error(
+          "customer_payment.inventory_deduction_failed",
+          toError(err),
+          {
+            orderId: order.id,
+            branchId: session.branchId,
+          },
+        );
       }
       const updated = await orderRepository.findById(
         session.tenantId,

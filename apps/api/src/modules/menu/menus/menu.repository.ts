@@ -28,7 +28,8 @@ export const menuRepository = {
         (await tx.query.menus.findFirst({
           where: and(eq(menus.tenantId, tenantId), eq(menus.isDefault, true)),
         }));
-      if (!defaultMenu) throw new InternalError("Default menu could not be created");
+      if (!defaultMenu)
+        throw new InternalError("Default menu could not be created");
 
       if (created) {
         const existingItems = await tx.query.menuItems.findMany({

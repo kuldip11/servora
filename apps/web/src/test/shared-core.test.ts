@@ -1,6 +1,7 @@
 import { act } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AxiosError } from "axios";
+import { ApiClientErrorException } from "@pos/api-client";
 
 import { useAuthStore } from "@/store/auth";
 import { queryClient } from "@/shared/lib/query-client";
@@ -101,6 +102,15 @@ describe("core web coverage", () => {
     expect(retry(0, axiosError(500))).toBe(true);
     expect(retry(1, axiosError(500))).toBe(true);
     expect(retry(2, axiosError(500))).toBe(false);
-    expect(retry(0, new Error("network"))).toBe(true);
+    expect(
+      retry(
+        0,
+        new ApiClientErrorException({
+          code: "NETWORK_ERROR",
+          message: "network",
+          retryable: true,
+        }),
+      ),
+    ).toBe(true);
   });
 });

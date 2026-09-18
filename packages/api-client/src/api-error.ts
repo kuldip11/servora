@@ -41,7 +41,6 @@ const fieldErrors = (value: unknown): ApiFieldErrors | undefined => {
   return Object.keys(result).length ? result : undefined;
 };
 
-
 export class ApiClientErrorException extends Error implements ApiClientError {
   readonly code: string;
   readonly retryable: boolean;
@@ -54,9 +53,9 @@ export class ApiClientErrorException extends Error implements ApiClientError {
     this.name = "ApiClientErrorException";
     this.code = error.code;
     this.retryable = error.retryable;
-    this.requestId = error.requestId;
-    this.fieldErrors = error.fieldErrors;
-    this.status = error.status;
+    if (error.requestId !== undefined) this.requestId = error.requestId;
+    if (error.fieldErrors !== undefined) this.fieldErrors = error.fieldErrors;
+    if (error.status !== undefined) this.status = error.status;
   }
 }
 
@@ -98,8 +97,18 @@ export const apiClientErrorFromResponse = (
   };
 };
 
+const isApiClientErrorLike = (error: unknown): error is ApiClientError => {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as Partial<ApiClientError>;
+  return (
+    typeof candidate.code === "string" &&
+    typeof candidate.message === "string" &&
+    typeof candidate.retryable === "boolean"
+  );
+};
+
 export const toApiClientError = (error: unknown): ApiClientError => {
-  if (error instanceof ApiClientErrorException) {
+  if (error instanceof ApiClientErrorException || isApiClientErrorLike(error)) {
     return {
       code: error.code,
       message: error.message,

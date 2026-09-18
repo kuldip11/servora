@@ -1,13 +1,11 @@
 import { and, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { inventoryDeductionJobs } from "@/db/schema";
+import type { InventoryDeductionJobItem } from "@/db/schema/inventory-deduction-job.schema";
 import type { InventoryOrderItemInput } from "./inventory.types";
 
 export type InventoryDeductionJobStatus =
-  | "PENDING"
-  | "PROCESSING"
-  | "FAILED"
-  | "COMPLETED";
+  "PENDING" | "PROCESSING" | "FAILED" | "COMPLETED";
 
 const enqueue = async (input: {
   tenantId: string;
@@ -17,10 +15,36 @@ const enqueue = async (input: {
   items: InventoryOrderItemInput[];
   performedBy: string | null;
 }) => {
+  const items: InventoryDeductionJobItem[] = input.items.map((item) => ({
+    orderItemId: item.orderItemId,
+    menuItemId: item.menuItemId,
+    quantity: item.quantity,
+    ...(item.variantId !== undefined ? { variantId: item.variantId } : {}),
+    ...(item.weightQuantity !== undefined
+      ? { weightQuantity: item.weightQuantity }
+      : {}),
+    ...(item.weightUnit !== undefined ? { weightUnit: item.weightUnit } : {}),
+    ...(item.selectedOptions !== undefined
+      ? {
+          selectedOptions: item.selectedOptions.map((option) => ({
+            optionId: option.optionId,
+            ...(option.quantity !== undefined
+              ? { quantity: option.quantity }
+              : {}),
+          })),
+        }
+      : {}),
+  }));
+
   const [inserted] = await db
     .insert(inventoryDeductionJobs)
     .values({
-      ...input,
+      tenantId: input.tenantId,
+      branchId: input.branchId,
+      orderId: input.orderId,
+      kitchenTicketId: input.kitchenTicketId,
+      items,
+      performedBy: input.performedBy,
       status: "PENDING",
       nextAttemptAt: new Date(),
     })

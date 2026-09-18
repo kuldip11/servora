@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { ApiClientErrorException } from "@pos/api-client";
 
 const mocks = vi.hoisted(() => ({
   createCustomerSession: vi.fn(),
@@ -128,10 +129,24 @@ describe("useCustomerSession exhaustive", () => {
       expiresAt: "old-exp",
     });
     mocks.getCustomerMenu
-      .mockRejectedValueOnce(new Error("expired"))
+      .mockRejectedValueOnce(
+        new ApiClientErrorException({
+          code: "UNAUTHORIZED",
+          message: "Customer session is invalid or expired",
+          retryable: false,
+          status: 401,
+        }),
+      )
       .mockResolvedValueOnce(menu("TAKEAWAY"));
     mocks.loadPersistedOrderId.mockReturnValue("bad");
-    mocks.getCustomerOrder.mockRejectedValueOnce(new Error("gone"));
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "VALIDATION_FAILED",
+        message: "Order does not belong to this customer session",
+        retryable: false,
+        status: 400,
+      }),
+    );
     const { result } = renderSessionHook();
     await waitFor(() => expect(result.current.session?.mode).toBe("TAKEAWAY"));
     expect(mocks.clearPersistedSession).toHaveBeenCalledWith("scope");
@@ -139,6 +154,53 @@ describe("useCustomerSession exhaustive", () => {
     expect(result.current.session?.area).toBe("Takeaway");
     expect(mocks.clearPersistedOrderId).toHaveBeenCalledWith("scope");
   });
+  it("preserves persisted session and order on transient bootstrap failures", async () => {
+    mocks.loadPersistedSession.mockReturnValue({
+      token: "old",
+      expiresAt: "persisted-exp",
+    });
+    mocks.getCustomerMenu.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Temporary outage",
+        retryable: true,
+        status: 503,
+      }),
+    );
+
+    const first = renderSessionHook();
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(first.result.current.error).toBe("Temporary outage");
+    expect(mocks.clearPersistedSession).not.toHaveBeenCalled();
+    expect(mocks.createCustomerSession).not.toHaveBeenCalled();
+    first.unmount();
+
+    vi.clearAllMocks();
+    mocks.getCustomerStorageScope.mockReturnValue("scope");
+    mocks.loadPersistedSession.mockReturnValue({
+      token: "old",
+      expiresAt: "persisted-exp",
+    });
+    mocks.loadPersistedOrderId.mockReturnValue("o1");
+    mocks.restoreCart.mockReturnValue({ cart: [], droppedCount: 0 });
+    mocks.realtime.mockReturnValue(true);
+    mocks.getCustomerMenu.mockResolvedValue(menu());
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Order service unavailable",
+        retryable: true,
+        status: 503,
+      }),
+    );
+
+    const second = renderSessionHook();
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+    expect(second.result.current.error).toBe("Order service unavailable");
+    expect(mocks.clearPersistedOrderId).not.toHaveBeenCalled();
+    second.unmount();
+  });
+
   it("uses persisted token without creating and supports storage-less scope", async () => {
     mocks.loadPersistedSession.mockReturnValue({
       token: "old",

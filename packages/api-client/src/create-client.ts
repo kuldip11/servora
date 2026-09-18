@@ -75,11 +75,7 @@ export const createApiClient = (config: ApiClientConfig): AxiosInstance => {
         requestUrl.includes("/auth/login") ||
         requestUrl.includes("/auth/signup") ||
         requestUrl.includes("/auth/refresh");
-      if (
-        error.response?.status !== 401 ||
-        original._retry ||
-        authEndpoint
-      ) {
+      if (error.response?.status !== 401 || original._retry || authEndpoint) {
         return Promise.reject(error);
       }
 

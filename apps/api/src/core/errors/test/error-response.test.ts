@@ -73,7 +73,9 @@ describe("frontend error response contract", () => {
   });
   it("never exposes internal invariant messages to clients", () => {
     const response = serializeAppError(
-      new InternalError("Database invariant: membership insert returned no row"),
+      new InternalError(
+        "Database invariant: membership insert returned no row",
+      ),
       "req-internal",
     );
     expect(response.error.message).toBe(
@@ -81,5 +83,4 @@ describe("frontend error response contract", () => {
     );
     expect(JSON.stringify(response)).not.toContain("membership insert");
   });
-
 });

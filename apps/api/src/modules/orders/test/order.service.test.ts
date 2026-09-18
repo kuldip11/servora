@@ -133,6 +133,7 @@ vi.mock("../../inventory/inventory.service", () => ({
   inventoryService: {
     getOrderDeductions: inventoryImpact,
     deductForOrderItems: deduct,
+    deductForOrderItemsWithRetry: deduct,
     syncMenuItemAvailability: vi.fn(),
   },
 }));

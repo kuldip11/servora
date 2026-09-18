@@ -6,3 +6,5 @@ process.env.JWT_SECRET ??= "test-jwt-secret-change-me";
 process.env.JWT_EXPIRES_IN ??= "15m";
 process.env.CORS_ORIGIN ??= "http://localhost:5173";
 process.env.PORT ??= "3000";
+
+import "elysia/type-system/format";

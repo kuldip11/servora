@@ -136,7 +136,8 @@ export const modifierService = {
       branchId,
       options: input.options?.map(withStringPrice),
     });
-    if (!created) throw new InternalError("Modifier group could not be created");
+    if (!created)
+      throw new InternalError("Modifier group could not be created");
     await menuChangeLog.record(
       auth,
       "MODIFIER_GROUP",

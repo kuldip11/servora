@@ -27,9 +27,7 @@ redis.on("error", (err) => {
   logger.error("redis.connection_error", err);
 });
 publisher.on("error", (err) => logger.error("redis.publisher_error", err));
-subscriber.on("error", (err) =>
-  logger.error("redis.subscriber_error", err),
-);
+subscriber.on("error", (err) => logger.error("redis.subscriber_error", err));
 
 redis.on("connect", () => {
   metrics.setGauge("servora_redis_available", 1);

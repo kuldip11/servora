@@ -150,7 +150,8 @@ export const staffRepository = {
           tenantId: data.tenantId,
         })
         .returning();
-      if (!membership) throw new InternalError("Staff membership creation failed");
+      if (!membership)
+        throw new InternalError("Staff membership creation failed");
 
       await tx
         .insert(membershipRoles)

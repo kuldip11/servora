@@ -224,7 +224,8 @@ export const authRepository = {
           .returning();
         role = createdRole;
       }
-      if (!role) throw new InternalError("Unable to provision GLOBAL OWNER role");
+      if (!role)
+        throw new InternalError("Unable to provision GLOBAL OWNER role");
 
       const allPermissions = await tx
         .select({ id: permissions.id })
@@ -275,7 +276,8 @@ export const authRepository = {
           .returning();
         role = createdRole;
       }
-      if (!role) throw new InternalError("Unable to provision GLOBAL OWNER role");
+      if (!role)
+        throw new InternalError("Unable to provision GLOBAL OWNER role");
 
       const allPermissions = await tx
         .select({ id: permissions.id })

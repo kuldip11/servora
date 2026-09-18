@@ -83,5 +83,4 @@ describe("toApiClientError", () => {
       status: 500,
     });
   });
-
 });

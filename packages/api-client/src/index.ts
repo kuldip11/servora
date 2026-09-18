@@ -12,7 +12,6 @@ export {
   toApiClientError,
 } from "./api-error";
 export type { ApiClientError, ApiFieldErrors } from "./api-error";
-export type { ApiClientError, ApiFieldErrors } from "./api-error";
 export { createOrdersApi } from "./domains/orders";
 export type {
   OrdersListFilters,

@@ -40,7 +40,8 @@ export const organizationRepository = {
         .insert(organizations)
         .values(data)
         .returning();
-      if (!organization) throw new InternalError("Organization creation failed");
+      if (!organization)
+        throw new InternalError("Organization creation failed");
       const [membership] = await tx
         .insert(organizationMemberships)
         .values({ userId: data.createdBy, organizationId: organization.id })
@@ -104,7 +105,8 @@ export const organizationRepository = {
           effectiveFrom: data.effectiveFrom ?? null,
         })
         .returning();
-      if (!menu) throw new InternalError("Organization menu insert returned no row");
+      if (!menu)
+        throw new InternalError("Organization menu insert returned no row");
       if (data.items.length)
         await tx.insert(organizationMenuItems).values(
           data.items.map((item, index) => ({

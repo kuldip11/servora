@@ -69,7 +69,9 @@ export const startRazorpayWebhookWorker = () => {
           metrics.increment("servora_payment_webhook_failures_total", {
             stage: "worker",
           });
-          logger.error("razorpay_worker.event_failed", toError(error), { eventId });
+          logger.error("razorpay_worker.event_failed", toError(error), {
+            eventId,
+          });
         }
       } catch (error) {
         if (!stopped) {
@@ -89,7 +91,10 @@ export const startRazorpayWebhookWorker = () => {
     );
   }, 30_000);
   void recoverDurableEvents().catch((error) =>
-    logger.error("razorpay_worker.initial_recovery_scan_failed", toError(error)),
+    logger.error(
+      "razorpay_worker.initial_recovery_scan_failed",
+      toError(error),
+    ),
   );
   void run();
 

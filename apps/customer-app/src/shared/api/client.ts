@@ -1,4 +1,9 @@
-import { ApiClientErrorException, apiClientErrorFromResponse } from "@pos/api-client";
+import {
+  ApiClientErrorException,
+  apiClientErrorFromResponse,
+} from "@pos/api-client";
+
+export const CUSTOMER_API_REQUEST_TIMEOUT_MS = 15_000;
 
 export const resolveApiUrl = (
   configuredApiUrl: string | undefined,
@@ -18,24 +23,70 @@ export async function request<T>(
   init?: RequestInit,
   sessionToken?: string,
 ): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(sessionToken ? { "X-Customer-Session": sessionToken } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(init?.signal?.reason);
 
-  const body = await response.json().catch(() => null);
-  if (!response.ok || body?.success === false) {
-    throw new ApiClientErrorException(
-      apiClientErrorFromResponse(
-        body,
-        response.status,
-        "Customer API request failed",
-      ),
-    );
+  if (init?.signal?.aborted) {
+    abortFromCaller();
+  } else {
+    init?.signal?.addEventListener("abort", abortFromCaller, { once: true });
   }
-  return body.data as T;
+
+  const timeoutId = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, CUSTOMER_API_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(sessionToken ? { "X-Customer-Session": sessionToken } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+
+    const body = await response.json().catch(() => null);
+    if (!response.ok || body?.success === false) {
+      throw new ApiClientErrorException(
+        apiClientErrorFromResponse(
+          body,
+          response.status,
+          "Customer API request failed",
+        ),
+      );
+    }
+    return body.data as T;
+  } catch (error) {
+    if (error instanceof ApiClientErrorException) throw error;
+
+    if (timedOut) {
+      throw new ApiClientErrorException({
+        code: "REQUEST_TIMEOUT",
+        message: "The request timed out. Please try again.",
+        retryable: true,
+      });
+    }
+
+    if (init?.signal?.aborted) {
+      throw new ApiClientErrorException({
+        code: "REQUEST_ABORTED",
+        message: "The request was cancelled.",
+        retryable: false,
+      });
+    }
+
+    throw new ApiClientErrorException({
+      code: "NETWORK_ERROR",
+      message:
+        "Unable to reach Servora. Please check your connection and try again.",
+      retryable: true,
+    });
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    init?.signal?.removeEventListener("abort", abortFromCaller);
+  }
 }

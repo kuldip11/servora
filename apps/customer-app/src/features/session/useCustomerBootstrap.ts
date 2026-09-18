@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { toApiClientError } from "@pos/api-client";
 import {
   createCustomerSession,
   getCustomerMenu,
@@ -49,7 +50,15 @@ const bootstrapCustomerSession = async (
   if (sessionToken) {
     try {
       menuResponse = await getCustomerMenu(sessionToken);
-    } catch {
+    } catch (error) {
+      const apiError = toApiClientError(error);
+      const sessionIsInvalid =
+        apiError.status === 401 ||
+        apiError.code === "UNAUTHORIZED" ||
+        apiError.code === "CUSTOMER_SESSION_REQUIRED";
+
+      if (!sessionIsInvalid) throw error;
+
       if (storageScope) clearPersistedSession(storageScope);
       sessionToken = undefined;
     }
@@ -88,7 +97,15 @@ const bootstrapCustomerSession = async (
     if (persistedOrderId) {
       try {
         restoredOrder = await getCustomerOrder(sessionToken, persistedOrderId);
-      } catch {
+      } catch (error) {
+        const apiError = toApiClientError(error);
+        const persistedOrderIsInvalid =
+          apiError.status === 400 ||
+          apiError.status === 403 ||
+          apiError.status === 404 ||
+          apiError.code === "NOT_FOUND";
+
+        if (!persistedOrderIsInvalid) throw error;
         clearPersistedOrderId(storageScope);
       }
     }

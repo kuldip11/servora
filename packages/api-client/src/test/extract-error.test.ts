@@ -27,7 +27,7 @@ describe("extractApiError", () => {
 
   it("uses the stable Axios fallback when no response or message is available", () => {
     expect(extractApiError({ isAxiosError: true, message: undefined })).toBe(
-      "Request failed",
+      "The request could not be completed.",
     );
   });
 
@@ -39,7 +39,7 @@ describe("extractApiError", () => {
 
   it("returns a stable fallback for unknown values", () => {
     expect(extractApiError({ reason: "unknown" })).toBe(
-      "An unexpected error occurred",
+      "An unexpected error occurred.",
     );
   });
 });

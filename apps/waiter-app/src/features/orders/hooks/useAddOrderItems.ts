@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
 import {
   addOrderItems,
   type AddOrderComboInput,
@@ -38,13 +39,8 @@ export const useAddOrderItems = () => {
       toast({ title: "Sent to kitchen!", tone: "success" });
     },
     onError: (err: unknown) => {
-      const message =
-        typeof err === "object" && err !== null && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
-          : undefined;
       toast({
-        title: message ?? "Failed",
+        title: extractApiError(err, "Failed"),
         tone: "danger",
       });
     },

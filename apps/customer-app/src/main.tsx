@@ -5,10 +5,7 @@ import { ThemeProvider, AppErrorBoundary, ConnectivityBanner } from "@pos/ui";
 import { CustomerApp } from "./CustomerApp";
 import { customerQueryClient } from "./shared/lib/query-client";
 import "./index.css";
-import {
-  resolveFrontendTelemetryEndpoint,
-  startFrontendTelemetry,
-} from "@pos/observability";
+import { resolveFrontendTelemetryEndpoint, startFrontendTelemetry } from "@pos/observability";
 
 startFrontendTelemetry({
   app: "servora-customer",

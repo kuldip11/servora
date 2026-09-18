@@ -6,6 +6,7 @@ import { ForbiddenError, ValidationError } from "@/core/errors";
 import { writeAudit } from "@/core/audit";
 import { db } from "@/db";
 import { approvalRoleMatches, isApprovalRequired } from "./approval-policy";
+import { managerApprovalInvalid, managerApprovalRequired } from "./approval.errors";
 import {
   managerApprovalTokens,
   users,
@@ -174,7 +175,7 @@ export const approvalService = {
       )
     )
       return;
-    if (!tokenId) throw new ForbiddenError("Manager approval required");
+    if (!tokenId) throw managerApprovalRequired();
     const [used] = await db
       .update(managerApprovalTokens)
       .set({ usedAt: new Date() })
@@ -191,8 +192,6 @@ export const approvalService = {
       )
       .returning();
     if (!used)
-      throw new ForbiddenError(
-        "Manager approval is invalid, expired, or already used",
-      );
+      throw managerApprovalInvalid();
   },
 };

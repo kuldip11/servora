@@ -27,7 +27,7 @@ import {
   ManagerApprovalDialog,
   type ManagerApprovalRequest,
 } from "@/features/orders/components/ManagerApprovalDialog";
-import { extractApiError } from "@pos/api-client";
+import { toApiClientError } from "@pos/api-client";
 
 interface Props {
   orderId: string;
@@ -79,7 +79,7 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
           setPendingApproval(null);
         },
         onError: (error) => {
-          if (extractApiError(error).includes("Manager approval required")) {
+          if (toApiClientError(error).code === "MANAGER_APPROVAL_REQUIRED") {
             setReasonAction(null);
             setPendingApproval(request);
           }

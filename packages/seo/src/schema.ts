@@ -32,10 +32,7 @@ export const createSoftwareApplicationSchema = ({
   description,
 });
 
-export const createBreadcrumbSchema = (
-  baseUrl: string,
-  items: BreadcrumbItem[],
-) => ({
+export const createBreadcrumbSchema = (baseUrl: string, items: BreadcrumbItem[]) => ({
   "@type": "BreadcrumbList",
   itemListElement: items.map((item, index) => ({
     "@type": "ListItem",

@@ -1,20 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
 import {
   createOrder,
   type CreateOrderInput,
 } from "@/features/orders/api/createOrder";
 import { orderKeys } from "@/features/orders/constants";
 
-const mutationErrorMessage = (error: unknown, fallback: string): string => {
-  if (typeof error !== "object" || error === null || !("response" in error))
-    return fallback;
-  const response = (error as { response?: { data?: { message?: unknown } } })
-    .response;
-  return typeof response?.data?.message === "string"
-    ? response.data.message
-    : fallback;
-};
+const mutationErrorMessage = (error: unknown, fallback: string): string =>
+  extractApiError(error, fallback);
 
 export const useCreateOrder = () => {
   const qc = useQueryClient();

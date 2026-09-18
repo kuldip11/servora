@@ -13,6 +13,7 @@ import {
   useCustomerBootstrap,
 } from "@/features/session/useCustomerBootstrap";
 import { useCustomerPersistence } from "@/features/session/useCustomerPersistence";
+import { extractApiError } from "@pos/api-client";
 
 export type { CustomerSessionState } from "@/features/session/useCustomerBootstrap";
 
@@ -123,11 +124,7 @@ export const useCustomerSession = () => {
             : "Request sent. Someone will be with you shortly.",
         );
       } catch (requestError) {
-        setRequestMessage(
-          requestError instanceof Error
-            ? requestError.message
-            : "Could not send request",
-        );
+        setRequestMessage(extractApiError(requestError, "Could not send request"));
       }
     },
     [requestMutation, session],
@@ -142,9 +139,7 @@ export const useCustomerSession = () => {
     ? null
     : "Open this page from a restaurant table QR code to start an ordering session.";
   const bootstrapError = bootstrapQuery.error
-    ? bootstrapQuery.error instanceof Error
-      ? bootstrapQuery.error.message
-      : "Unable to load this ordering session"
+    ? extractApiError(bootstrapQuery.error, "Unable to load this ordering session")
     : null;
 
   return {

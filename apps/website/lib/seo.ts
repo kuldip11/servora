@@ -50,9 +50,7 @@ export const createPageMetadata = ({
   absoluteTitle = false,
 }: PageMetadataInput): Metadata => {
   assertCanonicalPath(path);
-  const socialTitle = title.includes(SITE_NAME)
-    ? title
-    : `${title} | ${SITE_NAME}`;
+  const socialTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
 
   return {
     title: absoluteTitle ? { absolute: title } : title,

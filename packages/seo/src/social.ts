@@ -6,3 +6,4 @@ export const SOCIAL_IMAGE = {
   safePadding: 64,
   format: "png",
 } as const;
+

@@ -143,6 +143,13 @@ vi.mock("@/features/menu/hooks/useTables", () => ({
 vi.mock("@/features/auth/storage", () => ({ hasPermission: () => true }));
 vi.mock("@pos/api-client", () => ({
   extractApiError: (e: any) => String(e?.message ?? e),
+  toApiClientError: (e: any) => ({
+    code: e?.message === "Manager approval required"
+      ? "MANAGER_APPROVAL_REQUIRED"
+      : "UNEXPECTED_ERROR",
+    message: String(e?.message ?? e),
+    retryable: false,
+  }),
 }));
 vi.mock("@/features/orders/api/orders", () => ({
   fetchCancellationReasons: vi.fn(),

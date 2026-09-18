@@ -36,6 +36,11 @@ vi.mock("@/shared/lib/api-client", () => {
       delete: response,
     },
     extractApiError: (e: unknown) => e,
+    toApiClientError: (e: unknown) => ({
+      code: "INTERNAL_ERROR",
+      message: e instanceof Error ? e.message : "An unexpected error occurred.",
+      retryable: false,
+    }),
   };
 });
 

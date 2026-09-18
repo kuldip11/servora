@@ -55,9 +55,7 @@ describe("CommandPalette", () => {
 
   it("does not expose commands the user cannot access", () => {
     render(<CommandPalette />);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open command palette" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
 
     expect(screen.queryByRole("link", { name: /Open audit log/ })).toBeNull();
     expect(screen.getByRole("link", { name: /Open orders/ })).toBeTruthy();
@@ -65,9 +63,7 @@ describe("CommandPalette", () => {
 
   it("shows an empty state for unmatched search", () => {
     render(<CommandPalette />);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open command palette" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
     fireEvent.change(screen.getByLabelText("Search commands"), {
       target: { value: "does-not-exist" },
     });

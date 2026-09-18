@@ -116,10 +116,13 @@ describe("security middleware", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("60");
     expect(response.headers.get("x-ratelimit-remaining")).toBe("0");
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       success: false,
-      code: "RATE_LIMITED",
-      message: "Too many requests",
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many requests. Please try again shortly.",
+        retryable: true,
+      },
     });
   });
 

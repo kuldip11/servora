@@ -1,10 +1,5 @@
 import type { MetadataRoute } from "next";
-import {
-  BRAND_ASSETS,
-  BRAND_COLORS,
-  DEFAULT_DESCRIPTION,
-  SITE_NAME,
-} from "@pos/seo";
+import { BRAND_ASSETS, BRAND_COLORS, DEFAULT_DESCRIPTION, SITE_NAME } from "@pos/seo";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

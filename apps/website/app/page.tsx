@@ -1,10 +1,6 @@
 import { createPageMetadata, getSiteUrl } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
-import {
-  createOrganizationSchema,
-  createSoftwareApplicationSchema,
-  createWebSiteSchema,
-} from "@pos/seo";
+import { createOrganizationSchema, createSoftwareApplicationSchema, createWebSiteSchema } from "@pos/seo";
 import Link from "next/link";
 import { ArrowRight, BarChart3, ChefHat, ShoppingBag } from "lucide-react";
 import { InteractiveProductDemosLazy } from "@/components/marketing/InteractiveProductDemosLazy";

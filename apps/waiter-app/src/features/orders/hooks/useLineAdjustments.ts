@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
-import { extractApiError } from "@pos/api-client";
+import { extractApiError, toApiClientError } from "@pos/api-client";
 import { compOrderItem, voidOrderItem } from "@/features/orders/api/orders";
 import { orderKeys } from "@/features/orders/constants";
 
@@ -27,7 +27,7 @@ export const useLineAdjustments = (orderId: string) => {
       toast({ title: "Order item updated", tone: "success" });
     },
     onError: (error) => {
-      if (extractApiError(error) === "Manager approval required") return;
+      if (toApiClientError(error).code === "MANAGER_APPROVAL_REQUIRED") return;
       toast({
         title: extractApiError(error) || "Failed to update item",
         tone: "danger",

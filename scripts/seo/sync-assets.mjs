@@ -1,16 +1,8 @@
 import { copyFileSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
-const commonBrandAssets = [
-  "favicon.svg",
-  "favicon.ico",
-  "apple-touch-icon.png",
-];
-const websiteOnlyBrandAssets = [
-  "icon-192.png",
-  "icon-512.png",
-  "maskable-icon-512.png",
-];
+const commonBrandAssets = ["favicon.svg", "favicon.ico", "apple-touch-icon.png"];
+const websiteOnlyBrandAssets = ["icon-192.png", "icon-512.png", "maskable-icon-512.png"];
 
 const appOg = {
   web: "business",
@@ -32,18 +24,12 @@ for (const app of ["website", ...Object.keys(appOg)]) {
   mkdirSync(publicDir, { recursive: true });
 
   for (const asset of commonBrandAssets) {
-    copyFileSync(
-      resolve(`packages/seo/assets/brand/${asset}`),
-      resolve(publicDir, asset),
-    );
+    copyFileSync(resolve(`packages/seo/assets/brand/${asset}`), resolve(publicDir, asset));
   }
 
   if (app === "website") {
     for (const asset of websiteOnlyBrandAssets) {
-      copyFileSync(
-        resolve(`packages/seo/assets/brand/${asset}`),
-        resolve(publicDir, asset),
-      );
+      copyFileSync(resolve(`packages/seo/assets/brand/${asset}`), resolve(publicDir, asset));
     }
   } else {
     for (const asset of websiteOnlyBrandAssets) {
@@ -71,6 +57,4 @@ for (const [app, ogAlias] of Object.entries(appOg)) {
   );
 }
 
-console.log(
-  "Servora SEO runtime assets synchronized using Next.js file-based social metadata for website.",
-);
+console.log("Servora SEO runtime assets synchronized using Next.js file-based social metadata for website.");

@@ -3,30 +3,10 @@ import { resolve, relative } from "node:path";
 
 const KB = 1024;
 const budgets = [
-  {
-    app: "web",
-    directory: "apps/web/dist/assets",
-    maxChunkKb: 650,
-    maxTotalJsKb: 1800,
-  },
-  {
-    app: "waiter",
-    directory: "apps/waiter-app/dist/assets",
-    maxChunkKb: 650,
-    maxTotalJsKb: 1800,
-  },
-  {
-    app: "kitchen",
-    directory: "apps/kitchen-display/dist/assets",
-    maxChunkKb: 650,
-    maxTotalJsKb: 1800,
-  },
-  {
-    app: "customer",
-    directory: "apps/customer-app/dist/assets",
-    maxChunkKb: 650,
-    maxTotalJsKb: 1800,
-  },
+  { app: "web", directory: "apps/web/dist/assets", maxChunkKb: 650, maxTotalJsKb: 1800 },
+  { app: "waiter", directory: "apps/waiter-app/dist/assets", maxChunkKb: 650, maxTotalJsKb: 1800 },
+  { app: "kitchen", directory: "apps/kitchen-display/dist/assets", maxChunkKb: 650, maxTotalJsKb: 1800 },
+  { app: "customer", directory: "apps/customer-app/dist/assets", maxChunkKb: 650, maxTotalJsKb: 1800 },
 ];
 
 const exists = async (path) => {
@@ -42,15 +22,11 @@ let failed = false;
 for (const budget of budgets) {
   const directory = resolve(budget.directory);
   if (!(await exists(directory))) {
-    console.warn(
-      `[performance] ${budget.app}: skipped; ${budget.directory} does not exist`,
-    );
+    console.warn(`[performance] ${budget.app}: skipped; ${budget.directory} does not exist`);
     continue;
   }
 
-  const files = (await readdir(directory)).filter((file) =>
-    file.endsWith(".js"),
-  );
+  const files = (await readdir(directory)).filter((file) => file.endsWith(".js"));
   const sizes = await Promise.all(
     files.map(async (file) => ({
       file,

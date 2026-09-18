@@ -11,7 +11,7 @@ import {
   frontendTelemetryRouter,
   requestLoggingPlugin,
 } from "./core/observability";
-import { AppError } from "./core/errors";
+import { createApiErrorResponse, handleApiError } from "./core/errors";
 import { rootLogger } from "./core/logger";
 
 import { authRouter, authMeRouter } from "./modules/auth/auth.route";
@@ -120,7 +120,7 @@ let app = new Elysia()
     status: "ok",
     timestamp: new Date().toISOString(),
   }))
-  .get("/health/ready", async ({ set }) => {
+  .get("/health/ready", async ({ set, requestContext }) => {
     const checks = { database: false, redis: false };
     const dbStarted = performance.now();
     try {
@@ -141,75 +141,22 @@ let app = new Elysia()
 
     if (!checks.database || !checks.redis) {
       set.status = 503;
-      return {
-        status: "not_ready",
+      rootLogger.warn("readiness.failed", {
+        requestId: requestContext.requestId,
         checks,
-        timestamp: new Date().toISOString(),
-      };
+      });
+      return createApiErrorResponse({
+        code: "SERVICE_NOT_READY",
+        message: "Servora is temporarily unavailable while required services recover. Please try again.",
+        statusCode: 503,
+        requestId: requestContext.requestId,
+      });
     }
     return { status: "ready", checks, timestamp: new Date().toISOString() };
   })
   // Error hooks must be registered before route plugins so failures from route
   // handlers and scoped auth derives inherit the shared status-code mapper.
-  .onError((context) => {
-    const { code, error, set } = context;
-    const requestContext =
-      "requestContext" in context
-        ? (context as unknown as { requestContext?: RequestContext })
-            .requestContext
-        : undefined;
-
-    const appError = AppError.unwrap(error);
-    if (appError) {
-      rootLogger.warn(`API Error: ${appError.code}`, {
-        requestId: requestContext?.requestId,
-        statusCode: appError.statusCode,
-        message: appError.message,
-        details: appError.details,
-      });
-      set.status = appError.statusCode;
-      return appError.toJSON();
-    }
-
-    rootLogger.error(
-      `Unhandled API error: ${code}`,
-      error instanceof Error ? error : undefined,
-      { requestId: requestContext?.requestId },
-    );
-
-    if (code === "VALIDATION") {
-      set.status = 400;
-      return {
-        success: false,
-        code: "VALIDATION_ERROR",
-        message: "Invalid request data",
-        details: error.message,
-      };
-    }
-    if (code === "NOT_FOUND") {
-      set.status = 404;
-      return { success: false, code: "NOT_FOUND", message: "Route not found" };
-    }
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "23505"
-    ) {
-      set.status = 409;
-      return {
-        success: false,
-        code: "CONFLICT",
-        message: "The requested resource conflicts with an existing record",
-      };
-    }
-    set.status = 500;
-    return {
-      success: false,
-      code: "INTERNAL_ERROR",
-      message: "Internal server error",
-    };
-  }) as unknown as WidenedElysia;
+  .onError((context) => handleApiError(context as unknown as Record<string, unknown>)) as unknown as WidenedElysia;
 
 app = app
   .use(authRouter)

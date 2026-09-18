@@ -15,10 +15,7 @@ export const productSeoBySlug = {
     title: "Restaurant menu management software",
     description:
       "Manage restaurant categories, items, modifiers, variants and availability from one connected system.",
-    searchIntent: [
-      "restaurant menu management software",
-      "digital menu management",
-    ],
+    searchIntent: ["restaurant menu management software", "digital menu management"],
   },
   "qr-ordering": {
     title: "Restaurant QR ordering system",
@@ -48,28 +45,19 @@ export const productSeoBySlug = {
     title: "Restaurant inventory management software",
     description:
       "Connect restaurant stock, recipes and availability workflows to the rest of your daily operations.",
-    searchIntent: [
-      "restaurant inventory software",
-      "restaurant stock management",
-    ],
+    searchIntent: ["restaurant inventory software", "restaurant stock management"],
   },
   analytics: {
     title: "Restaurant analytics software",
     description:
       "Turn restaurant order and operational data into useful dashboards, reports and business insights.",
-    searchIntent: [
-      "restaurant analytics software",
-      "restaurant reporting software",
-    ],
+    searchIntent: ["restaurant analytics software", "restaurant reporting software"],
   },
   "multi-branch": {
     title: "Multi-branch restaurant management software",
     description:
       "Manage branches, tenant context and role-aware workflows as your restaurant organization grows.",
-    searchIntent: [
-      "multi-location restaurant management",
-      "multi-branch restaurant software",
-    ],
+    searchIntent: ["multi-location restaurant management", "multi-branch restaurant software"],
   },
   security: {
     title: "Restaurant software security and access control",

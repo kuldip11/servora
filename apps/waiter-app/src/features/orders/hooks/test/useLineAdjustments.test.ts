@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mutationConfigs, qc, toast, api, extractApiError } = vi.hoisted(() => ({
+const { mutationConfigs, qc, toast, api, extractApiError, toApiClientError } = vi.hoisted(() => ({
   mutationConfigs: [] as any[],
   qc: { invalidateQueries: vi.fn(), setQueryData: vi.fn() },
   toast: vi.fn(),
   api: { compOrderItem: vi.fn(), voidOrderItem: vi.fn() },
   extractApiError: vi.fn(),
+  toApiClientError: vi.fn(),
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => qc,
@@ -15,7 +16,7 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 vi.mock("@pos/ui", () => ({ toast }));
-vi.mock("@pos/api-client", () => ({ extractApiError }));
+vi.mock("@pos/api-client", () => ({ extractApiError, toApiClientError }));
 vi.mock("@/features/orders/api/orders", () => api);
 import { useLineAdjustments } from "../useLineAdjustments";
 
@@ -26,8 +27,11 @@ beforeEach(() => {
 
 describe("useLineAdjustments", () => {
   it("handles void, comp, success, and error branches", async () => {
+    toApiClientError
+      .mockReturnValueOnce({ code: "MANAGER_APPROVAL_REQUIRED" })
+      .mockReturnValueOnce({ code: "UNEXPECTED_ERROR" })
+      .mockReturnValueOnce({ code: "UNEXPECTED_ERROR" });
     extractApiError
-      .mockReturnValueOnce("Manager approval required")
       .mockReturnValueOnce("")
       .mockReturnValueOnce("boom");
     useLineAdjustments("o1");

@@ -2,6 +2,8 @@ import { Elysia } from "elysia";
 import { redis } from "@/lib/redis";
 import { env } from "@/config/env";
 import { resolveClientIp } from "./client-ip";
+import { createApiErrorResponse } from "@/core/errors";
+import { randomUUID } from "node:crypto";
 
 const RATE_LIMIT_PREFIX = "servora:rate-limit";
 
@@ -70,11 +72,13 @@ export const rateLimitPlugin = () =>
         if (count > env.RATE_LIMIT_MAX) {
           set.status = 429;
           set.headers["retry-after"] = String(env.RATE_LIMIT_WINDOW_SECONDS);
-          return {
-            success: false,
+          const requestId = request.headers.get("x-request-id") ?? randomUUID();
+          return createApiErrorResponse({
             code: "RATE_LIMITED",
-            message: "Too many requests",
-          };
+            message: "Too many requests. Please try again shortly.",
+            statusCode: 429,
+            requestId,
+          });
         }
       } catch {}
 

@@ -3,9 +3,5 @@
 export const OPENAPI_VERSION = "unresolved" as const;
 export const OPENAPI_OPERATIONS = [] as const;
 export type OpenApiOperation = (typeof OPENAPI_OPERATIONS)[number];
-export type OpenApiMethod = OpenApiOperation extends { method: infer Method }
-  ? Method
-  : string;
-export type OpenApiPath = OpenApiOperation extends { path: infer Path }
-  ? Path
-  : string;
+export type OpenApiMethod = OpenApiOperation extends { method: infer Method } ? Method : string;
+export type OpenApiPath = OpenApiOperation extends { path: infer Path } ? Path : string;

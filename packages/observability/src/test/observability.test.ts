@@ -6,13 +6,9 @@ import {
 } from "../index";
 
 class MockPerformanceObserver {
-  static callbacks: Array<
-    (list: { getEntries: () => PerformanceEntry[] }) => void
-  > = [];
+  static callbacks: Array<(list: { getEntries: () => PerformanceEntry[] }) => void> = [];
 
-  constructor(
-    callback: (list: { getEntries: () => PerformanceEntry[] }) => void,
-  ) {
+  constructor(callback: (list: { getEntries: () => PerformanceEntry[] }) => void) {
     MockPerformanceObserver.callbacks.push(callback);
   }
 
@@ -29,10 +25,7 @@ describe("resolveFrontendTelemetryEndpoint", () => {
       "/api/telemetry/frontend",
     );
     expect(
-      resolveFrontendTelemetryEndpoint(
-        "/api",
-        "https://collector.example/vitals",
-      ),
+      resolveFrontendTelemetryEndpoint("/api", "https://collector.example/vitals"),
     ).toBe("https://collector.example/vitals");
   });
 });
@@ -58,11 +51,7 @@ describe("startFrontendTelemetry", () => {
     });
 
     window.dispatchEvent(new ErrorEvent("error", { message: "boom" }));
-    expect(
-      events.some(
-        (event) => event.type === "error" && event.message === "boom",
-      ),
-    ).toBe(true);
+    expect(events.some((event) => event.type === "error" && event.message === "boom")).toBe(true);
 
     dispose();
     const count = events.length;

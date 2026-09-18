@@ -14,7 +14,7 @@ import {
   ManagerApprovalDialog,
   type ManagerApprovalRequest,
 } from "@/features/orders/components/ManagerApprovalDialog";
-import { extractApiError } from "@/shared/lib/api-client";
+import { toApiClientError } from "@/shared/lib/api-client";
 import { AddItemsModal } from "@/features/orders/components/AddItemsModal";
 import { RefireItemDialog } from "@/features/orders/components/RefireItemDialog";
 import { SeatShareDialog } from "@/features/orders/components/SeatShareDialog";
@@ -90,7 +90,7 @@ export const OrderDetailPage = () => {
           setPendingApproval(null);
         },
         onError: (error) => {
-          if (extractApiError(error).includes("Manager approval required")) {
+          if (toApiClientError(error).code === "MANAGER_APPROVAL_REQUIRED") {
             setReasonAction(null);
             setPendingApproval(request);
           }

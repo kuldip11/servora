@@ -1,19 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  ThemeProvider,
-  Toaster,
-  AppErrorBoundary,
-  ConnectivityBanner,
-} from "@pos/ui";
+import { ThemeProvider, Toaster, AppErrorBoundary, ConnectivityBanner } from "@pos/ui";
 import { queryClient } from "./shared/lib/query-client";
 import { WaiterApp } from "./app/WaiterApp";
 import "./index.css";
-import {
-  resolveFrontendTelemetryEndpoint,
-  startFrontendTelemetry,
-} from "@pos/observability";
+import { resolveFrontendTelemetryEndpoint, startFrontendTelemetry } from "@pos/observability";
 
 startFrontendTelemetry({
   app: "servora-waiter",

@@ -30,9 +30,7 @@ export const CommandPalette = () => {
 
   const commands = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return NAVIGATION_COMMANDS.filter(
-      (command) => !command.permission || has(command.permission),
-    ).filter(
+    return NAVIGATION_COMMANDS.filter((command) => !command.permission || has(command.permission)).filter(
       (command) =>
         !normalized ||
         command.label.toLowerCase().includes(normalized) ||
@@ -49,21 +47,14 @@ export const CommandPalette = () => {
         className="flex min-h-9 min-w-9 items-center justify-center gap-2 rounded-lg border border-border bg-surface-secondary px-2 text-sm text-text-secondary transition hover:text-text-primary lg:px-3"
         aria-label="Open command palette"
       >
-        <span aria-hidden="true" className="lg:hidden">
-          ⌕
-        </span>
+        <span aria-hidden="true" className="lg:hidden">⌕</span>
         <span className="hidden lg:inline">Search</span>
         <kbd className="hidden rounded border border-border bg-surface px-1.5 py-0.5 text-[11px] font-medium lg:inline">
           Ctrl K
         </kbd>
       </button>
 
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Search Servora"
-        size="lg"
-      >
+      <Dialog open={open} onClose={() => setOpen(false)} title="Search Servora" size="lg">
         <div className="space-y-3">
           <label className="sr-only" htmlFor="servora-command-search">
             Search commands
@@ -83,10 +74,7 @@ export const CommandPalette = () => {
                 No commands match “{query}”.
               </p>
             ) : (
-              <ul
-                className="divide-y divide-divider"
-                aria-label="Available commands"
-              >
+              <ul className="divide-y divide-divider" aria-label="Available commands">
                 {commands.map((command) => (
                   <li key={command.id}>
                     <Link

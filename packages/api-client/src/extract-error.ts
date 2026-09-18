@@ -1,8 +1,16 @@
-import axios from "axios";
+import { toApiClientError } from "./api-error";
 
-export const extractApiError = (error: unknown): string => {
-  if (axios.isAxiosError(error))
-    return error.response?.data?.message ?? error.message ?? "Request failed";
-  if (error instanceof Error) return error.message;
-  return "An unexpected error occurred";
+const GENERIC_MESSAGES = new Set([
+  "An unexpected error occurred.",
+  "The request could not be completed.",
+]);
+
+export const extractApiError = (
+  error: unknown,
+  fallback?: string,
+): string => {
+  const normalized = toApiClientError(error);
+  return fallback && GENERIC_MESSAGES.has(normalized.message)
+    ? fallback
+    : normalized.message;
 };

@@ -6,7 +6,10 @@ import { ForbiddenError, ValidationError } from "@/core/errors";
 import { writeAudit } from "@/core/audit";
 import { db } from "@/db";
 import { approvalRoleMatches, isApprovalRequired } from "./approval-policy";
-import { managerApprovalInvalid, managerApprovalRequired } from "./approval.errors";
+import {
+  managerApprovalInvalid,
+  managerApprovalRequired,
+} from "./approval.errors";
 import {
   managerApprovalTokens,
   users,
@@ -191,7 +194,6 @@ export const approvalService = {
         ),
       )
       .returning();
-    if (!used)
-      throw managerApprovalInvalid();
+    if (!used) throw managerApprovalInvalid();
   },
 };

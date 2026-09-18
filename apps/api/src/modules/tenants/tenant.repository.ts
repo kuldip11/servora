@@ -1,3 +1,4 @@
+import { InternalError } from "@/core/errors";
 import type { RoleName } from "@pos/types";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
@@ -42,7 +43,7 @@ export const tenantRepository = {
   async create(data: typeof tenants.$inferInsert) {
     return db.transaction(async (tx) => {
       const [tenant] = await tx.insert(tenants).values(data).returning();
-      if (!tenant) throw new Error("Tenant creation failed");
+      if (!tenant) throw new InternalError("Tenant creation failed");
 
       await tx.insert(menus).values({
         tenantId: tenant.id,
@@ -74,7 +75,7 @@ export const tenantRepository = {
         .insert(tenantMemberships)
         .values({ userId, tenantId })
         .returning();
-      if (!membership) throw new Error("Tenant membership creation failed");
+      if (!membership) throw new InternalError("Tenant membership creation failed");
 
       await tx
         .insert(membershipRoles)

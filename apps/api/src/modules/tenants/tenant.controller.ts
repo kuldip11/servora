@@ -3,26 +3,37 @@ import {
   createdResponse,
   successResponse,
 } from "@/core/response/response-helpers";
+import type { CreateTenantRequest, UpdateTenantRequest } from "@pos/contracts";
 import { tenantService } from "./tenant.service";
+import {
+  toAvailableTenantResponse,
+  toTenantCreatedResponse,
+  toTenantResponse,
+} from "./tenant.mapper";
 
 export const tenantController = {
   async list(auth: AuthContext) {
-    return successResponse(await tenantService.list(auth));
+    return successResponse(
+      (await tenantService.list(auth)).map(toAvailableTenantResponse),
+    );
   },
-  async create(
-    auth: AuthContext,
-    input: Parameters<typeof tenantService.create>[1],
-  ) {
-    return createdResponse(await tenantService.create(auth, input));
+  async create(auth: AuthContext, input: CreateTenantRequest) {
+    return createdResponse(
+      toTenantCreatedResponse(await tenantService.create(auth, input)),
+    );
   },
   async update(
     auth: AuthContext,
     tenantId: string,
-    changes: Parameters<typeof tenantService.update>[2],
+    changes: UpdateTenantRequest,
   ) {
-    return successResponse(await tenantService.update(auth, tenantId, changes));
+    return successResponse(
+      toTenantResponse(await tenantService.update(auth, tenantId, changes)),
+    );
   },
   async archive(auth: AuthContext, tenantId: string) {
-    return successResponse(await tenantService.archive(auth, tenantId));
+    return successResponse(
+      toTenantResponse(await tenantService.archive(auth, tenantId)),
+    );
   },
 };

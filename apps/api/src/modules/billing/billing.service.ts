@@ -113,7 +113,9 @@ export const billingService = {
     return {
       bill: result.bill,
       payment: result.payment,
-      paymentState: result.orderPaid ? "PAID" : "PARTIALLY_PAID",
+      paymentState: result.orderPaid
+        ? ("PAID" as const)
+        : ("PARTIALLY_PAID" as const),
     };
   },
 

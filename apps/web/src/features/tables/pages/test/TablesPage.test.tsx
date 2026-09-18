@@ -370,9 +370,6 @@ describe("TablesPage coverage", () => {
     expect(screen.getByText("No tables yet")).toBeTruthy();
   });
   it("covers close, error, permission, aggregate mutation, disabled QR and pagination paths", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
     const baseView = render(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: /Add Table/ }));
     fireEvent.click(screen.getByRole("button", { name: "close-add" }));
@@ -388,9 +385,9 @@ describe("TablesPage coverage", () => {
     mocks.getTakeaway.mockRejectedValueOnce(new Error("load"));
     fireEvent.click(screen.getByRole("button", { name: /Takeaway QR/ }));
     await waitFor(() =>
-      expect(consoleError).toHaveBeenCalledWith(
-        "Unable to load takeaway QR",
+      expect(mocks.error).toHaveBeenCalledWith(
         expect.any(Error),
+        "Unable to load takeaway QR",
       ),
     );
     mocks.getTakeaway.mockResolvedValueOnce({
@@ -406,9 +403,9 @@ describe("TablesPage coverage", () => {
     mocks.regenTakeaway.mockRejectedValueOnce(new Error("regen"));
     fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
     await waitFor(() =>
-      expect(consoleError).toHaveBeenCalledWith(
-        "Unable to regenerate takeaway QR",
+      expect(mocks.error).toHaveBeenCalledWith(
         expect.any(Error),
+        "Unable to regenerate takeaway QR",
       ),
     );
     fireEvent.click(screen.getByRole("button", { name: "modal-x" }));
@@ -443,7 +440,6 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByRole("button", { name: /Add Table/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Transfer" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Merge" })).toBeNull();
-    consoleError.mockRestore();
   });
 
   it("covers mutation success callbacks, missing transfer order, merge errors and large-table observer", async () => {

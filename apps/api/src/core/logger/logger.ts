@@ -103,3 +103,6 @@ export const createLogger = (
 ): Logger => new Logger(context, module, isDevelopment);
 
 export const rootLogger = createLogger({}, "root");
+
+export const toError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error));

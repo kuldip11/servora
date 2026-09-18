@@ -13,7 +13,7 @@ describe("staff validators", () => {
         lastName: "B",
         email: "a@example.com",
         password: "password1",
-        roleId: "r1",
+        roleId: "11111111-1111-4111-8111-111111111111",
       }),
     ).toBe(true);
     expect(
@@ -22,7 +22,7 @@ describe("staff validators", () => {
         lastName: "B",
         email: "a@example.com",
         password: "password1",
-        roleId: "r1",
+        roleId: "11111111-1111-4111-8111-111111111111",
       }),
     ).toBe(false);
     expect(
@@ -31,7 +31,7 @@ describe("staff validators", () => {
         lastName: "B",
         email: "bad",
         password: "password1",
-        roleId: "r1",
+        roleId: "11111111-1111-4111-8111-111111111111",
       }),
     ).toBe(false);
     expect(
@@ -40,7 +40,7 @@ describe("staff validators", () => {
         lastName: "B",
         email: "a@example.com",
         password: "short",
-        roleId: "r1",
+        roleId: "11111111-1111-4111-8111-111111111111",
       }),
     ).toBe(false);
   });
@@ -48,13 +48,17 @@ describe("staff validators", () => {
     expect(
       Value.Check(updateStaffBody, {
         status: "ACTIVE",
-        roleId: "r1",
-        branchIds: ["b1"],
+        roleId: "11111111-1111-4111-8111-111111111111",
+        branchIds: ["22222222-2222-4222-8222-222222222222"],
       }),
     ).toBe(true);
     expect(Value.Check(updateStaffBody, { status: "NOPE" })).toBe(false);
     expect(Value.Check(updateStaffBody, { branchIds: [1] })).toBe(false);
-    expect(Value.Check(staffIdParams, { id: "u1" })).toBe(true);
+    expect(
+      Value.Check(staffIdParams, {
+        id: "11111111-1111-4111-8111-111111111111",
+      }),
+    ).toBe(true);
     expect(Value.Check(staffIdParams, { id: 1 })).toBe(false);
   });
 });

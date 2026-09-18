@@ -124,7 +124,9 @@ export const useCustomerSession = () => {
             : "Request sent. Someone will be with you shortly.",
         );
       } catch (requestError) {
-        setRequestMessage(extractApiError(requestError, "Could not send request"));
+        setRequestMessage(
+          extractApiError(requestError, "Could not send request"),
+        );
       }
     },
     [requestMutation, session],
@@ -139,7 +141,10 @@ export const useCustomerSession = () => {
     ? null
     : "Open this page from a restaurant table QR code to start an ordering session.";
   const bootstrapError = bootstrapQuery.error
-    ? extractApiError(bootstrapQuery.error, "Unable to load this ordering session")
+    ? extractApiError(
+        bootstrapQuery.error,
+        "Unable to load this ordering session",
+      )
     : null;
 
   return {

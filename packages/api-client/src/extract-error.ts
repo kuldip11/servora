@@ -1,16 +1,24 @@
 import { toApiClientError } from "./api-error";
 
-const GENERIC_MESSAGES = new Set([
-  "An unexpected error occurred.",
-  "The request could not be completed.",
-]);
+const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
-export const extractApiError = (
-  error: unknown,
-  fallback?: string,
-): string => {
+export const extractApiError = (error: unknown, fallback?: string): string => {
   const normalized = toApiClientError(error);
-  return fallback && GENERIC_MESSAGES.has(normalized.message)
-    ? fallback
-    : normalized.message;
+  const message = normalized.message || fallback || DEFAULT_ERROR_MESSAGE;
+  const shouldShowReference =
+    Boolean(normalized.requestId) &&
+    (normalized.status === undefined ||
+      normalized.status >= 500 ||
+      normalized.code === "INTERNAL_ERROR" ||
+      normalized.code === "SERVICE_UNAVAILABLE");
+
+  return shouldShowReference
+    ? `${message} (Reference: ${normalized.requestId})`
+    : message;
 };
+
+export const extractApiFieldErrors = (error: unknown) =>
+  toApiClientError(error).fieldErrors ?? {};
+
+export const isRetryableApiError = (error: unknown) =>
+  toApiClientError(error).retryable;

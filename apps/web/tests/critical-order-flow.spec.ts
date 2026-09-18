@@ -130,7 +130,9 @@ const installApi = async (page: Page) => {
       ]);
     }
     if (method === "GET" && path === "/api/branches") {
-      return json(route, [{ ...branch, kdsEnabled: true, waiterAppEnabled: true }]);
+      return json(route, [
+        { ...branch, kdsEnabled: true, waiterAppEnabled: true },
+      ]);
     }
     if (method === "GET" && path === "/api/analytics/dashboard") {
       return json(route, {
@@ -253,13 +255,23 @@ test("owner can sign in, select context, and create a dine-in order", async ({
   await page.getByRole("button", { name: /Demo Restaurant/ }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   if (process.env.VISUAL_REGRESSION === "1") {
-    await expect(page).toHaveScreenshot("dashboard-owner.png", { fullPage: true });
+    await expect(page).toHaveScreenshot("dashboard-owner.png", {
+      fullPage: true,
+    });
     await page.goto("/operations");
-    await expect(page.getByRole("heading", { name: "Operations center" })).toBeVisible();
-    await expect(page).toHaveScreenshot("operations-center.png", { fullPage: true });
+    await expect(
+      page.getByRole("heading", { name: "Operations center" }),
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot("operations-center.png", {
+      fullPage: true,
+    });
     await page.goto("/branch-health");
-    await expect(page.getByRole("heading", { name: "Branch health" })).toBeVisible();
-    await expect(page).toHaveScreenshot("branch-health.png", { fullPage: true });
+    await expect(
+      page.getByRole("heading", { name: "Branch health" }),
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot("branch-health.png", {
+      fullPage: true,
+    });
     await page.goto("/dashboard");
   }
 
@@ -273,10 +285,14 @@ test("owner can sign in, select context, and create a dine-in order", async ({
   await page.getByRole("link", { name: /Open orders/ }).click();
   await expect(page).toHaveURL(/\/orders$/);
   await expect(page.getByText("0 total orders")).toBeVisible();
-  if (process.env.VISUAL_REGRESSION === "1") await expect(page).toHaveScreenshot("orders-empty.png", { fullPage: true });
+  if (process.env.VISUAL_REGRESSION === "1")
+    await expect(page).toHaveScreenshot("orders-empty.png", { fullPage: true });
 
   await page.getByRole("button", { name: "New Order" }).first().click();
-  if (process.env.VISUAL_REGRESSION === "1") await expect(page).toHaveScreenshot("new-order-dialog.png", { fullPage: true });
+  if (process.env.VISUAL_REGRESSION === "1")
+    await expect(page).toHaveScreenshot("new-order-dialog.png", {
+      fullPage: true,
+    });
   await page.getByLabel("Table (required)").selectOption("table-1");
   await page.getByRole("button", { name: /Margherita Pizza/ }).click();
   await page.getByRole("button", { name: "Place Order" }).click();

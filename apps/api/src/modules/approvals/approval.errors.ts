@@ -6,7 +6,6 @@ export const managerApprovalRequired = (): ForbiddenError =>
   });
 
 export const managerApprovalInvalid = (): ForbiddenError =>
-  new ForbiddenError(
-    "Manager approval is invalid, expired, or already used",
-    { reason: "MANAGER_APPROVAL_INVALID" },
-  );
+  new ForbiddenError("Manager approval is invalid, expired, or already used", {
+    reason: "MANAGER_APPROVAL_INVALID",
+  });

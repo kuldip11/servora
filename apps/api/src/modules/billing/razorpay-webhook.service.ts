@@ -1,6 +1,12 @@
+import { createLogger } from "@/core/logger/logger";
 import { and, eq, sql } from "drizzle-orm";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { KitchenTicket, Order } from "@pos/types";
+import { Value } from "@sinclair/typebox/value";
+import {
+  razorpayWebhookPayloadSchema,
+  type RazorpayWebhookPayload,
+} from "@pos/contracts";
 import { db } from "@/db";
 import { paymentWebhookEvents, payments, kitchenTickets } from "@/db/schema";
 import { inventoryService } from "@/modules/inventory/inventory.service";
@@ -8,6 +14,8 @@ import { eventBus } from "@/lib/event-bus";
 import { orderRepository } from "@/modules/orders/order.repository";
 import { redis, REDIS_QUEUES } from "@/lib/redis";
 import { ServiceUnavailableError, ValidationError } from "@/core/errors";
+
+const logger = createLogger({}, "razorpay-webhook");
 
 const verifyWebhookSignature = (
   rawBody: string,
@@ -29,20 +37,18 @@ const razorpayWebhookSecret = () => {
   return secret;
 };
 
-type RazorpayWebhookPayload = {
-  event?: string;
-  payload?: {
-    payment?: {
-      entity?: {
-        id?: string;
-        order_id?: string;
-        status?: string;
-        amount?: number;
-        currency?: string;
-      };
-    };
-    order?: { entity?: { id?: string; status?: string } };
-  };
+const parseRazorpayWebhookPayload = (
+  rawBody: string,
+): RazorpayWebhookPayload => {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody) as unknown;
+  } catch {
+    throw new ValidationError("Invalid Razorpay webhook payload");
+  }
+  if (!Value.Check(razorpayWebhookPayloadSchema, payload))
+    throw new ValidationError("Invalid Razorpay webhook payload");
+  return payload;
 };
 
 export const razorpayWebhookService = {
@@ -58,12 +64,7 @@ export const razorpayWebhookService = {
     if (!verifyWebhookSignature(rawBody, signature, razorpayWebhookSecret()))
       throw new ValidationError("Invalid Razorpay webhook signature");
 
-    let payload: RazorpayWebhookPayload;
-    try {
-      payload = JSON.parse(rawBody) as RazorpayWebhookPayload;
-    } catch {
-      throw new ValidationError("Invalid Razorpay webhook payload");
-    }
+    const payload = parseRazorpayWebhookPayload(rawBody);
 
     const eventType = payload.event ?? "unknown";
     const inserted = await db.transaction(async (tx) => {
@@ -109,7 +110,7 @@ export const razorpayWebhookService = {
       return { processed: true, duplicate: true };
 
     try {
-      const payload = JSON.parse(event.payload) as RazorpayWebhookPayload;
+      const payload = parseRazorpayWebhookPayload(event.payload);
       const eventType = payload.event ?? event.eventType;
       const paymentEntity = payload.payload?.payment?.entity;
       const orderEntity = payload.payload?.order?.entity;
@@ -189,42 +190,42 @@ export const razorpayWebhookService = {
                 const ticketItems = order.items.filter(
                   (item) => item.kitchenTicketId === ticketId,
                 );
-                const result = await inventoryService.deductForOrderItems(
-                  payment.order.tenantId,
-                  payment.order.branchId,
-                  payment.orderId,
-                  ticketId,
-                  ticketItems.flatMap((item) =>
-                    item.menuItemId == null
-                      ? []
-                      : [
-                          {
-                            orderItemId: item.id,
-                            menuItemId: item.menuItemId,
-                            variantId: item.variantId,
-                            quantity: item.quantity,
-                            selectedOptions: item.modifiers.flatMap(
-                              (modifier) =>
-                                modifier.modifierId == null
-                                  ? []
-                                  : [
-                                      {
-                                        optionId: modifier.modifierId,
-                                        quantity: modifier.quantity,
-                                      },
-                                    ],
-                            ),
-                          },
-                        ],
-                  ),
-                  null,
-                );
-                if (result.short.length)
-                  console.error(
-                    "Inventory was short when releasing paid takeaway order",
+                const result =
+                  await inventoryService.deductForOrderItemsWithRetry(
+                    payment.order.tenantId,
+                    payment.order.branchId,
                     payment.orderId,
-                    result.short,
+                    ticketId,
+                    ticketItems.flatMap((item) =>
+                      item.menuItemId == null
+                        ? []
+                        : [
+                            {
+                              orderItemId: item.id,
+                              menuItemId: item.menuItemId,
+                              variantId: item.variantId,
+                              quantity: item.quantity,
+                              selectedOptions: item.modifiers.flatMap(
+                                (modifier) =>
+                                  modifier.modifierId == null
+                                    ? []
+                                    : [
+                                        {
+                                          optionId: modifier.modifierId,
+                                          quantity: modifier.quantity,
+                                        },
+                                      ],
+                              ),
+                            },
+                          ],
+                    ),
+                    null,
                   );
+                if (result?.short.length)
+                  logger.warn("razorpay.inventory_short", {
+                    orderId: payment.orderId,
+                    short: result.short,
+                  });
               }
               const updated = await orderRepository.findById(
                 payment.order.tenantId,

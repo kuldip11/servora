@@ -110,19 +110,45 @@ describe("realtime gateway context", () => {
   });
 
   it("forwards a branch-scoped void event through the same tenant realtime transport as kitchen events", () => {
-    const b1 = { __branchId: "b1", send: vi.fn() };
-    const b2 = { __branchId: "b2", send: vi.fn() };
+    const tenantId = "11111111-1111-4111-8111-111111111111";
+    const branchId = "22222222-2222-4222-8222-222222222222";
+    const otherBranchId = "33333333-3333-4333-8333-333333333333";
+    const b1 = { __branchId: branchId, send: vi.fn() };
+    const b2 = { __branchId: otherBranchId, send: vi.fn() };
     const all = { __branchId: null, send: vi.fn() };
-    const registry = new Map([["t1", new Set([b1, b2, all])]]);
+    const registry = new Map([[tenantId, new Set([b1, b2, all])]]);
     const message = JSON.stringify({
       type: "order.item.voided",
-      tenantId: "t1",
-      branchId: "b1",
-      payload: { id: "kt1" },
+      tenantId,
+      branchId,
+      payload: { id: "44444444-4444-4444-8444-444444444444" },
     });
     forwardTenantRealtimeMessage(message, registry);
     expect(b1.send).toHaveBeenCalledWith(message);
     expect(all.send).toHaveBeenCalledWith(message);
     expect(b2.send).not.toHaveBeenCalled();
+  });
+
+  it("drops malformed or structurally invalid realtime envelopes", () => {
+    const send = vi.fn();
+    const tenantId = "11111111-1111-4111-8111-111111111111";
+    const registry = new Map([
+      [tenantId, new Set([{ __branchId: null, send }])],
+    ]);
+
+    expect(() =>
+      forwardTenantRealtimeMessage("not-json", registry),
+    ).not.toThrow();
+    expect(() =>
+      forwardTenantRealtimeMessage(
+        JSON.stringify({
+          type: "order.updated",
+          tenantId: "not-a-uuid",
+          payload: {},
+        }),
+        registry,
+      ),
+    ).not.toThrow();
+    expect(send).not.toHaveBeenCalled();
   });
 });

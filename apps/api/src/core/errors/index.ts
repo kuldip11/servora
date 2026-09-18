@@ -23,5 +23,9 @@ export {
   fieldErrorsForAppError,
   isRetryableStatus,
 } from "./error-response";
-export type { ApiErrorPayload, ApiErrorResponse, ApiFieldErrors } from "./error-response";
+export type {
+  ApiErrorPayload,
+  ApiErrorResponse,
+  ApiFieldErrors,
+} from "./error-response";
 export { mapDatabaseError } from "./database-error-mapper";

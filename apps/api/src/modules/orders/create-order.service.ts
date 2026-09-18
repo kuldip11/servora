@@ -1,3 +1,5 @@
+import { createLogger, toError } from "@/core/logger/logger";
+import type { CreateOrderRequest } from "@pos/contracts";
 import type {
   KitchenTicket,
   Order,
@@ -50,20 +52,9 @@ const ORDER_TYPE_CAPABILITY_FIELD: Record<
   ONLINE: "onlineEnabled",
 };
 
-export interface CreateOrderInput {
-  type: OrderType;
-  tableId?: string | undefined;
-  customerId?: string | undefined;
-  customerGroupId?: string | undefined;
-  billingMode?: "LINE_ITEMS" | "PER_COVER" | undefined;
-  coverCount?: number | undefined;
-  perCoverPriceRuleId?: string | undefined;
-  notes?: string | undefined;
-  couponCode?: string | undefined;
-  promotionIds?: string[] | undefined;
-  items?: OrderItemInput[] | undefined;
-  combos?: ComboOrderSelection[] | undefined;
-}
+const logger = createLogger({}, "create-order");
+
+export type CreateOrderInput = CreateOrderRequest;
 
 export const createOrderService = {
   async create(auth: AuthContext, input: CreateOrderInput) {
@@ -335,7 +326,7 @@ export const createOrderService = {
       );
       if (createdTicket.status !== "FIRED") continue;
       try {
-        await inventoryService.deductForOrderItems(
+        await inventoryService.deductForOrderItemsWithRetry(
           auth.tenantId,
           branchId,
           order.id,
@@ -370,7 +361,10 @@ export const createOrderService = {
         metrics.increment("servora_order_processing_errors_total", {
           stage: "inventory_deduction",
         });
-        console.error("Inventory deduction failed for order", order.id, err);
+        logger.error("order.inventory_deduction_failed", toError(err), {
+          orderId: order.id,
+          branchId,
+        });
       }
     }
 

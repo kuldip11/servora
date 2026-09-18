@@ -89,7 +89,9 @@ export const useCustomerOrderRealtime = (
           } else if (message.type === "menu.availability.updated") {
             onMenuAvailability?.();
           }
-        } catch {}
+        } catch {
+          // Ignore malformed/untrusted realtime frames; HTTP state remains authoritative.
+        }
       };
 
       socket.onerror = () => {

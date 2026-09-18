@@ -1,3 +1,4 @@
+import { websiteLogger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,9 +88,10 @@ export const POST = async (request: Request) => {
     const webhook = process.env.LEAD_WEBHOOK_URL;
 
     if (!webhook) {
-      console.error(
-        "LEAD_WEBHOOK_URL is not configured. Lead received but no delivery destination is available.",
-        lead,
+      websiteLogger.error(
+        "lead.webhook_missing",
+        new Error("LEAD_WEBHOOK_URL is not configured"),
+        { source },
       );
       return NextResponse.json(
         { error: "Lead delivery is not configured yet." },
@@ -106,10 +108,10 @@ export const POST = async (request: Request) => {
     });
 
     if (!response.ok) {
-      console.error(
-        "Lead webhook failed",
-        response.status,
-        await response.text(),
+      websiteLogger.error(
+        "lead.webhook_failed",
+        new Error(`Lead webhook returned ${response.status}`),
+        { source, status: response.status },
       );
       return NextResponse.json(
         { error: "We could not submit your request. Please try again." },
@@ -118,7 +120,17 @@ export const POST = async (request: Request) => {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  } catch (error) {
+    websiteLogger.error("lead.request_failed", error);
+    const status = error instanceof SyntaxError ? 400 : 500;
+    return NextResponse.json(
+      {
+        error:
+          status === 400
+            ? "Invalid request."
+            : "Unable to submit your request.",
+      },
+      { status },
+    );
   }
 };

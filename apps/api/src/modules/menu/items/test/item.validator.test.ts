@@ -16,15 +16,15 @@ describe("item.validator validators", () => {
     expect(Value.Check(createItemBody, {})).toBe(false);
     expect(
       Value.Check(createItemBody, {
-        categoryId: "c1",
+        categoryId: "00000000-0000-4000-8000-000000000001",
         name: "Tea",
         basePrice: 10,
       }),
     ).toBe(true);
-    expect(Value.Check(updateItemBody, {})).toBe(true);
+    expect(Value.Check(updateItemBody, {})).toBe(false);
     expect(
       Value.Check(createItemBody, {
-        categoryId: "c1",
+        categoryId: "00000000-0000-4000-8000-000000000001",
         name: "Tea",
         basePrice: 10,
         taxMode: null,
@@ -36,12 +36,18 @@ describe("item.validator validators", () => {
       Value.Check(updateItemBody, {
         description: null,
         effectiveFrom: null,
-        variants: [{ id: "v1", name: "Half", price: 90 }],
+        variants: [
+          {
+            id: "00000000-0000-4000-8000-000000000002",
+            name: "Half",
+            price: 90,
+          },
+        ],
       }),
     ).toBe(true);
     expect(
       Value.Check(createItemBody, {
-        categoryId: "c1",
+        categoryId: "00000000-0000-4000-8000-000000000001",
         name: "Tea",
         basePrice: 10,
         manualCost: 0,

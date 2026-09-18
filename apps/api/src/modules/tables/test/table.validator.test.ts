@@ -13,7 +13,7 @@ describe("table validators", () => {
         name: "A",
         capacity: 1,
         section: "Main",
-        branchId: "b1",
+        branchId: "00000000-0000-4000-8000-000000000002",
       }),
     ).toBe(true);
     expect(Value.Check(createTableBody, { name: "", capacity: 0 })).toBe(false);
@@ -29,7 +29,11 @@ describe("table validators", () => {
     expect(Value.Check(updateTableStatusBody, { status: "BROKEN" })).toBe(
       false,
     );
-    expect(Value.Check(tableIdParams, { id: "t1" })).toBe(true);
+    expect(
+      Value.Check(tableIdParams, {
+        id: "00000000-0000-4000-8000-000000000001",
+      }),
+    ).toBe(true);
     expect(Value.Check(tableIdParams, { id: 1 })).toBe(false);
   });
 });

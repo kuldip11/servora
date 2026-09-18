@@ -80,7 +80,9 @@ export const rateLimitPlugin = () =>
             requestId,
           });
         }
-      } catch {}
+      } catch {
+        // Rate limiting is fail-open when the backing store is unavailable.
+      }
 
       return undefined;
     },

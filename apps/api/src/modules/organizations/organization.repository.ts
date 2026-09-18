@@ -1,3 +1,4 @@
+import { InternalError } from "@/core/errors";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -39,13 +40,13 @@ export const organizationRepository = {
         .insert(organizations)
         .values(data)
         .returning();
-      if (!organization) throw new Error("Organization creation failed");
+      if (!organization) throw new InternalError("Organization creation failed");
       const [membership] = await tx
         .insert(organizationMemberships)
         .values({ userId: data.createdBy, organizationId: organization.id })
         .returning();
       if (!membership)
-        throw new Error("Organization membership creation failed");
+        throw new InternalError("Organization membership creation failed");
       return { organization, membership };
     });
   },
@@ -103,7 +104,7 @@ export const organizationRepository = {
           effectiveFrom: data.effectiveFrom ?? null,
         })
         .returning();
-      if (!menu) throw new Error("Organization menu insert returned no row");
+      if (!menu) throw new InternalError("Organization menu insert returned no row");
       if (data.items.length)
         await tx.insert(organizationMenuItems).values(
           data.items.map((item, index) => ({

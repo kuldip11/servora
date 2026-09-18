@@ -38,7 +38,12 @@ describe("frontend error response contract", () => {
   });
 
   it("converts validation field metadata into fieldErrors", () => {
-    expect(serializeAppError(new ValidationError("Name is required.", { field: "name" }), "req-3")).toEqual({
+    expect(
+      serializeAppError(
+        new ValidationError("Name is required.", { field: "name" }),
+        "req-3",
+      ),
+    ).toEqual({
       success: false,
       error: {
         code: "VALIDATION_FAILED",
@@ -51,8 +56,30 @@ describe("frontend error response contract", () => {
   });
 
   it("marks only transient statuses retryable", () => {
-    expect(serializeAppError(new ForbiddenError(), "req-4").error.retryable).toBe(false);
-    expect(serializeAppError(new InternalError(), "req-5").error.retryable).toBe(true);
-    expect(createApiErrorResponse({ code: "RATE_LIMITED", message: "Try later", statusCode: 429, requestId: "req-6" }).error.retryable).toBe(true);
+    expect(
+      serializeAppError(new ForbiddenError(), "req-4").error.retryable,
+    ).toBe(false);
+    expect(
+      serializeAppError(new InternalError(), "req-5").error.retryable,
+    ).toBe(true);
+    expect(
+      createApiErrorResponse({
+        code: "RATE_LIMITED",
+        message: "Try later",
+        statusCode: 429,
+        requestId: "req-6",
+      }).error.retryable,
+    ).toBe(true);
   });
+  it("never exposes internal invariant messages to clients", () => {
+    const response = serializeAppError(
+      new InternalError("Database invariant: membership insert returned no row"),
+      "req-internal",
+    );
+    expect(response.error.message).toBe(
+      "Something went wrong while processing your request. Please try again.",
+    );
+    expect(JSON.stringify(response)).not.toContain("membership insert");
+  });
+
 });

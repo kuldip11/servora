@@ -1,3 +1,4 @@
+import type { CreateBranchRequest, UpdateBranchRequest } from "@pos/contracts";
 import { requirePermission } from "@/core/auth";
 import type { AuthContext } from "@/core/auth";
 import { branchRepository } from "./branch.repository";
@@ -14,74 +15,8 @@ import {
   tablesRequireDineIn,
 } from "./branch.errors";
 
-export interface CreateBranchInput {
-  name: string;
-  code: string;
-  timezone: string;
-  currency: string;
-  address?: string | undefined;
-  addressLine1?: string | null;
-  addressLine2?: string | null;
-  city?: string | null;
-  stateProvince?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-  phone?: string | undefined;
-  managerName?: string | null;
-  email?: string | null;
-  openingTime?: string | null;
-  closingTime?: string | null;
-  weeklyOperatingDays?: string[] | null;
-  taxOverride?: number | null;
-  serviceChargeOverride?: number | null;
-  invoicePrefix?: string | null;
-  receiptFooter?: string | null;
-  inventoryTrackingEnabled?: boolean;
-  negativeStockPolicy?: "BLOCK" | "ALLOW" | "WARN";
-  dineInEnabled?: boolean | undefined;
-  takeawayEnabled?: boolean | undefined;
-  deliveryEnabled?: boolean | undefined;
-  onlineEnabled?: boolean | undefined;
-  tablesEnabled?: boolean | undefined;
-  customerQrEnabled?: boolean;
-  kdsEnabled?: boolean;
-  waiterAppEnabled?: boolean;
-}
-
-export interface UpdateBranchInput {
-  name?: string | undefined;
-  code?: string | undefined;
-  timezone?: string | undefined;
-  currency?: string | undefined;
-  address?: string | undefined;
-  phone?: string | undefined;
-  dineInEnabled?: boolean | undefined;
-  takeawayEnabled?: boolean | undefined;
-  deliveryEnabled?: boolean | undefined;
-  onlineEnabled?: boolean | undefined;
-  tablesEnabled?: boolean | undefined;
-  addressLine1?: string | null;
-  addressLine2?: string | null;
-  city?: string | null;
-  stateProvince?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-  managerName?: string | null;
-  email?: string | null;
-  openingTime?: string | null;
-  closingTime?: string | null;
-  weeklyOperatingDays?: string[] | null;
-  taxOverride?: number | null;
-  serviceChargeOverride?: number | null;
-  invoicePrefix?: string | null;
-  receiptFooter?: string | null;
-  inventoryTrackingEnabled?: boolean;
-  negativeStockPolicy?: "BLOCK" | "ALLOW" | "WARN";
-  customerQrEnabled?: boolean;
-  kdsEnabled?: boolean;
-  waiterAppEnabled?: boolean;
-  isActive?: boolean;
-}
+export type CreateBranchInput = CreateBranchRequest;
+export type UpdateBranchInput = UpdateBranchRequest;
 
 const assertValidTimezone = (timezone: string) => {
   try {

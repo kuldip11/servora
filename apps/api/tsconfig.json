@@ -8,7 +8,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@pos/types": ["../../packages/types/src/index.ts"],
-      "@pos/validation": ["../../packages/validation/src/index.ts"]
+      "@pos/contracts": ["../../packages/contracts/src/index.ts"],
+      "@pos/contracts/*": ["../../packages/contracts/src/*"]
     },
     "baseUrl": "."
   },

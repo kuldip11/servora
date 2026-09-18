@@ -547,6 +547,13 @@
       "when": 1788201000077,
       "tag": "0077_create_inventory_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1788201000078,
+      "tag": "0078_create_inventory_deduction_jobs",
+      "breakpoints": true
     }
   ]
 }

@@ -8,12 +8,13 @@ export interface WebVitalMetric {
 }
 
 export interface FrontendTelemetryEvent {
-  type: "web-vital" | "error" | "unhandled-rejection";
+  type: "web-vital" | "error" | "unhandled-rejection" | "react-error";
   app: string;
   timestamp: string;
   metric?: WebVitalMetric;
   message?: string;
   route?: string;
+  componentStack?: string;
 }
 
 export interface FrontendTelemetryOptions {
@@ -23,7 +24,10 @@ export interface FrontendTelemetryOptions {
   onEvent?: (event: FrontendTelemetryEvent) => void;
 }
 
-const ratingFor = (name: WebVitalName, value: number): WebVitalMetric["rating"] => {
+const ratingFor = (
+  name: WebVitalName,
+  value: number,
+): WebVitalMetric["rating"] => {
   const thresholds: Record<WebVitalName, readonly [number, number]> = {
     CLS: [0.1, 0.25],
     INP: [200, 500],
@@ -36,12 +40,18 @@ const ratingFor = (name: WebVitalName, value: number): WebVitalMetric["rating"] 
   return "poor";
 };
 
-const emit = (event: FrontendTelemetryEvent, options: FrontendTelemetryOptions) => {
+const emit = (
+  event: FrontendTelemetryEvent,
+  options: FrontendTelemetryOptions,
+) => {
   options.onEvent?.(event);
   if (!options.endpoint) return;
   const payload = JSON.stringify(event);
   if (navigator.sendBeacon) {
-    navigator.sendBeacon(options.endpoint, new Blob([payload], { type: "application/json" }));
+    navigator.sendBeacon(
+      options.endpoint,
+      new Blob([payload], { type: "application/json" }),
+    );
     return;
   }
   void fetch(options.endpoint, {
@@ -66,13 +76,19 @@ const metricEvent = (
     value: Number(value.toFixed(name === "CLS" ? 3 : 1)),
     rating: ratingFor(name, value),
     ...(performance.getEntriesByType("navigation")[0]?.entryType
-      ? { navigationType: performance.getEntriesByType("navigation")[0]!.entryType }
+      ? {
+          navigationType:
+            performance.getEntriesByType("navigation")[0]!.entryType,
+        }
       : {}),
   },
 });
 
 export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
-  if (typeof window === "undefined" || typeof PerformanceObserver === "undefined") {
+  if (
+    typeof window === "undefined" ||
+    typeof PerformanceObserver === "undefined"
+  ) {
     return () => undefined;
   }
   const sampleRate = options.sampleRate ?? 1;
@@ -105,16 +121,22 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
       value?: number;
       hadRecentInput?: boolean;
     };
-    if (!shift.hadRecentInput && typeof shift.value === "number") clsValue += shift.value;
+    if (!shift.hadRecentInput && typeof shift.value === "number")
+      clsValue += shift.value;
   });
 
   observe("event", (entry) => {
-    const interaction = entry as PerformanceEntry & { duration?: number; interactionId?: number };
-    if (!interaction.interactionId || typeof interaction.duration !== "number") return;
+    const interaction = entry as PerformanceEntry & {
+      duration?: number;
+      interactionId?: number;
+    };
+    if (!interaction.interactionId || typeof interaction.duration !== "number")
+      return;
     emit(metricEvent(options.app, "INP", interaction.duration), options);
   });
 
-  const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  const navigation = performance.getEntriesByType("navigation")[0] as
+    PerformanceNavigationTiming | undefined;
   if (navigation) {
     emit(metricEvent(options.app, "TTFB", navigation.responseStart), options);
   }
@@ -136,8 +158,31 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
       options,
     );
   };
+  const onReactError = (event: Event) => {
+    const detail = (event as CustomEvent<{
+      message?: string;
+      componentStack?: string;
+    }>).detail;
+    emit(
+      {
+        type: "react-error",
+        app: options.app,
+        timestamp: new Date().toISOString(),
+        route: window.location.pathname,
+        message: detail?.message || "React render error",
+        ...(detail?.componentStack
+          ? { componentStack: detail.componentStack }
+          : {}),
+      },
+      options,
+    );
+  };
+
   const onUnhandledRejection = (event: PromiseRejectionEvent) => {
-    const message = event.reason instanceof Error ? event.reason.message : String(event.reason);
+    const message =
+      event.reason instanceof Error
+        ? event.reason.message
+        : String(event.reason);
     emit(
       {
         type: "unhandled-rejection",
@@ -153,12 +198,14 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onUnhandledRejection);
+  window.addEventListener("servora:react-error", onReactError);
 
   return () => {
     observers.forEach((observer) => observer.disconnect());
     document.removeEventListener("visibilitychange", onVisibilityChange);
     window.removeEventListener("error", onError);
     window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    window.removeEventListener("servora:react-error", onReactError);
   };
 };
 

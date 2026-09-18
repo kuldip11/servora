@@ -117,7 +117,6 @@ const dashboardRoute = createRoute({
   ),
 });
 
-
 const operationsCenterRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/operations",

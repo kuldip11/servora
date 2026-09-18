@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm";
 import type { OrderStatus, OrderType } from "@pos/types";
 import { db } from "@/db";
-import { DomainRuleError } from "@/core/errors";
+import { DomainRuleError, InternalError } from "@/core/errors";
 import {
   orders,
   orderItems,
@@ -621,7 +621,7 @@ export const orderRepository = {
           ),
         });
         if (!inventoryItem)
-          throw new Error(
+          throw new InternalError(
             `Inventory item ${deduction.inventoryItemId} is missing for an unreversed deduction`,
           );
         const balanceBefore = Number(inventoryItem.currentStock);

@@ -153,11 +153,18 @@ export class NotFoundError extends AppError {
     const message = id
       ? `${resource} with id ${id} not found`
       : `${resource} not found`;
-    super({
-      code: ErrorCode.NOT_FOUND,
-      message,
-      details: { resource, ...(id ? { resourceId: id } : {}), ...(details ?? {}) },
-    }, 404);
+    super(
+      {
+        code: ErrorCode.NOT_FOUND,
+        message,
+        details: {
+          resource,
+          ...(id ? { resourceId: id } : {}),
+          ...(details ?? {}),
+        },
+      },
+      404,
+    );
     this.name = "NotFoundError";
   }
 }
@@ -197,7 +204,9 @@ export class InternalError extends AppError {
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message = "This service is temporarily unavailable. Please try again.") {
+  constructor(
+    message = "This service is temporarily unavailable. Please try again.",
+  ) {
     super({ code: ErrorCode.SERVICE_UNAVAILABLE, message }, 503);
     this.name = "ServiceUnavailableError";
   }

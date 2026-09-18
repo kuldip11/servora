@@ -1,23 +1,26 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import {
+  createKitchenStationBodySchema,
+  kitchenItemRouteListResponseSchema,
+  kitchenItemRouteResponseSchema,
+  kitchenNullableItemRouteResponseSchema,
+  kitchenStationIdParamsSchema,
+  kitchenStationListQuerySchema,
+  kitchenStationListResponseSchema,
+  kitchenStationResponseSchema,
+  nullSuccessResponseSchema,
+  removeKitchenRouteQuerySchema,
+  setKitchenRouteBodySchema,
+  standardErrorResponseSchemas,
+  updateKitchenStationBodySchema,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { createdResponse, successResponse } from "@/core/response";
+import {
+  toKitchenItemRouteResponse,
+  toKitchenStationResponse,
+} from "./station.mapper";
 import { stationService } from "./station.service";
-
-const stationBody = t.Object({
-  name: t.String({ minLength: 1, maxLength: 100 }),
-  branchId: t.Optional(t.String({ format: "uuid" })),
-  printerIdentifier: t.Optional(
-    t.Union([t.String({ maxLength: 200 }), t.Null()]),
-  ),
-  sortOrder: t.Optional(t.Integer()),
-});
-const routeBody = t.Object({
-  stationId: t.String({ format: "uuid" }),
-  modifierOptionId: t.Optional(
-    t.Union([t.String({ format: "uuid" }), t.Null()]),
-  ),
-});
-const idParams = t.Object({ id: t.String({ format: "uuid" }) });
 
 export const kitchenStationsRouter = new Elysia({
   prefix: "/api/kitchen/stations",
@@ -26,24 +29,50 @@ export const kitchenStationsRouter = new Elysia({
   .get(
     "/",
     async ({ auth, query }) =>
-      successResponse(await stationService.list(auth, query.branchId)),
+      successResponse(
+        (await stationService.list(auth, query.branchId)).map(
+          toKitchenStationResponse,
+        ),
+      ),
     {
-      query: t.Object({ branchId: t.Optional(t.String({ format: "uuid" })) }),
+      query: kitchenStationListQuerySchema,
+      response: {
+        200: kitchenStationListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .post(
     "/",
-    async ({ auth, body }) =>
-      createdResponse(await stationService.create(auth, body)),
-    { body: stationBody },
+    async ({ auth, body, set }) => {
+      set.status = 201;
+      return createdResponse(
+        toKitchenStationResponse(await stationService.create(auth, body)),
+      );
+    },
+    {
+      body: createKitchenStationBodySchema,
+      response: {
+        201: kitchenStationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/:id",
     async ({ auth, params, body }) =>
-      successResponse(await stationService.update(auth, params.id, body)),
+      successResponse(
+        toKitchenStationResponse(
+          await stationService.update(auth, params.id, body),
+        ),
+      ),
     {
-      params: idParams,
-      body: t.Partial(t.Omit(stationBody, ["branchId"])),
+      params: kitchenStationIdParamsSchema,
+      body: updateKitchenStationBodySchema,
+      response: {
+        200: kitchenStationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .delete(
@@ -52,37 +81,65 @@ export const kitchenStationsRouter = new Elysia({
       await stationService.remove(auth, params.id);
       return successResponse(null);
     },
-    { params: idParams },
+    {
+      params: kitchenStationIdParamsSchema,
+      response: {
+        200: nullSuccessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .get(
     "/routes/:id",
     async ({ auth, params }) =>
-      successResponse(await stationService.listRoutes(auth, params.id)),
-    { params: idParams },
+      successResponse(
+        (await stationService.listRoutes(auth, params.id)).map(
+          toKitchenItemRouteResponse,
+        ),
+      ),
+    {
+      params: kitchenStationIdParamsSchema,
+      response: {
+        200: kitchenItemRouteListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .put(
     "/routes/:id",
     async ({ auth, params, body }) =>
-      successResponse(await stationService.setRoute(auth, params.id, body)),
+      successResponse(
+        toKitchenItemRouteResponse(
+          await stationService.setRoute(auth, params.id, body),
+        ),
+      ),
     {
-      params: idParams,
-      body: routeBody,
+      params: kitchenStationIdParamsSchema,
+      body: setKitchenRouteBodySchema,
+      response: {
+        200: kitchenItemRouteResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .delete(
     "/routes/:id",
-    async ({ auth, params, query }) =>
-      successResponse(
-        await stationService.removeRoute(
-          auth,
-          params.id,
-          query.modifierOptionId,
-        ),
-      ),
+    async ({ auth, params, query }) => {
+      const removed = await stationService.removeRoute(
+        auth,
+        params.id,
+        query.modifierOptionId,
+      );
+      return successResponse(
+        removed ? toKitchenItemRouteResponse(removed) : null,
+      );
+    },
     {
-      params: idParams,
-      query: t.Object({
-        modifierOptionId: t.Optional(t.String({ format: "uuid" })),
-      }),
+      params: kitchenStationIdParamsSchema,
+      query: removeKitchenRouteQuerySchema,
+      response: {
+        200: kitchenNullableItemRouteResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

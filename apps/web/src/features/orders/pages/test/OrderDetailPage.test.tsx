@@ -64,9 +64,10 @@ vi.mock("@/features/orders/utils/round-actions", () => ({
 vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: (e: unknown) => String(e),
   toApiClientError: (e: unknown) => ({
-    code: e instanceof Error && e.message === "Manager approval required"
-      ? "MANAGER_APPROVAL_REQUIRED"
-      : "UNEXPECTED_ERROR",
+    code:
+      e instanceof Error && e.message === "Manager approval required"
+        ? "MANAGER_APPROVAL_REQUIRED"
+        : "UNEXPECTED_ERROR",
     message: e instanceof Error ? e.message : String(e),
     retryable: false,
   }),

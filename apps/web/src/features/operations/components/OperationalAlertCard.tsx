@@ -19,7 +19,11 @@ const badgeVariant = (severity: OperationalSeverity) => {
   return "info" as const;
 };
 
-export const OperationalAlertCard = ({ alert }: { alert: OperationalAlert }) => (
+export const OperationalAlertCard = ({
+  alert,
+}: {
+  alert: OperationalAlert;
+}) => (
   <Card>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">

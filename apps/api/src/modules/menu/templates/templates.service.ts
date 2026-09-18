@@ -1,3 +1,4 @@
+import { InternalError } from "@/core/errors";
 import type { AuthContext } from "@/core/auth";
 import { templatesRepository } from "./templates.repository";
 import { requirePermission } from "@/core/auth";
@@ -49,7 +50,7 @@ export const templatesService = {
       description,
       items,
     );
-    if (!created) throw new Error("Menu template could not be created");
+    if (!created) throw new InternalError("Menu template could not be created");
     await menuChangeLog.record(
       auth,
       "TEMPLATE",

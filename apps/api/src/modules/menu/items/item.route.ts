@@ -1,16 +1,20 @@
 import { Elysia } from "elysia";
+import {
+  createMenuItemBodySchema,
+  duplicateMenuItemBodySchema,
+  menuItemIdParamsSchema,
+  menuItemListResponseSchema,
+  menuItemResponseSchema,
+  menuItemStatusParamsSchema,
+  menuItemStatusQuerySchema,
+  nullSuccessResponseSchema,
+  standardErrorResponseSchemas,
+  updateMenuItemAvailabilityBodySchema,
+  updateMenuItemBodySchema,
+  updateMenuItemStatusBodySchema,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { itemController } from "./item.controller";
-import {
-  createItemBody,
-  updateItemBody,
-  duplicateItemBody,
-  updateItemStatusBody,
-  updateItemAvailabilityBody,
-  itemIdParams,
-  itemStatusParams,
-  itemStatusQuery,
-} from "./item.validator";
 
 export const menuItemsRouter = new Elysia({ prefix: "/api/menu/items" })
   .use(requireAuthPlugin())
@@ -20,28 +24,52 @@ export const menuItemsRouter = new Elysia({ prefix: "/api/menu/items" })
       set.status = 201;
       return itemController.create(auth, body);
     },
-    { body: createItemBody },
+    {
+      body: createMenuItemBodySchema,
+      response: {
+        201: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
-
   .get(
     "/status/:status",
     ({ auth, params, query }) =>
       itemController.listByStatus(auth, params.status, query.categoryId),
-    { params: itemStatusParams, query: itemStatusQuery },
+    {
+      params: menuItemStatusParamsSchema,
+      query: menuItemStatusQuerySchema,
+      response: {
+        200: menuItemListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .get("/:id", ({ auth, params }) => itemController.getById(auth, params.id), {
-    params: itemIdParams,
+    params: menuItemIdParamsSchema,
+    response: { 200: menuItemResponseSchema, ...standardErrorResponseSchemas },
   })
   .patch(
     "/:id",
     ({ auth, params, body }) => itemController.update(auth, params.id, body),
-    { params: itemIdParams, body: updateItemBody },
+    {
+      params: menuItemIdParamsSchema,
+      body: updateMenuItemBodySchema,
+      response: {
+        200: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .delete(
     "/:id",
     ({ auth, params }) => itemController.remove(auth, params.id),
     {
-      params: itemIdParams,
+      params: menuItemIdParamsSchema,
+      response: {
+        200: nullSuccessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .post(
@@ -50,28 +78,49 @@ export const menuItemsRouter = new Elysia({ prefix: "/api/menu/items" })
       set.status = 201;
       return itemController.duplicate(auth, params.id, body ?? {});
     },
-    { params: itemIdParams, body: duplicateItemBody },
+    {
+      params: menuItemIdParamsSchema,
+      body: duplicateMenuItemBodySchema,
+      response: {
+        201: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
-
   .patch(
     "/:id/publish",
     ({ auth, params }) => itemController.publish(auth, params.id),
     {
-      params: itemIdParams,
+      params: menuItemIdParamsSchema,
+      response: {
+        200: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .patch(
     "/:id/unpublish",
     ({ auth, params }) => itemController.unpublish(auth, params.id),
     {
-      params: itemIdParams,
+      params: menuItemIdParamsSchema,
+      response: {
+        200: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .put(
     "/:id/status",
     ({ auth, params, body }) =>
       itemController.updateStatus(auth, params.id, body.status, body.reason),
-    { params: itemIdParams, body: updateItemStatusBody },
+    {
+      params: menuItemIdParamsSchema,
+      body: updateMenuItemStatusBodySchema,
+      response: {
+        200: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/:id/availability",
@@ -82,5 +131,12 @@ export const menuItemsRouter = new Elysia({ prefix: "/api/menu/items" })
         body.isAvailable,
         body.reason,
       ),
-    { params: itemIdParams, body: updateItemAvailabilityBody },
+    {
+      params: menuItemIdParamsSchema,
+      body: updateMenuItemAvailabilityBodySchema,
+      response: {
+        200: menuItemResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   );

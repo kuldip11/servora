@@ -1,3 +1,4 @@
+import { InternalError } from "@/core/errors";
 import { tenantRepository } from "@/modules/tenants/tenant.repository";
 import type { PricedLine, PricingContext } from "./pricing.types";
 import { allocateCents, type PromotionStageOptions } from "./promotion-stage";
@@ -122,7 +123,7 @@ export const finalizePricing = async (
 ): Promise<FinalPricingResult> => {
   const discounts = await applyDiscountStages(context, lines, options);
   const tenant = await tenantRepository.findById(context.tenantId);
-  if (!tenant) throw new Error("Tenant not found while finalizing pricing");
+  if (!tenant) throw new InternalError("Tenant not found while finalizing pricing");
   const final = calculateTaxServiceAndRounding(discounts.lines, {
     serviceChargePercent: tenant.serviceChargePercent,
     serviceChargeTaxable: tenant.serviceChargeTaxable,

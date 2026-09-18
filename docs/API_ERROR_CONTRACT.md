@@ -31,18 +31,18 @@ Servora API failures use one frontend-safe response contract. Route handlers and
 
 ## Global mappings
 
-| Failure | HTTP | Public code | Retryable |
-| --- | ---: | --- | --- |
-| Malformed JSON/body | 400 | `MALFORMED_REQUEST` | No |
-| Framework/schema validation | 400 | `VALIDATION_FAILED` | No |
-| Missing/invalid access token | 401 | `UNAUTHORIZED` | No |
-| Missing customer session | 401 | `CUSTOMER_SESSION_REQUIRED` | No |
-| Insufficient permission/context | 403 | `FORBIDDEN` or domain code | No |
-| Missing route/resource | 404 | `ROUTE_NOT_FOUND` / resource code | No |
-| Conflict/duplicate/state conflict | 409 | domain code | No |
-| Rate limit | 429 | stable rate-limit code | Yes |
-| Service/dependency unavailable | 503 | stable service code | Yes |
-| Unexpected exception | 500 | `INTERNAL_ERROR` | Yes |
+| Failure                           | HTTP | Public code                       | Retryable |
+| --------------------------------- | ---: | --------------------------------- | --------- |
+| Malformed JSON/body               |  400 | `MALFORMED_REQUEST`               | No        |
+| Framework/schema validation       |  400 | `VALIDATION_FAILED`               | No        |
+| Missing/invalid access token      |  401 | `UNAUTHORIZED`                    | No        |
+| Missing customer session          |  401 | `CUSTOMER_SESSION_REQUIRED`       | No        |
+| Insufficient permission/context   |  403 | `FORBIDDEN` or domain code        | No        |
+| Missing route/resource            |  404 | `ROUTE_NOT_FOUND` / resource code | No        |
+| Conflict/duplicate/state conflict |  409 | domain code                       | No        |
+| Rate limit                        |  429 | stable rate-limit code            | Yes       |
+| Service/dependency unavailable    |  503 | stable service code               | Yes       |
+| Unexpected exception              |  500 | `INTERNAL_ERROR`                  | Yes       |
 
 ## Exhaustive endpoint guard
 

@@ -63,6 +63,9 @@ describe("POST /api/inventory/items/:id/waste flow", () => {
         reorderPoint: "2",
         costPerUnit: "3",
         isActive: true,
+        deletedAt: null,
+        createdAt: new Date("2026-09-18T00:00:00.000Z"),
+        updatedAt: new Date("2026-09-18T00:00:00.000Z"),
       },
       transaction: {
         id: "tx-waste",
@@ -70,7 +73,12 @@ describe("POST /api/inventory/items/:id/waste flow", () => {
         quantity: "2",
         balanceBefore: "10",
         balanceAfter: "8",
+        inventoryItemId: "i1",
+        notes: "Trim loss",
+        performedBy: "u1",
         wasteReasonId: "wr1",
+        reversalOfDeductionId: null,
+        createdAt: new Date("2026-09-18T00:00:00.000Z"),
       },
     });
 
@@ -85,8 +93,8 @@ describe("POST /api/inventory/items/:id/waste flow", () => {
       data: expect.objectContaining({
         transaction: expect.objectContaining({
           transactionType: "WASTE",
-          balanceBefore: "10",
-          balanceAfter: "8",
+          balanceBefore: 10,
+          balanceAfter: 8,
           wasteReasonId: "wr1",
         }),
       }),

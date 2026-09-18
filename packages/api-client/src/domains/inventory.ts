@@ -1,3 +1,4 @@
+import type { TransportInput } from "../types";
 import { voidDomainRequest } from "./shared";
 import type {
   InventoryItem,
@@ -6,9 +7,9 @@ import type {
   WasteReason,
 } from "@pos/types";
 import type {
-  CreateInventoryItemInput,
-  UpdateInventoryStockInput,
-} from "@pos/validation";
+  CreateInventoryItemRequest,
+  UpdateStockRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   getPaginatedDomainData,
@@ -51,7 +52,9 @@ export const createInventoryApi = (client: DomainHttpClient) => {
         "/inventory/alerts/low-stock",
       );
     },
-    create(input: CreateInventoryItemInput): Promise<InventoryItem> {
+    create(
+      input: TransportInput<CreateInventoryItemRequest>,
+    ): Promise<InventoryItem> {
       return postDomainData<InventoryItem>(client, "/inventory/items", input);
     },
     recipeImpact(itemId: string): Promise<InventoryRecipeImpact> {
@@ -68,7 +71,7 @@ export const createInventoryApi = (client: DomainHttpClient) => {
     },
     updateStock(
       itemId: string,
-      input: UpdateInventoryStockInput & { wasteReasonId?: string },
+      input: TransportInput<UpdateStockRequest>,
     ): Promise<void> {
       return voidDomainRequest(
         client.patch(`/inventory/items/${itemId}/stock`, input),

@@ -13,7 +13,10 @@ describe("branch errors", () => {
     const error = branchNotFound("b1");
     expect(error.toJSON()).toMatchObject({ code: "NOT_FOUND" });
     expect(error.message).toBe("Branch with id b1 not found");
-    expect(error.details).toMatchObject({ resource: "Branch", resourceId: "b1" });
+    expect(error.details).toMatchObject({
+      resource: "Branch",
+      resourceId: "b1",
+    });
   });
   it("preserves branch conflict reasons and messages", () => {
     expect(allOrderTypesDisabled().details).toMatchObject({

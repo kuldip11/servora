@@ -5,13 +5,24 @@ import {
   type CreateCustomerOrderInput,
 } from "./customer.service";
 import type { CustomerCheckoutInput } from "./customer-payment.service";
+import {
+  toCustomerCheckoutResponse,
+  toCustomerMenuResponse,
+  toCustomerOrderResponse,
+  toCustomerSessionResponse,
+  toCustomerTakeawayPaymentResponse,
+} from "./customer.mapper";
 
 export const customerController = {
   async createSession(qrToken: string) {
-    return createdResponse(await customerService.createSession(qrToken));
+    return createdResponse(
+      toCustomerSessionResponse(await customerService.createSession(qrToken)),
+    );
   },
   async getMenu(sessionToken: string) {
-    return successResponse(await customerService.getMenu(sessionToken));
+    return successResponse(
+      toCustomerMenuResponse(await customerService.getMenu(sessionToken)),
+    );
   },
   async createOrder(
     sessionToken: string,
@@ -19,7 +30,13 @@ export const customerController = {
     customerRequestId?: string,
   ) {
     return createdResponse(
-      await customerService.createOrder(sessionToken, input, customerRequestId),
+      toCustomerOrderResponse(
+        await customerService.createOrder(
+          sessionToken,
+          input,
+          customerRequestId,
+        ),
+      ),
     );
   },
   async verifyTakeawayPayment(
@@ -31,10 +48,12 @@ export const customerController = {
     >,
   ) {
     return createdResponse(
-      await customerService.verifyTakeawayPayment(sessionToken, {
-        ...input,
-        orderId,
-      }),
+      toCustomerOrderResponse(
+        await customerService.verifyTakeawayPayment(sessionToken, {
+          ...input,
+          orderId,
+        }),
+      ),
     );
   },
   async initiateTakeawayPayment(sessionToken: string, orderId: string) {
@@ -44,19 +63,27 @@ export const customerController = {
         "Online payment is only required for takeaway orders",
       );
     return createdResponse(
-      await customerService.initiateTakeawayPayment(
-        session.tenantId,
-        session.branchId,
-        orderId,
+      toCustomerTakeawayPaymentResponse(
+        await customerService.initiateTakeawayPayment(
+          session.tenantId,
+          session.branchId,
+          orderId,
+        ),
       ),
     );
   },
   async checkout(sessionToken: string, input: CustomerCheckoutInput) {
-    return createdResponse(await customerService.checkout(sessionToken, input));
+    return createdResponse(
+      toCustomerCheckoutResponse(
+        await customerService.checkout(sessionToken, input),
+      ),
+    );
   },
   async getOrder(sessionToken: string, orderId: string) {
     return successResponse(
-      await customerService.getOrder(sessionToken, orderId),
+      toCustomerOrderResponse(
+        await customerService.getOrder(sessionToken, orderId),
+      ),
     );
   },
 };

@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mutationConfigs, qc, toast, api, extractApiError, toApiClientError } = vi.hoisted(() => ({
-  mutationConfigs: [] as any[],
-  qc: { invalidateQueries: vi.fn(), setQueryData: vi.fn() },
-  toast: vi.fn(),
-  api: { compOrderItem: vi.fn(), voidOrderItem: vi.fn() },
-  extractApiError: vi.fn(),
-  toApiClientError: vi.fn(),
-}));
+const { mutationConfigs, qc, toast, api, extractApiError, toApiClientError } =
+  vi.hoisted(() => ({
+    mutationConfigs: [] as any[],
+    qc: { invalidateQueries: vi.fn(), setQueryData: vi.fn() },
+    toast: vi.fn(),
+    api: { compOrderItem: vi.fn(), voidOrderItem: vi.fn() },
+    extractApiError: vi.fn(),
+    toApiClientError: vi.fn(),
+  }));
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => qc,
   useMutation: (config: any) => {
@@ -31,9 +32,7 @@ describe("useLineAdjustments", () => {
       .mockReturnValueOnce({ code: "MANAGER_APPROVAL_REQUIRED" })
       .mockReturnValueOnce({ code: "UNEXPECTED_ERROR" })
       .mockReturnValueOnce({ code: "UNEXPECTED_ERROR" });
-    extractApiError
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce("boom");
+    extractApiError.mockReturnValueOnce("").mockReturnValueOnce("boom");
     useLineAdjustments("o1");
     const config = mutationConfigs.at(-1)!;
     await config.mutationFn({ itemId: "i1", action: "void", reason: "r" });

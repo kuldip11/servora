@@ -45,7 +45,32 @@ const auth = { tenantId: "t1" } as any;
 describe("loyalty routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.values(mocks).forEach((fn) => fn.mockResolvedValue({ id: "x" }));
+    const tier = {
+      id: "11111111-1111-4111-8111-111111111111",
+      tenantId: "22222222-2222-4222-8222-222222222222",
+      organizationId: null,
+      name: "Gold",
+      discountPercent: "10.00",
+      discountFixed: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const customer = {
+      id: "33333333-3333-4333-8333-333333333333",
+      tenantId: "22222222-2222-4222-8222-222222222222",
+      organizationCustomerId: null,
+      name: "C",
+      email: null,
+      phone: null,
+      loyaltyTierId: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    mocks.createTier.mockResolvedValue(tier);
+    mocks.updateTier.mockResolvedValue(tier);
+    mocks.removeTier.mockResolvedValue(undefined);
+    mocks.createCustomer.mockResolvedValue(customer);
+    mocks.updateCustomer.mockResolvedValue(customer);
     mocks.listTiers.mockResolvedValue([]);
     mocks.listCustomers.mockResolvedValue([]);
   });
@@ -67,6 +92,7 @@ describe("loyalty routes", () => {
     await route("POST", "/tiers").handler({
       auth,
       body: { name: "Gold", discountPercent: 10 },
+      set: {},
     });
     await route("PATCH", "/tiers/:id").handler({
       auth,
@@ -78,7 +104,11 @@ describe("loyalty routes", () => {
       params: { id: "tier" },
     });
     await route("GET", "/customers").handler({ auth });
-    await route("POST", "/customers").handler({ auth, body: { name: "C" } });
+    await route("POST", "/customers").handler({
+      auth,
+      body: { name: "C" },
+      set: {},
+    });
     await route("PATCH", "/customers/:id").handler({
       auth,
       params: { id: "c1" },

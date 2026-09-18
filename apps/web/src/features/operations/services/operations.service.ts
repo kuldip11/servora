@@ -1,4 +1,8 @@
-import { createAnalyticsApi, createAvailabilityApi, createBranchesApi } from "@pos/api-client";
+import {
+  createAnalyticsApi,
+  createAvailabilityApi,
+  createBranchesApi,
+} from "@pos/api-client";
 import type { Branch, DashboardStats } from "@pos/types";
 import { apiClient } from "@/shared/lib/api-client";
 

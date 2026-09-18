@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { AppError } from "./app-error";
-import { createApiErrorResponse, serializeAppError, type ApiFieldErrors } from "./error-response";
+import {
+  createApiErrorResponse,
+  serializeAppError,
+  type ApiFieldErrors,
+} from "./error-response";
 import { mapDatabaseError } from "./database-error-mapper";
 import { rootLogger } from "../logger";
 import type { RequestContext } from "../context/request-context";
@@ -19,7 +23,11 @@ const validationFieldErrors = (error: unknown): ApiFieldErrors | undefined => {
   const result: ApiFieldErrors = {};
   for (const issue of candidate.all) {
     if (!issue || typeof issue !== "object") continue;
-    const row = issue as { path?: unknown; message?: unknown; summary?: unknown };
+    const row = issue as {
+      path?: unknown;
+      message?: unknown;
+      summary?: unknown;
+    };
     const rawPath = typeof row.path === "string" ? row.path : "request";
     const field = cleanPath(rawPath) || "request";
     const message =
@@ -34,7 +42,8 @@ const validationFieldErrors = (error: unknown): ApiFieldErrors | undefined => {
 };
 
 const requestIdFromContext = (context: Record<string, unknown>): string => {
-  const requestContext = context["requestContext"] as RequestContext | undefined;
+  const requestContext = context["requestContext"] as
+    RequestContext | undefined;
   if (requestContext?.requestId) return requestContext.requestId;
   const request = context["request"];
   if (request instanceof Request) {
@@ -67,7 +76,8 @@ export const handleApiError = (context: Record<string, unknown>) => {
     set.status = 400;
     return createApiErrorResponse({
       code: "MALFORMED_REQUEST",
-      message: "The request body could not be read. Please check the submitted data and try again.",
+      message:
+        "The request body could not be read. Please check the submitted data and try again.",
       statusCode: 400,
       requestId,
     });
@@ -103,7 +113,8 @@ export const handleApiError = (context: Record<string, unknown>) => {
   set.status = 500;
   return createApiErrorResponse({
     code: "INTERNAL_ERROR",
-    message: "Something went wrong while processing your request. Please try again.",
+    message:
+      "Something went wrong while processing your request. Please try again.",
     statusCode: 500,
     requestId,
   });

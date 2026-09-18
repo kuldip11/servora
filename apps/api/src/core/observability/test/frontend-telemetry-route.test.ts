@@ -24,11 +24,15 @@ describe("frontendTelemetryRouter", () => {
 
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
-    expect(observe).toHaveBeenCalledWith("servora_frontend_metric_value", 1234, {
-      app: "servora-web",
-      metric: "LCP",
-      rating: "good",
-    });
+    expect(observe).toHaveBeenCalledWith(
+      "servora_frontend_metric_value",
+      1234,
+      {
+        app: "servora-web",
+        metric: "LCP",
+        rating: "good",
+      },
+    );
   });
 
   it("counts runtime failures using bounded labels", async () => {
@@ -50,9 +54,12 @@ describe("frontendTelemetryRouter", () => {
 
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
-    expect(increment).toHaveBeenCalledWith("servora_frontend_runtime_errors_total", {
-      app: "servora-kitchen",
-      type: "error",
-    });
+    expect(increment).toHaveBeenCalledWith(
+      "servora_frontend_runtime_errors_total",
+      {
+        app: "servora-kitchen",
+        type: "error",
+      },
+    );
   });
 });

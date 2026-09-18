@@ -1,19 +1,15 @@
+import type {
+  ApiErrorPayload,
+  ApiErrorResponse,
+  ApiFieldErrors,
+} from "@pos/contracts";
 import type { AppError } from "./app-error";
 
-export type ApiFieldErrors = Record<string, string[]>;
-
-export interface ApiErrorPayload {
-  code: string;
-  message: string;
-  retryable: boolean;
-  requestId: string;
-  fieldErrors?: ApiFieldErrors;
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: ApiErrorPayload;
-}
+export type {
+  ApiErrorPayload,
+  ApiErrorResponse,
+  ApiFieldErrors,
+} from "@pos/contracts";
 
 const CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,79}$/;
 
@@ -41,11 +37,17 @@ export const publicCodeForAppError = (error: AppError): string => {
 };
 
 const asFieldErrors = (value: unknown): ApiFieldErrors | undefined => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
   const result: ApiFieldErrors = {};
-  for (const [field, messages] of Object.entries(value as Record<string, unknown>)) {
+  for (const [field, messages] of Object.entries(
+    value as Record<string, unknown>,
+  )) {
     if (Array.isArray(messages)) {
-      const clean = messages.filter((message): message is string => typeof message === "string" && message.trim().length > 0);
+      const clean = messages.filter(
+        (message): message is string =>
+          typeof message === "string" && message.trim().length > 0,
+      );
       if (clean.length) result[field] = clean;
     } else if (typeof messages === "string" && messages.trim()) {
       result[field] = [messages];
@@ -54,16 +56,21 @@ const asFieldErrors = (value: unknown): ApiFieldErrors | undefined => {
   return Object.keys(result).length ? result : undefined;
 };
 
-export const fieldErrorsForAppError = (error: AppError): ApiFieldErrors | undefined => {
+export const fieldErrorsForAppError = (
+  error: AppError,
+): ApiFieldErrors | undefined => {
   const explicit = asFieldErrors(error.details?.["fieldErrors"]);
   if (explicit) return explicit;
   const field = error.details?.["field"];
-  if (typeof field === "string" && field.trim()) return { [field]: [error.message] };
+  if (typeof field === "string" && field.trim())
+    return { [field]: [error.message] };
   return undefined;
 };
 
-
 export const publicMessageForAppError = (error: AppError): string => {
+  if (error.code === "INTERNAL_ERROR") {
+    return "Something went wrong while processing your request. Please try again.";
+  }
   if (error.code === "NOT_FOUND") {
     const resource = error.details?.["resource"];
     return typeof resource === "string" && resource.trim()
@@ -93,7 +100,10 @@ export const createApiErrorResponse = (input: {
   },
 });
 
-export const serializeAppError = (error: AppError, requestId: string): ApiErrorResponse => {
+export const serializeAppError = (
+  error: AppError,
+  requestId: string,
+): ApiErrorResponse => {
   const fieldErrors = fieldErrorsForAppError(error);
   return createApiErrorResponse({
     code: publicCodeForAppError(error),

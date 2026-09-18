@@ -5,12 +5,19 @@ import {
   materializeEndpointPath,
   type ApiEndpointManifestEntry,
 } from "@/test/helpers/api-endpoint-manifest";
-import { expectApiError, expectFrontendSafeError } from "@/test/helpers/api-error.assertions";
+import {
+  expectApiError,
+  expectFrontendSafeError,
+} from "@/test/helpers/api-error.assertions";
 import { sign } from "jsonwebtoken";
 
 const endpoints = getApiEndpointManifest();
-const bearerEndpoints = endpoints.filter((endpoint) => endpoint.authMode === "bearer");
-const bodyEndpoints = endpoints.filter((endpoint) => endpoint.hasBody && endpoint.authMode !== "webhook");
+const bearerEndpoints = endpoints.filter(
+  (endpoint) => endpoint.authMode === "bearer",
+);
+const bodyEndpoints = endpoints.filter(
+  (endpoint) => endpoint.hasBody && endpoint.authMode !== "webhook",
+);
 
 const testAccessToken = sign(
   {
@@ -24,7 +31,9 @@ const testAccessToken = sign(
   { expiresIn: "5m" },
 );
 
-const headersForMalformedBody = (endpoint: ApiEndpointManifestEntry): Record<string, string> => {
+const headersForMalformedBody = (
+  endpoint: ApiEndpointManifestEntry,
+): Record<string, string> => {
   if (endpoint.authMode === "bearer") {
     return {
       authorization: `Bearer ${testAccessToken}`,
@@ -37,7 +46,10 @@ const headersForMalformedBody = (endpoint: ApiEndpointManifestEntry): Record<str
   return {};
 };
 
-const requestFor = (endpoint: ApiEndpointManifestEntry, extraHeaders: Record<string, string> = {}) => {
+const requestFor = (
+  endpoint: ApiEndpointManifestEntry,
+  extraHeaders: Record<string, string> = {},
+) => {
   const method = endpoint.method;
   const headers = new Headers(extraHeaders);
   const init: RequestInit = { method, headers };
@@ -45,15 +57,24 @@ const requestFor = (endpoint: ApiEndpointManifestEntry, extraHeaders: Record<str
     headers.set("content-type", "application/json");
     init.body = "{}";
   }
-  return new Request(`http://localhost${materializeEndpointPath(endpoint.path)}`, init);
+  return new Request(
+    `http://localhost${materializeEndpointPath(endpoint.path)}`,
+    init,
+  );
 };
 
 describe("exhaustive API endpoint error matrix", () => {
   it("accounts for every HTTP endpoint with a unique contract entry", () => {
     expect(endpoints).toHaveLength(229);
-    expect(new Set(endpoints.map((endpoint) => endpoint.id)).size).toBe(endpoints.length);
-    expect(endpoints.filter((endpoint) => endpoint.authMode === "bearer").length).toBeGreaterThan(180);
-    expect(endpoints.every((endpoint) => endpoint.source.length > 0)).toBe(true);
+    expect(new Set(endpoints.map((endpoint) => endpoint.id)).size).toBe(
+      endpoints.length,
+    );
+    expect(
+      endpoints.filter((endpoint) => endpoint.authMode === "bearer").length,
+    ).toBeGreaterThan(180);
+    expect(endpoints.every((endpoint) => endpoint.source.length > 0)).toBe(
+      true,
+    );
   });
 
   it.each(bearerEndpoints.map((endpoint) => [endpoint.id, endpoint] as const))(
@@ -91,11 +112,14 @@ describe("exhaustive API endpoint error matrix", () => {
       const headers = new Headers(headersForMalformedBody(endpoint));
       headers.set("content-type", "application/json");
       const response = await app.handle(
-        new Request(`http://localhost${materializeEndpointPath(endpoint.path)}`, {
-          method: endpoint.method,
-          headers,
-          body: "{",
-        }),
+        new Request(
+          `http://localhost${materializeEndpointPath(endpoint.path)}`,
+          {
+            method: endpoint.method,
+            headers,
+            body: "{",
+          },
+        ),
       );
       const error = await expectFrontendSafeError(response);
       const optionalBodyBeforePermission = new Set([
@@ -137,7 +161,9 @@ describe("exhaustive API endpoint error matrix", () => {
 
   it("returns customer-session-required without exposing implementation details", async () => {
     const app = createApiContractApp();
-    const response = await app.handle(new Request("http://localhost/api/customer/menu"));
+    const response = await app.handle(
+      new Request("http://localhost/api/customer/menu"),
+    );
     await expectApiError(response, {
       status: 401,
       code: "CUSTOMER_SESSION_REQUIRED",
@@ -148,21 +174,24 @@ describe("exhaustive API endpoint error matrix", () => {
   it.each([
     ["POST", "/api/auth/signup"],
     ["POST", "/api/auth/login"],
-  ] as const)("%s %s returns structured validation errors", async (method, path) => {
-    const app = createApiContractApp();
-    const response = await app.handle(
-      new Request(`http://localhost${path}`, {
-        method,
-        headers: { "content-type": "application/json" },
-        body: "{}",
-      }),
-    );
-    await expectApiError(response, {
-      status: 400,
-      code: "VALIDATION_FAILED",
-      retryable: false,
-    });
-  });
+  ] as const)(
+    "%s %s returns structured validation errors",
+    async (method, path) => {
+      const app = createApiContractApp();
+      const response = await app.handle(
+        new Request(`http://localhost${path}`, {
+          method,
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        }),
+      );
+      await expectApiError(response, {
+        status: 400,
+        code: "VALIDATION_FAILED",
+        retryable: false,
+      });
+    },
+  );
 
   it("returns a friendly refresh-token failure instead of token internals", async () => {
     const app = createApiContractApp();
@@ -173,11 +202,16 @@ describe("exhaustive API endpoint error matrix", () => {
       }),
     );
     expect([400, 401, 403]).toContain(response.status);
-    const body = await response.json() as { success?: unknown; error?: { code?: unknown; message?: unknown; requestId?: unknown } };
+    const body = (await response.json()) as {
+      success?: unknown;
+      error?: { code?: unknown; message?: unknown; requestId?: unknown };
+    };
     expect(body.success).toBe(false);
     expect(typeof body.error?.code).toBe("string");
     expect(typeof body.error?.message).toBe("string");
     expect(typeof body.error?.requestId).toBe("string");
-    expect(JSON.stringify(body)).not.toMatch(/jwt|cookie parser|stack|node_modules|\.ts:\d+/i);
+    expect(JSON.stringify(body)).not.toMatch(
+      /jwt|cookie parser|stack|node_modules|\.ts:\d+/i,
+    );
   });
 });

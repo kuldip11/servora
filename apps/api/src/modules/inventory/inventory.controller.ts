@@ -9,6 +9,11 @@ import {
   type CreateInventoryItemInput,
   type UpdateStockInput,
 } from "./inventory.service";
+import {
+  toInventoryItemResponse,
+  toInventoryTransactionResponse,
+  toWasteReasonResponse,
+} from "./inventory.mapper";
 
 export const inventoryController = {
   async list(
@@ -21,7 +26,7 @@ export const inventoryController = {
     } = {},
   ) {
     const result = await inventoryService.list(auth, filters);
-    return paginatedResponse(result.items, {
+    return paginatedResponse(result.items.map(toInventoryItemResponse), {
       page: result.page,
       limit: result.limit,
       total: result.total,
@@ -30,7 +35,7 @@ export const inventoryController = {
 
   async create(auth: AuthContext, input: CreateInventoryItemInput) {
     const item = await inventoryService.create(auth, input);
-    return createdResponse(item);
+    return createdResponse(toInventoryItemResponse(item));
   },
 
   async updateStock(
@@ -39,17 +44,25 @@ export const inventoryController = {
     input: UpdateStockInput,
   ) {
     const result = await inventoryService.updateStock(auth, itemId, input);
-    return successResponse(result);
+    return successResponse({
+      item: toInventoryItemResponse(result.item),
+      transaction: toInventoryTransactionResponse({
+        ...result.transaction,
+        inventoryItem: result.item,
+        performedByUser: null,
+        wasteReason: null,
+      }),
+    });
   },
 
   async lowStockAlerts(auth: AuthContext) {
     const items = await inventoryService.lowStockAlerts(auth);
-    return successResponse(items);
+    return successResponse(items.map(toInventoryItemResponse));
   },
 
   async recentTransactions(auth: AuthContext) {
     const transactions = await inventoryService.recentTransactions(auth);
-    return successResponse(transactions);
+    return successResponse(transactions.map(toInventoryTransactionResponse));
   },
 
   async recipeImpact(auth: AuthContext, itemId: string) {
@@ -60,13 +73,17 @@ export const inventoryController = {
 
   async listWasteReasons(auth: AuthContext, includeInactive = false) {
     return successResponse(
-      await inventoryService.listWasteReasons(auth, includeInactive),
+      (await inventoryService.listWasteReasons(auth, includeInactive)).map(
+        toWasteReasonResponse,
+      ),
     );
   },
 
   async createWasteReason(auth: AuthContext, input: { label: string }) {
     return createdResponse(
-      await inventoryService.createWasteReason(auth, input.label),
+      toWasteReasonResponse(
+        await inventoryService.createWasteReason(auth, input.label),
+      ),
     );
   },
 
@@ -76,7 +93,9 @@ export const inventoryController = {
     input: { label?: string | undefined; isActive?: boolean | undefined },
   ) {
     return successResponse(
-      await inventoryService.updateWasteReason(auth, id, input),
+      toWasteReasonResponse(
+        await inventoryService.updateWasteReason(auth, id, input),
+      ),
     );
   },
 
@@ -89,8 +108,15 @@ export const inventoryController = {
       notes?: string | undefined;
     },
   ) {
-    return successResponse(
-      await inventoryService.logWaste(auth, itemId, input),
-    );
+    const result = await inventoryService.logWaste(auth, itemId, input);
+    return successResponse({
+      item: toInventoryItemResponse(result.item),
+      transaction: toInventoryTransactionResponse({
+        ...result.transaction,
+        inventoryItem: result.item,
+        performedByUser: null,
+        wasteReason: null,
+      }),
+    });
   },
 };

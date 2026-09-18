@@ -19,6 +19,8 @@ import { useAuthStore } from "@/store/auth";
 import { useBranches } from "@/features/branches/hooks/useBranches";
 import { createTablesApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import { applyApiFieldErrors } from "@/shared/lib/form-errors";
+import { notifyError } from "@/shared/lib/notify";
 
 const tablesApi = createTablesApi(apiClient);
 import { useTables } from "@/features/tables/hooks/useTables";
@@ -136,7 +138,7 @@ export const TablesPage = () => {
       setTakeawayQr(await tablesApi.getTakeawayQr(branchId));
       setTakeawayQrOpen(true);
     } catch (error) {
-      console.error("Unable to load takeaway QR", error);
+      notifyError(error, "Unable to load takeaway QR");
     } finally {
       setTakeawayQrBusy(false);
     }
@@ -148,7 +150,7 @@ export const TablesPage = () => {
       setTakeawayQrBusy(true);
       setTakeawayQr(await tablesApi.regenerateTakeawayQr(branchId));
     } catch (error) {
-      console.error("Unable to regenerate takeaway QR", error);
+      notifyError(error, "Unable to regenerate takeaway QR");
     } finally {
       setTakeawayQrBusy(false);
     }
@@ -360,7 +362,10 @@ export const TablesPage = () => {
             setError("branchId", { message: "Select a branch" });
             return;
           }
-          addMutation.mutate(toPayload(values), { onSuccess: closeAdd });
+          addMutation.mutate(toPayload(values), {
+            onSuccess: closeAdd,
+            onError: (error) => applyApiFieldErrors(error, setError),
+          });
         }}
       />
       <TableFormModal
@@ -386,7 +391,10 @@ export const TablesPage = () => {
                 ...(payload.section && { section: payload.section }),
               },
             },
-            { onSuccess: closeEdit },
+            {
+              onSuccess: closeEdit,
+              onError: (error) => applyApiFieldErrors(error, setError),
+            },
           );
         }}
       />

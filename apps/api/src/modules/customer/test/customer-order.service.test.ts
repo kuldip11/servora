@@ -54,7 +54,7 @@ vi.mock("@/modules/menu/availability/availability.service", () => ({
 vi.mock("@/modules/inventory/inventory.service", () => ({
   inventoryService: {
     validateStock: mocks.validateStock,
-    deductForOrderItems: mocks.deduct,
+    deductForOrderItemsWithRetry: mocks.deduct,
   },
 }));
 vi.mock("@/modules/menu/promotions/promotion.repository", () => ({
@@ -623,9 +623,7 @@ describe("customerOrderService coverage", () => {
       expect.anything(),
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Inventory deduction failed for customer order",
-      "o1",
-      expect.any(Error),
+      expect.stringContaining("customer_order.inventory_deduction_failed"),
     );
     consoleSpy.mockRestore();
   });

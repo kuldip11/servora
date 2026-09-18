@@ -77,6 +77,16 @@ vi.mock("./customer-group.service", () => ({
 import { customerGroupsRouter } from "./customer-group.route";
 
 const auth = { tenantId: "t1" };
+const group = {
+  id: "00000000-0000-0000-0000-000000000021",
+  tenantId: "00000000-0000-0000-0000-000000000022",
+  name: "VIP",
+  discountPercent: "10.00",
+  discountFixed: null,
+  createdAt: new Date("2026-09-05T10:00:00.000Z"),
+  updatedAt: new Date("2026-09-05T10:00:00.000Z"),
+};
+
 const route = (method: string, path: string) =>
   (customerGroupsRouter as any).routes.find(
     (entry: any) => entry.method === method && entry.path === path,
@@ -85,10 +95,10 @@ const route = (method: string, path: string) =>
 describe("customerGroupsRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.list.mockResolvedValue([{ id: "g1" }]);
-    mocks.findById.mockResolvedValue({ id: "g1" });
-    mocks.create.mockResolvedValue({ id: "g1" });
-    mocks.update.mockResolvedValue({ id: "g1", name: "VIP 2" });
+    mocks.list.mockResolvedValue([group]);
+    mocks.findById.mockResolvedValue(group);
+    mocks.create.mockResolvedValue(group);
+    mocks.update.mockResolvedValue({ ...group, name: "VIP 2" });
     mocks.remove.mockResolvedValue(undefined);
   });
 
@@ -110,37 +120,57 @@ describe("customerGroupsRouter", () => {
   it("executes list/find/create/update/delete handlers and wraps responses", async () => {
     await expect(
       route("GET", "/api/customer-groups/").handler({ auth }),
-    ).resolves.toMatchObject({ success: true, data: [{ id: "g1" }] });
+    ).resolves.toMatchObject({
+      success: true,
+      data: [{ id: "00000000-0000-0000-0000-000000000021" }],
+    });
     await expect(
       route("GET", "/api/customer-groups/:id").handler({
         auth,
-        params: { id: "g1" },
+        params: { id: "00000000-0000-0000-0000-000000000021" },
       }),
-    ).resolves.toMatchObject({ success: true, data: { id: "g1" } });
+    ).resolves.toMatchObject({
+      success: true,
+      data: { id: "00000000-0000-0000-0000-000000000021" },
+    });
     await expect(
       route("POST", "/api/customer-groups/").handler({
         auth,
         body: { name: "VIP" },
+        set: {},
       }),
-    ).resolves.toMatchObject({ success: true, data: { id: "g1" } });
+    ).resolves.toMatchObject({
+      success: true,
+      data: { id: "00000000-0000-0000-0000-000000000021" },
+    });
     await expect(
       route("PATCH", "/api/customer-groups/:id").handler({
         auth,
-        params: { id: "g1" },
+        params: { id: "00000000-0000-0000-0000-000000000021" },
         body: { name: "VIP 2" },
       }),
     ).resolves.toMatchObject({ success: true, data: { name: "VIP 2" } });
     await expect(
       route("DELETE", "/api/customer-groups/:id").handler({
         auth,
-        params: { id: "g1" },
+        params: { id: "00000000-0000-0000-0000-000000000021" },
       }),
     ).resolves.toMatchObject({ success: true, data: null });
 
     expect(mocks.list).toHaveBeenCalledWith(auth);
-    expect(mocks.findById).toHaveBeenCalledWith(auth, "g1");
+    expect(mocks.findById).toHaveBeenCalledWith(
+      auth,
+      "00000000-0000-0000-0000-000000000021",
+    );
     expect(mocks.create).toHaveBeenCalledWith(auth, { name: "VIP" });
-    expect(mocks.update).toHaveBeenCalledWith(auth, "g1", { name: "VIP 2" });
-    expect(mocks.remove).toHaveBeenCalledWith(auth, "g1");
+    expect(mocks.update).toHaveBeenCalledWith(
+      auth,
+      "00000000-0000-0000-0000-000000000021",
+      { name: "VIP 2" },
+    );
+    expect(mocks.remove).toHaveBeenCalledWith(
+      auth,
+      "00000000-0000-0000-0000-000000000021",
+    );
   });
 });

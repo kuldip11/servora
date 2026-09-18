@@ -57,21 +57,99 @@ const auth = (overrides: Partial<AuthContext> = {}): AuthContext =>
     ipAddress: "127.0.0.1",
     ...overrides,
   }) as AuthContext;
+const organization = (overrides: Record<string, unknown> = {}) => ({
+  id: "o1",
+  name: "Org",
+  businessType: null,
+  country: null,
+  timezone: null,
+  currency: null,
+  primaryContactName: null,
+  businessEmail: null,
+  businessPhone: null,
+  addressLine1: null,
+  addressLine2: null,
+  city: null,
+  stateProvince: null,
+  postalCode: null,
+  legalName: null,
+  website: null,
+  taxRegistrationNumber: null,
+  gstin: null,
+  pan: null,
+  companyRegistrationNumber: null,
+  logoUrl: null,
+  createdBy: "u1",
+  isActive: true,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  ...overrides,
+});
 const membership = {
   id: "m1",
-  organization: { id: "o1", name: "Org", isActive: true },
+  organization: organization(),
 };
+const tenant = (overrides: Record<string, unknown> = {}) => ({
+  id: "t1",
+  organizationId: "o1",
+  name: "Tenant",
+  displayName: null,
+  description: null,
+  cuisineTypes: null,
+  businessModel: null,
+  defaultCurrency: null,
+  defaultTimezone: null,
+  supportEmail: null,
+  supportPhone: null,
+  website: null,
+  logoUrl: null,
+  primaryBrandImageUrl: null,
+  createdBy: "u1",
+  plan: "starter",
+  isActive: true,
+  serviceChargePercent: null,
+  serviceChargeTaxable: false,
+  roundingPolicy: "NONE",
+  defaultTaxMode: "EXCLUSIVE",
+  defaultTaxRate: null,
+  dineInEnabled: true,
+  takeawayEnabled: true,
+  deliveryEnabled: true,
+  customerQrEnabled: true,
+  tableManagementEnabled: true,
+  kdsEnabled: true,
+  waiterServiceEnabled: true,
+  courseSequencingEnabled: false,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  ...overrides,
+});
 const tier = (overrides: Record<string, unknown> = {}) => ({
   id: "tier1",
+  tenantId: null,
+  organizationId: "o1",
   name: "Gold",
   discountPercent: "10.00",
   discountFixed: null,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   ...overrides,
 });
 const menu = (overrides: Record<string, unknown> = {}) => ({
   id: "menu1",
+  tenantId: null,
+  organizationId: "o1",
   name: "Main",
+  description: null,
   status: "DRAFT",
+  isDefault: false,
+  availableChannels: null,
+  availableFulfillmentTypes: null,
+  availableBranchIds: null,
+  effectiveFrom: null,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  organizationItems: [],
   ...overrides,
 });
 
@@ -85,7 +163,7 @@ describe("organization service/controller comprehensive coverage", () => {
       membership: { id: "m1" },
     });
     m.update.mockResolvedValue(membership.organization);
-    m.listTenants.mockResolvedValue([{ id: "t1" }]);
+    m.listTenants.mockResolvedValue([tenant()]);
     m.listMenus.mockResolvedValue([menu()]);
     m.createMenu.mockResolvedValue(menu());
     m.updateMenu.mockResolvedValue(menu({ status: "PUBLISHED" }));
@@ -102,9 +180,9 @@ describe("organization service/controller comprehensive coverage", () => {
     await expect(organizationService.list(auth())).resolves.toEqual([
       membership.organization,
     ]);
-    await expect(organizationController.list(auth())).resolves.toEqual({
+    await expect(organizationController.list(auth())).resolves.toMatchObject({
       success: true,
-      data: [membership.organization],
+      data: [{ id: "o1", name: "Org", isActive: true }],
     });
   });
 
@@ -179,7 +257,7 @@ describe("organization service/controller comprehensive coverage", () => {
     ).resolves.toMatchObject({ success: true });
     await expect(
       organizationService.listTenants(auth(), "o1"),
-    ).resolves.toEqual([{ id: "t1" }]);
+    ).resolves.toEqual([tenant()]);
     await expect(
       organizationController.listTenants(auth(), "o1"),
     ).resolves.toMatchObject({ success: true });

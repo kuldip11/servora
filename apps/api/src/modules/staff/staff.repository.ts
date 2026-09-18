@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { ConflictError } from "@/core/errors";
+import { ConflictError, InternalError } from "@/core/errors";
 import {
   branches,
   membershipBranches,
@@ -132,7 +132,7 @@ export const staffRepository = {
           .returning();
         user = created;
       }
-      if (!user) throw new Error("Staff creation failed");
+      if (!user) throw new InternalError("Staff creation failed");
 
       const existingMembership = await tx.query.tenantMemberships.findFirst({
         where: and(
@@ -150,7 +150,7 @@ export const staffRepository = {
           tenantId: data.tenantId,
         })
         .returning();
-      if (!membership) throw new Error("Staff membership creation failed");
+      if (!membership) throw new InternalError("Staff membership creation failed");
 
       await tx
         .insert(membershipRoles)
@@ -218,7 +218,7 @@ export const staffRepository = {
         where: eq(tenantMemberships.id, membershipId),
         columns: { tenantId: true },
       });
-      if (!membership) throw new Error("Membership not found");
+      if (!membership) throw new InternalError("Membership not found");
       await tx
         .delete(membershipBranches)
         .where(eq(membershipBranches.membershipId, membershipId));

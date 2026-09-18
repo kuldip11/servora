@@ -1,11 +1,12 @@
+import type { TransportInput } from "../types";
 import { voidDomainRequest } from "./shared";
 import type { CancellationReason, Order } from "@pos/types";
 import type {
-  AddOrderItemsInput,
-  CreateOrderInput,
-  UpdateOrderStatusInput,
-  UpdateKitchenTicketStatusInput,
-} from "@pos/validation";
+  CreateOrderRequest,
+  FireTicketRequest,
+  UpdateOrderStatusRequest,
+  UpdateKitchenTicketStatusRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   getPaginatedDomainData,
@@ -50,21 +51,24 @@ export const createOrdersApi = (client: DomainHttpClient) => {
     get(orderId: string): Promise<Order> {
       return getDomainData<Order>(client, `/orders/${orderId}`);
     },
-    create(input: CreateOrderInput): Promise<Order> {
+    create(input: TransportInput<CreateOrderRequest>): Promise<Order> {
       return postDomainData<Order>(client, "/orders", input);
     },
-    addItems(orderId: string, input: AddOrderItemsInput): Promise<Order> {
+    addItems(
+      orderId: string,
+      input: TransportInput<FireTicketRequest>,
+    ): Promise<Order> {
       return postDomainData<Order>(client, `/orders/${orderId}/items`, input);
     },
     updateStatus(
       orderId: string,
-      input: UpdateOrderStatusInput & { cancellationReasonId?: string },
+      input: TransportInput<UpdateOrderStatusRequest>,
     ): Promise<Order> {
       return patchDomainData<Order>(client, `/orders/${orderId}/status`, input);
     },
     updateTicketStatus(
       ticketId: string,
-      input: UpdateKitchenTicketStatusInput,
+      input: TransportInput<UpdateKitchenTicketStatusRequest>,
     ): Promise<void> {
       return voidDomainRequest(
         client.patch(`/kitchen-tickets/${ticketId}/status`, input),

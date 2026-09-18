@@ -7,14 +7,14 @@ import {
   resolveMembership,
 } from "@/core/auth/authorization";
 import { db } from "@/db";
-import { ConflictError, ForbiddenError, ValidationError } from "@/core/errors";
+import { ConflictError, ForbiddenError, ValidationError, InternalError } from "@/core/errors";
 import { signAccessToken } from "@/lib/jwt";
 import {
   hasAppRoleAccess,
   hasMembershipAppAccess,
   type AuthApp,
 } from "./auth-app";
-import type { SignupInput, LoginInput } from "@pos/validation";
+import type { SignupRequest, LoginRequest } from "@pos/contracts";
 import {
   invalidCredentials,
   userInactive,
@@ -67,7 +67,7 @@ const assertUserAppAccess = async (
 };
 
 export const authService = {
-  async signup(input: SignupInput) {
+  async signup(input: SignupRequest) {
     const normalizedEmail = input.email.trim().toLowerCase();
     const existing =
       await authRepository.findStandaloneUserByEmail(normalizedEmail);
@@ -85,12 +85,12 @@ export const authService = {
     });
 
     const fullUser = await authRepository.findUserById(user.id);
-    if (!fullUser) throw new Error("User creation failed");
+    if (!fullUser) throw new InternalError("User creation failed");
 
     return {
       user: {
         id: fullUser.id,
-        tenantId: "",
+        tenantId: null,
         branchId: null,
         firstName: fullUser.firstName,
         lastName: fullUser.lastName,
@@ -109,7 +109,7 @@ export const authService = {
     };
   },
 
-  async login(input: LoginInput, app: AuthApp = "web") {
+  async login(input: LoginRequest, app: AuthApp = "web") {
     const users = await authRepository.findUsersByEmail(input.email);
     if (users.length !== 1) throw invalidCredentials();
 
@@ -259,7 +259,7 @@ export const authService = {
     app: AuthApp = "web",
     existingSessionId?: string,
   ) {
-    if (!user) throw new Error("User not found");
+    if (!user) throw new InternalError("User not found");
 
     const globalRoles = user.globalUserRoles.map((ur) => ({
       id: ur.roleId,

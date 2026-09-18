@@ -41,7 +41,9 @@ import { razorpayWebhookRouter } from "@/modules/billing/razorpay-webhook.route"
 
 export const createApiContractApp = () =>
   new Elysia()
-    .onError((context) => handleApiError(context as unknown as Record<string, unknown>))
+    .onError((context) =>
+      handleApiError(context as unknown as Record<string, unknown>),
+    )
     .use(metricsRouter)
     .use(frontendTelemetryRouter)
     .use(authRouter)

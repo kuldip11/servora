@@ -57,7 +57,10 @@ describe("AppError hierarchy", () => {
     expect(new NotFoundError("Tenant").message).toBe("Tenant not found");
     const withId = new NotFoundError("Tenant", "abc");
     expect(withId.message).toBe("Tenant with id abc not found");
-    expect(withId.details).toMatchObject({ resource: "Tenant", resourceId: "abc" });
+    expect(withId.details).toMatchObject({
+      resource: "Tenant",
+      resourceId: "abc",
+    });
   });
 
   it("preserves cause on internal errors", () => {

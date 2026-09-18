@@ -43,7 +43,21 @@ const handler = () => (auditRouter as any).routes[0].handler as Function;
 describe("audit route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.limit.mockResolvedValue([{ id: "audit-1" }]);
+    mocks.limit.mockResolvedValue([
+      {
+        id: "00000000-0000-0000-0000-000000000010",
+        action: "ORDER_UPDATED",
+        entity: "order",
+        entityId: null,
+        branchId: null,
+        requestId: null,
+        metadata: "{}",
+        ipAddress: null,
+        createdAt: new Date("2026-09-05T10:00:00.000Z"),
+        userId: null,
+        userName: null,
+      },
+    ]);
   });
 
   it("registers the audit endpoint with query validation", () => {
@@ -75,7 +89,12 @@ describe("audit route", () => {
     const auth = { tenantId: "tenant-1" };
     await expect(handler()({ auth, query: {} })).resolves.toEqual({
       success: true,
-      data: [{ id: "audit-1" }],
+      data: [
+        expect.objectContaining({
+          id: "00000000-0000-0000-0000-000000000010",
+          createdAt: "2026-09-05T10:00:00.000Z",
+        }),
+      ],
     });
     expect(mocks.select).toHaveBeenCalledOnce();
     expect(mocks.limit).toHaveBeenCalledWith(50);

@@ -8,7 +8,10 @@ export interface ExpectedApiError {
   field?: string;
 }
 
-export const expectApiError = async (response: Response, expected: ExpectedApiError) => {
+export const expectApiError = async (
+  response: Response,
+  expected: ExpectedApiError,
+) => {
   expect(response.status).toBe(expected.status);
   const body = (await response.json()) as {
     success?: unknown;
@@ -27,9 +30,15 @@ export const expectApiError = async (response: Response, expected: ExpectedApiEr
   expect(typeof body.error?.retryable).toBe("boolean");
   expect(typeof body.error?.requestId).toBe("string");
   if (expected.message) expect(body.error?.message).toBe(expected.message);
-  if (expected.retryable !== undefined) expect(body.error?.retryable).toBe(expected.retryable);
-  if (expected.field) expect(body.error?.fieldErrors?.[expected.field]?.length).toBeGreaterThan(0);
-  expect(JSON.stringify(body)).not.toMatch(/PostgresError|ECONNREFUSED|node_modules|\.ts:\d+|SQLSTATE|stack/i);
+  if (expected.retryable !== undefined)
+    expect(body.error?.retryable).toBe(expected.retryable);
+  if (expected.field)
+    expect(body.error?.fieldErrors?.[expected.field]?.length).toBeGreaterThan(
+      0,
+    );
+  expect(JSON.stringify(body)).not.toMatch(
+    /PostgresError|ECONNREFUSED|node_modules|\.ts:\d+|SQLSTATE|stack/i,
+  );
   return body;
 };
 

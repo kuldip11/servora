@@ -17,90 +17,206 @@ vi.mock("../billing.service", () => ({
 
 import { billingController } from "@/modules/billing/billing.controller";
 
+const orderId = "11111111-1111-4111-8111-111111111111";
+const paymentId = "22222222-2222-4222-8222-222222222222";
+const billId = "33333333-3333-4333-8333-333333333333";
+const secondBillId = "44444444-4444-4444-8444-444444444444";
+const thirdBillId = "55555555-5555-4555-8555-555555555555";
+const refundId = "66666666-6666-4666-8666-666666666666";
+const orderItemId = "77777777-7777-4777-8777-777777777777";
+const now = new Date("2026-09-18T00:00:00.000Z");
+
 const auth = {
-  userId: "u1",
-  tenantId: "t1",
-  branchId: "b1",
+  userId: "88888888-8888-4888-8888-888888888888",
+  tenantId: "99999999-9999-4999-8999-999999999999",
+  branchId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   email: "u@example.com",
   roles: [],
   permissions: [],
 } as any;
 
+const makeBill = (id: string) => ({
+  id,
+  orderId,
+  splitLabel: null,
+  subtotal: "100.00",
+  taxAmount: "5.00",
+  discountAmount: "0.00",
+  serviceChargeAmount: "0.00",
+  roundingAdjustment: "0.00",
+  totalAmount: "105.00",
+  gstNumber: null,
+  createdAt: now,
+});
+
+const payment = {
+  id: paymentId,
+  orderId,
+  billId,
+  method: "CARD" as const,
+  status: "SUCCESS" as const,
+  amount: "105.00",
+  reference: "ref-1",
+  gatewayOrderId: null,
+  gatewayPaymentId: null,
+  metadata: "{}",
+  createdAt: now,
+  updatedAt: now,
+};
+
+const refund = {
+  id: refundId,
+  paymentId,
+  amount: "5.00",
+  reason: "return",
+  processedBy: auth.userId,
+  createdAt: now,
+};
+
 describe("billing controller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createPayment.mockResolvedValue({
-      payment: { id: "p1" },
-      bill: { id: "b1" },
+      payment,
+      bill: makeBill(billId),
+      paymentState: "PAID",
     });
-    mocks.createRefund.mockResolvedValue({ id: "r1" });
-    mocks.getBill.mockResolvedValue({ id: "b1" });
-    mocks.splitOrder.mockResolvedValue([{ id: "b1" }, { id: "b2" }]);
-    mocks.splitOrderByItems.mockResolvedValue([{ id: "b3" }]);
-    mocks.splitOrderBySeat.mockResolvedValue([{ id: "b4" }]);
-    mocks.setItemSeatShares.mockResolvedValue({ id: "oi1", seatShares: [] });
-    mocks.getOrderBills.mockResolvedValue([{ id: "b1" }]);
+    mocks.createRefund.mockResolvedValue(refund);
+    mocks.getBill.mockResolvedValue(makeBill(billId));
+    mocks.splitOrder.mockResolvedValue([
+      makeBill(billId),
+      makeBill(secondBillId),
+    ]);
+    mocks.splitOrderByItems.mockResolvedValue([makeBill(thirdBillId)]);
+    mocks.splitOrderBySeat.mockResolvedValue({
+      status: "CREATED",
+      bills: [makeBill(thirdBillId)],
+    });
+    mocks.setItemSeatShares.mockResolvedValue([
+      { seatLabel: "S1", shareRatio: 1 },
+    ]);
+    mocks.getOrderBills.mockResolvedValue([makeBill(billId)]);
   });
 
   it("delegates payment/refund creation and bill reads", async () => {
     await expect(
       billingController.createPayment(auth, {
-        orderId: "o1",
+        orderId,
         method: "CARD",
         amount: 10,
       }),
     ).resolves.toEqual({
       success: true,
-      data: { payment: { id: "p1" }, bill: { id: "b1" } },
+      data: {
+        payment: {
+          id: paymentId,
+          orderId,
+          billId,
+          method: "CARD",
+          status: "SUCCESS",
+          amount: 105,
+          reference: "ref-1",
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        },
+        bill: {
+          id: billId,
+          orderId,
+          splitLabel: null,
+          subtotal: 100,
+          taxAmount: 5,
+          discountAmount: 0,
+          serviceChargeAmount: 0,
+          roundingAdjustment: 0,
+          totalAmount: 105,
+          gstNumber: null,
+          payments: [],
+          createdAt: now.toISOString(),
+        },
+        paymentState: "PAID",
+      },
     });
     await expect(
       billingController.createRefund(auth, {
-        paymentId: "p1",
+        paymentId,
         amount: 5,
         reason: "return",
       }),
-    ).resolves.toEqual({ success: true, data: { id: "r1" } });
-    await expect(billingController.getBill(auth, "b1")).resolves.toEqual({
+    ).resolves.toEqual({
       success: true,
-      data: { id: "b1" },
+      data: {
+        id: refundId,
+        paymentId,
+        amount: 5,
+        reason: "return",
+        createdAt: now.toISOString(),
+      },
+    });
+    await expect(billingController.getBill(auth, billId)).resolves.toEqual({
+      success: true,
+      data: {
+        id: billId,
+        orderId,
+        splitLabel: null,
+        subtotal: 100,
+        taxAmount: 5,
+        discountAmount: 0,
+        serviceChargeAmount: 0,
+        roundingAdjustment: 0,
+        totalAmount: 105,
+        gstNumber: null,
+        payments: [],
+        createdAt: now.toISOString(),
+      },
     });
   });
 
   it("delegates all split and seat-share operations", async () => {
-    const allocations = [{ label: "A", orderItemIds: ["oi1"] }];
+    const allocations = [{ label: "A", orderItemIds: [orderItemId] }];
     const shares = [{ seatLabel: "S1", shareRatio: 1 }];
 
-    await expect(billingController.splitOrder(auth, "o1", 2)).resolves.toEqual({
+    await expect(
+      billingController.splitOrder(auth, orderId, 2),
+    ).resolves.toMatchObject({
       success: true,
-      data: [{ id: "b1" }, { id: "b2" }],
+      data: [{ id: billId }, { id: secondBillId }],
     });
     await expect(
-      billingController.splitOrderByItems(auth, "o1", allocations),
-    ).resolves.toEqual({ success: true, data: [{ id: "b3" }] });
+      billingController.splitOrderByItems(auth, orderId, allocations),
+    ).resolves.toMatchObject({ success: true, data: [{ id: thirdBillId }] });
     await expect(
-      billingController.splitOrderBySeat(auth, "o1", "MANUAL"),
-    ).resolves.toEqual({ success: true, data: [{ id: "b4" }] });
-    await expect(
-      billingController.setItemSeatShares(auth, "o1", "oi1", shares),
-    ).resolves.toEqual({ success: true, data: { id: "oi1", seatShares: [] } });
-    await expect(billingController.getOrderBills(auth, "o1")).resolves.toEqual({
+      billingController.splitOrderBySeat(auth, orderId, "MANUAL"),
+    ).resolves.toMatchObject({
       success: true,
-      data: [{ id: "b1" }],
+      data: { status: "CREATED", bills: [{ id: thirdBillId }] },
+    });
+    await expect(
+      billingController.setItemSeatShares(auth, orderId, orderItemId, shares),
+    ).resolves.toEqual({ success: true, data: shares });
+    await expect(
+      billingController.getOrderBills(auth, orderId),
+    ).resolves.toMatchObject({
+      success: true,
+      data: [{ id: billId }],
     });
 
-    expect(mocks.splitOrder).toHaveBeenCalledWith(auth, "o1", 2);
+    expect(mocks.splitOrder).toHaveBeenCalledWith(auth, orderId, 2);
     expect(mocks.splitOrderByItems).toHaveBeenCalledWith(
       auth,
-      "o1",
+      orderId,
       allocations,
     );
-    expect(mocks.splitOrderBySeat).toHaveBeenCalledWith(auth, "o1", "MANUAL");
+    expect(mocks.splitOrderBySeat).toHaveBeenCalledWith(
+      auth,
+      orderId,
+      "MANUAL",
+    );
     expect(mocks.setItemSeatShares).toHaveBeenCalledWith(
       auth,
-      "o1",
-      "oi1",
+      orderId,
+      orderItemId,
       shares,
     );
-    expect(mocks.getOrderBills).toHaveBeenCalledWith(auth, "o1");
+    expect(mocks.getOrderBills).toHaveBeenCalledWith(auth, orderId);
   });
 });

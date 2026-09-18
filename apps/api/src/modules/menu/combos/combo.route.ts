@@ -1,14 +1,22 @@
 import { Elysia, t } from "elysia";
+import {
+  comboListResponseSchema,
+  comboPreviewResponseSchema,
+  comboResponseSchema,
+  nullSuccessResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { combos, comboSlots, comboSlotOptions, orderItems } from "@/db/schema";
 import { requireAuthPlugin, requirePermission } from "@/core/auth";
 import { createdResponse, successResponse } from "@/core/response";
-import { ValidationError } from "@/core/errors";
+import { ValidationError, InternalError } from "@/core/errors";
 import { previewComboConfiguration } from "./combo-builder.service";
 import { writeAudit } from "@/core/audit";
 import { itemRepository } from "@/modules/menu/items/item.repository";
 import { assertMenuResourceBranch } from "@/modules/menu/menu-authorization";
+import { toComboPreviewResponse, toComboResponse } from "./combo.mapper";
 
 const body = t.Object({
   name: t.String({ minLength: 1 }),
@@ -36,15 +44,26 @@ const body = t.Object({
 
 export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
   .use(requireAuthPlugin())
-  .get("/", async ({ auth }) => {
-    requirePermission(auth, "menu:read");
-    return successResponse(
-      await db.query.combos.findMany({
-        where: eq(combos.tenantId, auth.tenantId),
-        with: { slots: { with: { options: true } } },
-      }),
-    );
-  })
+  .get(
+    "/",
+    async ({ auth }) => {
+      requirePermission(auth, "menu:read");
+      return successResponse(
+        (
+          await db.query.combos.findMany({
+            where: eq(combos.tenantId, auth.tenantId),
+            with: { slots: { with: { options: true } } },
+          })
+        ).map(toComboResponse),
+      );
+    },
+    {
+      response: {
+        200: comboListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
+  )
   .post(
     "/preview",
     async ({ auth, body: input }) => {
@@ -52,15 +71,17 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
       if (!auth.branchId)
         throw new ValidationError("Select a branch to preview pricing");
       return successResponse(
-        await previewComboConfiguration(
-          {
-            tenantId: auth.tenantId,
-            branchId: auth.branchId,
-            channel: "STAFF",
-            fulfillmentType: "DINE_IN",
-            asOf: new Date(),
-          },
-          input,
+        toComboPreviewResponse(
+          await previewComboConfiguration(
+            {
+              tenantId: auth.tenantId,
+              branchId: auth.branchId,
+              channel: "STAFF",
+              fulfillmentType: "DINE_IN",
+              asOf: new Date(),
+            },
+            input,
+          ),
         ),
       );
     },
@@ -97,12 +118,17 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
           ),
         ),
       }),
+      response: {
+        200: comboPreviewResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .post(
     "/",
-    async ({ auth, body: input }) => {
+    async ({ auth, body: input, set }) => {
       requirePermission(auth, "menu:create");
+      set.status = 201;
       if (input.pricePolicy === "FIXED" && input.fixedPrice == null)
         throw new ValidationError("A fixed combo price is required");
       if (input.pricePolicy === "PERCENT_OFF_SUM" && input.percentOff == null)
@@ -183,9 +209,20 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
         entityId: created.id,
         metadata: { name: input.name, pricePolicy: input.pricePolicy },
       });
-      return createdResponse(created);
+      const canonical = await db.query.combos.findFirst({
+        where: and(
+          eq(combos.id, created.id),
+          eq(combos.tenantId, auth.tenantId),
+        ),
+        with: { slots: { with: { options: true } } },
+      });
+      if (!canonical) throw new InternalError("Created combo could not be reloaded");
+      return createdResponse(toComboResponse(canonical));
     },
-    { body },
+    {
+      body,
+      response: { 201: comboResponseSchema, ...standardErrorResponseSchemas },
+    },
   )
 
   .patch(
@@ -298,33 +335,50 @@ export const combosRouter = new Elysia({ prefix: "/api/menu/combos" })
         entityId: params.id,
         metadata: { name: input.name, pricePolicy: input.pricePolicy },
       });
-      return successResponse(updated);
+      if (!updated) throw new InternalError("Updated combo could not be reloaded");
+      return successResponse(toComboResponse(updated));
     },
-    { body },
+    {
+      params: t.Object({ id: t.String({ format: "uuid" }) }),
+      body,
+      response: { 200: comboResponseSchema, ...standardErrorResponseSchemas },
+    },
   )
-  .delete("/:id", async ({ auth, params }) => {
-    requirePermission(auth, "menu:delete");
-    const used = await db
-      .select({ id: orderItems.id })
-      .from(orderItems)
-      .where(eq(orderItems.comboId, params.id))
-      .limit(1);
-    if (used.length > 0)
-      throw new ValidationError(
-        "This combo has already been used in an order and cannot be deleted.",
-      );
-    await db
-      .delete(combos)
-      .where(and(eq(combos.id, params.id), eq(combos.tenantId, auth.tenantId)));
-    await writeAudit({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      branchId: auth.branchId,
-      requestId: auth.requestId,
-      ipAddress: auth.ipAddress,
-      action: "COMBO_DELETED",
-      entity: "combo",
-      entityId: params.id,
-    });
-    return successResponse(null);
-  });
+  .delete(
+    "/:id",
+    async ({ auth, params }) => {
+      requirePermission(auth, "menu:delete");
+      const used = await db
+        .select({ id: orderItems.id })
+        .from(orderItems)
+        .where(eq(orderItems.comboId, params.id))
+        .limit(1);
+      if (used.length > 0)
+        throw new ValidationError(
+          "This combo has already been used in an order and cannot be deleted.",
+        );
+      await db
+        .delete(combos)
+        .where(
+          and(eq(combos.id, params.id), eq(combos.tenantId, auth.tenantId)),
+        );
+      await writeAudit({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        branchId: auth.branchId,
+        requestId: auth.requestId,
+        ipAddress: auth.ipAddress,
+        action: "COMBO_DELETED",
+        entity: "combo",
+        entityId: params.id,
+      });
+      return successResponse(null);
+    },
+    {
+      params: t.Object({ id: t.String({ format: "uuid" }) }),
+      response: {
+        200: nullSuccessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
+  );

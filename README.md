@@ -8,7 +8,7 @@ Servora is a pre-production, multi-tenant restaurant operating platform built as
 
 ## Product roadmap
 
-Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). The maintained system design is documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), and frontend engineering expectations are documented in [`docs/FRONTEND_ENGINEERING.md`](./docs/FRONTEND_ENGINEERING.md).
+Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). The maintained system design is documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), and frontend engineering expectations are documented in [`docs/FRONTEND_ENGINEERING.md`](./docs/FRONTEND_ENGINEERING.md). API contract hardening is tracked in [`docs/API_CONTRACT_HARDENING_PLAN.md`](./docs/API_CONTRACT_HARDENING_PLAN.md) with status in [`docs/API_CONTRACT_HARDENING_STATUS.md`](./docs/API_CONTRACT_HARDENING_STATUS.md).
 
 ## Applications
 

@@ -1,3 +1,4 @@
+import { createLogger, toError } from "@/core/logger/logger";
 import type { KitchenTicket, Order, RestaurantTable } from "@pos/types";
 import { ValidationError } from "@/core/errors";
 import { inventoryService } from "@/modules/inventory/inventory.service";
@@ -28,6 +29,8 @@ import {
 } from "@/modules/orders/active-order-pricing";
 import { isBillableOrderItem } from "@/modules/orders/order-item-billing";
 import { resolveCustomerRoundFulfillment } from "./customer-order.helpers";
+
+const logger = createLogger({}, "customer-order");
 
 export type CreateCustomerOrderInput = {
   fulfillmentType?: "DINE_IN" | "TAKEAWAY";
@@ -463,7 +466,7 @@ export const customerOrderService = {
         newestTicket &&
         (session.mode !== "TAKEAWAY" || !createdNewOrder)
       )
-        await inventoryService.deductForOrderItems(
+        await inventoryService.deductForOrderItemsWithRetry(
           session.tenantId,
           session.branchId,
           orderId,
@@ -493,11 +496,10 @@ export const customerOrderService = {
           null,
         );
     } catch (err) {
-      console.error(
-        "Inventory deduction failed for customer order",
+      logger.error("customer_order.inventory_deduction_failed", toError(err), {
         orderId,
-        err,
-      );
+        branchId: session.branchId,
+      });
     }
 
     return fullOrder;

@@ -52,8 +52,8 @@ export const AppBootstrap = ({ children }: AppBootstrapProps) => {
             Unable to connect
           </h1>
           <p className="mt-3 text-sm leading-6 text-text-secondary">
-            Servora couldn&apos;t reach the service. Check your connection and try
-            again.
+            Servora couldn&apos;t reach the service. Check your connection and
+            try again.
           </p>
           <button
             type="button"
@@ -91,7 +91,9 @@ export const AppBootstrap = ({ children }: AppBootstrapProps) => {
           aria-hidden="true"
         />
         <p className="mt-5 text-base font-medium text-text-primary">
-          {slow ? "Connecting to Servora services…" : "Preparing your workspace…"}
+          {slow
+            ? "Connecting to Servora services…"
+            : "Preparing your workspace…"}
         </p>
         <p className="mx-auto mt-2 min-h-10 max-w-sm text-sm leading-5 text-text-secondary">
           {slow

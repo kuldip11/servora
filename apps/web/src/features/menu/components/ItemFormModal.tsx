@@ -13,6 +13,7 @@ import { useMenuTags } from "@/features/menu/hooks/useMenuTags";
 import { useMenuAllergens } from "@/features/menu/hooks/useMenuAllergens";
 import { useSaveMenuItem } from "@/features/menu/hooks/useSaveMenuItem";
 import { useItemFormWorkflow } from "@/features/menu/hooks/useItemFormWorkflow";
+import { applyApiFieldErrors } from "@/shared/lib/form-errors";
 import { ItemAdvancedOptions } from "./ItemAdvancedOptions";
 import type {
   MenuItem,
@@ -222,7 +223,13 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       allergenIds: selectedAllergenIds,
       imageUrls,
     };
-    saveMutation.mutate({ item, payload }, { onSuccess: onClose });
+    saveMutation.mutate(
+      { item, payload },
+      {
+        onSuccess: onClose,
+        onError: (error) => applyApiFieldErrors(error, setError),
+      },
+    );
   }
 
   return (

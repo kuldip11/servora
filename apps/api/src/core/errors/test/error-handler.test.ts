@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { ConflictError, ValidationError } from "../app-error";
 import { handleApiError } from "../error-handler";
 
-const context = (error: unknown, options: { code?: string; requestId?: string } = {}) => {
+const context = (
+  error: unknown,
+  options: { code?: string; requestId?: string } = {},
+) => {
   const set: { status?: number | string } = {};
   const result = handleApiError({
     code: options.code ?? "UNKNOWN",
@@ -79,7 +82,7 @@ describe("global API error handler", () => {
   it("maps database conflicts without leaking database details", () => {
     const { set, result } = context({
       code: "23505",
-      detail: 'Key (email)=(secret@example.com) already exists',
+      detail: "Key (email)=(secret@example.com) already exists",
       stack: "postgres internals",
     });
     expect(set.status).toBe(409);
@@ -100,12 +103,15 @@ describe("global API error handler", () => {
       success: false,
       error: {
         code: "INTERNAL_ERROR",
-        message: "Something went wrong while processing your request. Please try again.",
+        message:
+          "Something went wrong while processing your request. Please try again.",
         retryable: true,
         requestId: "req-test",
       },
     });
-    expect(JSON.stringify(result)).not.toMatch(/ECONNREFUSED|private-host|service\.ts/);
+    expect(JSON.stringify(result)).not.toMatch(
+      /ECONNREFUSED|private-host|service\.ts/,
+    );
   });
 
   it("returns a safe route-not-found response", () => {

@@ -1,41 +1,67 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import {
+  approvalThresholdListResponseSchema,
+  approvalThresholdParamsSchema,
+  approvalThresholdResponseSchema,
+  approvalThresholdUpsertBodySchema,
+  managerApprovalIssueBodySchema,
+  managerApprovalTokenResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { createdResponse, successResponse } from "@/core/response";
+import {
+  toApprovalThresholdResponse,
+  toManagerApprovalTokenResponse,
+} from "./approval.mapper";
 import { approvalService } from "./approval.service";
 
-const action = t.Union([t.Literal("VOID"), t.Literal("COMP")]);
 export const approvalsRouter = new Elysia({ prefix: "/api/approvals" })
   .use(requireAuthPlugin())
-  .get("/thresholds", ({ auth }) => successResponse(approvalService.list(auth)))
+  .get(
+    "/thresholds",
+    async ({ auth }) => {
+      const thresholds = await approvalService.list(auth);
+      return successResponse(thresholds.map(toApprovalThresholdResponse));
+    },
+    {
+      response: {
+        200: approvalThresholdListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
+  )
   .put(
     "/thresholds/:actionType",
-    ({ auth, params, body }) =>
-      successResponse(
-        approvalService.upsert(
-          auth,
-          params.actionType,
-          body.thresholdAmount,
-          body.requiresRole,
-        ),
-      ),
+    async ({ auth, params, body }) => {
+      const threshold = await approvalService.upsert(
+        auth,
+        params.actionType,
+        body.thresholdAmount,
+        body.requiresRole,
+      );
+      return successResponse(toApprovalThresholdResponse(threshold));
+    },
     {
-      params: t.Object({ actionType: action }),
-      body: t.Object({
-        thresholdAmount: t.Number({ minimum: 0 }),
-        requiresRole: t.Optional(t.String({ minLength: 1, maxLength: 50 })),
-      }),
+      params: approvalThresholdParamsSchema,
+      body: approvalThresholdUpsertBodySchema,
+      response: {
+        200: approvalThresholdResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .post(
     "/manager",
-    ({ auth, body }) => createdResponse(approvalService.issue(auth, body)),
+    async ({ auth, body }) => {
+      const token = await approvalService.issue(auth, body);
+      return createdResponse(toManagerApprovalTokenResponse(token));
+    },
     {
-      body: t.Object({
-        actionType: action,
-        orderId: t.String({ format: "uuid" }),
-        orderItemId: t.String({ format: "uuid" }),
-        managerEmail: t.String({ format: "email" }),
-        password: t.String({ minLength: 1 }),
-      }),
+      body: managerApprovalIssueBodySchema,
+      response: {
+        200: managerApprovalTokenResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

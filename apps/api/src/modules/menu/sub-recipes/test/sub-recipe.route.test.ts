@@ -12,6 +12,18 @@ vi.mock("@/core/auth", async () => {
 });
 import { subRecipesRouter } from "../sub-recipe.route";
 const uuid = "11111111-1111-4111-8111-111111111111";
+const tenantId = "22222222-2222-4222-8222-222222222222";
+const branchId = "33333333-3333-4333-8333-333333333333";
+const row = {
+  id: uuid,
+  tenantId,
+  branchId,
+  name: "Sauce",
+  yieldQuantity: "1",
+  yieldUnit: "LITERS",
+  yieldPercent: null,
+  ingredients: [],
+};
 const body = {
   name: "Sauce",
   yieldQuantity: 1,
@@ -21,8 +33,8 @@ const body = {
 describe("sub-recipe routes", () => {
   it("executes all handlers", async () => {
     service.list.mockResolvedValue([]);
-    service.create.mockResolvedValue({ id: "s1" });
-    service.update.mockResolvedValue({ id: "s1" });
+    service.create.mockResolvedValue(row);
+    service.update.mockResolvedValue(row);
     service.delete.mockResolvedValue(undefined);
     const req = (path: string, init?: RequestInit) =>
       subRecipesRouter.handle(new Request(`http://localhost${path}`, init));
@@ -35,7 +47,7 @@ describe("sub-recipe routes", () => {
           body: JSON.stringify(body),
         })
       ).status,
-    ).toBe(200);
+    ).toBe(201);
     expect(
       (
         await req(`/api/menu/sub-recipes/${uuid}`, {

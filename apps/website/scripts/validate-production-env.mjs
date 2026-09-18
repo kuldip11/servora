@@ -4,7 +4,9 @@ const isProductionDeployment =
   process.env.SERVORA_VALIDATE_PRODUCTION_ENV === "true";
 
 if (!isProductionDeployment) {
-  console.log("Skipping strict production environment validation outside production.");
+  console.log(
+    "Skipping strict production environment validation outside production.",
+  );
   process.exit(0);
 }
 
@@ -34,7 +36,9 @@ for (const name of required) {
       throw new Error("must not use an example/placeholder hostname");
     }
   } catch (error) {
-    console.error(`${name} must be a real HTTPS production URL: ${error.message}`);
+    console.error(
+      `${name} must be a real HTTPS production URL: ${error.message}`,
+    );
     process.exit(1);
   }
 }

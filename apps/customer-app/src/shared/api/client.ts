@@ -1,3 +1,5 @@
+import { ApiClientErrorException, apiClientErrorFromResponse } from "@pos/api-client";
+
 export const resolveApiUrl = (
   configuredApiUrl: string | undefined,
   isDevelopment: boolean,
@@ -27,7 +29,13 @@ export async function request<T>(
 
   const body = await response.json().catch(() => null);
   if (!response.ok || body?.success === false) {
-    throw new Error(body?.message ?? "Customer API request failed");
+    throw new ApiClientErrorException(
+      apiClientErrorFromResponse(
+        body,
+        response.status,
+        "Customer API request failed",
+      ),
+    );
   }
   return body.data as T;
 }

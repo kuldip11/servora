@@ -1,3 +1,5 @@
+import { createLogger, toError } from "@/core/logger/logger";
+import type { FireTicketRequest } from "@pos/contracts";
 import type { KitchenTicket, Order } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { DomainRuleError, ValidationError } from "@/core/errors";
@@ -35,13 +37,9 @@ import {
   singleCourseNumber,
 } from "./order-fire.helpers";
 
-export interface FireTicketInput {
-  notes?: string | undefined;
-  couponCode?: string | undefined;
-  promotionIds?: string[] | undefined;
-  items?: OrderItemInput[] | undefined;
-  combos?: ComboOrderSelection[] | undefined;
-}
+const logger = createLogger({}, "order-fire");
+
+export type FireTicketInput = FireTicketRequest;
 
 export const orderFireService = {
   async fireTicket(auth: AuthContext, orderId: string, input: FireTicketInput) {
@@ -279,7 +277,7 @@ export const orderFireService = {
 
     try {
       if (createdTicket?.status === "FIRED") {
-        await inventoryService.deductForOrderItems(
+        await inventoryService.deductForOrderItemsWithRetry(
           auth.tenantId,
           order.branchId,
           orderId,
@@ -312,7 +310,10 @@ export const orderFireService = {
         );
       }
     } catch (err) {
-      console.error("Inventory deduction failed for order", orderId, err);
+      logger.error("order.inventory_deduction_failed", toError(err), {
+        orderId,
+        branchId: order.branchId,
+      });
     }
 
     return fullOrder;

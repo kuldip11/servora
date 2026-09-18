@@ -16,7 +16,7 @@ describe("organization validators coverage", () => {
     expect(Value.Check(createOrganizationBody, {})).toBe(false);
     expect(Value.Check(updateOrganizationBody, { country: null })).toBe(true);
     expect(Value.Check(organizationIdParams, { id: uuid })).toBe(true);
-    expect(Value.Check(organizationIdParams, { id: "bad" })).toBe(true);
+    expect(Value.Check(organizationIdParams, { id: "bad" })).toBe(false);
     expect(Value.Check(organizationIdParams, {})).toBe(false);
     expect(
       Value.Check(organizationMenuParams, { id: uuid, menuId: uuid }),

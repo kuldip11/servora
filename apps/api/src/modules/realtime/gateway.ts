@@ -10,22 +10,22 @@ import {
 import { shouldDeliverRealtimeEvent } from "./delivery-scope";
 import { customerService } from "@/modules/customer/customer.service";
 import { metrics } from "@/core/observability/metrics";
+import { createLogger, toError } from "@/core/logger/logger";
 import { REALTIME_AUTH_TIMEOUT_MS } from "./constants";
+import { Value } from "@sinclair/typebox/value";
+import {
+  customerRealtimeAuthMessageSchema,
+  realtimeEnvelopeSchema,
+  staffRealtimeAuthMessageSchema,
+  type RealtimeEnvelope,
+} from "@pos/contracts";
+
+const logger = createLogger({}, "realtime-gateway");
 
 interface RealtimeSocket {
   send(message: string): unknown;
   close(): unknown;
 }
-
-type RealtimeEnvelope = {
-  type?: string;
-  tenantId?: string;
-  branchId?: string | null;
-  payload?: {
-    customerSessionId?: string;
-    customerSession?: { id?: string };
-  };
-};
 
 const customerClients = new Map<string, Set<RealtimeSocket>>();
 interface CustomerBranchSocket {
@@ -73,6 +73,22 @@ const removeCustomerClient = (sessionId: string, ws: RealtimeSocket) => {
   if (!set) return;
   set.delete(ws);
   if (set.size === 0) customerClients.delete(sessionId);
+};
+
+const parseJsonMessage = (message: unknown): unknown => {
+  if (typeof message !== "string") return message;
+  try {
+    return JSON.parse(message) as unknown;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseRealtimeEnvelope = (
+  message: string,
+): RealtimeEnvelope | undefined => {
+  const parsed = parseJsonMessage(message);
+  return Value.Check(realtimeEnvelopeSchema, parsed) ? parsed : undefined;
 };
 
 const customerSessionIdFromEvent = (
@@ -177,10 +193,8 @@ export const forwardTenantRealtimeMessage = (
     Set<{ __branchId?: string | null; send(message: string): void }>
   > = clients,
 ): void => {
-  const event = JSON.parse(message) as {
-    tenantId: string;
-    branchId?: string | null;
-  };
+  const event = parseRealtimeEnvelope(message);
+  if (!event) return;
   const scopedClients = tenantClients.get(event.tenantId);
   if (!scopedClients) return;
   for (const ws of scopedClients) {
@@ -194,57 +208,65 @@ export const forwardTenantRealtimeMessage = (
   }
 };
 
-const startRedisSubscription = async () => {
-  await subscriber.subscribe(
-    REDIS_CHANNELS.ORDER_EVENTS,
-    REDIS_CHANNELS.KITCHEN_EVENTS,
-    REDIS_CHANNELS.INVENTORY_EVENTS,
-    REDIS_CHANNELS.TABLE_EVENTS,
-  );
+let redisSubscriptionStarted = false;
 
-  subscriber.on("message", (channel, message) => {
-    try {
-      const event = JSON.parse(message) as RealtimeEnvelope;
-      const sessionId = customerSessionIdFromEvent(event);
-      if (sessionId) {
-        const sessionClients = customerClients.get(sessionId);
-        if (sessionClients) {
-          for (const ws of sessionClients) {
-            try {
-              ws.send(message);
-            } catch {
-              removeCustomerClient(sessionId, ws);
+export const startRealtimeRedisSubscription = async (): Promise<void> => {
+  if (redisSubscriptionStarted) return;
+  redisSubscriptionStarted = true;
+  try {
+    await subscriber.subscribe(
+      REDIS_CHANNELS.ORDER_EVENTS,
+      REDIS_CHANNELS.KITCHEN_EVENTS,
+      REDIS_CHANNELS.INVENTORY_EVENTS,
+      REDIS_CHANNELS.TABLE_EVENTS,
+    );
+
+    subscriber.on("message", (channel, message) => {
+      try {
+        const event = parseRealtimeEnvelope(message);
+        if (!event) throw new Error("Invalid realtime event envelope");
+        const sessionId = customerSessionIdFromEvent(event);
+        if (sessionId) {
+          const sessionClients = customerClients.get(sessionId);
+          if (sessionClients) {
+            for (const ws of sessionClients) {
+              try {
+                ws.send(message);
+              } catch {
+                removeCustomerClient(sessionId, ws);
+              }
             }
           }
         }
-      }
-      if (
-        event.tenantId &&
-        event.branchId &&
-        event.type === "menu.availability.updated"
-      ) {
-        const branchClients = customerBranchClients.get(
-          customerBranchKey(event.tenantId, event.branchId),
-        );
-        if (branchClients) {
-          for (const ws of branchClients) {
-            try {
-              ws.send(message);
-            } catch {
-              removeCustomerBranchClient(event.tenantId, event.branchId, ws);
+        if (
+          event.tenantId &&
+          event.branchId &&
+          event.type === "menu.availability.updated"
+        ) {
+          const branchClients = customerBranchClients.get(
+            customerBranchKey(event.tenantId, event.branchId),
+          );
+          if (branchClients) {
+            for (const ws of branchClients) {
+              try {
+                ws.send(message);
+              } catch {
+                removeCustomerBranchClient(event.tenantId, event.branchId, ws);
+              }
             }
           }
         }
-      }
 
-      if (event.tenantId) forwardTenantRealtimeMessage(message);
-    } catch (err) {
-      console.error("[WS Gateway] Failed to parse Redis message:", err);
-    }
-  });
+        if (event.tenantId) forwardTenantRealtimeMessage(message);
+      } catch (err) {
+        logger.error("realtime.redis_message_failed", toError(err));
+      }
+    });
+  } catch (error) {
+    redisSubscriptionStarted = false;
+    throw error;
+  }
 };
-
-startRedisSubscription().catch(console.error);
 
 export const realtimeRouter = new Elysia({ prefix: "/ws" }).ws("/events", {
   open(ws) {
@@ -264,14 +286,12 @@ export const realtimeRouter = new Elysia({ prefix: "/ws" }).ws("/events", {
     if (staffScopeBySocket.has(ws)) return;
 
     try {
-      const payload =
-        typeof message === "string" ? JSON.parse(message) : message;
-      if (!payload || payload.type !== "auth" || !payload.token) {
-        throw new Error("Missing realtime auth payload");
-      }
-      const tokenPayload = verifyAccessToken(String(payload.token));
-      const tenantId = String(payload.tenantId ?? "");
-      const branchId = payload.branchId ? String(payload.branchId) : undefined;
+      const payload = parseJsonMessage(message);
+      if (!Value.Check(staffRealtimeAuthMessageSchema, payload))
+        throw new Error("Invalid realtime auth payload");
+      const tokenPayload = verifyAccessToken(payload.token);
+      const tenantId = payload.tenantId;
+      const branchId = payload.branchId;
       const context = await resolveRealtimeContext(
         tokenPayload,
         tenantId,
@@ -330,13 +350,10 @@ export const customerRealtimeRouter = new Elysia({ prefix: "/ws/customer" }).ws(
       if (customerSessionBySocket.has(ws)) return;
 
       try {
-        const payload =
-          typeof message === "string" ? JSON.parse(message) : message;
-        const token = String(payload?.session ?? "");
-        if (!payload || payload.type !== "auth" || !token) {
-          throw new Error("Missing customer realtime auth payload");
-        }
-        const session = await customerService.getSession(token);
+        const payload = parseJsonMessage(message);
+        if (!Value.Check(customerRealtimeAuthMessageSchema, payload))
+          throw new Error("Invalid customer realtime auth payload");
+        const session = await customerService.getSession(payload.session);
         clearAuthTimer(ws);
         customerSessionBySocket.set(ws, session.id);
         customerScopeBySocket.set(ws, {

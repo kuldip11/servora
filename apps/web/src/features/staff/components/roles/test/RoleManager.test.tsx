@@ -39,19 +39,63 @@ vi.mock("lucide-react", () => ({
   Trash2: () => null,
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQuery: (options: any) => {
+    const [state, setState] = React.useState<any>({
+      data: undefined,
+      isLoading: Boolean(options.enabled),
+      isError: false,
+      isFetching: false,
+    });
+    const key = JSON.stringify(options.queryKey);
+    const run = React.useCallback(async () => {
+      if (!options.enabled) return;
+      setState((current: any) => ({
+        ...current,
+        isLoading: current.data === undefined,
+        isFetching: true,
+        isError: false,
+      }));
+      try {
+        const data = await options.queryFn();
+        setState({ data, isLoading: false, isError: false, isFetching: false });
+      } catch {
+        setState((current: any) => ({
+          ...current,
+          isLoading: false,
+          isError: true,
+          isFetching: false,
+        }));
+      }
+    }, [options.enabled, key]);
+    React.useEffect(() => {
+      void run();
+    }, [run]);
+    return { ...state, refetch: run };
+  },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async (value: any) => {
+    mutate: async (value: any, callbacks?: any) => {
       try {
         const result = await options.mutationFn(value);
-        options.onSuccess?.(result);
+        options.onSuccess?.(result, value);
+        callbacks?.onSuccess?.(result, value);
       } catch (error) {
-        options.onError?.(error);
+        options.onError?.(error, value);
+        callbacks?.onError?.(error, value);
       }
     },
   }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -173,7 +217,7 @@ describe("RoleManager coverage", () => {
     expect(screen.getByText("Loading permissions…")).toBeTruthy();
     await screen.findByText("orders:read");
     const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
-    expect(boxes[0]!.checked).toBe(true);
+    await waitFor(() => expect(boxes[0]!.checked).toBe(true));
     fireEvent.click(boxes[0]!);
     fireEvent.click(boxes[1]!);
     fireEvent.click(screen.getByRole("button", { name: "Save Permissions" }));
@@ -202,12 +246,9 @@ describe("RoleManager coverage", () => {
     );
     mocks.listPermissions.mockRejectedValueOnce(new Error("load"));
     fireEvent.click(screen.getByLabelText("Manage permissions for Shift Lead"));
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Failed to load permissions",
-      ),
-    );
+    expect(
+      await screen.findByText("Unable to load role permissions"),
+    ).toBeTruthy();
     fireEvent.click(screen.getByText("Cancel"));
 
     mocks.create.mockRejectedValueOnce(new Error("create"));
@@ -218,12 +259,7 @@ describe("RoleManager coverage", () => {
     fireEvent.click(
       screen.getAllByRole("button", { name: /Create Role/ }).at(-1)!,
     );
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Failed to create role",
-      ),
-    );
+    expect((await screen.findByRole("alert")).textContent).toContain("create");
     fireEvent.click(screen.getByText("Cancel"));
 
     mocks.archive.mockRejectedValueOnce(new Error("archive"));

@@ -42,6 +42,8 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -236,6 +238,9 @@ describe("PromotionsSection coverage", () => {
     );
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "BOGO2" },
+    });
+    fireEvent.change(screen.getByLabelText("Type"), {
+      target: { value: "BOGO" },
     });
     fireEvent.change(screen.getByLabelText("Buy target"), {
       target: { value: "CATEGORY" },

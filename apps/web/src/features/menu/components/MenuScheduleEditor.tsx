@@ -1,9 +1,10 @@
 import { useReducer } from "react";
-import { Button, Input } from "@pos/ui";
+import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import { queryClient } from "@/shared/lib/query-client";
+import { notifyError } from "@/shared/lib/notify";
 
 const menuApi = createMenuApi(apiClient);
 
@@ -54,10 +55,11 @@ const reducer = (
 export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
   const [draft, dispatch] = useReducer(reducer, initialDraft);
   const key = ["menus", menuId, "schedules"];
-  const { data: schedules = [] } = useQuery<MenuScheduleRow[]>({
+  const schedulesQuery = useQuery<MenuScheduleRow[]>({
     queryKey: key,
     queryFn: () => menuApi.listMenuSchedules<MenuScheduleRow>(menuId),
   });
+  const schedules = schedulesQuery.data ?? [];
   const add = useMutation({
     mutationFn: () =>
       menuApi.createMenuSchedule<MenuScheduleRow>(menuId, {
@@ -79,10 +81,12 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
           : {}),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to add menu schedule"),
   });
   const remove = useMutation({
     mutationFn: (id: string) => menuApi.removeMenuSchedule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to remove menu schedule"),
   });
 
   const setField = <K extends keyof ScheduleDraft>(
@@ -90,11 +94,36 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
     value: ScheduleDraft[K],
   ) => dispatch({ type: "field", field, value });
 
+  const invalidDraft =
+    draft.scheduleType === "DAILY" || draft.scheduleType === "WEEKLY"
+      ? !draft.startTime || !draft.endTime || draft.endTime <= draft.startTime
+      : draft.scheduleType === "SPECIFIC_DATE"
+        ? !draft.startDate ||
+          Boolean(draft.endDate && draft.endDate < draft.startDate)
+        : draft.scheduleType === "HOLIDAY"
+          ? !draft.holidayName.trim()
+          : false;
+
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium text-text-primary">
         Menu windows
       </legend>
+      {schedulesQuery.isError && !schedulesQuery.data ? (
+        <QueryErrorState
+          title="Unable to load menu windows"
+          description="Menu availability windows could not be loaded. Retry before editing them."
+          onRetry={() => void schedulesQuery.refetch()}
+          isRetrying={schedulesQuery.isFetching}
+        />
+      ) : null}
+      {schedulesQuery.isError && schedulesQuery.data ? (
+        <StaleDataBanner
+          message="Menu windows could not be refreshed. Showing cached windows; adding is disabled until refreshed."
+          onRetry={() => void schedulesQuery.refetch()}
+          isRetrying={schedulesQuery.isFetching}
+        />
+      ) : null}
       {schedules.map((schedule) => (
         <div
           key={schedule.id}
@@ -196,6 +225,7 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
           size="sm"
           variant="secondary"
           loading={add.isPending}
+          disabled={add.isPending || invalidDraft || schedulesQuery.isError}
           onClick={() => add.mutate()}
         >
           Add window

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import type { KitchenTicketStatus } from "@pos/types";
+import { extractApiError } from "@pos/api-client";
 import { updateTicketStatus } from "@/features/kitchen/api/tickets";
 import { KITCHEN_TICKETS_QUERY_KEY } from "./useKitchenTickets";
 
@@ -14,6 +15,10 @@ export const useUpdateTicketStatus = () => {
       qc.invalidateQueries({ queryKey: KITCHEN_TICKETS_QUERY_KEY });
       toast({ title: "Ticket updated", tone: "success" });
     },
-    onError: () => toast({ title: "Failed to update ticket", tone: "danger" }),
+    onError: (error) =>
+      toast({
+        title: extractApiError(error, "Failed to update ticket"),
+        tone: "danger",
+      }),
   });
 };

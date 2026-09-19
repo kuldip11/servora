@@ -1,5 +1,9 @@
 import { Type, type Static } from "@sinclair/typebox";
 import { uuidSchema } from "../common/ids";
+import {
+  paginationLimitSchema,
+  paginationPageSchema,
+} from "../common/pagination";
 
 export const staffStatusSchema = Type.Union([
   Type.Literal("ACTIVE"),
@@ -41,8 +45,8 @@ export const staffIdParamsSchema = Type.Object(
 
 export const staffListQuerySchema = Type.Object(
   {
-    page: Type.Optional(Type.Integer({ minimum: 1 })),
-    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+    page: Type.Optional(paginationPageSchema),
+    limit: Type.Optional(paginationLimitSchema),
     search: Type.Optional(Type.String({ maxLength: 100 })),
     status: Type.Optional(staffStatusSchema),
   },

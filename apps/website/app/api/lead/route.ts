@@ -56,22 +56,34 @@ export const POST = async (request: Request) => {
     if (honeypot) return NextResponse.json({ ok: true });
     if (!name || name.length > 120)
       return NextResponse.json(
-        { error: "Please enter your name." },
+        {
+          error: "Please enter your name.",
+          fieldErrors: { name: ["Please enter your name."] },
+        },
         { status: 400 },
       );
     if (!EMAIL_RE.test(email) || email.length > 254)
       return NextResponse.json(
-        { error: "Please enter a valid work email." },
+        {
+          error: "Please enter a valid work email.",
+          fieldErrors: { email: ["Please enter a valid work email."] },
+        },
         { status: 400 },
       );
-    if (
-      business.length > 160 ||
-      locations.length > 40 ||
-      message.length > 4000 ||
-      subject.length > 120
-    )
+    const fieldErrors: Record<string, string[]> = {};
+    if (business.length > 160)
+      fieldErrors.business = ["Business name must be 160 characters or fewer."];
+    if (locations.length > 40)
+      fieldErrors.locations = [
+        "Location count must be 40 characters or fewer.",
+      ];
+    if (message.length > 4000)
+      fieldErrors.message = ["Message must be 4000 characters or fewer."];
+    if (subject.length > 120)
+      fieldErrors.subject = ["Subject must be 120 characters or fewer."];
+    if (Object.keys(fieldErrors).length)
       return NextResponse.json(
-        { error: "One or more fields are too long." },
+        { error: "One or more fields are too long.", fieldErrors },
         { status: 400 },
       );
 

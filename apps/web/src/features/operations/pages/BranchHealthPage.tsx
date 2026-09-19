@@ -1,7 +1,16 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, Page, PageHeader, Spinner } from "@pos/ui";
+import {
+  Badge,
+  Card,
+  Page,
+  PageHeader,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
+} from "@pos/ui";
 import { operationsService } from "@/features/operations/services/operations.service";
+import { extractApiError } from "@/shared/lib/api-client";
 
 const capabilityScore = (
   branch: Awaited<
@@ -38,10 +47,27 @@ export const BranchHealthPage = () => {
         title="Branch health"
         description="Branch readiness combines configured operating capabilities with live availability exceptions. Scores are transparent and never inferred from unavailable telemetry."
       />
+      {snapshot.isError && snapshot.data !== undefined ? (
+        <StaleDataBanner
+          message="Branch health refresh failed — showing the latest readiness data available."
+          isRetrying={snapshot.isFetching}
+          onRetry={() => void snapshot.refetch()}
+        />
+      ) : null}
       {snapshot.isLoading ? (
         <div className="flex min-h-48 items-center justify-center">
           <Spinner className="h-7 w-7" />
         </div>
+      ) : snapshot.isError && snapshot.data === undefined ? (
+        <QueryErrorState
+          title="Unable to load branch health"
+          description={extractApiError(
+            snapshot.error,
+            "Branch readiness could not be loaded. Retry before relying on these operational indicators.",
+          )}
+          isRetrying={snapshot.isFetching}
+          onRetry={() => void snapshot.refetch()}
+        />
       ) : snapshot.data ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {snapshot.data.branches.map((branch) => {

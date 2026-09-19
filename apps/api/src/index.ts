@@ -9,6 +9,7 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 
 import { requestContextPlugin } from "./core/context";
+import { queryNormalizationPlugin } from "./core/transport/query-normalization";
 import type { RequestContext } from "./core/context/request-context";
 import { securityHeadersPlugin, rateLimitPlugin } from "./core/security";
 import {
@@ -113,6 +114,7 @@ let app = new Elysia()
     }),
   )
   .use(requestContextPlugin())
+  .use(queryNormalizationPlugin())
   .use(securityHeadersPlugin())
   .use(rateLimitPlugin())
   .use(requestLoggingPlugin())

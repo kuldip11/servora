@@ -14,6 +14,10 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 vi.mock("@pos/ui", () => ({ toast }));
+vi.mock("@pos/api-client", () => ({
+  extractApiError: (error: unknown, fallback?: string) =>
+    error instanceof Error ? error.message : (fallback ?? "Unexpected error"),
+}));
 vi.mock("@/features/orders/api/orders", () => ({ updateOrderStatus }));
 import { useUpdateOrderStatus } from "../useUpdateOrderStatus";
 
@@ -28,7 +32,8 @@ describe("useUpdateOrderStatus", () => {
     const config = mutationConfigs.at(-1)!;
     await config.mutationFn({ id: "o1", status: "READY", reason: "r" });
     config.onSuccess();
-    config.onError();
+    config.onError(new Error("api failed"));
     expect(updateOrderStatus).toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith({ title: "api failed", tone: "danger" });
   });
 });

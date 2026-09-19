@@ -24,6 +24,6 @@ export const useToggleItemAvailability = () => {
           ),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() }),
-    onError: () => notifyError(undefined, "Failed to update availability"),
+    onError: (error) => notifyError(error, "Failed to update availability"),
   });
 };

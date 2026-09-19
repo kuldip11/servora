@@ -55,6 +55,14 @@ vi.mock("@pos/ui", () => ({
       <p>{description}</p>
     </header>
   ),
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <span>{description}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   toast: mocks.toast,
 }));
 
@@ -348,12 +356,8 @@ describe("DifferentiatorsPage coverage", () => {
     expect(
       await screen.findByText("Everything is available in the selected scope."),
     ).toBeTruthy();
-    await waitFor(() =>
-      expect(mocks.toast).toHaveBeenCalledWith({
-        title: "Request failed",
-        tone: "danger",
-      }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Guided builder" }));
+    expect(await screen.findByText("Unable to load menu choices")).toBeTruthy();
 
     mocks.menuEngineering.mockResolvedValueOnce([
       {

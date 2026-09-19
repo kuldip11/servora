@@ -62,6 +62,16 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (config: any) => ({
     isPending: false,
+    mutateAsync: async (arg?: any) => {
+      try {
+        const value = await config.mutationFn(arg);
+        await config.onSuccess?.(value);
+        return value;
+      } catch (error) {
+        config.onError?.(error);
+        throw error;
+      }
+    },
     mutate: (arg?: any, options?: any) => {
       try {
         Promise.resolve(config.mutationFn(arg))
@@ -81,6 +91,15 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages }: any) =>
+    messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -166,7 +185,11 @@ describe("CustomerGroupsSection", () => {
     fireEvent.change(screen.getByLabelText("Percent"), {
       target: { value: "15" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    const createButton = screen.getByRole("button", { name: "Create group" });
+    await waitFor(() =>
+      expect((createButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.submit(createButton.closest("form")!);
     await waitFor(() =>
       expect(h.createGroup).toHaveBeenCalledWith({
         name: "New",

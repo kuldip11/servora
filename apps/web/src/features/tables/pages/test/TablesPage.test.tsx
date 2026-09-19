@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   has: vi.fn(),
   tables: { current: {} as any },
   branches: { current: [] as any[] },
-  orders: { current: [] as any[] },
+  orders: { current: {} as any },
   add: vi.fn(),
   update: vi.fn(),
   status: vi.fn(),
@@ -30,7 +30,12 @@ vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
 vi.mock("@/features/branches/hooks/useBranches", () => ({
-  useBranches: () => ({ data: mocks.branches.current }),
+  useBranches: () => ({
+    data: mocks.branches.current,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/tables/hooks/useTables", () => ({
   useTables: () => mocks.tables.current,
@@ -54,7 +59,7 @@ vi.mock("@/features/tables/hooks/useRegenerateTableQr", () => ({
   useRegenerateTableQr: () => ({ mutate: mocks.regen, isPending: false }),
 }));
 vi.mock("@/features/orders/hooks/useOrders", () => ({
-  useOrders: () => ({ data: mocks.orders.current }),
+  useOrders: () => mocks.orders.current,
 }));
 vi.mock("@/features/orders/hooks/useTransferTable", () => ({
   useTransferTable: () => ({ mutate: mocks.transfer, isPending: false }),
@@ -65,7 +70,11 @@ vi.mock("@pos/api-client", () => ({
     regenerateTakeawayQr: mocks.regenTakeaway,
   }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiError: (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback,
+}));
 vi.mock("@/features/orders/services/orders.service", () => ({
   ordersService: { mergeOrders: mocks.merge },
 }));
@@ -213,6 +222,19 @@ vi.mock("@pos/ui", () => ({
     </div>
   ),
   StatusBadge: ({ label }: any) => <span>{label}</span>,
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div role="alert">
+      <span>{title}</span>
+      <span>{description}</span>
+      {onRetry ? <button onClick={onRetry}>retry-query</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div role="status">
+      <span>{message}</span>
+      {onRetry ? <button onClick={onRetry}>retry-stale</button> : null}
+    </div>
+  ),
 }));
 
 import { useAuthStore } from "@/store/auth";
@@ -254,12 +276,24 @@ describe("TablesPage coverage", () => {
     vi.clearAllMocks();
     mocks.has.mockReturnValue(true);
     useAuthStore.setState({ branchId: "b1" });
-    mocks.tables.current = { data: [t1, t2, t3], isLoading: false };
+    mocks.tables.current = {
+      data: [t1, t2, t3],
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     mocks.branches.current = [{ id: "b1", name: "Central" }];
-    mocks.orders.current = [
-      { id: "o1", tableId: "t1" },
-      { id: "o2", tableId: "t2" },
-    ];
+    mocks.orders.current = {
+      data: [
+        { id: "o1", tableId: "t1" },
+        { id: "o2", tableId: "t2" },
+      ],
+      isSuccess: true,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     mocks.getTakeaway.mockResolvedValue({
       branchId: "b1",
       branchName: "Central",
@@ -362,10 +396,22 @@ describe("TablesPage coverage", () => {
     expect(screen.getByText("Central")).toBeTruthy();
     expect(screen.getByText("Unknown branch")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Takeaway QR/ })).toBeNull();
-    mocks.tables.current = { data: [], isLoading: true };
+    mocks.tables.current = {
+      data: [],
+      isLoading: true,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     rerender(<TablesPage />);
     expect(screen.queryByText("No tables yet")).toBeNull();
-    mocks.tables.current = { data: [], isLoading: false };
+    mocks.tables.current = {
+      data: [],
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     rerender(<TablesPage />);
     expect(screen.getByText("No tables yet")).toBeTruthy();
   });
@@ -412,7 +458,13 @@ describe("TablesPage coverage", () => {
 
     baseView.unmount();
     useAuthStore.setState({ branchId: "all" });
-    mocks.tables.current = { data: [t1, t2, t3], isLoading: false };
+    mocks.tables.current = {
+      data: [t1, t2, t3],
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     const { unmount } = render(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: /Add Table/ }));
     fireEvent.click(
@@ -442,6 +494,39 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByRole("button", { name: "Merge" })).toBeNull();
   });
 
+  it("shows a load error instead of a false empty table state", () => {
+    mocks.tables.current = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("tables unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+
+    render(<TablesPage />);
+
+    expect(screen.getByText("Unable to load tables")).toBeTruthy();
+    expect(screen.queryByText("No tables yet")).toBeNull();
+  });
+
+  it("blocks transfer and merge while open orders are unavailable", () => {
+    mocks.orders.current = {
+      data: undefined,
+      isSuccess: false,
+      isError: true,
+      error: new Error("orders unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+
+    render(<TablesPage />);
+
+    expect(screen.getByText(/Open orders are unavailable/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Transfer" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Merge" })).toBeNull();
+  });
+
   it("covers mutation success callbacks, missing transfer order, merge errors and large-table observer", async () => {
     const firstView = render(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: /Add Table/ }));
@@ -466,7 +551,13 @@ describe("TablesPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Transfer" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     firstView.unmount();
-    mocks.orders.current = [];
+    mocks.orders.current = {
+      data: [],
+      isSuccess: true,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     const { unmount } = render(<TablesPage />);
     fireEvent.click(screen.getAllByRole("button", { name: "Transfer" })[0]!);
     expect(screen.getByText(/No open order was found/)).toBeTruthy();
@@ -477,11 +568,17 @@ describe("TablesPage coverage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "modal-x" }).at(-1)!);
     unmount();
 
-    mocks.orders.current = [
-      { id: "o1", tableId: "t1" },
-      { id: "o2", tableId: "t2", mergedIntoOrderId: "x" },
-      { id: "order-long-12345678", tableId: "missing" },
-    ];
+    mocks.orders.current = {
+      data: [
+        { id: "o1", tableId: "t1" },
+        { id: "o2", tableId: "t2", mergedIntoOrderId: "x" },
+        { id: "order-long-12345678", tableId: "missing" },
+      ],
+      isSuccess: true,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     mocks.merge.mockRejectedValueOnce(new Error("merge failed"));
     render(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: "Merge" }));
@@ -517,7 +614,13 @@ describe("TablesPage coverage", () => {
       id: `m${i}`,
       name: `M${i}`,
     }));
-    mocks.tables.current = { data: many, isLoading: false };
+    mocks.tables.current = {
+      data: many,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     const view = render(<TablesPage />);
     expect(screen.getByText("Loading more tables…")).toBeTruthy();
     act(() => observerCallback?.([{ isIntersecting: true }]));

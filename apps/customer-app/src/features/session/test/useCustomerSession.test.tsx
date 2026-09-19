@@ -232,6 +232,40 @@ describe("useCustomerSession exhaustive", () => {
       expect(result.current.error).toBe("Unable to load this ordering session"),
     );
   });
+  it("surfaces active-order refresh failures without discarding the cached order", async () => {
+    mocks.loadPersistedOrderId.mockReturnValue("o1");
+    mocks.getCustomerOrder.mockResolvedValueOnce({
+      id: "o1",
+      status: "PLACED",
+    });
+
+    const { result } = renderSessionHook();
+
+    await waitFor(() => expect(result.current.placedOrder?.id).toBe("o1"));
+
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Order refresh unavailable",
+        retryable: true,
+        status: 503,
+      }),
+    );
+    act(() => result.current.retryActiveOrder());
+    await waitFor(() =>
+      expect(result.current.activeOrderError).toBe("Order refresh unavailable"),
+    );
+    expect(result.current.placedOrder?.id).toBe("o1");
+
+    mocks.getCustomerOrder.mockResolvedValueOnce({
+      id: "o1",
+      status: "PREPARING",
+    });
+    act(() => result.current.retryActiveOrder());
+    await waitFor(() => expect(result.current.activeOrderError).toBeNull());
+    expect(result.current.placedOrder?.status).toBe("PREPARING");
+  });
+
   it("handles requests success/failure/guard and realtime callbacks", async () => {
     let onOrder: any, onMenu: any;
     mocks.realtime.mockImplementation((_t, _id, a, b) => {

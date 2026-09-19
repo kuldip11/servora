@@ -1,6 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Modal, Input, Select } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Modal,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { FoodTypeDot } from "./FoodTypeDot";
 import {
   MENU_FOOD_TYPE_OPTIONS,
@@ -13,8 +21,8 @@ import { useMenuTags } from "@/features/menu/hooks/useMenuTags";
 import { useMenuAllergens } from "@/features/menu/hooks/useMenuAllergens";
 import { useSaveMenuItem } from "@/features/menu/hooks/useSaveMenuItem";
 import { useItemFormWorkflow } from "@/features/menu/hooks/useItemFormWorkflow";
-import { applyApiFieldErrors } from "@/shared/lib/form-errors";
 import { ItemAdvancedOptions } from "./ItemAdvancedOptions";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import type {
   MenuItem,
   FoodType,
@@ -41,9 +49,10 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     setValue,
     watch,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty: formIsDirty, isValid },
   } = useForm<MenuItemFormValues>({
     resolver: zodResolver(menuItemFormSchema),
+    mode: "onChange",
     defaultValues: {
       name: item?.name ?? "",
       description: item?.description ?? "",
@@ -112,12 +121,35 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     setSelectedTagIds,
     setSelectedAllergenIds,
   } = workflow;
-  const { data: allGroups } = useModifierGroups();
-  const { data: allTags } = useMenuTags();
-  const { data: allAllergens } = useMenuAllergens();
-  const { data: allCategories } = useMenuCategories();
+  const groupsQuery = useModifierGroups();
+  const tagsQuery = useMenuTags();
+  const allergensQuery = useMenuAllergens();
+  const categoriesQuery = useMenuCategories();
+  const allGroups = groupsQuery.data;
+  const allTags = tagsQuery.data;
+  const allAllergens = allergensQuery.data;
+  const allCategories = categoriesQuery.data;
+  const dependencyQueries = [
+    groupsQuery,
+    tagsQuery,
+    allergensQuery,
+    categoriesQuery,
+  ];
+  const advancedDependencyFailed =
+    showAdvanced &&
+    dependencyQueries.some((query) => query.isError && !query.data);
+  const advancedDependencyStale =
+    showAdvanced &&
+    dependencyQueries.some((query) => query.isError && Boolean(query.data));
+  const retryAdvancedDependencies = () => {
+    for (const query of dependencyQueries) {
+      if (query.isError) void query.refetch();
+    }
+  };
 
   const saveMutation = useSaveMenuItem();
+  const formApiErrors = useFormApiErrors<MenuItemFormValues>();
+  const editUnchanged = isEdit && !formIsDirty && !workflow.isDirty;
 
   function handleSave(values: MenuItemFormValues) {
     const parsed = menuItemFormSchema.safeParse({
@@ -227,7 +259,31 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       { item, payload },
       {
         onSuccess: onClose,
-        onError: (error) => applyApiFieldErrors(error, setError),
+        onError: (error) =>
+          formApiErrors.handleApiError(
+            error,
+            setError,
+            [
+              "name",
+              "description",
+              "basePrice",
+              "manualCost",
+              "taxRate",
+              "foodType",
+              "spiceLevel",
+              "sku",
+              "prepTimeMinutes",
+              "hsnCode",
+              "status",
+              "availabilityReason",
+              "variants",
+              "imageUrls",
+              "modifierGroupIds",
+              "tagIds",
+              "allergenIds",
+            ],
+            "Failed to save menu item",
+          ),
       },
     );
   }
@@ -242,8 +298,12 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       <form
         className="space-y-5"
         noValidate
-        onSubmit={handleSubmit(handleSave)}
+        onSubmit={handleSubmit((values) => {
+          formApiErrors.clearFormErrors();
+          handleSave(values);
+        })}
       >
+        <FormErrorSummary messages={formApiErrors.formErrorMessages} />
         <Input
           label="Item name"
           placeholder="Chicken Tikka"
@@ -377,7 +437,23 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
           {showAdvanced ? "Hide advanced options" : "Show advanced options"}
         </button>
 
-        {showAdvanced && (
+        {showAdvanced && advancedDependencyFailed ? (
+          <QueryErrorState
+            title="Unable to load advanced menu options"
+            description="Modifier groups, tags, allergens, or categories could not be loaded. Retry before saving advanced changes."
+            onRetry={retryAdvancedDependencies}
+            isRetrying={dependencyQueries.some((query) => query.isFetching)}
+          />
+        ) : null}
+        {showAdvanced && advancedDependencyStale ? (
+          <StaleDataBanner
+            message="Advanced menu options could not be refreshed. Showing cached options; saving is disabled until refreshed."
+            onRetry={retryAdvancedDependencies}
+            isRetrying={dependencyQueries.some((query) => query.isFetching)}
+          />
+        ) : null}
+
+        {showAdvanced && !advancedDependencyFailed && (
           <ItemAdvancedOptions
             item={item}
             form={form}
@@ -396,7 +472,17 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" loading={saveMutation.isPending}>
+          <Button
+            type="submit"
+            loading={saveMutation.isPending}
+            disabled={
+              saveMutation.isPending ||
+              !isValid ||
+              editUnchanged ||
+              advancedDependencyFailed ||
+              advancedDependencyStale
+            }
+          >
             {isEdit ? "Save Changes" : "Add Item"}
           </Button>
         </div>

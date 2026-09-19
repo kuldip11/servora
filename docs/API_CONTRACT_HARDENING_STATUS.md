@@ -244,3 +244,30 @@ Verification:
 - Web / Waiter / Kitchen / Customer typecheck: PASS
 - generated OpenAPI drift verification: PASS
 - transport-boundary audit: PASS
+
+## Implementation log — 2026-09-19 — numeric query transport normalization
+
+Task: AC-110 / AC-200 follow-up
+Status: COMPLETED
+Files changed:
+
+- `apps/api/src/core/transport/query-normalization.ts`
+- `apps/api/src/index.ts`
+- `apps/api/src/test/query-contract-coercion.test.ts`
+- `packages/contracts/src/staff/requests.ts`
+- `packages/contracts/src/audit/index.ts`
+
+Behavior:
+
+- URL query-string `page` / `limit` values are normalized from integer strings to numbers before TypeBox route validation.
+- Orders, Staff, Inventory, Audit, and any other route using the same transport keys (including the inline Menu Change Log `limit`) now accept normal HTTP query strings such as `?page=1&limit=100` while preserving strict integer/range validation.
+- JSON body integer schemas remain unchanged; coercion is intentionally limited to HTTP query transport keys.
+
+Verification:
+
+- contracts typecheck -> PASS
+- API typecheck -> PASS
+- focused query/route regression suites -> PASS (6 files / 17 tests)
+- common contract tests -> PASS (1 file / 4 tests)
+- root ESLint -> PASS
+- focused Prettier check -> PASS

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   menus: [] as any[],
@@ -16,11 +16,26 @@ vi.mock("lucide-react", () => ({
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/branches/hooks/useBranches", () => ({
-  useBranches: () => ({ data: mocks.branches }),
+  useBranches: () => ({
+    data: mocks.branches,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/menu/hooks/useMenus", () => ({
-  useMenus: () => ({ data: mocks.menus, isLoading: false }),
-  useCreateMenu: () => ({ mutate: mocks.create, isPending: false }),
+  useMenus: () => ({
+    data: mocks.menus,
+    isLoading: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  useCreateMenu: () => ({
+    mutate: mocks.create,
+    mutateAsync: mocks.create,
+    isPending: false,
+  }),
   useSetMenuPublished: () => ({ mutate: mocks.publish, isPending: false }),
   useDeleteMenu: () => ({ mutate: mocks.del, isPending: false }),
 }));
@@ -28,7 +43,12 @@ vi.mock("@pos/api-client", () => ({
   createMenuApi: () => ({ listActiveMenus: vi.fn() }),
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mocks.resolved }),
+  useQuery: () => ({
+    data: mocks.resolved,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("../MenuAvailabilityDialog", () => ({
   MenuAvailabilityDialog: ({ menu, onClose }: any) =>
@@ -40,6 +60,15 @@ vi.mock("../MenuAvailabilityDialog", () => ({
     ) : null,
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages }: any) =>
+    messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -78,7 +107,7 @@ describe("MenusSection", () => {
       vi.fn(() => true),
     );
   });
-  it("owns menu CRUD and publish/draft actions", () => {
+  it("owns menu CRUD and publish/draft actions", async () => {
     render(<MenusSection />);
     expect(screen.getByText(/Organization-inherited menu active/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("New menu"), {
@@ -87,9 +116,8 @@ describe("MenusSection", () => {
     fireEvent.submit(
       screen.getByRole("button", { name: /Create/ }).closest("form")!,
     );
-    expect(mocks.create).toHaveBeenCalledWith(
-      { name: "Dinner" },
-      expect.any(Object),
+    await waitFor(() =>
+      expect(mocks.create).toHaveBeenCalledWith({ name: "Dinner" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
     expect(mocks.publish).toHaveBeenCalledWith({ id: "m1", published: true });

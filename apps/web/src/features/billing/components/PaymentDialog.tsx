@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Input, Modal, Select } from "@pos/ui";
+import {
+  Button,
+  Input,
+  Modal,
+  QueryErrorState,
+  Select,
+  Spinner,
+} from "@pos/ui";
 import type { Bill, Order } from "@pos/types";
 import { createPaymentSchema } from "@pos/validation";
 import { PAYMENT_METHODS } from "@/features/billing/constants";
 import { useCollectPayment } from "@/features/billing/hooks/useCollectPayment";
 import { billingService } from "@/features/billing/services/billing.service";
+import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 import { BillItemSummary } from "./BillItemSummary";
 
@@ -44,7 +52,7 @@ export const PaymentDialog = ({
   const [selectedBillId, setSelectedBillId] = useState("");
   const [validationError, setValidationError] = useState("");
   const payMutation = useCollectPayment();
-  const { data: orderBills = [] } = useQuery<Bill[]>({
+  const billsQuery = useQuery<Bill[]>({
     queryKey: ["billing", "order", order?.id],
     queryFn: () => billingService.getOrderBills(order!.id),
     enabled: !!order,
@@ -52,6 +60,35 @@ export const PaymentDialog = ({
 
   if (!order) return null;
 
+  if (billsQuery.isLoading) {
+    return (
+      <Modal open title="Collect Payment" size="sm" onClose={onClose}>
+        <div className="flex min-h-48 items-center justify-center">
+          <span role="status" aria-label="Loading billing state">
+            <Spinner />
+          </span>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (billsQuery.isError) {
+    return (
+      <Modal open title="Collect Payment" size="sm" onClose={onClose}>
+        <QueryErrorState
+          title="Unable to load billing state"
+          description={extractApiError(
+            billsQuery.error,
+            "Payment is blocked until the latest bill state can be loaded.",
+          )}
+          isRetrying={billsQuery.isFetching}
+          onRetry={() => void billsQuery.refetch()}
+        />
+      </Modal>
+    );
+  }
+
+  const orderBills = billsQuery.data ?? [];
   const unpaidBills = orderBills.filter(
     (bill) => Number(bill.totalAmount) - paidAmount(bill.payments) > 0.005,
   );
@@ -256,7 +293,11 @@ export const PaymentDialog = ({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button loading={payMutation.isPending} onClick={submit}>
+          <Button
+            disabled={!billsQuery.isSuccess}
+            loading={payMutation.isPending}
+            onClick={submit}
+          >
             Confirm Payment
           </Button>
         </div>

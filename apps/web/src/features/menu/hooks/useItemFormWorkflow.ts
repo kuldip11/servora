@@ -32,6 +32,7 @@ type State = {
   selectedGroupIds: string[];
   selectedTagIds: string[];
   selectedAllergenIds: string[];
+  isDirty: boolean;
 };
 
 type Action = { patch: Partial<State> };
@@ -79,21 +80,28 @@ export const useItemFormWorkflow = (item: MenuItem | null) => {
     selectedTagIds: initialItem?.tagLinks?.map((link) => link.tagId) ?? [],
     selectedAllergenIds:
       initialItem?.allergenLinks?.map((link) => link.allergenId) ?? [],
+    isDirty: false,
   }));
 
   const setter =
-    <K extends keyof State>(key: K): Dispatch<SetStateAction<State[K]>> =>
+    <K extends keyof State>(
+      key: K,
+      options: { markDirty?: boolean } = {},
+    ): Dispatch<SetStateAction<State[K]>> =>
     (next) =>
       dispatch({
-        patch: { [key]: resolve(state[key], next) } as Pick<State, K>,
+        patch: {
+          [key]: resolve(state[key], next),
+          ...(options.markDirty === false ? {} : { isDirty: true }),
+        } as Partial<State>,
       });
 
   return {
     ...state,
-    setShowAdvanced: setter("showAdvanced"),
+    setShowAdvanced: setter("showAdvanced", { markDirty: false }),
     setVariants: setter("variants"),
     setImageUrls: setter("imageUrls"),
-    setNewImageUrl: setter("newImageUrl"),
+    setNewImageUrl: setter("newImageUrl", { markDirty: false }),
     setDisplayMode: setter("displayMode"),
     setTaxMode: setter("taxMode"),
     setEffectiveFrom: setter("effectiveFrom"),

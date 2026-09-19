@@ -40,6 +40,8 @@ vi.mock("@pos/ui", () => ({
 vi.mock("@pos/api-client", () => ({
   createMenuApi: () => api,
   createCustomersApi: () => customers,
+  extractApiError: (error: any) =>
+    error?.response?.data?.error?.message ?? "Request failed",
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/menu/hooks/useMenuCategories", () => ({

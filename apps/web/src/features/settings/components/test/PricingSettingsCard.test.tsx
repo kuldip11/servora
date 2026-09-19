@@ -33,6 +33,8 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...props} />
     </label>
   ),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Select: ({ label, options = [], ...props }: any) => (
     <label>
       {label}

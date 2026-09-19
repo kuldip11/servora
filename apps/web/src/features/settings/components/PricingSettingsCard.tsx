@@ -1,13 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Input, Select } from "@pos/ui";
+import {
+  Button,
+  Card,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { ReceiptText } from "lucide-react";
 import { createSettingsApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import { notifySuccess } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validateServiceChargePercent } from "@/features/settings/helpers/settings-validation";
+import type { Tenant } from "@pos/types";
 
 const settingsApi = createSettingsApi(apiClient);
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
-import type { Tenant } from "@pos/types";
 
 type TenantSettings = Required<
   Pick<
@@ -28,8 +38,9 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
     useState<TenantSettings["roundingPolicy"]>("NONE");
   const [defaultTaxMode, setDefaultTaxMode] =
     useState<TenantSettings["defaultTaxMode"]>("EXCLUSIVE");
+  const formErrors = useLocalFormApiErrors();
   const key = ["tenant-settings", tenantId];
-  const { data: settings } = useQuery<TenantSettings>({
+  const settingsQuery = useQuery<TenantSettings>({
     queryKey: key,
     queryFn: async () => {
       const memberships = await settingsApi.tenants<TenantSettings>();
@@ -40,13 +51,34 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
       return tenant;
     },
   });
+
   useEffect(() => {
-    if (!settings) return;
-    setServiceChargePercent(settings.serviceChargePercent ?? "");
-    setServiceChargeTaxable(settings.serviceChargeTaxable);
-    setRoundingPolicy(settings.roundingPolicy);
-    setDefaultTaxMode(settings.defaultTaxMode);
-  }, [settings]);
+    if (!settingsQuery.data) return;
+    setServiceChargePercent(
+      settingsQuery.data.serviceChargePercent == null
+        ? ""
+        : String(settingsQuery.data.serviceChargePercent),
+    );
+    setServiceChargeTaxable(settingsQuery.data.serviceChargeTaxable);
+    setRoundingPolicy(settingsQuery.data.roundingPolicy);
+    setDefaultTaxMode(settingsQuery.data.defaultTaxMode);
+  }, [settingsQuery.data]);
+
+  const clientError = useMemo(
+    () => validateServiceChargePercent(serviceChargePercent),
+    [serviceChargePercent],
+  );
+  const isDirty = Boolean(
+    settingsQuery.data &&
+    (serviceChargePercent !==
+      (settingsQuery.data.serviceChargePercent == null
+        ? ""
+        : String(settingsQuery.data.serviceChargePercent)) ||
+      serviceChargeTaxable !== settingsQuery.data.serviceChargeTaxable ||
+      roundingPolicy !== settingsQuery.data.roundingPolicy ||
+      defaultTaxMode !== settingsQuery.data.defaultTaxMode),
+  );
+
   const save = useMutation({
     mutationFn: () =>
       settingsApi.updateTenant<TenantSettings>(tenantId, {
@@ -59,11 +91,25 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
         defaultTaxMode,
       }),
     onSuccess: () => {
+      formErrors.clearErrors();
       qc.invalidateQueries({ queryKey: key });
       notifySuccess("Pricing settings updated");
     },
-    onError: (error) => notifyError(error, "Failed to update pricing settings"),
   });
+
+  if (settingsQuery.isError && !settingsQuery.data) {
+    return (
+      <Card>
+        <QueryErrorState
+          title="Unable to load pricing settings"
+          description="Pricing and tax settings could not be loaded. Retry before changing them so missing configuration is not treated as defaults."
+          onRetry={() => void settingsQuery.refetch()}
+          isRetrying={settingsQuery.isFetching}
+        />
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <div className="mb-4 flex items-center gap-3">
@@ -79,31 +125,49 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
           </p>
         </div>
       </div>
+      {settingsQuery.isError && settingsQuery.data ? (
+        <StaleDataBanner
+          message="Pricing settings refresh failed — showing the latest cached values."
+          onRetry={() => void settingsQuery.refetch()}
+          isRetrying={settingsQuery.isFetching}
+        />
+      ) : null}
+      <FormErrorSummary
+        messages={formErrors.formErrorMessages}
+        className="mb-3"
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <Input
           label="Service charge %"
           type="number"
           min="0"
           max="100"
+          step="0.01"
           value={serviceChargePercent}
-          onChange={(e) => setServiceChargePercent(e.target.value)}
+          error={formErrors.fieldErrors.serviceChargePercent ?? clientError}
+          onChange={(event) => {
+            formErrors.clearFieldError("serviceChargePercent");
+            setServiceChargePercent(event.target.value);
+          }}
         />
         <label className="flex items-end gap-2 pb-2 text-sm text-text-secondary">
           <input
             type="checkbox"
             checked={serviceChargeTaxable}
-            onChange={(e) => setServiceChargeTaxable(e.target.checked)}
+            onChange={(event) => setServiceChargeTaxable(event.target.checked)}
           />{" "}
           Service charge is taxable
         </label>
         <Select
           label="Rounding policy"
           value={roundingPolicy}
-          onChange={(e) =>
+          error={formErrors.fieldErrors.roundingPolicy}
+          onChange={(event) => {
+            formErrors.clearFieldError("roundingPolicy");
             setRoundingPolicy(
-              e.target.value as TenantSettings["roundingPolicy"],
-            )
-          }
+              event.target.value as TenantSettings["roundingPolicy"],
+            );
+          }}
           options={[
             { value: "NONE", label: "No rounding" },
             { value: "NEAREST_1", label: "Nearest 1" },
@@ -114,11 +178,13 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
         <Select
           label="Default tax mode"
           value={defaultTaxMode}
-          onChange={(e) =>
+          error={formErrors.fieldErrors.defaultTaxMode}
+          onChange={(event) => {
+            formErrors.clearFieldError("defaultTaxMode");
             setDefaultTaxMode(
-              e.target.value as TenantSettings["defaultTaxMode"],
-            )
-          }
+              event.target.value as TenantSettings["defaultTaxMode"],
+            );
+          }}
           options={[
             { value: "EXCLUSIVE", label: "Tax exclusive" },
             { value: "INCLUSIVE", label: "Tax inclusive" },
@@ -126,7 +192,32 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
         />
       </div>
       <div className="mt-4 flex justify-end">
-        <Button loading={save.isPending} onClick={() => save.mutate()}>
+        <Button
+          loading={save.isPending}
+          disabled={
+            settingsQuery.isLoading ||
+            save.isPending ||
+            Boolean(clientError) ||
+            !isDirty
+          }
+          onClick={() => {
+            formErrors.clearErrors();
+            if (clientError || !isDirty) return;
+            save.mutate(undefined, {
+              onError: (error) =>
+                formErrors.handleApiError(
+                  error,
+                  [
+                    "serviceChargePercent",
+                    "serviceChargeTaxable",
+                    "roundingPolicy",
+                    "defaultTaxMode",
+                  ],
+                  "Failed to update pricing settings",
+                ),
+            });
+          }}
+        >
           Save pricing settings
         </Button>
       </div>

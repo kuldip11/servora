@@ -1,6 +1,7 @@
 import {
   createApiClient,
   extractApiError,
+  extractApiFieldErrors,
   toApiClientError,
   type TokenStorageAdapter,
 } from "@pos/api-client";
@@ -27,4 +28,4 @@ export const apiClient = createApiClient({
   onRefreshFailure: () => webStorageAdapter.clear(),
 });
 
-export { extractApiError, toApiClientError };
+export { extractApiError, extractApiFieldErrors, toApiClientError };

@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card } from "@pos/ui";
+import {
+  Button,
+  Card,
+  FormErrorSummary,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import { ChefHat } from "lucide-react";
 import type { Tenant } from "@pos/types";
 import { createSettingsApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import { notifySuccess } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 
 const settingsApi = createSettingsApi(apiClient);
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 
 type KitchenSettings = Required<Pick<Tenant, "id" | "courseSequencingEnabled">>;
 
@@ -18,8 +25,9 @@ export const KitchenOperationsSettingsCard = ({
 }) => {
   const qc = useQueryClient();
   const [courseSequencingEnabled, setCourseSequencingEnabled] = useState(false);
+  const formErrors = useLocalFormApiErrors();
   const key = ["tenant-settings", tenantId];
-  const { data: settings } = useQuery<KitchenSettings>({
+  const settingsQuery = useQuery<KitchenSettings>({
     queryKey: key,
     queryFn: async () => {
       const memberships = await settingsApi.tenants<KitchenSettings>();
@@ -31,20 +39,38 @@ export const KitchenOperationsSettingsCard = ({
     },
   });
   useEffect(() => {
-    if (settings) setCourseSequencingEnabled(settings.courseSequencingEnabled);
-  }, [settings]);
+    if (settingsQuery.data)
+      setCourseSequencingEnabled(settingsQuery.data.courseSequencingEnabled);
+  }, [settingsQuery.data]);
+
   const save = useMutation({
     mutationFn: () =>
       settingsApi.updateTenant<KitchenSettings>(tenantId, {
         courseSequencingEnabled,
       }),
     onSuccess: () => {
+      formErrors.clearErrors();
       qc.invalidateQueries({ queryKey: key });
       notifySuccess("Kitchen operations settings updated");
     },
-    onError: (error) =>
-      notifyError(error, "Failed to update kitchen operations settings"),
   });
+
+  if (settingsQuery.isError && !settingsQuery.data) {
+    return (
+      <Card>
+        <QueryErrorState
+          title="Unable to load kitchen settings"
+          description="Kitchen configuration could not be loaded. Retry before changing course sequencing."
+          onRetry={() => void settingsQuery.refetch()}
+          isRetrying={settingsQuery.isFetching}
+        />
+      </Card>
+    );
+  }
+
+  const isDirty =
+    settingsQuery.data !== undefined &&
+    courseSequencingEnabled !== settingsQuery.data.courseSequencingEnabled;
 
   return (
     <Card>
@@ -61,12 +87,26 @@ export const KitchenOperationsSettingsCard = ({
           </p>
         </div>
       </div>
+      {settingsQuery.isError && settingsQuery.data ? (
+        <StaleDataBanner
+          message="Kitchen settings refresh failed — showing the latest cached value."
+          onRetry={() => void settingsQuery.refetch()}
+          isRetrying={settingsQuery.isFetching}
+        />
+      ) : null}
+      <FormErrorSummary
+        messages={formErrors.formErrorMessages}
+        className="mb-3"
+      />
       <label className="flex items-start gap-3 text-sm text-text-secondary">
         <input
           type="checkbox"
           className="mt-1"
           checked={courseSequencingEnabled}
-          onChange={(event) => setCourseSequencingEnabled(event.target.checked)}
+          onChange={(event) => {
+            formErrors.clearFieldError("courseSequencingEnabled");
+            setCourseSequencingEnabled(event.target.checked);
+          }}
         />
         <span>
           <strong className="block text-text-primary">
@@ -77,7 +117,22 @@ export const KitchenOperationsSettingsCard = ({
         </span>
       </label>
       <div className="mt-4 flex justify-end">
-        <Button loading={save.isPending} onClick={() => save.mutate()}>
+        <Button
+          loading={save.isPending}
+          disabled={settingsQuery.isLoading || save.isPending || !isDirty}
+          onClick={() => {
+            formErrors.clearErrors();
+            if (!isDirty) return;
+            save.mutate(undefined, {
+              onError: (error) =>
+                formErrors.handleApiError(
+                  error,
+                  ["courseSequencingEnabled"],
+                  "Failed to update kitchen operations settings",
+                ),
+            });
+          }}
+        >
           Save kitchen settings
         </Button>
       </div>

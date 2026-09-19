@@ -8,15 +8,31 @@ const h = vi.hoisted(() => ({
   delTag: vi.fn(),
 }));
 vi.mock("@/features/menu/hooks/useMenuTags", () => ({
-  useMenuTags: () => ({ data: h.tags }),
+  useMenuTags: () => ({
+    data: h.tags,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/menu/hooks/useAddMenuTag", () => ({
-  useAddMenuTag: () => ({ isPending: false, mutate: h.addTag }),
+  useAddMenuTag: () => ({ isPending: false, mutateAsync: h.addTag }),
 }));
 vi.mock("@/features/menu/hooks/useDeleteMenuTag", () => ({
   useDeleteMenuTag: () => ({ mutate: h.delTag }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div role="alert">
+      {title}
+      {onRetry ? <button onClick={onRetry}>Retry</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div role="status">{message}</div>,
+  FieldErrorText: ({ id, message }: any) =>
+    message ? <span id={id}>{message}</span> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -38,15 +54,15 @@ describe("TagsSection", () => {
 
   it("supports colors, add/reset, delete and empty state", async () => {
     h.tags = [{ id: "t1", name: "Hot", color: null }];
-    h.addTag.mockImplementation((_value: any, options: any) =>
-      options?.onSuccess?.(),
-    );
+    h.addTag.mockResolvedValue({});
     const { rerender } = render(<TagsSection />);
     fireEvent.click(screen.getAllByRole("button", { name: /Choose/ })[1]!);
     fireEvent.change(screen.getByLabelText("New tag"), {
       target: { value: "Chef" },
     });
-    fireEvent.submit(screen.getByRole("button", { name: "" }).closest("form")!);
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Create tag" }).closest("form")!,
+    );
     await waitFor(() => expect(h.addTag).toHaveBeenCalled());
     vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByLabelText("Delete tag Hot"));

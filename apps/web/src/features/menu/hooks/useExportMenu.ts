@@ -14,8 +14,8 @@ export const useExportMenu = () => {
     setDownloadingKey(key);
     try {
       await menuExportService.download(entity, format);
-    } catch {
-      notifyError(undefined, `Failed to export ${entity}`);
+    } catch (error) {
+      notifyError(error, `Failed to export ${entity}`);
     } finally {
       setDownloadingKey(null);
     }

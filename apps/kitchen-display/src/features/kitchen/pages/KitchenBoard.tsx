@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChefHat } from "lucide-react";
 import type { KitchenTicketStatus } from "@pos/types";
-import { Grid } from "@pos/ui";
+import { Grid, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import {
   useKitchenStations,
   useKitchenTickets,
@@ -13,6 +13,7 @@ import {
   isUrgent,
 } from "@/features/kitchen/utils/ticket";
 import { BOARD_COLUMNS } from "@/features/kitchen/constants";
+import { extractApiError } from "@pos/api-client";
 import { useKitchenAttention } from "@/features/kitchen/hooks/useKitchenAttention";
 import {
   getTerminalStationId,
@@ -37,13 +38,15 @@ export const KitchenBoard = ({ onLogout }: KitchenBoardProps) => {
   const [isVoidAlertsEnabled, setIsVoidAlertsEnabled] = useState(() =>
     getVoidAlertsEnabled(),
   );
-  const { data: stations = [] } = useKitchenStations();
-  const {
-    data: tickets = [],
-    isLoading,
-    refetch,
-    isFetching,
-  } = useKitchenTickets(stationId);
+  const stationsQuery = useKitchenStations();
+  const ticketsQuery = useKitchenTickets(stationId);
+  const stations = stationsQuery.data ?? [];
+  const tickets = ticketsQuery.data ?? [];
+  const hasTicketData = ticketsQuery.data !== undefined;
+  const hasStationData = stationsQuery.data !== undefined;
+  const hasInitialTicketError = ticketsQuery.isError && !hasTicketData;
+  const hasStaleTicketError = ticketsQuery.isError && hasTicketData;
+  const hasStationError = stationsQuery.isError && !hasStationData;
   const updateMutation = useUpdateTicketStatus();
   const { connected: isConnected } = useKitchenRealtime(stationId);
 
@@ -90,7 +93,9 @@ export const KitchenBoard = ({ onLogout }: KitchenBoardProps) => {
               Kitchen Display
             </h1>
             <p className="text-xs text-text-secondary">
-              {tickets.length} active tickets
+              {hasInitialTicketError
+                ? "Tickets unavailable"
+                : `${tickets.length} active tickets`}
             </p>
           </div>
         </div>
@@ -99,19 +104,40 @@ export const KitchenBoard = ({ onLogout }: KitchenBoardProps) => {
           stationId={stationId}
           isVoidAlertsEnabled={isVoidAlertsEnabled}
           isConnected={isConnected}
-          isRefreshing={isFetching}
+          isRefreshing={ticketsQuery.isFetching || stationsQuery.isFetching}
           onStationChange={setStationId}
           onVoidAlertsChange={handleVoidAlertsChange}
-          onRefresh={() => void refetch()}
+          onRefresh={() => {
+            void ticketsQuery.refetch();
+            if (stationsQuery.isError) void stationsQuery.refetch();
+          }}
           onLogout={onLogout}
         />
       </header>
 
-      <KitchenSummaryBar
-        activeCount={tickets.length}
-        urgentCount={urgentCount}
-        readyCount={readyCount}
-      />
+      {hasStationError ? (
+        <StaleDataBanner
+          message="Kitchen stations could not be loaded. Station filtering may be unavailable."
+          isRetrying={stationsQuery.isFetching}
+          onRetry={() => void stationsQuery.refetch()}
+        />
+      ) : null}
+
+      {hasStaleTicketError ? (
+        <StaleDataBanner
+          message="Kitchen tickets could not be refreshed — showing the latest ticket data available."
+          isRetrying={ticketsQuery.isFetching}
+          onRetry={() => void ticketsQuery.refetch()}
+        />
+      ) : null}
+
+      {!hasInitialTicketError ? (
+        <KitchenSummaryBar
+          activeCount={tickets.length}
+          urgentCount={urgentCount}
+          readyCount={readyCount}
+        />
+      ) : null}
 
       {hasQueueOverflow && (
         <div
@@ -123,24 +149,39 @@ export const KitchenBoard = ({ onLogout }: KitchenBoardProps) => {
         </div>
       )}
 
-      <Grid
-        columns={{ base: 1, sm: 2, lg: 4 }}
-        gap="none"
-        className="flex-1 gap-px overflow-hidden bg-border"
-      >
-        {BOARD_COLUMNS.map((column) => (
-          <KitchenStatusColumn
-            key={column.status}
-            title={column.title}
-            status={column.status}
-            colorClassName={column.color}
-            tickets={groupTicketsByStatus(tickets, column.status)}
-            isLoading={isLoading}
-            isTicketUpdating={isTicketUpdating}
-            onUpdateStatus={handleUpdateStatus}
+      {hasInitialTicketError ? (
+        <div className="flex flex-1 items-center justify-center bg-background p-6">
+          <QueryErrorState
+            className="w-full max-w-xl"
+            title="Unable to load kitchen tickets"
+            description={extractApiError(
+              ticketsQuery.error,
+              "The kitchen queue may be incomplete. Retry before relying on the displayed workload.",
+            )}
+            isRetrying={ticketsQuery.isFetching}
+            onRetry={() => void ticketsQuery.refetch()}
           />
-        ))}
-      </Grid>
+        </div>
+      ) : (
+        <Grid
+          columns={{ base: 1, sm: 2, lg: 4 }}
+          gap="none"
+          className="flex-1 gap-px overflow-hidden bg-border"
+        >
+          {BOARD_COLUMNS.map((column) => (
+            <KitchenStatusColumn
+              key={column.status}
+              title={column.title}
+              status={column.status}
+              colorClassName={column.color}
+              tickets={groupTicketsByStatus(tickets, column.status)}
+              isLoading={ticketsQuery.isLoading}
+              isTicketUpdating={isTicketUpdating}
+              onUpdateStatus={handleUpdateStatus}
+            />
+          ))}
+        </Grid>
+      )}
     </div>
   );
 };

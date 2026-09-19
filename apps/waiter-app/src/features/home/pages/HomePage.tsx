@@ -1,20 +1,18 @@
 import {
   ShoppingBag,
-  Bell,
   CheckCircle2,
   Droplets,
   ReceiptText,
   Utensils,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useRealtimeEvent } from "@/shared/lib/realtime";
-import { createCustomersApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { Card } from "@pos/ui";
-
-const customersApi = createCustomersApi(apiClient);
+import { QueryErrorState, StaleDataBanner, Card } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
 import { useOrders } from "@/features/orders/hooks/useOrders";
 import { OrderCard } from "@/features/orders/components/OrderCard";
+import {
+  useCustomerRequests,
+  useResolveCustomerRequest,
+} from "@/features/home/hooks/useCustomerRequests";
 
 interface Props {
   onNewOrder: () => void;
@@ -27,67 +25,19 @@ export const HomePage = ({
   onViewOrders,
   onSelectOrder,
 }: Props) => {
-  const { data: orders } = useOrders({ view: "ACTIVE", limit: 100 });
-  const [requests, setRequests] = useState<
-    Array<{
-      id: string;
-      tableId: string;
-      orderId: string | null;
-      type: string;
-      status: string;
-    }>
-  >([]);
-  useEffect(() => {
-    let active = true;
-    const refresh = () => {
-      void customersApi
-        .listRequests<{
-          id: string;
-          tableId: string;
-          orderId: string | null;
-          type: string;
-          status: string;
-        }>()
-        .then((response) => {
-          if (active) setRequests(response);
-        })
-        .catch(() => undefined);
-    };
-    refresh();
-    const interval = window.setInterval(refresh, 10_000);
-    window.addEventListener("focus", refresh);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  useRealtimeEvent("customer.request.created", (event) => {
-    setRequests((current) =>
-      current.some((r) => r.id === event.payload.id)
-        ? current
-        : [
-            {
-              id: event.payload.id,
-              tableId: event.payload.tableId,
-              orderId: event.payload.orderId,
-              type: event.payload.type,
-              status: event.payload.status,
-            },
-            ...current,
-          ],
-    );
-  });
-  useRealtimeEvent("customer.request.updated", (event) => {
-    if (["RESOLVED", "CANCELLED"].includes(event.payload.status))
-      setRequests((current) =>
-        current.filter((r) => r.id !== event.payload.id),
-      );
-  });
-  async function resolveRequest(id: string) {
-    await customersApi.resolveRequest(id);
-    setRequests((current) => current.filter((r) => r.id !== id));
-  }
+  const ordersQuery = useOrders({ view: "ACTIVE", limit: 100 });
+  const requestsQuery = useCustomerRequests();
+  const resolveRequest = useResolveCustomerRequest();
+  const orders = ordersQuery.data;
+  const requests = requestsQuery.data ?? [];
+  const hasOrdersData = orders !== undefined;
+  const hasRequestsData = requestsQuery.data !== undefined;
+  const hasInitialAttentionError =
+    (ordersQuery.isError && !hasOrdersData) ||
+    (requestsQuery.isError && !hasRequestsData);
+  const hasStaleAttentionError =
+    (ordersQuery.isError && hasOrdersData) ||
+    (requestsQuery.isError && hasRequestsData);
 
   const active =
     orders?.filter((o) => ["OPEN", "BILL_REQUESTED"].includes(o.status)) ?? [];
@@ -112,9 +62,20 @@ export const HomePage = ({
 
       <div className="waiter-priority-strip mt-3.5 grid grid-cols-3 overflow-hidden rounded-[18px] text-white">
         {[
-          [ready.length, "Ready now"],
-          [visibleRequests.length, "Requests"],
-          [active.length, "Active tables"],
+          [
+            ordersQuery.isError && !hasOrdersData ? "—" : ready.length,
+            "Ready now",
+          ],
+          [
+            requestsQuery.isError && !hasRequestsData
+              ? "—"
+              : visibleRequests.length,
+            "Requests",
+          ],
+          [
+            ordersQuery.isError && !hasOrdersData ? "—" : active.length,
+            "Active tables",
+          ],
         ].map(([value, label], index) => (
           <div
             key={String(label)}
@@ -150,71 +111,112 @@ export const HomePage = ({
       </div>
 
       <div className="space-y-2">
-        {ready.slice(0, 3).map((order) => (
-          <OrderCard
-            key={`ready-${order.id}`}
-            order={order}
-            onSelect={onSelectOrder}
-            variant="compact"
+        {hasStaleAttentionError ? (
+          <StaleDataBanner
+            className="rounded-2xl border"
+            message="Attention data could not be refreshed — showing the latest information available."
+            isRetrying={ordersQuery.isFetching || requestsQuery.isFetching}
+            onRetry={() => {
+              void ordersQuery.refetch();
+              void requestsQuery.refetch();
+            }}
           />
-        ))}
+        ) : null}
 
-        {visibleRequests.slice(0, 3).map((request) => (
-          <Card
-            key={request.id}
-            padding="sm"
-            className="grid min-h-[72px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl"
-          >
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-surface text-warning">
-              {request.type === "WATER" ? (
-                <Droplets className="h-5 w-5" />
-              ) : request.type === "BILL" ? (
-                <ReceiptText className="h-5 w-5" />
-              ) : (
-                <Utensils className="h-5 w-5" />
-              )}
-            </span>
-            <span className="min-w-0">
-              <strong className="block truncate text-sm font-semibold">
-                {request.type.replace("_", " ").toLowerCase()} requested
-              </strong>
-              <span className="text-xs text-text-secondary">
-                Table {tableLabel(request.tableId)} · just now
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => void resolveRequest(request.id)}
-              className="min-h-10 rounded-xl bg-primary-surface px-3 text-xs font-semibold text-primary"
-            >
-              Done
-            </button>
-          </Card>
-        ))}
+        {hasInitialAttentionError ? (
+          <QueryErrorState
+            title="Unable to load attention items"
+            description={extractApiError(
+              ordersQuery.error ?? requestsQuery.error,
+              "Orders or customer requests could not be loaded. Retry before relying on this screen.",
+            )}
+            isRetrying={ordersQuery.isFetching || requestsQuery.isFetching}
+            onRetry={() => {
+              void ordersQuery.refetch();
+              void requestsQuery.refetch();
+            }}
+          />
+        ) : null}
 
-        {billRequested
-          .filter((order) => !ready.some((item) => item.id === order.id))
-          .slice(0, 2)
-          .map((order) => (
-            <OrderCard
-              key={`bill-${order.id}`}
-              order={order}
-              onSelect={onSelectOrder}
-              variant="compact"
-            />
-          ))}
+        {!hasInitialAttentionError
+          ? ready
+              .slice(0, 3)
+              .map((order) => (
+                <OrderCard
+                  key={`ready-${order.id}`}
+                  order={order}
+                  onSelect={onSelectOrder}
+                  variant="compact"
+                />
+              ))
+          : null}
 
-        {!ready.length && !visibleRequests.length && !billRequested.length && (
-          <Card padding="lg" className="rounded-2xl text-center">
-            <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-success" />
-            <p className="text-sm font-semibold text-text-secondary">
-              All caught up!
-            </p>
-            <p className="mt-1 text-xs text-text-disabled">
-              Nothing needs your attention right now
-            </p>
-          </Card>
-        )}
+        {!hasInitialAttentionError
+          ? visibleRequests.slice(0, 3).map((request) => (
+              <Card
+                key={request.id}
+                padding="sm"
+                className="grid min-h-[72px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-surface text-warning">
+                  {request.type === "WATER" ? (
+                    <Droplets className="h-5 w-5" />
+                  ) : request.type === "BILL" ? (
+                    <ReceiptText className="h-5 w-5" />
+                  ) : (
+                    <Utensils className="h-5 w-5" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm font-semibold">
+                    {request.type.replace("_", " ").toLowerCase()} requested
+                  </strong>
+                  <span className="text-xs text-text-secondary">
+                    Table {tableLabel(request.tableId)} · just now
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  disabled={
+                    resolveRequest.isPending &&
+                    resolveRequest.variables === request.id
+                  }
+                  onClick={() => resolveRequest.mutate(request.id)}
+                  className="min-h-10 rounded-xl bg-primary-surface px-3 text-xs font-semibold text-primary"
+                >
+                  Done
+                </button>
+              </Card>
+            ))
+          : null}
+
+        {!hasInitialAttentionError &&
+          billRequested
+            .filter((order) => !ready.some((item) => item.id === order.id))
+            .slice(0, 2)
+            .map((order) => (
+              <OrderCard
+                key={`bill-${order.id}`}
+                order={order}
+                onSelect={onSelectOrder}
+                variant="compact"
+              />
+            ))}
+
+        {!hasInitialAttentionError &&
+          !ready.length &&
+          !visibleRequests.length &&
+          !billRequested.length && (
+            <Card padding="lg" className="rounded-2xl text-center">
+              <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-success" />
+              <p className="text-sm font-semibold text-text-secondary">
+                All caught up!
+              </p>
+              <p className="mt-1 text-xs text-text-disabled">
+                Nothing needs your attention right now
+              </p>
+            </Card>
+          )}
       </div>
     </div>
   );

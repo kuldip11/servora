@@ -12,6 +12,11 @@ export {
   toApiClientError,
 } from "./api-error";
 export type { ApiClientError, ApiFieldErrors } from "./api-error";
+export { classifyApiErrorForUi } from "./error-presentation";
+export type {
+  ApiErrorUiKind,
+  ApiErrorUiPresentation,
+} from "./error-presentation";
 export { createOrdersApi } from "./domains/orders";
 export type {
   OrdersListFilters,

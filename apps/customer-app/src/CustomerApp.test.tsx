@@ -9,6 +9,12 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("@pos/ui", () => ({
   Skeleton: (p: any) => <div data-testid="skeleton" {...p} />,
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div role="status">
+      <span>{message}</span>
+      {onRetry ? <button onClick={onRetry}>retry-stale-order</button> : null}
+    </div>
+  ),
 }));
 vi.mock("./features/session/useCustomerSession", () => ({
   useCustomerSession: () => h.sessionState,
@@ -96,6 +102,9 @@ const defaults = () => {
     setCart: vi.fn(),
     placedOrder: null,
     setPlacedOrder: vi.fn(),
+    activeOrderError: null,
+    activeOrderRefreshing: false,
+    retryActiveOrder: vi.fn(),
     loading: false,
     setLoading: vi.fn(),
     error: null,
@@ -184,6 +193,34 @@ describe("CustomerApp", () => {
     fireEvent.click(screen.getByText("menu"));
     expect(screen.getByTestId("menu")).toBeTruthy();
   });
+  it("blocks menu ordering when an active order cannot be refreshed and no cached order is available", () => {
+    h.sessionState.activeOrderError = "Order service unavailable";
+
+    render(<CustomerApp />);
+
+    expect(
+      screen.getByText(/We can't refresh your order:Order service unavailable/),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button"));
+    expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
+  });
+
+  it("keeps a cached active order visible and marks its status stale", () => {
+    h.sessionState.placedOrder = { id: "order" };
+    h.sessionState.activeOrderError = "Order service unavailable";
+
+    render(<CustomerApp />);
+    fireEvent.click(screen.getByText("order"));
+
+    expect(screen.getByTestId("order")).toBeTruthy();
+    expect(
+      screen.getByText(/Order status could not be refreshed/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "retry-stale-order" }));
+    expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
+  });
+
   it("covers takeaway fallback and combo/item overlays including editing/variant branch", () => {
     h.sessionState.session = { ...session, mode: "TAKEAWAY", table: null };
     h.cartState.selectedCombo = { id: "c" };

@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { Button, Card, Input, Select } from "@pos/ui";
+import {
+  Button,
+  Card,
+  FieldErrorText,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import type { InventoryUnit } from "@pos/types";
 import { useInventoryItems } from "@/features/inventory/hooks/useInventoryItems";
 import {
@@ -10,33 +19,40 @@ import {
 } from "@/features/menu/hooks/useSubRecipes";
 import { menuSubRecipesService } from "@/features/menu/services/menu-sub-recipes.service";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
-
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import {
+  type SubRecipeIngredientDraft,
+  validateSubRecipeForm,
+} from "@/features/menu/helpers/sub-recipe-form";
 import { INVENTORY_UNITS } from "@/features/menu/constants";
-type IngredientDraft = {
-  clientKey: string;
-  source: "inventory" | "sub";
-  sourceId: string;
-  quantity: string;
-  unit: InventoryUnit;
-};
 
 export const SubRecipeManager = () => {
   const queryClient = useQueryClient();
-  const { data: subRecipes } = useSubRecipes();
-  const { data: inventoryPage } = useInventoryItems({ limit: 100 });
-  const inventory = inventoryPage?.items;
+  const subRecipesQuery = useSubRecipes();
+  const inventoryQuery = useInventoryItems({ limit: 100 });
+  const subRecipes = subRecipesQuery.data;
+  const inventory = inventoryQuery.data?.items;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [yieldQuantity, setYieldQuantity] = useState("1");
   const [yieldUnit, setYieldUnit] = useState<InventoryUnit>("KG");
   const [yieldPercent, setYieldPercent] = useState("");
-  const [ingredients, setIngredients] = useState<IngredientDraft[]>([]);
+  const [ingredients, setIngredients] = useState<SubRecipeIngredientDraft[]>(
+    [],
+  );
+  const formErrors = useLocalFormApiErrors();
+  const clientErrors = useMemo(
+    () =>
+      validateSubRecipeForm({ name, yieldQuantity, yieldPercent, ingredients }),
+    [ingredients, name, yieldPercent, yieldQuantity],
+  );
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: subRecipeQueryKey() });
   const create = useMutation({
     mutationFn: menuSubRecipesService.create,
     onSuccess: async () => {
+      formErrors.clearErrors();
       await refresh();
       setName("");
       setYieldQuantity("1");
@@ -45,7 +61,6 @@ export const SubRecipeManager = () => {
       setOpen(false);
       notifySuccess("Sub-recipe created");
     },
-    onError: (error) => notifyError(error, "Could not create sub-recipe"),
   });
   const remove = useMutation({
     mutationFn: menuSubRecipesService.remove,
@@ -56,9 +71,10 @@ export const SubRecipeManager = () => {
     onError: (error) => notifyError(error, "Could not delete sub-recipe"),
   });
 
-  function addIngredient() {
+  const addIngredient = () => {
     const firstInventory = inventory?.[0];
     if (firstInventory) {
+      formErrors.clearErrors();
       setIngredients((rows) => [
         ...rows,
         {
@@ -73,6 +89,7 @@ export const SubRecipeManager = () => {
     }
     const firstSubRecipe = subRecipes?.[0];
     if (firstSubRecipe) {
+      formErrors.clearErrors();
       setIngredients((rows) => [
         ...rows,
         {
@@ -86,30 +103,65 @@ export const SubRecipeManager = () => {
       return;
     }
     notifyError(undefined, "Add raw inventory before creating a sub-recipe");
-  }
+  };
 
-  function save() {
-    const parsedYield = Number(yieldQuantity);
-    if (!name.trim() || !(parsedYield > 0) || !ingredients.length) {
-      notifyError(
-        undefined,
-        "Name, positive yield, and at least one ingredient are required",
-      );
-      return;
-    }
-    create.mutate({
-      name: name.trim(),
-      yieldQuantity: parsedYield,
-      yieldUnit,
-      yieldPercent: yieldPercent ? Number(yieldPercent) : null,
-      ingredients: ingredients.map((row) => ({
-        ...(row.source === "inventory"
-          ? { inventoryItemId: row.sourceId }
-          : { ingredientSubRecipeId: row.sourceId }),
-        quantity: Number(row.quantity),
-        unit: row.unit,
-      })),
-    });
+  const save = () => {
+    formErrors.clearErrors();
+    if (Object.keys(clientErrors).length) return;
+    const knownFields = [
+      "name",
+      "yieldQuantity",
+      "yieldUnit",
+      "yieldPercent",
+      ...ingredients.flatMap((_, index) => [
+        `ingredients.${index}.inventoryItemId`,
+        `ingredients.${index}.ingredientSubRecipeId`,
+        `ingredients.${index}.quantity`,
+        `ingredients.${index}.unit`,
+      ]),
+    ];
+    create.mutate(
+      {
+        name: name.trim(),
+        yieldQuantity: Number(yieldQuantity),
+        yieldUnit,
+        yieldPercent: yieldPercent ? Number(yieldPercent) : null,
+        ingredients: ingredients.map((row) => ({
+          ...(row.source === "inventory"
+            ? { inventoryItemId: row.sourceId }
+            : { ingredientSubRecipeId: row.sourceId }),
+          quantity: Number(row.quantity),
+          unit: row.unit,
+        })),
+      },
+      {
+        onError: (error) =>
+          formErrors.handleApiError(
+            error,
+            knownFields,
+            "Could not create sub-recipe",
+          ),
+      },
+    );
+  };
+
+  const dependencyFailed =
+    (subRecipesQuery.isError && !subRecipesQuery.data) ||
+    (inventoryQuery.isError && !inventoryQuery.data);
+  if (dependencyFailed) {
+    return (
+      <QueryErrorState
+        title="Unable to load recipe components"
+        description="Sub-recipes or inventory could not be loaded. Retry before creating a prepared component so missing ingredients are not treated as an empty catalog."
+        onRetry={() =>
+          void Promise.all([
+            subRecipesQuery.refetch(),
+            inventoryQuery.refetch(),
+          ])
+        }
+        isRetrying={subRecipesQuery.isFetching || inventoryQuery.isFetching}
+      />
+    );
   }
 
   return (
@@ -127,11 +179,31 @@ export const SubRecipeManager = () => {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => setOpen((value) => !value)}
+          disabled={subRecipesQuery.isLoading || inventoryQuery.isLoading}
+          onClick={() => {
+            formErrors.clearErrors();
+            setOpen((value) => !value);
+          }}
         >
           <Plus className="h-4 w-4" /> New sub-recipe
         </Button>
       </div>
+
+      {(subRecipesQuery.isError || inventoryQuery.isError) && (
+        <div className="mt-3">
+          <StaleDataBanner
+            message="Recipe component data could not be refreshed. Showing the latest cached inventory and sub-recipes."
+            onRetry={() =>
+              void Promise.all([
+                subRecipesQuery.refetch(),
+                inventoryQuery.refetch(),
+              ])
+            }
+            isRetrying={subRecipesQuery.isFetching || inventoryQuery.isFetching}
+          />
+        </div>
+      )}
+
       {!!subRecipes?.length && (
         <div className="mt-3 flex flex-wrap gap-2">
           {subRecipes.map((row) => (
@@ -147,8 +219,9 @@ export const SubRecipeManager = () => {
               <button
                 type="button"
                 aria-label={`Delete ${row.name}`}
+                disabled={remove.isPending}
                 onClick={() => remove.mutate(row.id)}
-                className="text-text-disabled hover:text-danger"
+                className="text-text-disabled hover:text-danger disabled:opacity-40"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -156,13 +229,19 @@ export const SubRecipeManager = () => {
           ))}
         </div>
       )}
+
       {open && (
         <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <FormErrorSummary messages={formErrors.formErrorMessages} />
           <div className="grid gap-3 sm:grid-cols-4">
             <Input
               label="Name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              error={formErrors.fieldErrors.name ?? clientErrors.name}
+              onChange={(event) => {
+                formErrors.clearFieldError("name");
+                setName(event.target.value);
+              }}
               placeholder="House tomato sauce"
             />
             <Input
@@ -171,12 +250,23 @@ export const SubRecipeManager = () => {
               min="0.001"
               step="0.001"
               value={yieldQuantity}
-              onChange={(e) => setYieldQuantity(e.target.value)}
+              error={
+                formErrors.fieldErrors.yieldQuantity ??
+                clientErrors.yieldQuantity
+              }
+              onChange={(event) => {
+                formErrors.clearFieldError("yieldQuantity");
+                setYieldQuantity(event.target.value);
+              }}
             />
             <Select
               label="Yield unit"
               value={yieldUnit}
-              onChange={(e) => setYieldUnit(e.target.value as InventoryUnit)}
+              error={formErrors.fieldErrors.yieldUnit}
+              onChange={(event) => {
+                formErrors.clearFieldError("yieldUnit");
+                setYieldUnit(event.target.value as InventoryUnit);
+              }}
               options={INVENTORY_UNITS.map((unit) => ({
                 value: unit,
                 label: unit,
@@ -189,132 +279,181 @@ export const SubRecipeManager = () => {
               max="100"
               step="0.01"
               value={yieldPercent}
-              onChange={(e) => setYieldPercent(e.target.value)}
+              error={
+                formErrors.fieldErrors.yieldPercent ?? clientErrors.yieldPercent
+              }
+              onChange={(event) => {
+                formErrors.clearFieldError("yieldPercent");
+                setYieldPercent(event.target.value);
+              }}
               placeholder="100"
             />
           </div>
+          {clientErrors.ingredients ? (
+            <FieldErrorText message={clientErrors.ingredients} />
+          ) : null}
           <div className="space-y-2">
-            {ingredients.map((row, index) => (
-              <div
-                key={row.clientKey}
-                className="grid gap-2 sm:grid-cols-[8rem_1fr_8rem_8rem_auto] items-center"
-              >
-                <select
-                  value={row.source}
-                  onChange={(e) => {
-                    const source = e.target.value as "inventory" | "sub";
-                    const first =
-                      source === "inventory" ? inventory?.[0] : subRecipes?.[0];
-                    setIngredients((prev) =>
-                      prev.map((entry, i) =>
-                        i === index
-                          ? {
-                              ...entry,
-                              source,
-                              sourceId: first?.id ?? "",
-                              unit:
-                                source === "inventory"
-                                  ? (inventory?.[0]?.unit ?? entry.unit)
-                                  : (subRecipes?.[0]?.yieldUnit ?? entry.unit),
-                            }
-                          : entry,
-                      ),
-                    );
-                  }}
-                  className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
+            {ingredients.map((row, index) => {
+              const sourceError =
+                formErrors.fieldErrors[
+                  `ingredients.${index}.inventoryItemId`
+                ] ??
+                formErrors.fieldErrors[
+                  `ingredients.${index}.ingredientSubRecipeId`
+                ] ??
+                clientErrors[`ingredients.${index}.sourceId`];
+              const quantityError =
+                formErrors.fieldErrors[`ingredients.${index}.quantity`] ??
+                clientErrors[`ingredients.${index}.quantity`];
+              return (
+                <div
+                  key={row.clientKey}
+                  className="grid items-start gap-2 sm:grid-cols-[8rem_1fr_8rem_8rem_auto]"
                 >
-                  <option value="inventory">Raw item</option>
-                  <option value="sub">Sub-recipe</option>
-                </select>
-                <select
-                  value={row.sourceId}
-                  onChange={(e) => {
-                    const sourceId = e.target.value;
-                    const nextUnit =
-                      row.source === "inventory"
-                        ? inventory?.find((item) => item.id === sourceId)?.unit
-                        : subRecipes?.find((item) => item.id === sourceId)
-                            ?.yieldUnit;
-                    setIngredients((prev) =>
-                      prev.map((entry, i) =>
-                        i === index
-                          ? {
-                              ...entry,
-                              sourceId,
-                              ...(nextUnit ? { unit: nextUnit } : {}),
-                            }
-                          : entry,
-                      ),
-                    );
-                  }}
-                  className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
-                >
-                  {row.source === "inventory"
-                    ? (inventory ?? []).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))
-                    : (subRecipes ?? []).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                </select>
-                <input
-                  aria-label={`Sub-recipe ingredient quantity ${index + 1}`}
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  value={row.quantity}
-                  onChange={(e) =>
-                    setIngredients((prev) =>
-                      prev.map((entry, i) =>
-                        i === index
-                          ? { ...entry, quantity: e.target.value }
-                          : entry,
-                      ),
-                    )
-                  }
-                  className="rounded-md border border-border px-2 py-2 text-xs"
-                />
-                <select
-                  value={row.unit}
-                  onChange={(e) =>
-                    setIngredients((prev) =>
-                      prev.map((entry, i) =>
-                        i === index
-                          ? { ...entry, unit: e.target.value as InventoryUnit }
-                          : entry,
-                      ),
-                    )
-                  }
-                  className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
-                >
-                  {INVENTORY_UNITS.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setIngredients((prev) => prev.filter((_, i) => i !== index))
-                  }
-                  className="p-2 text-text-disabled hover:text-danger"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+                  <select
+                    value={row.source}
+                    onChange={(event) => {
+                      formErrors.clearErrors();
+                      const source = event.target.value as "inventory" | "sub";
+                      const first =
+                        source === "inventory"
+                          ? inventory?.[0]
+                          : subRecipes?.[0];
+                      setIngredients((previous) =>
+                        previous.map((entry, rowIndex) =>
+                          rowIndex === index
+                            ? {
+                                ...entry,
+                                source,
+                                sourceId: first?.id ?? "",
+                                unit:
+                                  source === "inventory"
+                                    ? (inventory?.[0]?.unit ?? entry.unit)
+                                    : (subRecipes?.[0]?.yieldUnit ??
+                                      entry.unit),
+                              }
+                            : entry,
+                        ),
+                      );
+                    }}
+                    className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
+                  >
+                    <option value="inventory">Raw item</option>
+                    <option value="sub">Sub-recipe</option>
+                  </select>
+                  <div>
+                    <select
+                      value={row.sourceId}
+                      aria-invalid={sourceError ? true : undefined}
+                      onChange={(event) => {
+                        formErrors.clearErrors();
+                        const sourceId = event.target.value;
+                        const nextUnit =
+                          row.source === "inventory"
+                            ? inventory?.find((item) => item.id === sourceId)
+                                ?.unit
+                            : subRecipes?.find((item) => item.id === sourceId)
+                                ?.yieldUnit;
+                        setIngredients((previous) =>
+                          previous.map((entry, rowIndex) =>
+                            rowIndex === index
+                              ? {
+                                  ...entry,
+                                  sourceId,
+                                  ...(nextUnit ? { unit: nextUnit } : {}),
+                                }
+                              : entry,
+                          ),
+                        );
+                      }}
+                      className="w-full rounded-md border border-border bg-surface px-2 py-2 text-xs"
+                    >
+                      {row.source === "inventory"
+                        ? (inventory ?? []).map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))
+                        : (subRecipes ?? []).map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                    </select>
+                    <FieldErrorText message={sourceError} />
+                  </div>
+                  <div>
+                    <input
+                      aria-label={`Sub-recipe ingredient quantity ${index + 1}`}
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={row.quantity}
+                      aria-invalid={quantityError ? true : undefined}
+                      onChange={(event) => {
+                        formErrors.clearErrors();
+                        setIngredients((previous) =>
+                          previous.map((entry, rowIndex) =>
+                            rowIndex === index
+                              ? { ...entry, quantity: event.target.value }
+                              : entry,
+                          ),
+                        );
+                      }}
+                      className="w-full rounded-md border border-border px-2 py-2 text-xs"
+                    />
+                    <FieldErrorText message={quantityError} />
+                  </div>
+                  <select
+                    value={row.unit}
+                    onChange={(event) =>
+                      setIngredients((previous) =>
+                        previous.map((entry, rowIndex) =>
+                          rowIndex === index
+                            ? {
+                                ...entry,
+                                unit: event.target.value as InventoryUnit,
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
+                  >
+                    {INVENTORY_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIngredients((previous) =>
+                        previous.filter((_, rowIndex) => rowIndex !== index),
+                      )
+                    }
+                    className="p-2 text-text-disabled hover:text-danger"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={addIngredient}>
               Add ingredient
             </Button>
-            <Button size="sm" onClick={save} disabled={create.isPending}>
-              {create.isPending ? "Saving…" : "Create component"}
+            <Button
+              size="sm"
+              onClick={save}
+              loading={create.isPending}
+              disabled={
+                create.isPending || Object.keys(clientErrors).length > 0
+              }
+            >
+              Create component
             </Button>
           </div>
         </div>

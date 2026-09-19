@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { Breadcrumbs, Button, Grid, Page, PageHeader, Spinner } from "@pos/ui";
+import {
+  Breadcrumbs,
+  Button,
+  Grid,
+  Page,
+  PageHeader,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
+} from "@pos/ui";
 import { formatTime } from "@/shared/utils/format";
 import { useOrder } from "@/features/orders/hooks/useOrder";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
@@ -14,7 +23,7 @@ import {
   ManagerApprovalDialog,
   type ManagerApprovalRequest,
 } from "@/features/orders/components/ManagerApprovalDialog";
-import { toApiClientError } from "@/shared/lib/api-client";
+import { extractApiError, toApiClientError } from "@/shared/lib/api-client";
 import { AddItemsModal } from "@/features/orders/components/AddItemsModal";
 import { RefireItemDialog } from "@/features/orders/components/RefireItemDialog";
 import { SeatShareDialog } from "@/features/orders/components/SeatShareDialog";
@@ -56,7 +65,8 @@ export const OrderDetailPage = () => {
   const [seatShareTarget, setSeatShareTarget] =
     useState<SeatShareTarget | null>(null);
 
-  const { data: order, isLoading } = useOrder(orderId);
+  const orderQuery = useOrder(orderId);
+  const { data: order, isLoading } = orderQuery;
   const updateStatusMutation = useUpdateOrderStatus(orderId);
   const updateTicketMutation = useUpdateTicketStatus(orderId);
   const voidItemMutation = useVoidOrderItem(orderId);
@@ -70,7 +80,8 @@ export const OrderDetailPage = () => {
     canPrepare: canKitchen,
     canServe,
   } = getRoundActionPermissions(roles, has);
-  const { data: cancellationReasons = [] } = useCancellationReasons();
+  const cancellationReasonsQuery = useCancellationReasons();
+  const cancellationReasons = cancellationReasonsQuery.data ?? [];
 
   const submitLineAdjustment = (
     request: ManagerApprovalRequest,
@@ -107,12 +118,41 @@ export const OrderDetailPage = () => {
     );
   }
 
-  if (!order) {
+  if (orderQuery.isError && !order) {
+    const apiError = toApiClientError(orderQuery.error);
+    const notFound = apiError.status === 404;
+    const forbidden = apiError.status === 403;
     return (
-      <div className="p-6 text-center">
-        <p className="text-text-secondary">Order not found</p>
+      <div className="p-6">
+        <QueryErrorState
+          title={
+            notFound
+              ? "Order not found"
+              : forbidden
+                ? "You do not have access to this order"
+                : "Unable to load order"
+          }
+          description={
+            notFound
+              ? "This order no longer exists or the link is invalid."
+              : extractApiError(
+                  orderQuery.error,
+                  forbidden
+                    ? "Your current role does not allow access to this order."
+                    : "The order could not be loaded. Please retry before acting on it.",
+                )
+          }
+          isRetrying={orderQuery.isFetching}
+          onRetry={
+            notFound || forbidden ? undefined : () => void orderQuery.refetch()
+          }
+        />
       </div>
     );
+  }
+
+  if (!order) {
+    return null;
   }
 
   const tickets = order.kitchenTickets ?? [];
@@ -155,6 +195,14 @@ export const OrderDetailPage = () => {
           </div>
         }
       />
+
+      {orderQuery.isError ? (
+        <StaleDataBanner
+          message="Order refresh failed — showing the latest order data available."
+          isRetrying={orderQuery.isFetching}
+          onRetry={() => void orderQuery.refetch()}
+        />
+      ) : null}
 
       {order.status === "OPEN" && !allTicketsServed && tickets.length > 0 && (
         <div className="bg-warning-surface border border-warning/20 rounded-lg px-4 py-2.5 text-sm text-warning">
@@ -243,6 +291,20 @@ export const OrderDetailPage = () => {
           voidItemMutation.isPending ||
           compItemMutation.isPending
         }
+        {...(cancellationReasonsQuery.isError
+          ? {
+              reasonsError: extractApiError(
+                cancellationReasonsQuery.error,
+                "Cancellation reasons could not be loaded.",
+              ),
+            }
+          : {})}
+        reasonsStale={
+          cancellationReasonsQuery.isError &&
+          cancellationReasonsQuery.data !== undefined
+        }
+        reasonsRetrying={cancellationReasonsQuery.isFetching}
+        onRetryReasons={() => void cancellationReasonsQuery.refetch()}
         onClose={() => setReasonAction(null)}
         onSubmit={(reason) => {
           if (!reasonAction) return;

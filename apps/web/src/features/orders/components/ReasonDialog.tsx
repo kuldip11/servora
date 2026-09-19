@@ -1,12 +1,22 @@
 import { useState } from "react";
 import type { CancellationReason } from "@pos/types";
-import { Button, Input, Modal } from "@pos/ui";
+import {
+  Button,
+  Input,
+  Modal,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 
 export const ReasonDialog = ({
   open,
   title,
   reasons,
   loading,
+  reasonsError,
+  reasonsStale,
+  reasonsRetrying,
+  onRetryReasons,
   onClose,
   onSubmit,
 }: {
@@ -14,6 +24,10 @@ export const ReasonDialog = ({
   title: string;
   reasons: CancellationReason[];
   loading?: boolean;
+  reasonsError?: string;
+  reasonsStale?: boolean;
+  reasonsRetrying?: boolean;
+  onRetryReasons?: () => void;
   onClose: () => void;
   onSubmit: (input: { cancellationReasonId?: string; reason?: string }) => void;
 }) => {
@@ -23,6 +37,21 @@ export const ReasonDialog = ({
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className="space-y-4">
+        {reasonsStale ? (
+          <StaleDataBanner
+            message="Cancellation reasons refresh failed — showing the latest available reasons."
+            isRetrying={reasonsRetrying}
+            onRetry={onRetryReasons}
+          />
+        ) : null}
+        {reasonsError && !reasonsStale ? (
+          <QueryErrorState
+            title="Unable to load cancellation reasons"
+            description={reasonsError}
+            isRetrying={reasonsRetrying}
+            onRetry={onRetryReasons}
+          />
+        ) : null}
         <label className="block text-sm font-medium text-text-primary">
           Reason
           <select
@@ -50,7 +79,7 @@ export const ReasonDialog = ({
             Cancel
           </Button>
           <Button
-            disabled={!valid}
+            disabled={!valid || Boolean(reasonsError && !reasonsStale)}
             loading={Boolean(loading)}
             onClick={() =>
               onSubmit({

@@ -1,6 +1,9 @@
 import { Type, type Static } from "@sinclair/typebox";
-import { uuidSchema } from "../common";
-import { successResponseSchema } from "../common";
+import {
+  paginationLimitSchema,
+  successResponseSchema,
+  uuidSchema,
+} from "../common";
 
 export const auditListQuerySchema = Type.Object(
   {
@@ -8,7 +11,7 @@ export const auditListQuerySchema = Type.Object(
     entity: Type.Optional(Type.String({ maxLength: 100 })),
     userId: Type.Optional(uuidSchema),
     before: Type.Optional(Type.String({ format: "date-time" })),
-    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+    limit: Type.Optional(paginationLimitSchema),
   },
   { additionalProperties: false },
 );

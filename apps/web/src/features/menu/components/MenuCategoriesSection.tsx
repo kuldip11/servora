@@ -1,18 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, LayoutTemplate } from "lucide-react";
 import {
   Button,
   Card,
   EmptyState,
+  FormErrorSummary,
   IconButton,
   Input,
   Modal,
+  QueryErrorState,
   Spinner,
+  StaleDataBanner,
 } from "@pos/ui";
 import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
 import { useAddCategory } from "@/features/menu/hooks/useAddCategory";
 import { useRenameCategory } from "@/features/menu/hooks/useRenameCategory";
 import { useDeleteCategory } from "@/features/menu/hooks/useDeleteCategory";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validateCategoryName } from "@/features/menu/helpers/category-form";
 import type { MenuCategory } from "@pos/types";
 
 interface Props {
@@ -20,22 +25,49 @@ interface Props {
 }
 
 export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
-  const { data: categories, isLoading } = useMenuCategories();
+  const categoriesQuery = useMenuCategories();
   const addMutation = useAddCategory();
   const renameMutation = useRenameCategory();
   const deleteMutation = useDeleteCategory();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MenuCategory | null>(null);
   const [name, setName] = useState("");
+  const formErrors = useLocalFormApiErrors();
+  const nameError = useMemo(() => validateCategoryName(name), [name]);
+  const isDirty =
+    adding || (editing ? name.trim() !== editing.name.trim() : false);
 
-  const openAdd = () => {
+  const closeModal = () => {
+    formErrors.clearErrors();
+    setAdding(false);
+    setEditing(null);
     setName("");
+  };
+  const openAdd = () => {
+    formErrors.clearErrors();
+    setName("");
+    setEditing(null);
     setAdding(true);
   };
   const openEdit = (category: MenuCategory) => {
+    formErrors.clearErrors();
+    setAdding(false);
     setName(category.name);
     setEditing(category);
   };
+
+  if (categoriesQuery.isError && !categoriesQuery.data) {
+    return (
+      <QueryErrorState
+        title="Unable to load categories"
+        description="Categories could not be loaded. Retry before creating or editing categories so a failed request is not treated as an empty menu."
+        onRetry={() => void categoriesQuery.refetch()}
+        isRetrying={categoriesQuery.isFetching}
+      />
+    );
+  }
+
+  const categories = categoriesQuery.data ?? [];
 
   return (
     <div className="space-y-4">
@@ -48,16 +80,24 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
             Organize menu items into customer-facing groups.
           </p>
         </div>
-        <Button onClick={openAdd}>
-          <Plus className="w-4 h-4" /> Add Category
+        <Button onClick={openAdd} disabled={categoriesQuery.isLoading}>
+          <Plus className="h-4 w-4" /> Add Category
         </Button>
       </div>
 
-      {isLoading ? (
+      {categoriesQuery.isError && categoriesQuery.data ? (
+        <StaleDataBanner
+          message="Category refresh failed — showing the latest cached categories."
+          onRetry={() => void categoriesQuery.refetch()}
+          isRetrying={categoriesQuery.isFetching}
+        />
+      ) : null}
+
+      {categoriesQuery.isLoading ? (
         <div className="flex justify-center py-16">
-          <Spinner className="w-6 h-6" />
+          <Spinner className="h-6 w-6" />
         </div>
-      ) : !categories?.length ? (
+      ) : !categories.length ? (
         <EmptyState
           icon={({ className }) => <span className={className}>☷</span>}
           title="No categories"
@@ -70,10 +110,10 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
             <Card key={category.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-text-primary truncate">
+                  <h3 className="truncate font-semibold text-text-primary">
                     {category.name}
                   </h3>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="mt-1 text-xs text-text-secondary">
                     {category.menuItems?.length ?? 0} items
                   </p>
                 </div>
@@ -88,6 +128,7 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
                     icon={Trash2}
                     size="sm"
                     aria-label={`Delete ${category.name}`}
+                    disabled={deleteMutation.isPending}
                     onClick={() => {
                       if (confirm(`Remove category "${category.name}"?`))
                         deleteMutation.mutate(category.id);
@@ -103,7 +144,7 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
                   onSaveTemplate({ id: category.id, name: category.name })
                 }
               >
-                <LayoutTemplate className="w-3.5 h-3.5" /> Save as Template
+                <LayoutTemplate className="h-3.5 w-3.5" /> Save as Template
               </Button>
             </Card>
           ))}
@@ -112,51 +153,62 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
 
       <Modal
         open={adding || !!editing}
-        onClose={() => {
-          setAdding(false);
-          setEditing(null);
-        }}
+        onClose={closeModal}
         title={adding ? "Add Category" : "Rename Category"}
         size="sm"
       >
         <div className="space-y-4">
+          <FormErrorSummary messages={formErrors.formErrorMessages} />
           <Input
             label="Category name"
             placeholder="e.g. Starters"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            maxLength={100}
+            error={formErrors.fieldErrors.name ?? nameError}
+            onChange={(event) => {
+              formErrors.clearFieldError("name");
+              setName(event.target.value);
+            }}
           />
           <div className="flex justify-end gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAdding(false);
-                setEditing(null);
-              }}
-            >
+            <Button variant="secondary" onClick={closeModal}>
               Cancel
             </Button>
             <Button
               loading={addMutation.isPending || renameMutation.isPending}
-              disabled={!name.trim()}
+              disabled={
+                Boolean(nameError) ||
+                !isDirty ||
+                addMutation.isPending ||
+                renameMutation.isPending
+              }
               onClick={() => {
-                if (adding)
+                formErrors.clearErrors();
+                if (nameError || !isDirty) return;
+                if (adding) {
                   addMutation.mutate(name.trim(), {
-                    onSuccess: () => {
-                      setAdding(false);
-                      setName("");
-                    },
+                    onSuccess: closeModal,
+                    onError: (error) =>
+                      formErrors.handleApiError(
+                        error,
+                        ["name"],
+                        "Failed to add category",
+                      ),
                   });
-                else if (editing)
+                } else if (editing) {
                   renameMutation.mutate(
                     { id: editing.id, name: name.trim() },
                     {
-                      onSuccess: () => {
-                        setEditing(null);
-                        setName("");
-                      },
+                      onSuccess: closeModal,
+                      onError: (error) =>
+                        formErrors.handleApiError(
+                          error,
+                          ["name"],
+                          "Failed to rename category",
+                        ),
                     },
                   );
+                }
               }}
             >
               {adding ? "Add Category" : "Save"}

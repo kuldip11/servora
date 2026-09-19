@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { notifySuccess } from "@/shared/lib/notify";
 import {
   menuBranchOverridesService,
   type BranchOverrideFormInput,
@@ -22,6 +22,5 @@ export const useSaveBranchOverride = (itemId: string) => {
         queryKey: menuKeys.branchOverrides(itemId),
       });
     },
-    onError: (err) => notifyError(err, "Failed to save override"),
   });
 };

@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { Button, Input } from "@pos/ui";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import {
   useCreateKitchenStation,
@@ -7,12 +15,48 @@ import {
   useKitchenStations,
 } from "@/features/menu/hooks/useKitchenStations";
 import { appUrls } from "@/config/app-urls";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
+
+const kitchenStationFormSchema = z.object({
+  name: z.string().trim().min(1, "Station name is required").max(120),
+});
+type KitchenStationFormValues = z.infer<typeof kitchenStationFormSchema>;
 
 export const KitchenStationsSection = () => {
-  const [name, setName] = useState("");
-  const { data = [], isLoading } = useKitchenStations();
+  const stationsQuery = useKitchenStations();
   const create = useCreateKitchenStation();
   const remove = useDeleteKitchenStation();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isValid },
+  } = useForm<KitchenStationFormValues>({
+    resolver: zodResolver(kitchenStationFormSchema),
+    mode: "onChange",
+    defaultValues: { name: "" },
+  });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<KitchenStationFormValues>();
+
+  const submit = handleSubmit(async (values) => {
+    clearFormErrors();
+    try {
+      await create.mutateAsync({ name: values.name.trim() });
+      reset();
+    } catch (error) {
+      handleApiError(
+        error,
+        setError,
+        ["name"],
+        "Failed to create kitchen station",
+      );
+    }
+  });
+
+  const stations = stationsQuery.data;
+
   return (
     <div className="space-y-5">
       <div>
@@ -24,35 +68,52 @@ export const KitchenStationsSection = () => {
           editor.
         </p>
       </div>
-      <form
-        className="flex max-w-md items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const value = name.trim();
-          if (value)
-            create.mutate({ name: value }, { onSuccess: () => setName("") });
-        }}
-      >
-        <Input
-          label="New station"
-          placeholder="Grill"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+
+      {stationsQuery.isError && !stations ? (
+        <QueryErrorState
+          title="Unable to load kitchen stations"
+          description="Kitchen stations could not be loaded. Retry before changing routing configuration."
+          onRetry={() => void stationsQuery.refetch()}
+          isRetrying={stationsQuery.isFetching}
         />
-        <Button type="submit" loading={create.isPending}>
-          <Plus className="h-4 w-4" /> Create
-        </Button>
+      ) : null}
+      {stationsQuery.isError && stations ? (
+        <StaleDataBanner
+          message="Kitchen-station refresh failed — showing the last available stations."
+          onRetry={() => void stationsQuery.refetch()}
+          isRetrying={stationsQuery.isFetching}
+        />
+      ) : null}
+
+      <form className="max-w-md space-y-2" onSubmit={submit}>
+        <FormErrorSummary messages={formErrorMessages} />
+        <div className="flex items-end gap-2">
+          <Input
+            label="New station"
+            placeholder="Grill"
+            error={errors.name?.message}
+            {...register("name", { onChange: clearFormErrors })}
+          />
+          <Button
+            type="submit"
+            loading={create.isPending}
+            disabled={!isValid || create.isPending || stationsQuery.isError}
+          >
+            <Plus className="h-4 w-4" /> Create
+          </Button>
+        </div>
       </form>
-      {isLoading ? (
+
+      {stationsQuery.isLoading ? (
         <p className="text-sm text-text-secondary">Loading stations…</p>
-      ) : !data.length ? (
+      ) : !stationsQuery.isError && !stations?.length ? (
         <p className="rounded-lg border border-dashed border-border p-6 text-sm text-text-secondary">
           No stations configured. Orders remain in the undifferentiated kitchen
           flow.
         </p>
-      ) : (
+      ) : stations ? (
         <div className="divide-y divide-border rounded-lg border border-border">
-          {data.map((station) => (
+          {stations.map((station) => (
             <div key={station.id} className="flex items-center gap-3 p-4">
               <div className="flex-1">
                 <p className="font-medium text-text-primary">{station.name}</p>
@@ -72,6 +133,7 @@ export const KitchenStationsSection = () => {
                 size="sm"
                 variant="ghost"
                 aria-label={`Delete ${station.name}`}
+                loading={remove.isPending}
                 onClick={() => remove.mutate(station.id)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -79,7 +141,7 @@ export const KitchenStationsSection = () => {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

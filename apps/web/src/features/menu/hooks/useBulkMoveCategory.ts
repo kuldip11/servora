@@ -17,6 +17,6 @@ export const useBulkMoveCategory = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Moved ${data.updated} item(s)`);
     },
-    onError: () => notifyError(undefined, "Failed to move items"),
+    onError: (error) => notifyError(error, "Failed to move items"),
   });
 };

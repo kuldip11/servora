@@ -1,59 +1,157 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
+import { z } from "zod";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import type { CustomerGroup } from "@pos/types";
 import { createCustomersApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
 const customersApi = createCustomersApi(apiClient);
 
+const customerGroupFormSchema = z
+  .object({
+    name: z.string().trim().min(1, "Group name is required").max(120),
+    discountType: z.enum(["NONE", "PERCENT", "FIXED"]),
+    discount: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.discountType === "NONE") return;
+    const amount = Number(values.discount);
+    if (!values.discount.trim() || !Number.isFinite(amount) || amount < 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["discount"],
+        message: "Enter a valid non-negative discount",
+      });
+    } else if (values.discountType === "PERCENT" && amount > 100) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["discount"],
+        message: "Percent discount cannot exceed 100",
+      });
+    }
+  });
+
+type CustomerGroupFormValues = z.infer<typeof customerGroupFormSchema>;
+
+const defaultValues: CustomerGroupFormValues = {
+  name: "",
+  discountType: "NONE",
+  discount: "",
+};
+
 export const CustomerGroupsSection = () => {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [discountType, setDiscountType] = useState<
-    "NONE" | "PERCENT" | "FIXED"
-  >("NONE");
-  const [discount, setDiscount] = useState("");
   const key = ["customer-groups"];
-  const { data: groups = [] } = useQuery<CustomerGroup[]>({
+  const groupsQuery = useQuery<CustomerGroup[]>({
     queryKey: key,
     queryFn: customersApi.listGroups,
   });
+  const groups = groupsQuery.data;
 
-  const clear = () => {
-    setEditingId(null);
-    setName("");
-    setDiscountType("NONE");
-    setDiscount("");
-  };
+  const form = useForm<CustomerGroupFormValues>({
+    resolver: zodResolver(customerGroupFormSchema),
+    mode: "onChange",
+    defaultValues,
+  });
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    watch,
+    formState: { errors, isDirty, isValid },
+  } = form;
+  const discountType = watch("discountType");
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<CustomerGroupFormValues>();
+
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      values,
+      editingId,
+    }: {
+      values: CustomerGroupFormValues;
+      editingId: string | null;
+    }) => {
       const payload = {
-        name: name.trim(),
+        name: values.name.trim(),
         discountPercent:
-          discountType === "PERCENT" && discount !== ""
-            ? Number(discount)
+          values.discountType === "PERCENT" && values.discount !== ""
+            ? Number(values.discount)
             : null,
         discountFixed:
-          discountType === "FIXED" && discount !== "" ? Number(discount) : null,
+          values.discountType === "FIXED" && values.discount !== ""
+            ? Number(values.discount)
+            : null,
       };
       return editingId
         ? customersApi.updateGroup(editingId, payload)
         : customersApi.createGroup(payload);
     },
     onSuccess: async () => {
-      clear();
+      reset(defaultValues);
       await queryClient.invalidateQueries({ queryKey: key });
       notifySuccess("Customer group saved");
     },
-    onError: (error) => notifyError(error, "Failed to save customer group"),
   });
   const remove = useMutation({
     mutationFn: customersApi.deleteGroup,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
     onError: (error) => notifyError(error, "Failed to delete customer group"),
+  });
+
+  const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
+
+  useEffect(() => {
+    if (!editingGroup) return;
+    reset({
+      name: editingGroup.name,
+      discountType:
+        editingGroup.discountPercent != null
+          ? "PERCENT"
+          : editingGroup.discountFixed != null
+            ? "FIXED"
+            : "NONE",
+      discount:
+        editingGroup.discountPercent != null
+          ? String(editingGroup.discountPercent)
+          : editingGroup.discountFixed != null
+            ? String(editingGroup.discountFixed)
+            : "",
+    });
+  }, [editingGroup, reset]);
+
+  const clear = () => {
+    setEditingGroup(null);
+    reset(defaultValues);
+    clearFormErrors();
+  };
+
+  const submit = handleSubmit(async (values) => {
+    clearFormErrors();
+    try {
+      await save.mutateAsync({ values, editingId: editingGroup?.id ?? null });
+      setEditingGroup(null);
+    } catch (error) {
+      handleApiError(
+        error,
+        setError,
+        ["name", "discountType", "discount"],
+        "Failed to save customer group",
+        { discountPercent: "discount", discountFixed: "discount" },
+      );
+    }
   });
 
   return (
@@ -67,21 +165,41 @@ export const CustomerGroupsSection = () => {
           memberships, then scope item price rules to them.
         </p>
       </div>
-      <div className="grid max-w-2xl grid-cols-1 gap-2 md:grid-cols-3">
+
+      {groupsQuery.isError && !groups ? (
+        <QueryErrorState
+          title="Unable to load customer groups"
+          description="Customer groups could not be loaded. Retry before making membership changes."
+          onRetry={() => void groupsQuery.refetch()}
+          isRetrying={groupsQuery.isFetching}
+        />
+      ) : null}
+      {groupsQuery.isError && groups ? (
+        <StaleDataBanner
+          message="Customer-group refresh failed — showing the last available data."
+          onRetry={() => void groupsQuery.refetch()}
+          isRetrying={groupsQuery.isFetching}
+        />
+      ) : null}
+
+      <form
+        className="grid max-w-2xl grid-cols-1 gap-2 md:grid-cols-3"
+        onSubmit={submit}
+      >
+        <div className="md:col-span-3">
+          <FormErrorSummary messages={formErrorMessages} />
+        </div>
         <Input
           label="Group name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
           placeholder="Corporate · Acme Ltd"
+          error={errors.name?.message}
+          {...register("name", { onChange: clearFormErrors })}
         />
         <label className="text-sm font-medium text-text-primary">
           Default discount
           <select
             className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            value={discountType}
-            onChange={(event) =>
-              setDiscountType(event.target.value as typeof discountType)
-            }
+            {...register("discountType", { onChange: clearFormErrors })}
           >
             <option value="NONE">None</option>
             <option value="PERCENT">Percent</option>
@@ -94,89 +212,83 @@ export const CustomerGroupsSection = () => {
             type="number"
             min="0"
             step="0.01"
-            value={discount}
-            onChange={(event) => setDiscount(event.target.value)}
+            error={errors.discount?.message}
+            {...register("discount", { onChange: clearFormErrors })}
           />
         ) : (
           <div />
         )}
         <div className="flex gap-2 md:col-span-3">
           <Button
-            type="button"
-            disabled={!name.trim()}
+            type="submit"
+            disabled={
+              !isValid ||
+              save.isPending ||
+              groupsQuery.isError ||
+              (!!editingGroup && !isDirty)
+            }
             loading={save.isPending}
-            onClick={() => save.mutate()}
           >
-            {editingId ? "Update group" : "Create group"}
+            {editingGroup ? "Update group" : "Create group"}
           </Button>
-          {editingId && (
+          {editingGroup ? (
             <Button type="button" variant="secondary" onClick={clear}>
               Cancel
             </Button>
-          )}
+          ) : null}
         </div>
-      </div>
-      <div className="divide-y divide-divider rounded-lg border border-border">
-        {groups.length === 0 && (
-          <p className="p-4 text-sm text-text-secondary">
-            No customer groups yet.
-          </p>
-        )}
-        {groups.map((group) => (
-          <div
-            key={group.id}
-            className="flex items-center justify-between gap-3 p-3"
-          >
-            <div>
-              <p className="text-sm font-medium text-text-primary">
-                {group.name}
-              </p>
-              <p className="text-xs text-text-secondary">
-                {group.discountPercent != null
-                  ? `${Number(group.discountPercent)}% default discount`
-                  : group.discountFixed != null
-                    ? `₹${Number(group.discountFixed).toFixed(2)} default discount`
-                    : "No default discount · use scoped price rules"}
-              </p>
+      </form>
+
+      {!groupsQuery.isError || groups ? (
+        <div className="divide-y divide-divider rounded-lg border border-border">
+          {!groups?.length ? (
+            <p className="p-4 text-sm text-text-secondary">
+              No customer groups yet.
+            </p>
+          ) : null}
+          {groups?.map((group) => (
+            <div
+              key={group.id}
+              className="flex items-center justify-between gap-3 p-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-text-primary">
+                  {group.name}
+                </p>
+                <p className="text-xs text-text-secondary">
+                  {group.discountPercent != null
+                    ? `${Number(group.discountPercent)}% default discount`
+                    : group.discountFixed != null
+                      ? `₹${Number(group.discountFixed).toFixed(2)} default discount`
+                      : "No default discount · use scoped price rules"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setEditingGroup(group)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger"
+                  loading={remove.isPending}
+                  onClick={() => {
+                    if (confirm(`Delete customer group "${group.name}"?`))
+                      remove.mutate(group.id);
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  setEditingId(group.id);
-                  setName(group.name);
-                  if (group.discountPercent != null) {
-                    setDiscountType("PERCENT");
-                    setDiscount(String(group.discountPercent));
-                  } else if (group.discountFixed != null) {
-                    setDiscountType("FIXED");
-                    setDiscount(String(group.discountFixed));
-                  } else {
-                    setDiscountType("NONE");
-                    setDiscount("");
-                  }
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="danger"
-                loading={remove.isPending}
-                onClick={() => {
-                  if (confirm(`Delete customer group "${group.name}"?`))
-                    remove.mutate(group.id);
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 };

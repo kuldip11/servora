@@ -1,55 +1,48 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useRef } from "react";
 import { track } from "@/lib/analytics";
+import { LeadFieldError } from "./LeadFieldError";
+import { useLeadForm } from "./useLeadForm";
+import { validateContactLead } from "./lead-form.validation";
+
+const initialValues = {
+  name: "",
+  email: "",
+  business: "",
+  locations: "",
+  subject: "general",
+  message: "",
+  website: "",
+};
 
 export const ContactForm = () => {
-  const [state, setState] = useState<
-    "idle" | "submitting" | "success" | "error"
-  >("idle");
-  const [error, setError] = useState("");
   const started = useRef(false);
-
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (state === "submitting") return;
-    setState("submitting");
-    setError("");
-    const form = e.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
-
-    try {
-      const response = await fetch("/api/lead", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...data, source: "contact" }),
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error || "Unable to send your message.");
-      setState("success");
-      form.reset();
+  const form = useLeadForm({
+    initialValues,
+    source: "contact",
+    validate: validateContactLead,
+    onSuccess: (values) =>
       track({
         event: "contact_form_submit",
-        subject: String(data.subject || "general"),
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.";
-      track({ event: "contact_form_error", error_type: message });
-      setError(message);
-      setState("error");
-    }
-  }
+        subject: values.subject || "general",
+      }),
+  });
 
-  function startTracking() {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const ok = await form.submit();
+    if (!ok && form.formError) {
+      track({ event: "contact_form_error", error_type: form.formError });
+    }
+  };
+
+  const startTracking = () => {
     if (!started.current) {
       started.current = true;
       track({ event: "contact_form_start", source_page: "contact" });
     }
-  }
+  };
 
   return (
     <form onSubmit={submit} className="space-y-5" noValidate>
@@ -59,29 +52,55 @@ export const ContactForm = () => {
       >
         <label>
           Website
-          <input name="website" tabIndex={-1} autoComplete="off" />
+          <input
+            name="website"
+            value={form.values.website}
+            onChange={(event) =>
+              form.updateField("website", event.target.value)
+            }
+            tabIndex={-1}
+            autoComplete="off"
+          />
         </label>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="text-sm font-medium">
           Name
           <input
-            required
             name="name"
+            value={form.values.name}
+            onChange={(event) => form.updateField("name", event.target.value)}
             autoComplete="name"
             onFocus={startTracking}
+            aria-invalid={Boolean(form.fieldErrors.name)}
+            aria-describedby={
+              form.fieldErrors.name ? "contact-name-error" : undefined
+            }
             className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-surface)]"
+          />
+          <LeadFieldError
+            id="contact-name-error"
+            message={form.fieldErrors.name}
           />
         </label>
         <label className="text-sm font-medium">
           Work email
           <input
-            required
             type="email"
             name="email"
+            value={form.values.email}
+            onChange={(event) => form.updateField("email", event.target.value)}
             autoComplete="email"
             onFocus={startTracking}
+            aria-invalid={Boolean(form.fieldErrors.email)}
+            aria-describedby={
+              form.fieldErrors.email ? "contact-email-error" : undefined
+            }
             className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-surface)]"
+          />
+          <LeadFieldError
+            id="contact-email-error"
+            message={form.fieldErrors.email}
           />
         </label>
       </div>
@@ -89,6 +108,8 @@ export const ContactForm = () => {
         Subject
         <select
           name="subject"
+          value={form.values.subject}
+          onChange={(event) => form.updateField("subject", event.target.value)}
           onFocus={startTracking}
           className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3"
         >
@@ -101,27 +122,36 @@ export const ContactForm = () => {
       <label className="text-sm font-medium">
         Message
         <textarea
-          required
           name="message"
           rows={6}
+          value={form.values.message}
+          onChange={(event) => form.updateField("message", event.target.value)}
           onFocus={startTracking}
+          aria-invalid={Boolean(form.fieldErrors.message)}
+          aria-describedby={
+            form.fieldErrors.message ? "contact-message-error" : undefined
+          }
           className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3"
+        />
+        <LeadFieldError
+          id="contact-message-error"
+          message={form.fieldErrors.message}
         />
       </label>
       <button
-        disabled={state === "submitting"}
+        disabled={!form.isValid || form.state === "submitting"}
         className="rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {state === "submitting" ? "Sending…" : "Send message"}
+        {form.state === "submitting" ? "Sending…" : "Send message"}
       </button>
-      {state === "success" && (
+      {form.state === "success" && (
         <p role="status" className="text-sm text-[var(--success)]">
           Thanks. Your message has been sent. We’ll be in touch soon.
         </p>
       )}
-      {state === "error" && (
+      {form.formError && (
         <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
+          {form.formError}
         </p>
       )}
     </form>

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   has: vi.fn(),
   staff: { current: {} as any },
-  roles: { current: [] as any[] },
+  roles: { current: {} as any },
   branches: { current: [] as any[] },
   add: vi.fn(),
   del: vi.fn(),
@@ -22,13 +22,17 @@ vi.mock("@/features/staff/hooks/useStaff", () => ({
   useStaff: vi.fn(() => mocks.staff.current),
 }));
 vi.mock("@/features/staff/hooks/useRoles", () => ({
-  useRoles: () => ({ data: mocks.roles.current }),
+  useRoles: () => mocks.roles.current,
 }));
 vi.mock("@/features/branches/hooks/useBranches", () => ({
   useBranches: () => ({ data: mocks.branches.current }),
 }));
 vi.mock("@/features/staff/hooks/useAddStaff", () => ({
-  useAddStaff: () => ({ mutate: mocks.add, isPending: false }),
+  useAddStaff: () => ({
+    mutate: mocks.add,
+    mutateAsync: mocks.add,
+    isPending: false,
+  }),
 }));
 vi.mock("@/features/staff/hooks/useDeleteStaff", () => ({
   useDeleteStaff: () => ({ mutate: mocks.del }),
@@ -39,6 +43,11 @@ vi.mock("@/features/staff/hooks/useUpdateStaffStatus", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useMutation: (options: any) => ({
     isPending: false,
+    mutateAsync: async (value: any) => {
+      const result = await options.mutationFn(value);
+      options.onSuccess?.(result);
+      return result;
+    },
     mutate: async (value: any) => {
       try {
         const result = await options.mutationFn(value);
@@ -65,7 +74,15 @@ vi.mock("@/features/staff/query-keys", () => ({
 vi.mock("@/features/staff/components/forms/AddStaffForm", () => ({
   AddStaffForm: ({ onSubmit, onCancel }: any) => (
     <div>
-      <button onClick={() => onSubmit({ firstName: "New" })}>submit-add</button>
+      <button
+        onClick={() =>
+          void Promise.resolve(onSubmit({ firstName: "New" })).catch(
+            () => undefined,
+          )
+        }
+      >
+        submit-add
+      </button>
       <button onClick={onCancel}>cancel-add</button>
     </div>
   ),
@@ -75,12 +92,14 @@ vi.mock("@/features/staff/components/forms/EditStaffForm", () => ({
     <div>
       <button
         onClick={() =>
-          onSubmit({
-            firstName: "Edit",
-            lastName: "User",
-            roleId: "r1",
-            branchIds: ["b1"],
-          })
+          void Promise.resolve(
+            onSubmit({
+              firstName: "Edit",
+              lastName: "User",
+              roleId: "r1",
+              branchIds: ["b1"],
+            }),
+          ).catch(() => undefined)
         }
       >
         submit-edit
@@ -157,6 +176,19 @@ vi.mock("@pos/ui", () => ({
       <option value="INACTIVE">Inactive</option>
     </select>
   ),
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div role="alert">
+      <span>{title}</span>
+      <span>{description}</span>
+      {onRetry ? <button onClick={onRetry}>retry-query</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div role="status">
+      <span>{message}</span>
+      {onRetry ? <button onClick={onRetry}>retry-stale</button> : null}
+    </div>
+  ),
   FilterBar: ({ children, onClearAll }: any) => (
     <div>
       {children}
@@ -208,11 +240,19 @@ describe("StaffPage coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.has.mockReturnValue(true);
-    mocks.roles.current = [{ id: "r1" }];
+    mocks.roles.current = {
+      data: [{ id: "r1" }],
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     mocks.branches.current = [{ id: "b1" }];
     mocks.staff.current = {
       data: { items: [active, inactive], pagination: { total: 52 } },
       isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
     };
     mocks.update.mockResolvedValue({});
     vi.stubGlobal(
@@ -242,7 +282,7 @@ describe("StaffPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: "next-page" }));
     fireEvent.click(screen.getByRole("button", { name: "size-50" }));
   });
-  it("adds and edits staff and handles update success/error", async () => {
+  it("adds and edits staff while preserving form-owned update errors", async () => {
     render(<StaffPage />);
     fireEvent.click(screen.getAllByRole("button", { name: /Add Staff/ })[0]!);
     expect(
@@ -263,18 +303,17 @@ describe("StaffPage coverage", () => {
     mocks.update.mockRejectedValueOnce(new Error("bad"));
     fireEvent.click(screen.getAllByLabelText("Edit staff member")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "submit-edit" }));
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Failed to update staff",
-      ),
-    );
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.error).not.toHaveBeenCalled();
   });
   it("covers roles tab, empty team and restricted permissions", () => {
     mocks.has.mockImplementation((p: string) => p === "roles:create");
     mocks.staff.current = {
       data: { items: [], pagination: { total: 0 } },
       isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
     };
     const { rerender } = render(<StaffPage />);
     expect(screen.getByText("No staff members")).toBeTruthy();
@@ -286,5 +325,38 @@ describe("StaffPage coverage", () => {
     mocks.has.mockReturnValue(false);
     rerender(<StaffPage />);
     expect(screen.queryByLabelText("Edit staff member")).toBeNull();
+  });
+  it("shows an explicit error instead of a false empty team", () => {
+    mocks.staff.current = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("staff unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+
+    render(<StaffPage />);
+
+    expect(screen.getByText("Unable to load staff")).toBeTruthy();
+    expect(screen.queryByText("No staff members")).toBeNull();
+  });
+
+  it("shows a roles load error instead of an empty role manager", () => {
+    mocks.roles.current = {
+      data: undefined,
+      isError: true,
+      error: new Error("roles unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+
+    render(<StaffPage />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Roles & permissions" }),
+    );
+
+    expect(screen.getByText("Unable to load roles")).toBeTruthy();
+    expect(screen.queryByText(/roles-manager/)).toBeNull();
   });
 });

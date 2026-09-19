@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { notifySuccess } from "@/shared/lib/notify";
 import { menuItemsService } from "@/features/menu/services/menu-items.service";
 import { menuKeys } from "@/features/menu/query-keys";
 
@@ -12,6 +12,5 @@ export const useRenameCategory = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess("Category renamed");
     },
-    onError: (err) => notifyError(err, "Failed to rename category"),
   });
 };

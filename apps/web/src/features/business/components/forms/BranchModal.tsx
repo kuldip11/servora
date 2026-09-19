@@ -2,7 +2,13 @@ import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Input, Modal } from "@pos/ui";
+import {
+  Button,
+  FieldErrorText,
+  FormErrorSummary,
+  Input,
+  Modal,
+} from "@pos/ui";
 import type { Branch } from "@pos/types";
 import {
   businessBranchFormSchema,
@@ -10,9 +16,14 @@ import {
 } from "@pos/validation";
 import { businessService } from "@/features/business/services/business.service";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import { usePermissions } from "@/shared/auth/permissions";
 import { CapabilityGrid } from "./CapabilityGrid";
-import { branchDefaults, inputClass } from "./business-form-defaults";
+import {
+  branchDefaults,
+  branchFieldPaths,
+  inputClass,
+} from "./business-form-defaults";
 
 export const BranchModal = ({
   open,
@@ -31,9 +42,13 @@ export const BranchModal = ({
   const form = useForm<BusinessBranchFormValues>({
     resolver: zodResolver(businessBranchFormSchema),
     defaultValues: branchDefaults,
+    mode: "onChange",
   });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<BusinessBranchFormValues>();
   useEffect(() => {
-    if (open)
+    if (open) {
+      clearFormErrors();
       form.reset(
         branch
           ? ({
@@ -44,7 +59,8 @@ export const BranchModal = ({
             } as BusinessBranchFormValues)
           : branchDefaults,
       );
-  }, [open, branch]);
+    }
+  }, [branch, clearFormErrors, form, open]);
   const mutation = useMutation({
     mutationFn: (values: BusinessBranchFormValues) =>
       branch
@@ -55,7 +71,13 @@ export const BranchModal = ({
       await onSaved();
       onClose();
     },
-    onError: (error) => notifyError(error, "Could not save branch"),
+    onError: (error) =>
+      handleApiError(
+        error,
+        form.setError,
+        branchFieldPaths,
+        "Could not save branch",
+      ),
   });
   const archiveMutation = useMutation({
     mutationFn: () => businessService.archiveBranch(branch!.id),
@@ -77,7 +99,10 @@ export const BranchModal = ({
     >
       <form
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
-        onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+        onSubmit={form.handleSubmit((values) => {
+          clearFormErrors();
+          mutation.mutate(values);
+        })}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -101,6 +126,7 @@ export const BranchModal = ({
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
             </select>
+            <FieldErrorText message={e.status?.message} />
           </label>
           <Input
             label="Address line 1"
@@ -110,6 +136,7 @@ export const BranchModal = ({
           />
           <Input
             label="Address line 2 (optional)"
+            error={e.addressLine2?.message}
             placeholder="Floor, unit or landmark"
             {...form.register("addressLine2")}
           />
@@ -151,26 +178,31 @@ export const BranchModal = ({
           />
           <Input
             label="Manager name (optional)"
+            error={e.managerName?.message}
             placeholder="e.g. Aditi Verma"
             {...form.register("managerName")}
           />
           <Input
             label="Email (optional)"
+            error={e.email?.message}
             placeholder="e.g. airport@kkskitchen.com"
             {...form.register("email")}
           />
           <Input
             label="Opening time"
+            error={e.openingTime?.message}
             placeholder="09:00"
             {...form.register("openingTime")}
           />
           <Input
             label="Closing time"
+            error={e.closingTime?.message}
             placeholder="23:00"
             {...form.register("closingTime")}
           />
           <Input
             label="Tax override % (optional)"
+            error={e.taxOverride?.message}
             type="number"
             step="0.01"
             placeholder="e.g. 5"
@@ -178,6 +210,7 @@ export const BranchModal = ({
           />
           <Input
             label="Service charge override %"
+            error={e.serviceChargeOverride?.message}
             type="number"
             step="0.01"
             placeholder="e.g. 10"
@@ -185,6 +218,7 @@ export const BranchModal = ({
           />
           <Input
             label="Invoice prefix (optional)"
+            error={e.invoicePrefix?.message}
             placeholder="e.g. DELT3"
             {...form.register("invoicePrefix")}
           />
@@ -198,6 +232,7 @@ export const BranchModal = ({
               <option value="WARN">Warn</option>
               <option value="ALLOW">Allow</option>
             </select>
+            <FieldErrorText message={e.negativeStockPolicy?.message} />
           </label>
         </div>
         <label className="block text-sm font-medium">
@@ -229,6 +264,7 @@ export const BranchModal = ({
               ),
             )}
           </div>
+          <FieldErrorText message={e.weeklyOperatingDays?.message} />
         </label>
         <label className="block text-sm font-medium">
           Receipt footer
@@ -238,6 +274,7 @@ export const BranchModal = ({
             placeholder="e.g. Thank you for dining with us!"
             {...form.register("receiptFooter")}
           />
+          <FieldErrorText message={e.receiptFooter?.message} />
         </label>
         <CapabilityGrid
           values={{
@@ -258,6 +295,7 @@ export const BranchModal = ({
             )
           }
         />
+        <FormErrorSummary messages={formErrorMessages} />
         <div className="flex justify-between gap-2">
           {branch && has("branch:archive") ? (
             <Button
@@ -278,8 +316,16 @@ export const BranchModal = ({
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={mutation.isPending}>
-              Save Branch
+            <Button
+              type="submit"
+              loading={mutation.isPending}
+              disabled={
+                !form.formState.isValid ||
+                mutation.isPending ||
+                (Boolean(branch) && !form.formState.isDirty)
+              }
+            >
+              {mutation.isPending ? "Saving…" : "Save Branch"}
             </Button>
           </div>
         </div>

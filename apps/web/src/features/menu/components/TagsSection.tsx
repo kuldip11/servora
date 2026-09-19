@@ -2,12 +2,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createMenuTagSchema, type CreateMenuTagInput } from "@pos/validation";
 import { Plus, X } from "lucide-react";
-import { Button, Input } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import { useMenuTags } from "@/features/menu/hooks/useMenuTags";
 import { useAddMenuTag } from "@/features/menu/hooks/useAddMenuTag";
 import { useDeleteMenuTag } from "@/features/menu/hooks/useDeleteMenuTag";
 
 import { TAG_COLORS } from "@/features/menu/constants";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
 export const TagsSection = () => {
   const {
@@ -16,16 +23,36 @@ export const TagsSection = () => {
     reset,
     setValue,
     watch,
-    formState: { errors },
+    setError,
+    formState: { errors, isValid },
   } = useForm<CreateMenuTagInput>({
     resolver: zodResolver(createMenuTagSchema),
+    mode: "onChange",
     defaultValues: { name: "", color: TAG_COLORS[0] ?? "#8b5cf6" },
   });
   const color = watch("color");
 
-  const { data: tags } = useMenuTags();
+  const tagsQuery = useMenuTags();
+  const tags = tagsQuery.data;
   const addMutation = useAddMenuTag();
   const deleteMutation = useDeleteMenuTag();
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<CreateMenuTagInput>();
+
+  const submit = handleSubmit(async (values) => {
+    clearFormErrors();
+    try {
+      await addMutation.mutateAsync(values);
+      reset({ name: "", color });
+    } catch (error) {
+      handleApiError(
+        error,
+        setError,
+        ["name", "color"],
+        "Failed to create tag",
+      );
+    }
+  });
 
   return (
     <div className="space-y-4">
@@ -36,6 +63,22 @@ export const TagsSection = () => {
           any item.
         </p>
       </div>
+
+      {tagsQuery.isError && !tags ? (
+        <QueryErrorState
+          title="Unable to load tags"
+          description="Tags could not be loaded. Retry before making tag changes."
+          onRetry={() => void tagsQuery.refetch()}
+          isRetrying={tagsQuery.isFetching}
+        />
+      ) : null}
+      {tagsQuery.isError && tags ? (
+        <StaleDataBanner
+          message="Tag refresh failed — showing the last available tags."
+          onRetry={() => void tagsQuery.refetch()}
+          isRetrying={tagsQuery.isFetching}
+        />
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {tags?.map((tag) => (
@@ -58,42 +101,50 @@ export const TagsSection = () => {
             </button>
           </span>
         ))}
-        {!tags?.length && (
+        {!tagsQuery.isError && !tags?.length && (
           <p className="text-sm text-text-disabled">
             No tags yet — add one below.
           </p>
         )}
       </div>
 
-      <form
-        onSubmit={handleSubmit((values) =>
-          addMutation.mutate(values, {
-            onSuccess: () => reset({ name: "", color }),
-          }),
-        )}
-        className="flex items-end gap-2 max-w-sm"
-      >
-        <Input
-          label="New tag"
-          placeholder="Bestseller"
-          error={errors.name?.message}
-          {...register("name")}
-        />
-        <div className="flex gap-1 pb-2.5">
-          {TAG_COLORS.map((c) => (
-            <button
-              type="button"
-              key={c}
-              onClick={() => setValue("color", c, { shouldValidate: true })}
-              aria-label={`Choose ${c}`}
-              className={`w-6 h-6 rounded-full ${color === c ? "ring-2 ring-offset-1 ring-gray-400" : ""}`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
+      <form onSubmit={submit} className="space-y-3 max-w-sm">
+        <FormErrorSummary messages={formErrorMessages} />
+        <div className="flex items-end gap-2">
+          <Input
+            label="New tag"
+            placeholder="Bestseller"
+            error={errors.name?.message}
+            {...register("name", { onChange: clearFormErrors })}
+          />
+          <div className="flex gap-1 pb-2.5">
+            {TAG_COLORS.map((c) => (
+              <button
+                type="button"
+                key={c}
+                onClick={() => {
+                  clearFormErrors();
+                  setValue("color", c, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                }}
+                aria-label={`Choose ${c}`}
+                className={`w-6 h-6 rounded-full ${color === c ? "ring-2 ring-offset-1 ring-gray-400" : ""}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            loading={addMutation.isPending}
+            disabled={!isValid || addMutation.isPending || tagsQuery.isError}
+            aria-label="Create tag"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </Button>
         </div>
-        <Button type="submit" size="sm" loading={addMutation.isPending}>
-          <Plus className="w-3.5 h-3.5" />
-        </Button>
       </form>
     </div>
   );

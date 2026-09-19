@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { notifySuccess } from "@/shared/lib/notify";
 import {
   inventoryService,
   type InventoryItemFormInput,
@@ -14,6 +14,5 @@ export const useAddInventoryItem = () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
       notifySuccess("Item added to inventory");
     },
-    onError: (err) => notifyError(err, "Failed to add item"),
   });
 };

@@ -287,6 +287,6 @@ describe("CreateOrderModal coverage", () => {
     fireEvent.click(screen.getByText("filter-veg"));
     fireEvent.click(screen.getByText("type-takeaway"));
     expect(screen.getByTestId("picker-type").textContent).toBe("TAKEAWAY");
-    expect(screen.getByTestId("picker-tables").textContent).toBe("true");
+    expect(screen.getByTestId("picker-tables").textContent).toBe("false");
   });
 });

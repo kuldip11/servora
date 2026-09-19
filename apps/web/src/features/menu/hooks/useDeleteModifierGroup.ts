@@ -11,9 +11,9 @@ export const useDeleteModifierGroup = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.modifierGroups() });
       notifySuccess("Modifier group deleted");
     },
-    onError: () =>
+    onError: (error) =>
       notifyError(
-        undefined,
+        error,
         "Failed to delete — it may still be attached to items",
       ),
   });

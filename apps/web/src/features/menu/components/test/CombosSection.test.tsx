@@ -13,9 +13,14 @@ const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
 
 vi.mock("@pos/api-client", () => ({
   createMenuApi: () => ({ listCombos, updateCombo, createCombo, removeCombo }),
+  extractApiFieldErrors: (error: unknown) =>
+    (error as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {},
 }));
 vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
   useMenuCategories: () => ({
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
     data: [
       {
         id: "category-1",

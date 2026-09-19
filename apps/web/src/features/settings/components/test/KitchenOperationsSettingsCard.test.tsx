@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@pos/api-client", () => ({
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
   createSettingsApi: () => ({
     tenants: mocks.tenants,
     updateTenant: mocks.update,
@@ -23,6 +25,10 @@ vi.mock("@/shared/lib/notify", () => ({
 }));
 vi.mock("lucide-react", () => ({ ChefHat: () => null }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title }: any) => <div>{title}</div>,
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Card: ({ children }: any) => <section>{children}</section>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
@@ -37,16 +43,24 @@ vi.mock("@tanstack/react-query", () => ({
         .then(setData)
         .catch(() => {});
     }, []);
-    return { data };
+    return {
+      data,
+      isLoading: data === undefined,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
   },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async () => {
+    mutate: async (value?: any, callbacks?: any) => {
       try {
-        const output = await options.mutationFn();
-        options.onSuccess?.(output);
+        const output = await options.mutationFn(value);
+        options.onSuccess?.(output, value);
+        callbacks?.onSuccess?.(output, value);
       } catch (error) {
-        options.onError?.(error);
+        options.onError?.(error, value);
+        callbacks?.onError?.(error, value);
       }
     },
   }),
@@ -93,11 +107,17 @@ describe("KitchenOperationsSettingsCard", () => {
     mocks.update.mockRejectedValueOnce(new Error("no"));
     render(<KitchenOperationsSettingsCard tenantId="t1" />);
 
-    await screen.findByRole("checkbox");
+    const checkbox = await screen.findByRole("checkbox");
+    await waitFor(() =>
+      expect((checkbox as HTMLInputElement).checked).toBe(true),
+    );
+    fireEvent.click(checkbox);
     fireEvent.click(
       screen.getByRole("button", { name: "Save kitchen settings" }),
     );
 
-    await waitFor(() => expect(mocks.error).toHaveBeenCalled());
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Failed to update kitchen operations settings",
+    );
   });
 });

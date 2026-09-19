@@ -104,6 +104,10 @@ export const useCustomerSession = () => {
     retry: false,
   });
   const placedOrder = orderQuery.data ?? null;
+  const activeOrderError =
+    persistence.placedOrderId && orderQuery.error
+      ? extractApiError(orderQuery.error, "Unable to refresh your order status")
+      : null;
 
   const requestMutation = useMutation({
     mutationFn: (type: CustomerRequestType) => {
@@ -137,6 +141,10 @@ export const useCustomerSession = () => {
     void bootstrapQuery.refetch();
   }, [bootstrapQuery, persistence]);
 
+  const retryActiveOrder = useCallback(() => {
+    void orderQuery.refetch();
+  }, [orderQuery]);
+
   const missingQrError = qrToken
     ? null
     : "Open this page from a restaurant table QR code to start an ordering session.";
@@ -156,6 +164,9 @@ export const useCustomerSession = () => {
     setCart: persistence.setCart,
     placedOrder,
     setPlacedOrder,
+    activeOrderError,
+    activeOrderRefreshing: orderQuery.isFetching,
+    retryActiveOrder,
     loading: isActionLoading || (Boolean(qrToken) && bootstrapQuery.isPending),
     setLoading: setIsActionLoading,
     error: persistence.localError ?? bootstrapError ?? missingQrError,

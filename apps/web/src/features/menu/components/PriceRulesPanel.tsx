@@ -1,16 +1,26 @@
+import { useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { createCustomersApi, createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-const customersApi = createCustomersApi(apiClient);
 import { queryClient } from "@/shared/lib/query-client";
 import type { CustomerGroup, PriceRule } from "@pos/types";
-import { getErrorMessage } from "@/shared/lib/errors";
+import { notifyError } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
 import { usePriceRuleDraft } from "@/features/menu/hooks/usePriceRuleDraft";
+import { validatePriceRuleForm } from "@/features/menu/helpers/price-rule-form";
+
+const menuApi = createMenuApi(apiClient);
+const customersApi = createCustomersApi(apiClient);
 
 const describeRule = (rule: PriceRule) => {
   const scope = [
@@ -49,22 +59,44 @@ export const PriceRulesPanel = ({
     price,
     priority,
     customerGroupId,
-    error,
     setField,
     markSaved,
-    setError,
   } = usePriceRuleDraft();
+  const {
+    fieldErrors,
+    formErrorMessages,
+    clearErrors,
+    clearFieldError,
+    handleApiError,
+  } = useLocalFormApiErrors();
 
   const key = ["menu-items", itemId, "price-rules"];
-  const { data: customerGroups = [] } = useQuery<CustomerGroup[]>({
+  const customerGroupsQuery = useQuery<CustomerGroup[]>({
     queryKey: ["customer-groups"],
     queryFn: () => customersApi.listGroups(),
   });
-
-  const { data: rules = [] } = useQuery<PriceRule[]>({
+  const rulesQuery = useQuery<PriceRule[]>({
     queryKey: key,
     queryFn: () => menuApi.listPriceRulesFor<PriceRule>({ menuItemId: itemId }),
   });
+
+  const clientErrors = useMemo(
+    () =>
+      validatePriceRuleForm({
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        price,
+        priority,
+      }),
+    [endDate, endTime, price, priority, startDate, startTime],
+  );
+  const dependencyFailed =
+    (rulesQuery.isError && !rulesQuery.data) ||
+    (customerGroupsQuery.isError && !customerGroupsQuery.data);
+  const dependencyLoading =
+    rulesQuery.isLoading || customerGroupsQuery.isLoading;
 
   const save = useMutation({
     mutationFn: () =>
@@ -82,18 +114,36 @@ export const PriceRulesPanel = ({
         priority: Number(priority) || 0,
       }),
     onSuccess: () => {
+      clearErrors();
       markSaved();
       queryClient.invalidateQueries({ queryKey: key });
-    },
-    onError: (err: unknown) => {
-      setError(getErrorMessage(err, "Could not save price rule"));
     },
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => menuApi.removePriceRule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Could not remove price rule"),
   });
+
+  if (dependencyFailed) {
+    return (
+      <QueryErrorState
+        title="Unable to load price-rule dependencies"
+        description="Price rules or customer groups could not be loaded. Retry before changing pricing so missing data is not treated as valid configuration."
+        onRetry={() =>
+          void Promise.all([
+            rulesQuery.refetch(),
+            customerGroupsQuery.refetch(),
+          ])
+        }
+        isRetrying={rulesQuery.isFetching || customerGroupsQuery.isFetching}
+      />
+    );
+  }
+
+  const rules = rulesQuery.data ?? [];
+  const customerGroups = customerGroupsQuery.data ?? [];
 
   return (
     <div className="space-y-2">
@@ -103,6 +153,18 @@ export const PriceRulesPanel = ({
           (channel and time-window pricing — e.g. delivery markup, happy hour)
         </span>
       </span>
+      {(rulesQuery.isError || customerGroupsQuery.isError) && (
+        <StaleDataBanner
+          message="Price-rule data could not be refreshed. Showing the latest cached configuration."
+          onRetry={() =>
+            void Promise.all([
+              rulesQuery.refetch(),
+              customerGroupsQuery.refetch(),
+            ])
+          }
+          isRetrying={rulesQuery.isFetching || customerGroupsQuery.isFetching}
+        />
+      )}
       {rules.map((rule) => (
         <div
           key={rule.id}
@@ -116,7 +178,8 @@ export const PriceRulesPanel = ({
           </span>
           <button
             type="button"
-            className="text-danger"
+            className="text-danger disabled:opacity-50"
+            disabled={remove.isPending}
             onClick={() => remove.mutate(rule.id)}
           >
             Remove
@@ -124,27 +187,28 @@ export const PriceRulesPanel = ({
         </div>
       ))}
       <div className="grid grid-cols-2 gap-2 rounded border border-border p-2">
-        <select
+        <div className="col-span-2">
+          <FormErrorSummary messages={formErrorMessages} />
+        </div>
+        <Select
           aria-label="Rule channel"
           value={channel}
           onChange={(event) => setField("channel", event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="">Any channel</option>
-          <option value="STAFF">Staff</option>
-          <option value="CUSTOMER_QR">Customer QR</option>
-        </select>
-        <select
+          options={[
+            { value: "", label: "Any channel" },
+            { value: "STAFF", label: "Staff" },
+            { value: "CUSTOMER_QR", label: "Customer QR" },
+          ]}
+        />
+        <Select
           aria-label="Rule fulfillment type"
           value={fulfillmentType}
           onChange={(event) => setField("fulfillmentType", event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="">Any fulfillment</option>
-          {FULFILLMENT_TYPES.map((type) => (
-            <option key={type}>{type}</option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: "Any fulfillment" },
+            ...FULFILLMENT_TYPES.map((type) => ({ value: type, label: type })),
+          ]}
+        />
         {branchId ? (
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input
@@ -161,70 +225,122 @@ export const PriceRulesPanel = ({
           aria-label="Rule start date"
           type="date"
           value={startDate}
-          onChange={(event) => setField("startDate", event.target.value)}
+          error={fieldErrors.startDate ?? clientErrors.startDate}
+          onChange={(event) => {
+            clearFieldError("startDate");
+            setField("startDate", event.target.value);
+          }}
           placeholder="Start date"
         />
         <Input
           aria-label="Rule end date"
           type="date"
           value={endDate}
-          onChange={(event) => setField("endDate", event.target.value)}
+          error={fieldErrors.endDate ?? clientErrors.endDate}
+          onChange={(event) => {
+            clearFieldError("endDate");
+            setField("endDate", event.target.value);
+          }}
           placeholder="End date"
         />
         <Input
           aria-label="Rule start time"
           type="time"
           value={startTime}
-          onChange={(event) => setField("startTime", event.target.value)}
+          error={fieldErrors.startTime ?? clientErrors.startTime}
+          onChange={(event) => {
+            clearFieldError("startTime");
+            setField("startTime", event.target.value);
+          }}
           placeholder="Start time"
         />
         <Input
           aria-label="Rule end time"
           type="time"
           value={endTime}
-          onChange={(event) => setField("endTime", event.target.value)}
+          error={fieldErrors.endTime ?? clientErrors.endTime}
+          onChange={(event) => {
+            clearFieldError("endTime");
+            setField("endTime", event.target.value);
+          }}
           placeholder="End time"
         />
-        <select
+        <Select
           aria-label="Customer group scope"
           value={customerGroupId}
-          onChange={(event) => setField("customerGroupId", event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="">Any customer group</option>
-          {customerGroups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
+          error={fieldErrors.customerGroupId}
+          onChange={(event) => {
+            clearFieldError("customerGroupId");
+            setField("customerGroupId", event.target.value);
+          }}
+          options={[
+            { value: "", label: "Any customer group" },
+            ...customerGroups.map((group) => ({
+              value: group.id,
+              label: group.name,
+            })),
+          ]}
+        />
         <Input
           aria-label="Rule price"
           type="number"
           min={0}
           step="0.01"
           value={price}
-          onChange={(event) => setField("price", event.target.value)}
+          error={fieldErrors.price ?? clientErrors.price}
+          onChange={(event) => {
+            clearFieldError("price");
+            setField("price", event.target.value);
+          }}
           placeholder="Price"
         />
         <Input
           aria-label="Rule priority"
           type="number"
           value={priority}
-          onChange={(event) => setField("priority", event.target.value)}
+          error={fieldErrors.priority ?? clientErrors.priority}
+          onChange={(event) => {
+            clearFieldError("priority");
+            setField("priority", event.target.value);
+          }}
           placeholder="Priority"
         />
         <Button
           type="button"
           size="sm"
           loading={save.isPending}
-          disabled={!price}
-          onClick={() => save.mutate()}
+          disabled={
+            dependencyLoading ||
+            dependencyFailed ||
+            save.isPending ||
+            Object.keys(clientErrors).length > 0
+          }
+          onClick={() => {
+            clearErrors();
+            if (Object.keys(clientErrors).length) return;
+            save.mutate(undefined, {
+              onError: (error) =>
+                handleApiError(
+                  error,
+                  [
+                    "channel",
+                    "fulfillmentType",
+                    "startDate",
+                    "endDate",
+                    "startTime",
+                    "endTime",
+                    "customerGroupId",
+                    "price",
+                    "priority",
+                  ],
+                  "Could not save price rule",
+                ),
+            });
+          }}
         >
           Save price rule
         </Button>
       </div>
-      {error ? <p className="text-xs text-danger">{error}</p> : null}
     </div>
   );
 };

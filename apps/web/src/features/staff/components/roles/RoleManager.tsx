@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Button, Card, Input, Modal, Select, StatusBadge } from "@pos/ui";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  Button,
+  Card,
+  FormErrorSummary,
+  Input,
+  Modal,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+  StatusBadge,
+} from "@pos/ui";
 import { KeyRound, Plus, Shield, Trash2 } from "lucide-react";
 import {
   rolesService,
@@ -13,6 +23,8 @@ import {
 import { queryClient } from "@/shared/lib/query-client";
 import { roleKeys } from "@/features/staff/query-keys";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validateRoleForm } from "@/features/staff/helpers/role-form";
 
 export const RoleManager = ({
   roles,
@@ -28,11 +40,18 @@ export const RoleManager = ({
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState<"TENANT" | "BRANCH">("BRANCH");
   const [permissionRole, setPermissionRole] = useState<Role | null>(null);
-  const [catalog, setCatalog] = useState<Permission[]>([]);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>(
     [],
   );
-  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [initialPermissionIds, setInitialPermissionIds] = useState<string[]>(
+    [],
+  );
+  const roleFormErrors = useLocalFormApiErrors();
+  const permissionFormErrors = useLocalFormApiErrors();
+  const roleClientErrors = useMemo(
+    () => validateRoleForm({ name, description }),
+    [description, name],
+  );
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: roleKeys.list() });
@@ -46,7 +65,6 @@ export const RoleManager = ({
       setDescription("");
       setScope("BRANCH");
     },
-    onError: (error) => notifyError(error, "Failed to create role"),
   });
   const archiveRole = useMutation({
     mutationFn: rolesService.archive,
@@ -68,40 +86,45 @@ export const RoleManager = ({
       notifySuccess("Role permissions updated");
       setPermissionRole(null);
     },
-    onError: (error) => notifyError(error, "Failed to update permissions"),
+  });
+
+  const permissionsQuery = useQuery({
+    queryKey: ["staff", "roles", permissionRole?.id, "permissions"],
+    enabled: Boolean(permissionRole),
+    queryFn: async () => {
+      const [catalog, assigned] = await Promise.all([
+        permissionsService.list(),
+        permissionsService.forRole(permissionRole!.id),
+      ]);
+      return { catalog, assigned };
+    },
   });
 
   useEffect(() => {
-    if (!permissionRole) return;
-    let active = true;
-    setLoadingPermissions(true);
-    Promise.all([
-      permissionsService.list(),
-      permissionsService.forRole(permissionRole.id),
-    ])
-      .then(([all, assigned]) => {
-        if (!active) return;
-        setCatalog(all);
-        setSelectedPermissionIds(assigned.map((permission) => permission.id));
-      })
-      .catch((error) => notifyError(error, "Failed to load permissions"))
-      .finally(() => {
-        if (active) setLoadingPermissions(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [permissionRole]);
+    if (!permissionRole || !permissionsQuery.data) return;
+    const assignedIds = permissionsQuery.data.assigned
+      .map((permission) => permission.id)
+      .sort();
+    setSelectedPermissionIds(assignedIds);
+    setInitialPermissionIds(assignedIds);
+  }, [permissionRole, permissionsQuery.data]);
+
+  const permissionsDirty = useMemo(
+    () =>
+      [...selectedPermissionIds].sort().join("|") !==
+      [...initialPermissionIds].sort().join("|"),
+    [initialPermissionIds, selectedPermissionIds],
+  );
 
   const groupedPermissions = useMemo(() => {
     const groups = new Map<string, Permission[]>();
-    for (const permission of catalog)
+    for (const permission of permissionsQuery.data?.catalog ?? [])
       groups.set(permission.module, [
         ...(groups.get(permission.module) ?? []),
         permission,
       ]);
     return [...groups.entries()];
-  }, [catalog]);
+  }, [permissionsQuery.data?.catalog]);
 
   return (
     <Card className="mt-6">
@@ -114,7 +137,12 @@ export const RoleManager = ({
             </p>
           </div>
           {canManage && (
-            <Button onClick={() => setOpen(true)}>
+            <Button
+              onClick={() => {
+                roleFormErrors.clearErrors();
+                setOpen(true);
+              }}
+            >
               <Plus className="h-4 w-4" />
               Create Role
             </Button>
@@ -153,7 +181,10 @@ export const RoleManager = ({
                     type="button"
                     className="rounded-md p-2 text-text-secondary hover:bg-primary-surface hover:text-primary"
                     aria-label={`Manage permissions for ${role.name}`}
-                    onClick={() => setPermissionRole(role)}
+                    onClick={() => {
+                      permissionFormErrors.clearErrors();
+                      setPermissionRole(role);
+                    }}
                   >
                     <KeyRound className="h-4 w-4" />
                   </button>
@@ -182,17 +213,36 @@ export const RoleManager = ({
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            createRole.mutate({
-              name,
-              ...(description ? { description } : {}),
-              scope,
-            });
+            roleFormErrors.clearErrors();
+            if (Object.keys(roleClientErrors).length) return;
+            createRole.mutate(
+              {
+                name: name.trim(),
+                ...(description.trim()
+                  ? { description: description.trim() }
+                  : {}),
+                scope,
+              },
+              {
+                onError: (error) =>
+                  roleFormErrors.handleApiError(
+                    error,
+                    ["name", "description", "scope"],
+                    "Failed to create role",
+                  ),
+              },
+            );
           }}
         >
+          <FormErrorSummary messages={roleFormErrors.formErrorMessages} />
           <Input
             label="Role name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            error={roleFormErrors.fieldErrors.name ?? roleClientErrors.name}
+            onChange={(event) => {
+              roleFormErrors.clearFieldError("name");
+              setName(event.target.value);
+            }}
             required
             maxLength={80}
             placeholder="e.g. Shift Lead"
@@ -200,16 +250,25 @@ export const RoleManager = ({
           <Input
             label="Description"
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            error={
+              roleFormErrors.fieldErrors.description ??
+              roleClientErrors.description
+            }
+            onChange={(event) => {
+              roleFormErrors.clearFieldError("description");
+              setDescription(event.target.value);
+            }}
             maxLength={500}
             placeholder="What this role is responsible for"
           />
           <Select
             label="Scope"
             value={scope}
-            onChange={(event) =>
-              setScope(event.target.value as "TENANT" | "BRANCH")
-            }
+            error={roleFormErrors.fieldErrors.scope}
+            onChange={(event) => {
+              roleFormErrors.clearFieldError("scope");
+              setScope(event.target.value as "TENANT" | "BRANCH");
+            }}
             options={[
               {
                 value: "BRANCH",
@@ -232,7 +291,9 @@ export const RoleManager = ({
             <Button
               type="submit"
               loading={createRole.isPending}
-              disabled={!name.trim()}
+              disabled={
+                createRole.isPending || Object.keys(roleClientErrors).length > 0
+              }
             >
               Create Role
             </Button>
@@ -242,7 +303,10 @@ export const RoleManager = ({
 
       <Modal
         open={Boolean(permissionRole)}
-        onClose={() => setPermissionRole(null)}
+        onClose={() => {
+          permissionFormErrors.clearErrors();
+          setPermissionRole(null);
+        }}
         title={
           permissionRole
             ? `Permissions — ${permissionRole.name}`
@@ -250,65 +314,108 @@ export const RoleManager = ({
         }
       >
         <div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto pr-1">
-          {loadingPermissions ? (
+          <FormErrorSummary messages={permissionFormErrors.formErrorMessages} />
+          {permissionsQuery.isError && !permissionsQuery.data ? (
+            <QueryErrorState
+              title="Unable to load role permissions"
+              description="Permission catalog or current assignments could not be loaded. Retry before editing this role."
+              onRetry={() => void permissionsQuery.refetch()}
+              isRetrying={permissionsQuery.isFetching}
+            />
+          ) : permissionsQuery.isLoading ? (
             <p className="text-sm text-text-secondary">Loading permissions…</p>
           ) : (
-            groupedPermissions.map(([module, permissions]) => (
-              <fieldset
-                key={module}
-                className="rounded-lg border border-border p-3"
-              >
-                <legend className="px-1 text-sm font-semibold capitalize text-text-primary">
-                  {module}
-                </legend>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {permissions.map((permission) => (
-                    <label
-                      key={permission.id}
-                      className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-surface-secondary"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 accent-primary"
-                        checked={selectedPermissionIds.includes(permission.id)}
-                        onChange={(event) =>
-                          setSelectedPermissionIds((current) =>
-                            event.target.checked
-                              ? [...current, permission.id]
-                              : current.filter((id) => id !== permission.id),
-                          )
-                        }
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-text-primary">
-                          {permission.key}
-                        </span>
-                        {permission.description && (
-                          <span className="block text-xs text-text-secondary">
-                            {permission.description}
+            <>
+              {permissionsQuery.isError && permissionsQuery.data ? (
+                <StaleDataBanner
+                  message="Permission refresh failed. Showing cached assignments; saving is disabled until the latest permissions are loaded."
+                  onRetry={() => void permissionsQuery.refetch()}
+                  isRetrying={permissionsQuery.isFetching}
+                />
+              ) : null}
+              {groupedPermissions.map(([module, permissions]) => (
+                <fieldset
+                  key={module}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <legend className="px-1 text-sm font-semibold capitalize text-text-primary">
+                    {module}
+                  </legend>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {permissions.map((permission) => (
+                      <label
+                        key={permission.id}
+                        className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-surface-secondary"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 accent-primary"
+                          checked={selectedPermissionIds.includes(
+                            permission.id,
+                          )}
+                          onChange={(event) =>
+                            setSelectedPermissionIds((current) =>
+                              event.target.checked
+                                ? [...current, permission.id]
+                                : current.filter((id) => id !== permission.id),
+                            )
+                          }
+                        />
+                        <span>
+                          <span className="block text-sm font-medium text-text-primary">
+                            {permission.key}
                           </span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            ))
+                          {permission.description && (
+                            <span className="block text-xs text-text-secondary">
+                              {permission.description}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </>
           )}
           <div className="sticky bottom-0 flex justify-end gap-2 bg-surface pt-2">
-            <Button variant="secondary" onClick={() => setPermissionRole(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                permissionFormErrors.clearErrors();
+                setPermissionRole(null);
+              }}
+            >
               Cancel
             </Button>
             <Button
               loading={savePermissions.isPending}
-              disabled={!permissionRole || loadingPermissions}
-              onClick={() =>
-                permissionRole &&
-                savePermissions.mutate({
-                  roleId: permissionRole.id,
-                  permissionIds: selectedPermissionIds,
-                })
+              disabled={
+                !permissionRole ||
+                permissionsQuery.isLoading ||
+                permissionsQuery.isError ||
+                !permissionsDirty ||
+                savePermissions.isPending
               }
+              onClick={() => {
+                if (!permissionRole) return;
+                permissionFormErrors.clearErrors();
+                if (!permissionsDirty) return;
+                savePermissions.mutate(
+                  {
+                    roleId: permissionRole.id,
+                    permissionIds: selectedPermissionIds,
+                  },
+                  {
+                    onError: (error) =>
+                      permissionFormErrors.handleApiError(
+                        error,
+                        [],
+                        "Failed to update permissions",
+                      ),
+                  },
+                );
+              }}
             >
               Save Permissions
             </Button>

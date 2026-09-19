@@ -1,4 +1,4 @@
-import { toast } from "@pos/ui";
+import { QueryErrorState, StaleDataBanner, toast } from "@pos/ui";
 import { useOrderDraft } from "@/features/menu/hooks/useOrderDraft";
 import { estimateComboSubtotal } from "@/features/menu/combo";
 import { ItemCustomiser } from "@/features/menu/components/ItemCustomiser";
@@ -83,6 +83,13 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
     allItems,
     resolvedActiveCategory,
     activeItems,
+    requiredDependencyLoading,
+    requiredDependencyFailed,
+    requiredDependencyStale,
+    optionalDependencyFailed,
+    optionalDependencyStale,
+    retryDependencies,
+    isRetryingDependencies,
   } = useMenuPageData({
     isAddingToExisting,
     orderType,
@@ -167,11 +174,40 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
       : lineItemTotal;
   const needsTable = !isAddingToExisting && orderType === "DINE_IN" && !tableId;
 
+  if (requiredDependencyFailed) {
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center bg-background p-4">
+        <QueryErrorState
+          title="Unable to load order-entry data"
+          description="Menu or branch configuration could not be loaded. Retry before taking an order so unavailable items or order types are not shown as valid configuration."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+          className="w-full max-w-xl"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${isAddingToExisting ? "h-screen" : "h-full"} relative flex flex-col bg-background`}
     >
       {isAddingToExisting && <AddToOrderHeader onBack={onBack} />}
+
+      {(requiredDependencyStale || optionalDependencyStale) && (
+        <StaleDataBanner
+          message="Some order-entry data could not be refreshed. Showing the latest cached data."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+        />
+      )}
+      {optionalDependencyFailed && !requiredDependencyLoading && (
+        <StaleDataBanner
+          message="Optional pricing or promotion data is temporarily unavailable. Core menu ordering remains available; retry before using discounts or per-cover pricing."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+        />
+      )}
 
       {}
       {!isAddingToExisting && (

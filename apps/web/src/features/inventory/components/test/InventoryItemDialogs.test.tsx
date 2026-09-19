@@ -1,21 +1,18 @@
 import React from "react";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn() }));
 vi.mock("@/features/inventory/hooks/useAddInventoryItem", () => ({
-  useAddInventoryItem: () => ({ mutate: mocks.add, isPending: false }),
+  useAddInventoryItem: () => ({ mutateAsync: mocks.add, isPending: false }),
 }));
 vi.mock("@/features/inventory/hooks/useUpdateInventoryStock", () => ({
-  useUpdateInventoryStock: () => ({ mutate: mocks.update, isPending: false }),
+  useUpdateInventoryStock: () => ({
+    mutateAsync: mocks.update,
+    isPending: false,
+  }),
 }));
-vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: () => null,
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div>
@@ -68,7 +65,9 @@ describe("InventoryItemDialogs", () => {
         addOpen
         updateItem={null}
         aggregate
-        branches={[{ id: "b1", name: "Central" }]}
+        branches={[
+          { id: "33333333-3333-4333-8333-333333333333", name: "Central" },
+        ]}
         onCloseAdd={close}
         onCloseUpdate={vi.fn()}
       />,
@@ -76,11 +75,30 @@ describe("InventoryItemDialogs", () => {
     fireEvent.change(screen.getByLabelText("Item name"), {
       target: { value: "Oil" },
     });
+    fireEvent.change(screen.getByLabelText("Current Stock"), {
+      target: { value: "10" },
+    });
+    fireEvent.change(screen.getByLabelText("Minimum Stock"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("Reorder Point"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Cost per Unit (₹)"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("Branch"), {
+      target: { value: "33333333-3333-4333-8333-333333333333" },
+    });
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("button", { name: "Add Item" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
     await waitFor(() => expect(mocks.add).toHaveBeenCalled());
-    const opts = mocks.add.mock.calls.at(-1)?.[1];
-    act(() => opts.onSuccess());
-    expect(close).toHaveBeenCalled();
+    await waitFor(() => expect(close).toHaveBeenCalled());
   });
   it("owns stock update form and success close", async () => {
     const close = vi.fn();
@@ -97,10 +115,14 @@ describe("InventoryItemDialogs", () => {
     fireEvent.change(screen.getByLabelText("Quantity"), {
       target: { value: "4" },
     });
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("button", { name: "Update" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
     await waitFor(() => expect(mocks.update).toHaveBeenCalled());
-    const opts = mocks.update.mock.calls.at(-1)?.[1];
-    act(() => opts.onSuccess());
-    expect(close).toHaveBeenCalled();
+    await waitFor(() => expect(close).toHaveBeenCalled());
   });
 });

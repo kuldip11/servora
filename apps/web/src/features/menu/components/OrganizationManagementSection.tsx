@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
+import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import type { CustomerLoyaltyTier, PriceRule } from "@pos/types";
 import { createMenuApi, createOrganizationsApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
@@ -37,11 +37,12 @@ interface OrganizationTenantSummary {
 export const OrganizationManagementSection = () => {
   const { has } = usePermissions();
   const canManage = has("organization:manage");
-  const { data: memberships = [] } = useQuery<OrgMembership[]>({
+  const membershipsQuery = useQuery<OrgMembership[]>({
     queryKey: ["organizations"],
     queryFn: () => organizationsApi.list<OrgMembership>(),
     enabled: canManage,
   });
+  const memberships = membershipsQuery.data ?? [];
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const organizationId =
     selectedOrgId ||
@@ -59,28 +60,50 @@ export const OrganizationManagementSection = () => {
   const menusKey = ["organizations", organizationId, "menus"];
   const rulesKey = ["organizations", organizationId, "price-rules"];
   const loyaltyKey = ["organizations", organizationId, "loyalty-tiers"];
-  const { data: tenants = [] } = useQuery<OrganizationTenantSummary[]>({
+  const tenantsQuery = useQuery<OrganizationTenantSummary[]>({
     queryKey: ["organizations", organizationId, "tenants"],
     queryFn: () =>
       organizationsApi.tenants<OrganizationTenantSummary>(organizationId),
     enabled: !!organizationId && canManage,
   });
-  const { data: menus = [] } = useQuery<OrgMenu[]>({
+  const menusQuery = useQuery<OrgMenu[]>({
     queryKey: menusKey,
     queryFn: () => organizationsApi.menus<OrgMenu>(organizationId),
     enabled: !!organizationId && canManage,
   });
-  const { data: rules = [] } = useQuery<PriceRule[]>({
+  const rulesQuery = useQuery<PriceRule[]>({
     queryKey: rulesKey,
     queryFn: () => menuApi.listPriceRulesFor<PriceRule>({ organizationId }),
     enabled: !!organizationId && canManage,
   });
-  const { data: loyaltyTiers = [] } = useQuery<CustomerLoyaltyTier[]>({
+  const loyaltyTiersQuery = useQuery<CustomerLoyaltyTier[]>({
     queryKey: loyaltyKey,
     queryFn: () =>
       organizationsApi.loyaltyTiers<CustomerLoyaltyTier>(organizationId),
     enabled: !!organizationId && canManage,
   });
+  const tenants = tenantsQuery.data ?? [];
+  const menus = menusQuery.data ?? [];
+  const rules = rulesQuery.data ?? [];
+  const loyaltyTiers = loyaltyTiersQuery.data ?? [];
+  const organizationDataQueries = [
+    tenantsQuery,
+    menusQuery,
+    rulesQuery,
+    loyaltyTiersQuery,
+  ];
+  const organizationDataFailed = organizationDataQueries.some(
+    (query) => query.isError && !query.data,
+  );
+  const organizationDataStale = organizationDataQueries.some(
+    (query) => query.isError && Boolean(query.data),
+  );
+  const retryOrganizationData = () => {
+    for (const query of organizationDataQueries) {
+      if (query.isError) void query.refetch();
+    }
+  };
+
   const {
     menuName,
     menuSkus,
@@ -127,11 +150,15 @@ export const OrganizationManagementSection = () => {
     }) =>
       organizationsApi.updateMenu<OrgMenu>(organizationId, menuId, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
+    onError: (error) =>
+      notifyError(error, "Failed to update organization menu"),
   });
   const deleteMenu = useMutation({
     mutationFn: (menuId: string) =>
       organizationsApi.removeMenu(organizationId, menuId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
+    onError: (error) =>
+      notifyError(error, "Failed to delete organization menu"),
   });
   const createRule = useMutation({
     mutationFn: () =>
@@ -152,6 +179,8 @@ export const OrganizationManagementSection = () => {
   const deleteRule = useMutation({
     mutationFn: (id: string) => menuApi.removePriceRule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: rulesKey }),
+    onError: (error) =>
+      notifyError(error, "Failed to remove organization price rule"),
   });
   const createLoyaltyTier = useMutation({
     mutationFn: () =>
@@ -189,6 +218,15 @@ export const OrganizationManagementSection = () => {
         </p>
       </section>
     );
+  if (membershipsQuery.isError && !membershipsQuery.data)
+    return (
+      <QueryErrorState
+        title="Unable to load organizations"
+        description="Organization memberships could not be loaded. Retry before managing organization defaults."
+        onRetry={() => void membershipsQuery.refetch()}
+        isRetrying={membershipsQuery.isFetching}
+      />
+    );
   if (!memberships.length)
     return (
       <section>
@@ -203,6 +241,28 @@ export const OrganizationManagementSection = () => {
 
   return (
     <section className="space-y-5">
+      {membershipsQuery.isError && membershipsQuery.data ? (
+        <StaleDataBanner
+          message="Organization memberships could not be refreshed. Showing cached memberships."
+          onRetry={() => void membershipsQuery.refetch()}
+          isRetrying={membershipsQuery.isFetching}
+        />
+      ) : null}
+      {organizationDataFailed ? (
+        <QueryErrorState
+          title="Unable to load organization defaults"
+          description="One or more organization menu, pricing, loyalty, or tenant datasets failed to load. Retry before changing defaults."
+          onRetry={retryOrganizationData}
+          isRetrying={organizationDataQueries.some((query) => query.isFetching)}
+        />
+      ) : null}
+      {organizationDataStale ? (
+        <StaleDataBanner
+          message="Some organization defaults could not be refreshed. Showing cached values; changes are disabled until refreshed."
+          onRetry={retryOrganizationData}
+          isRetrying={organizationDataQueries.some((query) => query.isFetching)}
+        />
+      ) : null}
       <div>
         <h2 className="text-base font-semibold text-text-primary">
           Organization defaults
@@ -212,243 +272,252 @@ export const OrganizationManagementSection = () => {
           no more-specific tenant rule applies.
         </p>
       </div>
-      {memberships.length > 1 && (
-        <label className="block max-w-sm text-sm font-medium text-text-primary">
-          Organization
-          <select
-            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
-            value={organizationId}
-            onChange={(event) => setSelectedOrgId(event.target.value)}
-          >
-            {memberships.map((entry) => (
-              <option
-                key={entry.organizationId || entry.organization.id}
-                value={entry.organizationId || entry.organization.id}
-              >
-                {entry.organization.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <p className="text-xs text-text-secondary">
-        {organization?.name ?? "Organization"} · {tenants.length} member
-        tenant(s)
-      </p>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="space-y-3 rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Inherited menu
-          </h3>
-          <Input
-            label="Menu name"
-            value={menuName}
-            onChange={(event) => setField("menuName", event.target.value)}
-          />
-          <label className="block text-sm font-medium text-text-primary">
-            Tenant item SKUs
-            <textarea
-              className="mt-1.5 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-              value={menuSkus}
-              onChange={(event) => setField("menuSkus", event.target.value)}
-              placeholder="PIZZA-MARGHERITA, DRINK-COLA"
-            />
-          </label>
-          <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={menuDefault}
-                onChange={(event) =>
-                  setField("menuDefault", event.target.checked)
-                }
-              />
-              Default
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={menuPublished}
-                onChange={(event) =>
-                  setField("menuPublished", event.target.checked)
-                }
-              />
-              Publish now
-            </label>
-          </div>
-          <Button
-            type="button"
-            disabled={!menuName.trim() || !menuSkus.trim()}
-            loading={createMenu.isPending}
-            onClick={() => createMenu.mutate()}
-          >
-            Create organization menu
-          </Button>
-          {menus.map((menu) => (
-            <div
-              key={menu.id}
-              className="rounded bg-surface-secondary p-3 text-sm"
+      <fieldset
+        disabled={organizationDataFailed || organizationDataStale}
+        className="contents"
+      >
+        {memberships.length > 1 && (
+          <label className="block max-w-sm text-sm font-medium text-text-primary">
+            Organization
+            <select
+              className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
+              value={organizationId}
+              onChange={(event) => setSelectedOrgId(event.target.value)}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-text-primary">
-                  {menu.name} · {menu.status}
-                  {menu.isDefault ? " · Default" : ""}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="text-primary"
-                    onClick={() =>
-                      toggleMenu.mutate({
-                        menuId: menu.id,
-                        status:
-                          menu.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
-                      })
-                    }
-                  >
-                    {menu.status === "PUBLISHED" ? "Draft" : "Publish"}
-                  </button>
+              {memberships.map((entry) => (
+                <option
+                  key={entry.organizationId || entry.organization.id}
+                  value={entry.organizationId || entry.organization.id}
+                >
+                  {entry.organization.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p className="text-xs text-text-secondary">
+          {organization?.name ?? "Organization"} · {tenants.length} member
+          tenant(s)
+        </p>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Inherited menu
+            </h3>
+            <Input
+              label="Menu name"
+              value={menuName}
+              onChange={(event) => setField("menuName", event.target.value)}
+            />
+            <label className="block text-sm font-medium text-text-primary">
+              Tenant item SKUs
+              <textarea
+                className="mt-1.5 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                value={menuSkus}
+                onChange={(event) => setField("menuSkus", event.target.value)}
+                placeholder="PIZZA-MARGHERITA, DRINK-COLA"
+              />
+            </label>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={menuDefault}
+                  onChange={(event) =>
+                    setField("menuDefault", event.target.checked)
+                  }
+                />
+                Default
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={menuPublished}
+                  onChange={(event) =>
+                    setField("menuPublished", event.target.checked)
+                  }
+                />
+                Publish now
+              </label>
+            </div>
+            <Button
+              type="button"
+              disabled={!menuName.trim() || !menuSkus.trim()}
+              loading={createMenu.isPending}
+              onClick={() => createMenu.mutate()}
+            >
+              Create organization menu
+            </Button>
+            {menus.map((menu) => (
+              <div
+                key={menu.id}
+                className="rounded bg-surface-secondary p-3 text-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-text-primary">
+                    {menu.name} · {menu.status}
+                    {menu.isDefault ? " · Default" : ""}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="text-primary"
+                      onClick={() =>
+                        toggleMenu.mutate({
+                          menuId: menu.id,
+                          status:
+                            menu.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
+                        })
+                      }
+                    >
+                      {menu.status === "PUBLISHED" ? "Draft" : "Publish"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-danger"
+                      onClick={() => deleteMenu.mutate(menu.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {menu.organizationItems
+                    .map((item) => item.itemSku)
+                    .join(", ") || "No SKUs"}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Inherited SKU prices
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Menu item SKU"
+                value={ruleSku}
+                onChange={(event) => setField("ruleSku", event.target.value)}
+              />
+              <Input
+                label="Price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={rulePrice}
+                onChange={(event) => setField("rulePrice", event.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              disabled={!ruleSku.trim() || !rulePrice}
+              loading={createRule.isPending}
+              onClick={() => createRule.mutate()}
+            >
+              Create organization price
+            </Button>
+            {rules
+              .filter((rule) => !rule.isPerCover)
+              .map((rule) => (
+                <div
+                  key={rule.id}
+                  className="flex items-center justify-between rounded bg-surface-secondary px-3 py-2 text-sm"
+                >
+                  <span>
+                    {rule.menuItemSku ?? "General"} · ₹
+                    {Number(rule.price ?? 0).toFixed(2)}
+                  </span>
                   <button
                     type="button"
                     className="text-danger"
-                    onClick={() => deleteMenu.mutate(menu.id)}
+                    onClick={() => deleteRule.mutate(rule.id)}
                   >
-                    Delete
+                    Remove
                   </button>
                 </div>
-              </div>
-              <p className="mt-1 text-xs text-text-secondary">
-                {menu.organizationItems
-                  .map((item) => item.itemSku)
-                  .join(", ") || "No SKUs"}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-3 rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Inherited SKU prices
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              label="Menu item SKU"
-              value={ruleSku}
-              onChange={(event) => setField("ruleSku", event.target.value)}
-            />
-            <Input
-              label="Price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={rulePrice}
-              onChange={(event) => setField("rulePrice", event.target.value)}
-            />
+              ))}
           </div>
-          <Button
-            type="button"
-            disabled={!ruleSku.trim() || !rulePrice}
-            loading={createRule.isPending}
-            onClick={() => createRule.mutate()}
-          >
-            Create organization price
-          </Button>
-          {rules
-            .filter((rule) => !rule.isPerCover)
-            .map((rule) => (
+          <div className="space-y-3 rounded-lg border border-border p-4 xl:col-span-2">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Organization loyalty tiers
+            </h3>
+            <p className="text-xs text-text-secondary">
+              Customers linked by the shared organization identity receive these
+              tiers at every sibling tenant. Tenant-local tiers remain local and
+              take no schema migration.
+            </p>
+            <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
+              <Input
+                label="Tier name"
+                value={loyaltyName}
+                onChange={(event) =>
+                  setField("loyaltyName", event.target.value)
+                }
+              />
+              <label className="text-sm font-medium text-text-primary">
+                Discount type
+                <select
+                  className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
+                  value={loyaltyMode}
+                  onChange={(event) =>
+                    setField(
+                      "loyaltyMode",
+                      event.target.value as "PERCENT" | "FIXED",
+                    )
+                  }
+                >
+                  <option value="PERCENT">Percent</option>
+                  <option value="FIXED">Fixed amount</option>
+                </select>
+              </label>
+              <Input
+                label={loyaltyMode === "PERCENT" ? "Percent" : "Amount"}
+                type="number"
+                min="0.01"
+                max={loyaltyMode === "PERCENT" ? "100" : undefined}
+                step="0.01"
+                value={loyaltyValue}
+                onChange={(event) =>
+                  setField("loyaltyValue", event.target.value)
+                }
+              />
+              <Button
+                type="button"
+                disabled={
+                  !loyaltyName.trim() ||
+                  Number(loyaltyValue) <= 0 ||
+                  (loyaltyMode === "PERCENT" && Number(loyaltyValue) > 100)
+                }
+                loading={createLoyaltyTier.isPending}
+                onClick={() => createLoyaltyTier.mutate()}
+              >
+                Create tier
+              </Button>
+            </div>
+            {loyaltyTiers.map((tier) => (
               <div
-                key={rule.id}
+                key={tier.id}
                 className="flex items-center justify-between rounded bg-surface-secondary px-3 py-2 text-sm"
               >
-                <span>
-                  {rule.menuItemSku ?? "General"} · ₹
-                  {Number(rule.price ?? 0).toFixed(2)}
+                <span className="text-text-primary">
+                  {tier.name} ·{" "}
+                  {tier.discountPercent !== null
+                    ? `${Number(tier.discountPercent)}% off`
+                    : `₹${Number(tier.discountFixed ?? 0).toFixed(2)} off`}{" "}
+                  · organization-wide
                 </span>
                 <button
                   type="button"
                   className="text-danger"
-                  onClick={() => deleteRule.mutate(rule.id)}
+                  onClick={() => deleteLoyaltyTier.mutate(tier.id)}
                 >
                   Remove
                 </button>
               </div>
             ))}
-        </div>
-        <div className="space-y-3 rounded-lg border border-border p-4 xl:col-span-2">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Organization loyalty tiers
-          </h3>
-          <p className="text-xs text-text-secondary">
-            Customers linked by the shared organization identity receive these
-            tiers at every sibling tenant. Tenant-local tiers remain local and
-            take no schema migration.
-          </p>
-          <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
-            <Input
-              label="Tier name"
-              value={loyaltyName}
-              onChange={(event) => setField("loyaltyName", event.target.value)}
-            />
-            <label className="text-sm font-medium text-text-primary">
-              Discount type
-              <select
-                className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
-                value={loyaltyMode}
-                onChange={(event) =>
-                  setField(
-                    "loyaltyMode",
-                    event.target.value as "PERCENT" | "FIXED",
-                  )
-                }
-              >
-                <option value="PERCENT">Percent</option>
-                <option value="FIXED">Fixed amount</option>
-              </select>
-            </label>
-            <Input
-              label={loyaltyMode === "PERCENT" ? "Percent" : "Amount"}
-              type="number"
-              min="0.01"
-              max={loyaltyMode === "PERCENT" ? "100" : undefined}
-              step="0.01"
-              value={loyaltyValue}
-              onChange={(event) => setField("loyaltyValue", event.target.value)}
-            />
-            <Button
-              type="button"
-              disabled={
-                !loyaltyName.trim() ||
-                Number(loyaltyValue) <= 0 ||
-                (loyaltyMode === "PERCENT" && Number(loyaltyValue) > 100)
-              }
-              loading={createLoyaltyTier.isPending}
-              onClick={() => createLoyaltyTier.mutate()}
-            >
-              Create tier
-            </Button>
           </div>
-          {loyaltyTiers.map((tier) => (
-            <div
-              key={tier.id}
-              className="flex items-center justify-between rounded bg-surface-secondary px-3 py-2 text-sm"
-            >
-              <span className="text-text-primary">
-                {tier.name} ·{" "}
-                {tier.discountPercent !== null
-                  ? `${Number(tier.discountPercent)}% off`
-                  : `₹${Number(tier.discountFixed ?? 0).toFixed(2)} off`}{" "}
-                · organization-wide
-              </span>
-              <button
-                type="button"
-                className="text-danger"
-                onClick={() => deleteLoyaltyTier.mutate(tier.id)}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
         </div>
-      </div>
+      </fieldset>
     </section>
   );
 };

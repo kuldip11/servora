@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -56,22 +56,24 @@ export const useMenuPageData = ({
   onCategoryChange,
 }: Params) => {
   const queryClient = useQueryClient();
-  const { data: categories, isLoading: menuLoading } = useMenuCategories();
-  const { data: activeMenus = [], isLoading: activeMenusLoading } = useQuery<
-    ActiveMenu[]
-  >({
+  const categoriesQuery = useMenuCategories();
+  const { data: categories, isLoading: menuLoading } = categoriesQuery;
+  const activeMenusQuery = useQuery<ActiveMenu[]>({
     queryKey: ["menus", "active", orderType],
     queryFn: () => menuApi.listActiveMenus<ActiveMenu>(orderType),
   });
+  const activeMenus = activeMenusQuery.data ?? [];
 
   useEffect(() => {
+    if (!activeMenusQuery.data) return;
     if (!activeMenus.some((menu) => menu.id === selectedMenuId)) {
       onMenuChange(activeMenus[0]?.id ?? "");
     }
-  }, [activeMenus, onMenuChange, selectedMenuId]);
+  }, [activeMenus, activeMenusQuery.data, onMenuChange, selectedMenuId]);
 
   const scopedCategories = useMemo(() => {
-    if (activeMenusLoading) return categories;
+    if (activeMenusQuery.isLoading) return categories;
+    if (!activeMenusQuery.data) return undefined;
     const visibleIds = new Set(
       activeMenus
         .filter((menu) => !selectedMenuId || menu.id === selectedMenuId)
@@ -87,10 +89,16 @@ export const useMenuPageData = ({
         ),
       }))
       .filter((category) => category.menuItems.length > 0);
-  }, [activeMenus, activeMenusLoading, categories, selectedMenuId]);
+  }, [
+    activeMenus,
+    activeMenusQuery.data,
+    activeMenusQuery.isLoading,
+    categories,
+    selectedMenuId,
+  ]);
 
   const tenantId = localStorage.getItem(STORAGE_KEYS.tenant);
-  const { data: tenantSettings } = useQuery<Tenant | null>({
+  const tenantSettingsQuery = useQuery<Tenant | null>({
     queryKey: ["tenant-settings", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
@@ -102,12 +110,12 @@ export const useMenuPageData = ({
     },
   });
 
-  const { data: combos = [] } = useQuery<WaiterCombo[]>({
+  const combosQuery = useQuery<WaiterCombo[]>({
     queryKey: ["menu-combos"],
     queryFn: () => menuApi.listCombos<WaiterCombo>(),
     enabled: !isAddingToExisting,
   });
-  const { data: promotions = [] } = useQuery<
+  const promotionsQuery = useQuery<
     Array<{
       id: string;
       name: string;
@@ -124,14 +132,12 @@ export const useMenuPageData = ({
         isActive: boolean;
       }>(),
   });
-  const { data: customerGroups = [] } = useQuery<
-    Array<{ id: string; name: string }>
-  >({
+  const customerGroupsQuery = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ["customer-groups"],
     queryFn: () => customersApi.listGroups(),
     enabled: !isAddingToExisting,
   });
-  const { data: priceRules = [] } = useQuery<
+  const priceRulesQuery = useQuery<
     Array<{
       id: string;
       isPerCover?: boolean;
@@ -163,11 +169,12 @@ export const useMenuPageData = ({
     [scopedCategories],
   );
 
-  const { data: myBranch } = useMyBranch();
+  const branchQuery = useMyBranch();
+  const myBranch = branchQuery.data;
   const availableOrderTypes = myBranch
     ? ALL_ORDER_TYPES.filter((type) => myBranch[type.capabilityKey])
-    : ALL_ORDER_TYPES;
-  const tablesEnabled = myBranch ? myBranch.tablesEnabled : true;
+    : [];
+  const tablesEnabled = myBranch?.tablesEnabled === true;
 
   useEffect(() => {
     if (!availableOrderTypes.length) return;
@@ -176,8 +183,10 @@ export const useMenuPageData = ({
     }
   }, [availableOrderTypes, onOrderTypeChange, orderType]);
 
-  const { data: tables } = useTables(orderType === "DINE_IN" && tablesEnabled);
-  const { data: customerResults } = useCustomerSearch(customerSearch);
+  const tablesQuery = useTables(
+    orderType === "DINE_IN" && tablesEnabled && branchQuery.isSuccess,
+  );
+  const customerSearchQuery = useCustomerSearch(customerSearch);
 
   useRealtimeEvent("table.updated", () => {
     queryClient.invalidateQueries({ queryKey: ["tables"] });
@@ -212,22 +221,106 @@ export const useMenuPageData = ({
     (item) => foodTypeFilter === "ALL" || item.foodType === foodTypeFilter,
   );
 
+  const tenantSettingsRequired = !!tenantId;
+  const tablesRequired = orderType === "DINE_IN" && tablesEnabled;
+  const criticalQueries = [categoriesQuery, activeMenusQuery, branchQuery];
+  const requiredDependencyLoading =
+    criticalQueries.some((query) => query.isLoading) ||
+    (tenantSettingsRequired && tenantSettingsQuery.isLoading) ||
+    (tablesRequired && tablesQuery.isLoading);
+  const requiredDependencyFailed =
+    criticalQueries.some(
+      (query) => query.isError && query.data === undefined,
+    ) ||
+    (tenantSettingsRequired &&
+      tenantSettingsQuery.isError &&
+      tenantSettingsQuery.data === undefined) ||
+    (tablesRequired && tablesQuery.isError && tablesQuery.data === undefined);
+  const requiredDependencyStale =
+    criticalQueries.some(
+      (query) => query.isError && query.data !== undefined,
+    ) ||
+    (tenantSettingsRequired &&
+      tenantSettingsQuery.isError &&
+      tenantSettingsQuery.data !== undefined) ||
+    (tablesRequired && tablesQuery.isError && tablesQuery.data !== undefined);
+  const optionalDependencyStale = [
+    combosQuery,
+    promotionsQuery,
+    customerGroupsQuery,
+    priceRulesQuery,
+  ].some((query) => query.isError && query.data !== undefined);
+  const optionalDependencyFailed = [
+    combosQuery,
+    promotionsQuery,
+    customerGroupsQuery,
+    priceRulesQuery,
+  ].some((query) => query.isError && query.data === undefined);
+
+  const retryDependencies = useCallback(async () => {
+    await Promise.all([
+      categoriesQuery.refetch(),
+      activeMenusQuery.refetch(),
+      branchQuery.refetch(),
+      ...(tenantSettingsRequired ? [tenantSettingsQuery.refetch()] : []),
+      ...(tablesRequired ? [tablesQuery.refetch()] : []),
+      ...(!isAddingToExisting
+        ? [
+            combosQuery.refetch(),
+            customerGroupsQuery.refetch(),
+            priceRulesQuery.refetch(),
+          ]
+        : []),
+      promotionsQuery.refetch(),
+    ]);
+  }, [
+    activeMenusQuery,
+    branchQuery,
+    categoriesQuery,
+    combosQuery,
+    customerGroupsQuery,
+    isAddingToExisting,
+    priceRulesQuery,
+    promotionsQuery,
+    tablesQuery,
+    tablesRequired,
+    tenantSettingsQuery,
+    tenantSettingsRequired,
+  ]);
+
+  const isRetryingDependencies =
+    criticalQueries.some((query) => query.isFetching) ||
+    (tenantSettingsRequired && tenantSettingsQuery.isFetching) ||
+    (tablesRequired && tablesQuery.isFetching);
+
   return {
     activeMenus,
     scopedCategories,
     menuLoading,
-    courseSequencingAvailable: tenantSettings?.courseSequencingEnabled === true,
-    activeCombos: combos.filter((combo) => combo.status === "ACTIVE"),
-    promotions,
-    customerGroups,
-    perCoverRules: priceRules.filter((rule) => rule.isPerCover),
+    courseSequencingAvailable:
+      tenantSettingsQuery.data?.courseSequencingEnabled === true,
+    activeCombos: (combosQuery.data ?? []).filter(
+      (combo) => combo.status === "ACTIVE",
+    ),
+    promotions: promotionsQuery.data ?? [],
+    customerGroups: customerGroupsQuery.data ?? [],
+    perCoverRules: (priceRulesQuery.data ?? []).filter(
+      (rule) => rule.isPerCover,
+    ),
     menuById,
     availableOrderTypes,
     tablesEnabled,
-    tables,
-    customerResults,
+    tables: tablesQuery.data,
+    customerResults: customerSearchQuery.data,
     allItems,
     resolvedActiveCategory,
     activeItems,
+    requiredDependencyLoading,
+    requiredDependencyFailed,
+    requiredDependencyStale,
+    optionalDependencyFailed,
+    optionalDependencyStale,
+    retryDependencies,
+    isRetryingDependencies,
   };
 };

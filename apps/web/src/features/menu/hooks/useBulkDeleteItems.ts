@@ -15,6 +15,6 @@ export const useBulkDeleteItems = () => {
           : `Deleted ${data.deleted} item(s)`,
       );
     },
-    onError: () => notifyError(undefined, "Failed to delete items"),
+    onError: (error) => notifyError(error, "Failed to delete items"),
   });
 };

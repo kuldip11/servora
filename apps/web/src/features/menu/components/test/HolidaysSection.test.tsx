@@ -8,15 +8,31 @@ const h = vi.hoisted(() => ({
   delHoliday: vi.fn(),
 }));
 vi.mock("@/features/menu/hooks/useMenuHolidays", () => ({
-  useMenuHolidays: () => ({ data: h.holidays }),
+  useMenuHolidays: () => ({
+    data: h.holidays,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/menu/hooks/useAddHoliday", () => ({
-  useAddHoliday: () => ({ isPending: false, mutate: h.addHoliday }),
+  useAddHoliday: () => ({ isPending: false, mutateAsync: h.addHoliday }),
 }));
 vi.mock("@/features/menu/hooks/useDeleteHoliday", () => ({
   useDeleteHoliday: () => ({ mutate: h.delHoliday }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div role="alert">
+      {title}
+      {onRetry ? <button onClick={onRetry}>Retry</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div role="status">{message}</div>,
+  FieldErrorText: ({ id, message }: any) =>
+    message ? <span id={id}>{message}</span> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -39,9 +55,7 @@ describe("HolidaysSection", () => {
   it("renders empty state and supports add, trim and delete", async () => {
     const { rerender } = render(<HolidaysSection />);
     expect(screen.getByText(/No holidays/)).toBeTruthy();
-    h.addHoliday.mockImplementation((_value: any, options: any) =>
-      options?.onSuccess?.(),
-    );
+    h.addHoliday.mockResolvedValue({});
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Diwali" },
     });
@@ -59,7 +73,6 @@ describe("HolidaysSection", () => {
           holidayDate: "2026-11-08",
           region: "India",
         }),
-        expect.anything(),
       ),
     );
 

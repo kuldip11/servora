@@ -85,6 +85,8 @@ describe("BranchFormModal", () => {
         onSubmit={onSubmit}
       />,
     );
+    expect(screen.queryByText("Select at least one order type.")).toBeNull();
+    fireEvent.blur(screen.getByLabelText("Takeaway"));
     expect(screen.getByText("Select at least one order type.")).toBeTruthy();
     fireEvent.click(screen.getByLabelText(/Dine-in/));
     fireEvent.click(screen.getByLabelText("Takeaway"));

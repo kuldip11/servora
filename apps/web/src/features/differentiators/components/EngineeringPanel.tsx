@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, toast } from "@pos/ui";
+import { Badge, Card, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { createAnalyticsApi } from "@pos/api-client";
 import { DIFFERENTIATORS_SELECT_CLASS } from "@/features/differentiators/constants";
 import { apiClient, extractApiError } from "@/shared/lib/api-client";
@@ -31,12 +31,6 @@ export const EngineeringPanel = () => {
       analyticsApi.menuEngineering<EngineeringRow[]>(Number(windowDays)),
     retry: false,
   });
-
-  useEffect(() => {
-    if (engineeringQuery.error) {
-      toast({ title: extractApiError(engineeringQuery.error), tone: "danger" });
-    }
-  }, [engineeringQuery.error]);
 
   const visibleRows = useMemo(() => {
     const rows =
@@ -107,35 +101,54 @@ export const EngineeringPanel = () => {
           </label>
         </div>
       </Card>
-      <div className="grid gap-3 md:grid-cols-2">
-        {visibleRows.map((row) => (
-          <Card key={`${row.menuItemId}:${row.variantName ?? ""}`}>
-            <div className="flex justify-between gap-3">
-              <strong>
-                {row.menuItemName}
-                {row.variantName ? ` — ${row.variantName}` : ""}
-              </strong>
-              <Badge
-                variant={
-                  row.quadrant === "STAR"
-                    ? "success"
-                    : row.quadrant === "DOG"
-                      ? "danger"
-                      : "warning"
-                }
-              >
-                {row.quadrant}
-              </Badge>
-            </div>
-            <p className="mt-2 text-sm">
-              {row.salesVolume} sold · margin ₹{row.margin.toFixed(2)}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {row.recommendation}
-            </p>
-          </Card>
-        ))}
-      </div>
+      {engineeringQuery.isError && engineeringQuery.data !== undefined ? (
+        <StaleDataBanner
+          message="Menu engineering refresh failed — showing the latest analysis available."
+          isRetrying={engineeringQuery.isFetching}
+          onRetry={() => void engineeringQuery.refetch()}
+        />
+      ) : null}
+      {engineeringQuery.isError && engineeringQuery.data === undefined ? (
+        <QueryErrorState
+          title="Unable to load menu engineering"
+          description={extractApiError(
+            engineeringQuery.error,
+            "Menu engineering analysis could not be loaded.",
+          )}
+          isRetrying={engineeringQuery.isFetching}
+          onRetry={() => void engineeringQuery.refetch()}
+        />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {visibleRows.map((row) => (
+            <Card key={`${row.menuItemId}:${row.variantName ?? ""}`}>
+              <div className="flex justify-between gap-3">
+                <strong>
+                  {row.menuItemName}
+                  {row.variantName ? ` — ${row.variantName}` : ""}
+                </strong>
+                <Badge
+                  variant={
+                    row.quadrant === "STAR"
+                      ? "success"
+                      : row.quadrant === "DOG"
+                        ? "danger"
+                        : "warning"
+                  }
+                >
+                  {row.quadrant}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm">
+                {row.salesVolume} sold · margin ₹{row.margin.toFixed(2)}
+              </p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {row.recommendation}
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

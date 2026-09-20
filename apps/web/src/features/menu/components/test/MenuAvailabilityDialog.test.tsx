@@ -9,6 +9,15 @@ vi.mock("../MenuScheduleEditor", () => ({
   MenuScheduleEditor: ({ menuId }: any) => <div>schedule:{menuId}</div>,
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages }: any) =>
+    messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div>

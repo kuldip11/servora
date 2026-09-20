@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Input, Modal } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
+import { Button, FormErrorSummary, Input, Modal } from "@pos/ui";
 import { refireOrderItem } from "@/features/orders/api/orders";
 
 interface Props {
@@ -44,19 +45,33 @@ export const RefireItemDialog = ({ open, orderId, itemId, onClose }: Props) => {
         <Input
           label="Reason"
           value={reason}
-          onChange={(event) => setReason(event.target.value)}
+          onChange={(event) => {
+            setReason(event.target.value);
+            refire.reset();
+          }}
         />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={alsoCompOriginal}
-            onChange={(event) => setAlsoCompOriginal(event.target.checked)}
+            onChange={(event) => {
+              setAlsoCompOriginal(event.target.checked);
+              refire.reset();
+            }}
           />{" "}
           Also comp original (kitchen error)
         </label>
         <p className="text-xs text-text-secondary">
           Turn off for a legitimate reorder so both lines remain billable.
         </p>
+        <FormErrorSummary
+          title="Refire failed"
+          messages={
+            refire.error
+              ? [extractApiError(refire.error, "Could not refire this item.")]
+              : []
+          }
+        />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel

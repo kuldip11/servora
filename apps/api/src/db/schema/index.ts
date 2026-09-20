@@ -24,3 +24,5 @@ export * from "./payment-webhook.schema";
 export * from "./customer-order-submission.schema";
 
 export * from "./tax.schema";
+
+export * from "./inventory-deduction-job.schema";

@@ -1,3 +1,4 @@
+import { createLogger, toError } from "@/core/logger/logger";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import type { KitchenTicket, Order } from "@pos/types";
@@ -8,6 +9,8 @@ import { eventBus } from "@/lib/event-bus";
 import { inventoryService } from "@/modules/inventory/inventory.service";
 import { orderRepository } from "@/modules/orders/order.repository";
 import { customerSessionService } from "./customer-session.service";
+
+const logger = createLogger({}, "customer-payment");
 
 export type CustomerCheckoutInput = {
   orderId: string;
@@ -278,7 +281,7 @@ export const customerPaymentService = {
           const ticketItems = order.items.filter(
             (item) => item.kitchenTicketId === ticketId,
           );
-          await inventoryService.deductForOrderItems(
+          await inventoryService.deductForOrderItemsWithRetry(
             session.tenantId,
             session.branchId,
             order.id,
@@ -309,10 +312,13 @@ export const customerPaymentService = {
           );
         }
       } catch (err) {
-        console.error(
-          "Inventory deduction failed after takeaway payment",
-          order.id,
-          err,
+        logger.error(
+          "customer_payment.inventory_deduction_failed",
+          toError(err),
+          {
+            orderId: order.id,
+            branchId: session.branchId,
+          },
         );
       }
       const updated = await orderRepository.findById(
@@ -449,22 +455,13 @@ export const customerPaymentService = {
 
   async getOrder(token: string, orderId: string) {
     const session = await customerSessionService.getSession(token);
-    const order = await db.query.orders.findFirst({
-      where: and(
-        eq(orders.id, orderId),
-        eq(orders.tenantId, session.tenantId),
-        eq(orders.branchId, session.branchId),
-        eq(orders.customerSessionId, session.id),
-      ),
-      with: {
-        items: { with: { modifiers: true } },
-        kitchenTickets: true,
-        table: true,
-        payments: true,
-        bills: { with: { payments: true, itemAssignments: true } },
-      },
-    });
-    if (!order) {
+    const order = await orderRepository.findById(session.tenantId, orderId);
+    if (
+      !order ||
+      order.id !== orderId ||
+      order.branchId !== session.branchId ||
+      order.customerSessionId !== session.id
+    ) {
       throw new ValidationError(
         "Order does not belong to this customer session",
       );

@@ -1,5 +1,6 @@
 import { SelectHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "../utils/cn";
+import { FieldLabel } from "./form/shared";
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -8,20 +9,15 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, className, id, ...props }, ref) => {
+  ({ label, error, options, className, id, required, ...props }, ref) => {
     const generatedId = useId();
     const selectId = id ?? generatedId;
     const errorId = `${selectId}-error`;
     return (
       <div className="flex flex-col gap-1.5">
-        {label && (
-          <label
-            htmlFor={selectId}
-            className="text-sm font-medium text-text-secondary"
-          >
-            {label}
-          </label>
-        )}
+        <FieldLabel htmlFor={selectId} required={required}>
+          {label}
+        </FieldLabel>
         <select
           ref={ref}
           id={selectId}
@@ -34,6 +30,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             className,
           )}
           {...props}
+          aria-required={required || undefined}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
         >

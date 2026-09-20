@@ -1,3 +1,4 @@
+import type { FireTicketRequest, OrderListQuery } from "@pos/contracts";
 import type { OrderStatus } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import {
@@ -5,11 +6,13 @@ import {
   createdResponse,
   paginatedResponse,
 } from "@/core/response";
+import { orderService, type CreateOrderInput } from "./order.service";
 import {
-  orderService,
-  type CreateOrderInput,
-  type FireTicketInput,
-} from "./order.service";
+  toOrderInventoryImpactResponse,
+  toOrderListItemResponse,
+  toOrderMergeResponse,
+  toOrderResponse,
+} from "./order.mapper";
 import { orderExplainService } from "@/modules/menu/explain/order-explain.service";
 
 export const orderController = {
@@ -18,21 +21,9 @@ export const orderController = {
       await orderExplainService.explainOrder(auth, orderId),
     );
   },
-  async list(
-    auth: AuthContext,
-    filters: {
-      status?: string | undefined;
-      type?: string | undefined;
-      search?: string | undefined;
-      view?: "READY" | "ACTIVE" | "ALL" | undefined;
-      page?: number | undefined;
-      limit?: number | undefined;
-      sortBy?: "id" | "total" | "createdAt" | undefined;
-      sortDirection?: "asc" | "desc" | undefined;
-    },
-  ) {
+  async list(auth: AuthContext, filters: OrderListQuery) {
     const result = await orderService.list(auth, filters);
-    return paginatedResponse(result.items, {
+    return paginatedResponse(result.items.map(toOrderListItemResponse), {
       total: result.total,
       page: result.page,
       limit: result.limit,
@@ -41,17 +32,17 @@ export const orderController = {
 
   async getById(auth: AuthContext, orderId: string) {
     const order = await orderService.getById(auth, orderId);
-    return successResponse(order);
+    return successResponse(toOrderResponse(order));
   },
 
   async getInventoryImpact(auth: AuthContext, orderId: string) {
     const impact = await orderService.getInventoryImpact(auth, orderId);
-    return successResponse(impact);
+    return successResponse(impact.map(toOrderInventoryImpactResponse));
   },
 
   async create(auth: AuthContext, input: CreateOrderInput) {
     const order = await orderService.create(auth, input);
-    return createdResponse(order);
+    return createdResponse(toOrderResponse(order));
   },
 
   async updateStatus(
@@ -69,12 +60,16 @@ export const orderController = {
       reason,
       cancellationReasonId,
     );
-    return successResponse(order);
+    return successResponse(toOrderResponse(order));
   },
 
-  async fireTicket(auth: AuthContext, orderId: string, input: FireTicketInput) {
+  async fireTicket(
+    auth: AuthContext,
+    orderId: string,
+    input: FireTicketRequest,
+  ) {
     const order = await orderService.fireTicket(auth, orderId, input);
-    return successResponse(order);
+    return successResponse(toOrderResponse(order));
   },
 
   async voidItem(
@@ -86,13 +81,15 @@ export const orderController = {
     approvalToken?: string | undefined,
   ) {
     return successResponse(
-      await orderService.voidItem(
-        auth,
-        orderId,
-        orderItemId,
-        reason,
-        cancellationReasonId,
-        approvalToken,
+      toOrderResponse(
+        await orderService.voidItem(
+          auth,
+          orderId,
+          orderItemId,
+          reason,
+          cancellationReasonId,
+          approvalToken,
+        ),
       ),
     );
   },
@@ -106,13 +103,15 @@ export const orderController = {
     approvalToken?: string | undefined,
   ) {
     return successResponse(
-      await orderService.compItem(
-        auth,
-        orderId,
-        orderItemId,
-        reason,
-        cancellationReasonId,
-        approvalToken,
+      toOrderResponse(
+        await orderService.compItem(
+          auth,
+          orderId,
+          orderItemId,
+          reason,
+          cancellationReasonId,
+          approvalToken,
+        ),
       ),
     );
   },
@@ -125,19 +124,23 @@ export const orderController = {
     alsoCompOriginal?: boolean,
   ) {
     return successResponse(
-      await orderService.refireItem(
-        auth,
-        orderId,
-        orderItemId,
-        reason,
-        alsoCompOriginal ?? true,
+      toOrderResponse(
+        await orderService.refireItem(
+          auth,
+          orderId,
+          orderItemId,
+          reason,
+          alsoCompOriginal ?? true,
+        ),
       ),
     );
   },
 
   async refillItem(auth: AuthContext, orderId: string, orderItemId: string) {
     return successResponse(
-      await orderService.refillItem(auth, orderId, orderItemId),
+      toOrderResponse(
+        await orderService.refillItem(auth, orderId, orderItemId),
+      ),
     );
   },
 
@@ -148,7 +151,9 @@ export const orderController = {
     reason?: string,
   ) {
     return successResponse(
-      await orderService.transferTable(auth, orderId, newTableId, reason),
+      toOrderResponse(
+        await orderService.transferTable(auth, orderId, newTableId, reason),
+      ),
     );
   },
   async mergeOrders(
@@ -157,7 +162,9 @@ export const orderController = {
     targetOrderId: string,
   ) {
     return successResponse(
-      await orderService.mergeOrders(auth, sourceOrderId, targetOrderId),
+      toOrderMergeResponse(
+        await orderService.mergeOrders(auth, sourceOrderId, targetOrderId),
+      ),
     );
   },
 };

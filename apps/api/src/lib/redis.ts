@@ -1,5 +1,8 @@
 import Redis from "ioredis";
 import { metrics } from "@/core/observability/metrics";
+import { createLogger } from "@/core/logger/logger";
+
+const logger = createLogger({}, "redis");
 
 const redisUrl = process.env["REDIS_URL"];
 if (!redisUrl) {
@@ -21,16 +24,14 @@ export const subscriber = new Redis(redisUrl, redisOptions);
 
 redis.on("error", (err) => {
   metrics.setGauge("servora_redis_available", 0);
-  console.error("[Redis] Error:", err);
+  logger.error("redis.connection_error", err);
 });
-publisher.on("error", (err) => console.error("[Redis Publisher] Error:", err));
-subscriber.on("error", (err) =>
-  console.error("[Redis Subscriber] Error:", err),
-);
+publisher.on("error", (err) => logger.error("redis.publisher_error", err));
+subscriber.on("error", (err) => logger.error("redis.subscriber_error", err));
 
 redis.on("connect", () => {
   metrics.setGauge("servora_redis_available", 1);
-  console.log("[Redis] Connected");
+  logger.info("redis.connected");
 });
 redis.on("close", () => metrics.setGauge("servora_redis_available", 0));
 

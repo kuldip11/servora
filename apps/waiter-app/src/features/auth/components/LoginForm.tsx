@@ -16,6 +16,8 @@ export const LoginForm = ({
     formState: { errors },
   } = useForm<CredentialsForm>({
     resolver: zodResolver(credentialsSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { email: "", password: "" },
   });
   return (
@@ -25,11 +27,15 @@ export const LoginForm = ({
           htmlFor="waiter-email"
           className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5"
         >
-          Email
+          Email{" "}
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
         </label>
         <input
           id="waiter-email"
           type="email"
+          aria-required="true"
           placeholder="you@restaurant.com"
           {...register("email")}
           className={inp}
@@ -44,11 +50,15 @@ export const LoginForm = ({
           htmlFor="waiter-password"
           className="block text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5"
         >
-          Password
+          Password{" "}
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
         </label>
         <input
           id="waiter-password"
           type="password"
+          aria-required="true"
           placeholder="••••••••"
           {...register("password")}
           className={inp}

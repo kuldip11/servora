@@ -13,6 +13,8 @@ import {
   SearchInput,
   SelectMenu,
   Pagination,
+  QueryErrorState,
+  StaleDataBanner,
 } from "@pos/ui";
 import { useAuthStore } from "@/store/auth";
 import { useBranches } from "@/features/branches/hooks/useBranches";
@@ -28,6 +30,7 @@ import { InventoryWasteDialog } from "@/features/inventory/components/InventoryW
 import { InventoryTable } from "@/features/inventory/components/InventoryTable";
 import { InventoryActivity } from "@/features/inventory/components/InventoryActivity";
 import { InventoryItemDialogs } from "@/features/inventory/components/InventoryItemDialogs";
+import { extractApiError } from "@/shared/lib/api-client";
 
 export const InventoryPage = () => {
   const { has } = usePermissions();
@@ -51,19 +54,23 @@ export const InventoryPage = () => {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const { data: branches } = useBranches({ enabled: isAggregate });
+  const branchesQuery = useBranches({ enabled: isAggregate });
 
-  const { data: inventoryPage, isLoading } = useInventoryItems({
+  const inventoryQuery = useInventoryItems({
     page,
     limit: pageSize,
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
     ...(stockFilter === "low" ? { lowStockOnly: true } : {}),
   });
-  const { data: lowStock = [] } = useLowStockItems();
+  const lowStockQuery = useLowStockItems();
+  const inventoryPage = inventoryQuery.data;
+  const lowStock = lowStockQuery.data ?? [];
   const items = inventoryPage?.items ?? [];
   const totalItems = inventoryPage?.pagination.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
-  const { data: transactions } = useInventoryTransactions();
+  const transactionsQuery = useInventoryTransactions();
+  const branches = branchesQuery.data;
+  const transactions = transactionsQuery.data;
 
   useInventoryRealtimeSync();
 
@@ -81,7 +88,11 @@ export const InventoryPage = () => {
     <Page>
       <PageHeader
         title="Inventory"
-        description={`${totalItems} items tracked in the current view`}
+        description={
+          inventoryQuery.isError && inventoryPage === undefined
+            ? "Inventory data is currently unavailable"
+            : `${totalItems} items tracked in the current view`
+        }
         actions={
           has("inventory:create") && (
             <Button onClick={() => setShowAdd(true)}>
@@ -95,17 +106,63 @@ export const InventoryPage = () => {
       <Grid columns={{ base: 2, lg: 4 }} gap="md">
         <StatCard
           title="Total Items"
-          value={totalItems}
+          value={
+            inventoryQuery.isError && inventoryPage === undefined
+              ? "Unavailable"
+              : totalItems
+          }
           icon={Package}
           color="violet"
         />
         <StatCard
           title="Low Stock"
-          value={lowStock.length}
+          value={
+            lowStockQuery.isError && lowStockQuery.data === undefined
+              ? "Unavailable"
+              : lowStock.length
+          }
           icon={AlertTriangle}
-          color={lowStock.length ? "red" : "emerald"}
+          color={
+            lowStockQuery.isError && lowStockQuery.data === undefined
+              ? "amber"
+              : lowStock.length
+                ? "red"
+                : "emerald"
+          }
         />
       </Grid>
+
+      {inventoryQuery.isError && inventoryPage === undefined ? (
+        <QueryErrorState
+          title="Unable to load inventory"
+          description={extractApiError(
+            inventoryQuery.error,
+            "Inventory could not be loaded. Retry before relying on stock levels.",
+          )}
+          isRetrying={inventoryQuery.isFetching}
+          onRetry={() => void inventoryQuery.refetch()}
+        />
+      ) : null}
+
+      {inventoryQuery.isError && inventoryPage !== undefined ? (
+        <StaleDataBanner
+          message="Inventory refresh failed — showing the latest stock data available."
+          isRetrying={inventoryQuery.isFetching}
+          onRetry={() => void inventoryQuery.refetch()}
+        />
+      ) : null}
+
+      {lowStockQuery.isError ? (
+        <StaleDataBanner
+          message={
+            lowStockQuery.data === undefined
+              ? "Low-stock status is unavailable. Do not interpret the KPI as zero."
+              : "Low-stock refresh failed — showing the latest low-stock data available."
+          }
+          isRetrying={lowStockQuery.isFetching}
+          onRetry={() => void lowStockQuery.refetch()}
+        />
+      ) : null}
 
       {!!lowStock.length && (
         <Card padding="md" className="bg-danger-surface border-danger/20">
@@ -171,7 +228,8 @@ export const InventoryPage = () => {
         </FilterBar>
       </Card>
 
-      {isAggregate && groupedByBranch ? (
+      {inventoryQuery.isError &&
+      inventoryPage === undefined ? null : isAggregate && groupedByBranch ? (
         <Card padding="none" className="overflow-hidden">
           {groupedByBranch.map(([branchName, branchItems], idx) => (
             <div
@@ -186,7 +244,7 @@ export const InventoryPage = () => {
               </div>
               <InventoryTable
                 items={branchItems}
-                loading={isLoading}
+                loading={inventoryQuery.isLoading}
                 onUpdateStock={setShowUpdate}
                 onLogWaste={setShowWaste}
                 onViewImpact={setShowImpact}
@@ -210,7 +268,7 @@ export const InventoryPage = () => {
         <Card padding="none" className="overflow-hidden">
           <InventoryTable
             items={items}
-            loading={isLoading}
+            loading={inventoryQuery.isLoading}
             onUpdateStock={setShowUpdate}
             onLogWaste={setShowWaste}
             onViewImpact={setShowImpact}
@@ -231,7 +289,21 @@ export const InventoryPage = () => {
         </Card>
       )}
 
-      <InventoryActivity transactions={transactions} />
+      {transactionsQuery.isError ? (
+        <StaleDataBanner
+          message={
+            transactionsQuery.data === undefined
+              ? "Recent stock activity is unavailable."
+              : "Recent stock activity could not be refreshed."
+          }
+          isRetrying={transactionsQuery.isFetching}
+          onRetry={() => void transactionsQuery.refetch()}
+        />
+      ) : null}
+      {transactionsQuery.isError &&
+      transactionsQuery.data === undefined ? null : (
+        <InventoryActivity transactions={transactions} />
+      )}
 
       <InventoryItemDialogs
         addOpen={showAdd}

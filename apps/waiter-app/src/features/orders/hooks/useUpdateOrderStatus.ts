@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import { updateOrderStatus } from "@/features/orders/api/orders";
+import { extractApiError } from "@pos/api-client";
 import { orderKeys } from "@/features/orders/constants";
 
 export const useUpdateOrderStatus = () => {
@@ -23,6 +24,10 @@ export const useUpdateOrderStatus = () => {
       qc.invalidateQueries({ queryKey: ["tables"] });
       toast({ title: "Order updated", tone: "success" });
     },
-    onError: () => toast({ title: "Failed to update", tone: "danger" }),
+    onError: (error) =>
+      toast({
+        title: extractApiError(error, "Failed to update order"),
+        tone: "danger",
+      }),
   });
 };

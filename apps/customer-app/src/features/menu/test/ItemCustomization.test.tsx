@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ItemCustomization } from "../ItemCustomization";
 const option = () => ({
@@ -71,7 +71,7 @@ describe("ItemCustomization", () => {
         onQuantityChange={vi.fn()}
       />,
     );
-    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(
       (
         screen.getByRole("button", {
@@ -79,5 +79,8 @@ describe("ItemCustomization", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+
+    fireEvent.click(screen.getByRole("radio", { name: /V/ }));
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

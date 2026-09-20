@@ -19,6 +19,6 @@ export const useBulkAdjustPrice = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Repriced ${data.updated} item(s)`);
     },
-    onError: () => notifyError(undefined, "Failed to update prices"),
+    onError: (error) => notifyError(error, "Failed to update prices"),
   });
 };

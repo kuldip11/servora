@@ -18,6 +18,17 @@ let templates: any[] | undefined = [];
 let loading = false;
 
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div role="alert">
+      {title}
+      {onRetry ? <button onClick={onRetry}>Retry</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div role="status">{message}</div>,
+  FieldErrorText: ({ id, message }: any) =>
+    message ? <span id={id}>{message}</span> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -40,22 +51,33 @@ vi.mock("@pos/ui", () => ({
   ),
 }));
 vi.mock("@/features/menu/hooks/useMenuTemplates", () => ({
-  useMenuTemplates: () => ({ data: templates, isLoading: loading }),
+  useMenuTemplates: () => ({
+    data: templates,
+    isLoading: loading,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/menu/hooks/useDeleteTemplate", () => ({
   useDeleteTemplate: () => ({ mutate: h.deleteMutate }),
 }));
 vi.mock("@/features/menu/hooks/useApplyTemplate", () => ({
-  useApplyTemplate: () => ({ mutate: h.applyMutate, isPending: false }),
+  useApplyTemplate: () => ({ mutateAsync: h.applyMutate, isPending: false }),
 }));
 vi.mock("@/features/menu/hooks/useSaveTemplateFromCategory", () => ({
   useSaveTemplateFromCategory: () => ({
-    mutate: h.saveMutate,
+    mutateAsync: h.saveMutate,
     isPending: false,
   }),
 }));
 vi.mock("@/features/branches/hooks/useBranches", () => ({
-  useBranches: () => ({ data: [{ id: "b1", name: "Central" }] }),
+  useBranches: () => ({
+    data: [{ id: "b1", name: "Central" }],
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/shared/lib/notify", () => ({ notifySuccess: h.success }));
 
@@ -66,6 +88,8 @@ describe("TemplatesSection coverage", () => {
     vi.clearAllMocks();
     loading = false;
     templates = [];
+    h.applyMutate.mockResolvedValue({});
+    h.saveMutate.mockResolvedValue({});
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -113,12 +137,11 @@ describe("TemplatesSection coverage", () => {
       screen.getAllByRole("button", { name: "Apply" }).at(-1)!.closest("form")!,
     );
     await waitFor(() => expect(h.applyMutate).toHaveBeenCalled());
-    const [arg, opts] = h.applyMutate.mock.calls[0];
+    const [arg] = h.applyMutate.mock.calls[0];
     expect(arg).toEqual({
       templateId: "t1",
       input: { branchId: "b1", categoryName: "Brunch" },
     });
-    await act(async () => opts.onSuccess());
     expect(h.success).toHaveBeenCalledWith(
       expect.stringContaining("2 item(s) added as drafts"),
     );
@@ -143,13 +166,12 @@ describe("TemplatesSection coverage", () => {
       screen.getByRole("button", { name: "Save" }).closest("form")!,
     );
     await waitFor(() => expect(h.saveMutate).toHaveBeenCalled());
-    let [arg, opts] = h.saveMutate.mock.calls[0];
+    let [arg] = h.saveMutate.mock.calls[0];
     expect(arg).toEqual({
       categoryId: "c1",
       input: { name: "Drinks Copy", description: "Portable drinks" },
     });
-    opts.onSuccess();
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
 
     h.saveMutate.mockClear();
     rerender(
@@ -172,6 +194,6 @@ describe("TemplatesSection coverage", () => {
     expect(arg.input).toEqual({ name: "Drinks" });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByLabelText("modal-close"));
-    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(onClose).toHaveBeenCalledTimes(4);
   });
 });

@@ -1,14 +1,14 @@
 import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { menuKeys } from "@/features/menu/query-keys";
 import {
   menuTemplatesService,
   type SaveTemplateInput,
 } from "@/features/menu/services/menu-templates.service";
-import { menuKeys } from "@/features/menu/query-keys";
+import { notifySuccess } from "@/shared/lib/notify";
+import { queryClient } from "@/shared/lib/query-client";
 
-export const useSaveTemplateFromCategory = () => {
-  return useMutation({
+export const useSaveTemplateFromCategory = () =>
+  useMutation({
     mutationFn: ({
       categoryId,
       input,
@@ -20,6 +20,4 @@ export const useSaveTemplateFromCategory = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.templates() });
       notifySuccess("Template saved");
     },
-    onError: (err) => notifyError(err, "Failed to save template"),
   });
-};

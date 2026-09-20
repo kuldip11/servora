@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Modal, SelectMenu } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
+import {
+  Button,
+  FormErrorSummary,
+  Modal,
+  QueryErrorState,
+  SelectMenu,
+} from "@pos/ui";
 import { fetchOrders, mergeOrders } from "@/features/orders/api/orders";
 
 interface Props {
@@ -11,7 +18,7 @@ interface Props {
 
 export const MergeOrderDialog = ({ open, orderId, onClose }: Props) => {
   const [targetId, setTargetId] = useState("");
-  const { data: candidates = [] } = useQuery({
+  const candidatesQuery = useQuery({
     queryKey: ["orders", "merge-candidates"],
     queryFn: async () =>
       (await fetchOrders({ view: "ACTIVE", limit: 100 })).items,
@@ -26,37 +33,68 @@ export const MergeOrderDialog = ({ open, orderId, onClose }: Props) => {
     },
   });
 
+  const candidates = candidatesQuery.data ?? [];
+
   return (
     <Modal open={open} onClose={onClose} title="Merge table">
       <div className="space-y-4">
-        <SelectMenu
-          label="Merge billing into"
-          placeholder="Select another open table"
-          value={targetId || undefined}
-          onChange={setTargetId}
-          className="min-h-11 rounded-xl"
-          options={candidates
-            .filter(
-              (candidate) =>
-                candidate.id !== orderId &&
-                candidate.status === "OPEN" &&
-                candidate.type === "DINE_IN" &&
-                !candidate.mergedIntoOrderId,
-            )
-            .map((candidate) => ({
-              value: candidate.id,
-              label: candidate.table?.name ?? `Order ${candidate.id.slice(-8)}`,
-            }))}
-        />
+        {candidatesQuery.isError && !candidatesQuery.data ? (
+          <QueryErrorState
+            title="Unable to load open tables"
+            description={extractApiError(
+              candidatesQuery.error,
+              "Could not load merge candidates.",
+            )}
+            onRetry={() => void candidatesQuery.refetch()}
+            isRetrying={candidatesQuery.isFetching}
+          />
+        ) : (
+          <SelectMenu
+            label="Merge billing into"
+            placeholder="Select another open table"
+            value={targetId || undefined}
+            onChange={(value) => {
+              setTargetId(value);
+              mergeOrder.reset();
+            }}
+            className="min-h-11 rounded-xl"
+            options={candidates
+              .filter(
+                (candidate) =>
+                  candidate.id !== orderId &&
+                  candidate.status === "OPEN" &&
+                  candidate.type === "DINE_IN" &&
+                  !candidate.mergedIntoOrderId,
+              )
+              .map((candidate) => ({
+                value: candidate.id,
+                label:
+                  candidate.table?.name ?? `Order ${candidate.id.slice(-8)}`,
+              }))}
+          />
+        )}
         <p className="text-xs text-text-secondary">
           Kitchen tickets stay separate; only billing is combined.
         </p>
+        <FormErrorSummary
+          title="Merge failed"
+          messages={
+            mergeOrder.error
+              ? [
+                  extractApiError(
+                    mergeOrder.error,
+                    "Could not merge these orders.",
+                  ),
+                ]
+              : []
+          }
+        />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            disabled={!targetId}
+            disabled={!targetId || candidatesQuery.isError}
             loading={mergeOrder.isPending}
             onClick={() => mergeOrder.mutate(targetId)}
           >

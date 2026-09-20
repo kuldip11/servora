@@ -47,9 +47,16 @@ const auth = (o: Partial<AuthContext> = {}): AuthContext =>
   }) as AuthContext;
 const table = (o: Record<string, unknown> = {}) => ({
   id: "tb1",
+  tenantId: "t1",
   branchId: "b1",
   name: "T1",
+  publicQrToken: "00000000-0000-4000-8000-000000000024",
+  capacity: 4,
   status: "AVAILABLE",
+  section: null,
+  isActive: true,
+  createdAt: new Date("2026-09-18T00:00:00.000Z"),
+  updatedAt: new Date("2026-09-18T00:00:00.000Z"),
   ...o,
 });
 describe("table service/controller coverage", () => {

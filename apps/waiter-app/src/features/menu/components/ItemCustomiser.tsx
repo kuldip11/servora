@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BottomSheet, Button, TextInput } from "@pos/ui";
 import type { SelectedModifier, CartItem } from "@/features/menu/types";
 import type {
@@ -29,6 +29,9 @@ export const ItemCustomiser = ({
   onClose,
   courseMode = false,
 }: Props) => {
+  const [choiceValidationVisible, setChoiceValidationVisible] = useState(false);
+  const [pricingValidationVisible, setPricingValidationVisible] =
+    useState(false);
   const hasVariants = item.variants?.length > 0;
   const groups: OrderableModifierGroup[] = (item.modifierGroupLinks ?? []).map(
     (link) => link.group,
@@ -160,6 +163,7 @@ export const ItemCustomiser = ({
     group: OrderableModifierGroup,
     option: OrderableModifierOption,
   ) {
+    setChoiceValidationVisible(true);
     const bucket = bucketFor(group.id);
     toggleModifier({
       bucket,
@@ -182,6 +186,7 @@ export const ItemCustomiser = ({
     option: OrderableModifierOption,
     value: number,
   ) {
+    setChoiceValidationVisible(true);
     changeModifierQuantity(
       bucketFor(group.id),
       option.id,
@@ -311,6 +316,7 @@ export const ItemCustomiser = ({
           onWeightQuantity={changeWeightQuantity}
           manualPrice={manualPrice}
           onManualPrice={changeManualPrice}
+          onPricingBlur={() => setPricingValidationVisible(true)}
           variantId={variantId}
           onVariant={changeVariant}
           zoned={zoned}
@@ -402,14 +408,14 @@ export const ItemCustomiser = ({
           onChange={(event) => changeChefNotes(event.target.value)}
           className="rounded-xl bg-surface-secondary"
         />
-        {unmetGroup && (
+        {choiceValidationVisible && unmetGroup && (
           <p className="text-center text-xs text-warning">
             Complete required choices for{" "}
             {"zone" in unmetGroup ? `${unmetGroup.zone} · ` : ""}
             {unmetGroup.name}.
           </p>
         )}
-        {!pricingInputValid && (
+        {pricingValidationVisible && !pricingInputValid && (
           <p className="text-center text-xs text-danger">
             Enter a valid{" "}
             {item.pricingMode === "WEIGHT_BASED"

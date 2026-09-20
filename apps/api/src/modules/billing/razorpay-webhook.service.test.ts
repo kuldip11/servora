@@ -41,7 +41,7 @@ vi.mock("@/modules/orders/order.repository", () => ({
   orderRepository: { findById: mocks.findOrder },
 }));
 vi.mock("@/modules/inventory/inventory.service", () => ({
-  inventoryService: { deductForOrderItems: mocks.deduct },
+  inventoryService: { deductForOrderItemsWithRetry: mocks.deduct },
 }));
 vi.mock("@/lib/event-bus", () => ({ eventBus: { publish: mocks.publish } }));
 
@@ -130,6 +130,15 @@ describe("razorpayWebhookService coverage", () => {
     const invalid = "not-json";
     await expect(
       razorpayWebhookService.handle(invalid, signature(invalid), "e1"),
+    ).rejects.toThrow("Invalid Razorpay webhook payload");
+
+    const invalidShape = JSON.stringify({ event: 123 });
+    await expect(
+      razorpayWebhookService.handle(
+        invalidShape,
+        signature(invalidShape),
+        "e1",
+      ),
     ).rejects.toThrow("Invalid Razorpay webhook payload");
   });
 
@@ -306,12 +315,10 @@ describe("razorpayWebhookService coverage", () => {
       })
       .mockResolvedValueOnce(null);
     mocks.deduct.mockResolvedValueOnce({ short: [{ item: "x" }] });
-    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await razorpayWebhookService.processEvent("e2");
     expect(spy).toHaveBeenCalledWith(
-      "Inventory was short when releasing paid takeaway order",
-      "o1",
-      [{ item: "x" }],
+      expect.stringContaining("razorpay.inventory_short"),
     );
     spy.mockRestore();
   });
@@ -346,12 +353,26 @@ describe("razorpayWebhookService coverage", () => {
   });
 
   it("records processing failures with retry metadata and rethrows", async () => {
-    mocks.eventFindFirst.mockResolvedValue({
+    mocks.eventFindFirst.mockResolvedValueOnce({
       status: "RECEIVED",
       eventType: "payment.captured",
       payload: "invalid-json",
     });
-    await expect(razorpayWebhookService.processEvent("e1")).rejects.toThrow();
+    await expect(razorpayWebhookService.processEvent("e1")).rejects.toThrow(
+      "Invalid Razorpay webhook payload",
+    );
+
+    mocks.eventFindFirst.mockResolvedValueOnce({
+      status: "RECEIVED",
+      eventType: "payment.captured",
+      payload: JSON.stringify({
+        payload: { payment: { entity: { amount: "10500" } } },
+      }),
+    });
+    await expect(razorpayWebhookService.processEvent("e2")).rejects.toThrow(
+      "Invalid Razorpay webhook payload",
+    );
+
     expect(mocks.dbUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "FAILED",

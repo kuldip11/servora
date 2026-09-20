@@ -34,6 +34,7 @@ export const InventoryWasteDialog = ({
       <div className="space-y-4">
         <Input
           label="Quantity wasted"
+          required
           type="number"
           min="0.001"
           step="0.001"
@@ -43,6 +44,7 @@ export const InventoryWasteDialog = ({
         />
         <Select
           label="Waste reason"
+          required
           value={reasonId}
           onChange={(e) => setReasonId(e.target.value)}
           options={[

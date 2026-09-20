@@ -14,12 +14,28 @@ let rules: any[] = [];
 let groups: any[] = [];
 
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
   Input: (props: any) => <input {...props} />,
+  Select: ({ label, options = [], ...props }: any) => (
+    <label>
+      {label}
+      <select aria-label={label} {...props}>
+        {options.map((option: any) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  ),
 }));
 vi.mock("@pos/api-client", () => ({
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
   createMenuApi: () => ({
     listPriceRulesFor: h.listRules,
     createPriceRule: h.create,
@@ -27,7 +43,12 @@ vi.mock("@pos/api-client", () => ({
   }),
   createCustomersApi: () => ({ listGroups: h.listGroups }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
+  toApiClientError: () => ({}),
+}));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: h.invalidate },
 }));
@@ -38,11 +59,17 @@ vi.mock("@tanstack/react-query", () => ({
   }),
   useMutation: (cfg: any) => ({
     isPending: false,
-    mutate: (arg?: any) =>
+    mutate: (arg?: any, callbacks?: any) =>
       Promise.resolve()
         .then(() => cfg.mutationFn(arg))
-        .then((v) => cfg.onSuccess?.(v, arg))
-        .catch((e) => cfg.onError?.(e, arg)),
+        .then((v) => {
+          cfg.onSuccess?.(v, arg);
+          callbacks?.onSuccess?.(v, arg);
+        })
+        .catch((e) => {
+          cfg.onError?.(e, arg);
+          callbacks?.onError?.(e, arg);
+        }),
   }),
 }));
 
@@ -161,12 +188,8 @@ describe("PriceRulesPanel coverage", () => {
     });
     fireEvent.click(save);
     await waitFor(() =>
-      expect(h.getError).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not save price rule",
-      ),
+      expect(screen.getByText("Could not save price rule")).toBeTruthy(),
     );
-    expect(screen.getByText("Save failed")).toBeTruthy();
     expect(h.create.mock.calls[0][0]).toEqual({
       menuItemId: "i2",
       branchId: undefined,

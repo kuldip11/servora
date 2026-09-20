@@ -8,13 +8,36 @@ export interface WebVitalMetric {
 }
 
 export interface FrontendTelemetryEvent {
-  type: "web-vital" | "error" | "unhandled-rejection";
+  type:
+    "web-vital" | "error" | "unhandled-rejection" | "react-error" | "ui-error";
   app: string;
   timestamp: string;
   metric?: WebVitalMetric;
   message?: string;
   route?: string;
+  componentStack?: string;
+  code?: string;
+  status?: number;
+  requestId?: string;
+  operation?: string;
+  unknownFields?: string[];
 }
+
+export interface FrontendUiErrorDetail {
+  message?: string;
+  code?: string;
+  status?: number;
+  requestId?: string;
+  operation?: string;
+  unknownFields?: string[];
+}
+
+export const reportFrontendUiError = (detail: FrontendUiErrorDetail) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<FrontendUiErrorDetail>("servora:ui-error", { detail }),
+  );
+};
 
 export interface FrontendTelemetryOptions {
   app: string;
@@ -157,6 +180,49 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
       options,
     );
   };
+  const onReactError = (event: Event) => {
+    const detail = (
+      event as CustomEvent<{
+        message?: string;
+        componentStack?: string;
+      }>
+    ).detail;
+    emit(
+      {
+        type: "react-error",
+        app: options.app,
+        timestamp: new Date().toISOString(),
+        route: window.location.pathname,
+        message: detail?.message || "React render error",
+        ...(detail?.componentStack
+          ? { componentStack: detail.componentStack }
+          : {}),
+      },
+      options,
+    );
+  };
+
+  const onUiError = (event: Event) => {
+    const detail = (event as CustomEvent<FrontendUiErrorDetail>).detail;
+    emit(
+      {
+        type: "ui-error",
+        app: options.app,
+        timestamp: new Date().toISOString(),
+        route: window.location.pathname,
+        ...(detail?.message ? { message: detail.message } : {}),
+        ...(detail?.code ? { code: detail.code } : {}),
+        ...(detail?.status ? { status: detail.status } : {}),
+        ...(detail?.requestId ? { requestId: detail.requestId } : {}),
+        ...(detail?.operation ? { operation: detail.operation } : {}),
+        ...(detail?.unknownFields?.length
+          ? { unknownFields: [...new Set(detail.unknownFields)].slice(0, 32) }
+          : {}),
+      },
+      options,
+    );
+  };
+
   const onUnhandledRejection = (event: PromiseRejectionEvent) => {
     const message =
       event.reason instanceof Error
@@ -177,12 +243,16 @@ export const startFrontendTelemetry = (options: FrontendTelemetryOptions) => {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onUnhandledRejection);
+  window.addEventListener("servora:react-error", onReactError);
+  window.addEventListener("servora:ui-error", onUiError);
 
   return () => {
     observers.forEach((observer) => observer.disconnect());
     document.removeEventListener("visibilitychange", onVisibilityChange);
     window.removeEventListener("error", onError);
     window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    window.removeEventListener("servora:react-error", onReactError);
+    window.removeEventListener("servora:ui-error", onUiError);
   };
 };
 

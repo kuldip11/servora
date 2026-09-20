@@ -103,7 +103,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
               onChange?.(e);
             }}
             disabled={disabled || loading}
-            required={required}
+            aria-required={required || undefined}
             aria-invalid={!!error || undefined}
             aria-describedby={describedBy(hintId, errorId, hint, error)}
             {...props}

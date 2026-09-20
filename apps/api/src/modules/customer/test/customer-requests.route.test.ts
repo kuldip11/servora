@@ -40,6 +40,21 @@ vi.mock("@/modules/customer/customer-requests", () => ({
 import { customerRequestRouter } from "@/modules/customer/customer-requests.route";
 
 const auth = { tenantId: "t1", branchId: "b1", userId: "u1" };
+const requestRow = {
+  id: "00000000-0000-0000-0000-000000000031",
+  tenantId: "00000000-0000-0000-0000-000000000032",
+  branchId: "00000000-0000-0000-0000-000000000033",
+  tableId: "00000000-0000-0000-0000-000000000034",
+  customerSessionId: "00000000-0000-0000-0000-000000000035",
+  orderId: null,
+  type: "WATER" as const,
+  status: "OPEN" as const,
+  note: "cold",
+  resolvedBy: null,
+  createdAt: new Date("2026-09-05T10:00:00.000Z"),
+  updatedAt: new Date("2026-09-05T10:00:00.000Z"),
+};
+
 const route = (method: string, path: string) =>
   (customerRequestRouter as any).routes.find(
     (entry: any) => entry.method === method && entry.path === path,
@@ -48,9 +63,12 @@ const route = (method: string, path: string) =>
 describe("customerRequestRouter coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.create.mockResolvedValue({ id: "r1" });
-    mocks.listForStaff.mockResolvedValue([{ id: "r1" }]);
-    mocks.updateForStaff.mockResolvedValue({ id: "r1", status: "RESOLVED" });
+    mocks.create.mockResolvedValue(requestRow);
+    mocks.listForStaff.mockResolvedValue([requestRow]);
+    mocks.updateForStaff.mockResolvedValue({
+      ...requestRow,
+      status: "RESOLVED" as const,
+    });
   });
 
   it("creates customer requests and requires a session token", async () => {
@@ -62,8 +80,12 @@ describe("customerRequestRouter coverage", () => {
       post.handler({
         headers: { "x-customer-session": "session1" },
         body: { type: "WATER", note: "cold" },
+        set: {},
       }),
-    ).resolves.toEqual({ success: true, data: { id: "r1" } });
+    ).resolves.toEqual({
+      success: true,
+      data: expect.objectContaining({ id: requestRow.id }),
+    });
     expect(mocks.create).toHaveBeenCalledWith("session1", {
       type: "WATER",
       note: "cold",
@@ -75,19 +97,23 @@ describe("customerRequestRouter coverage", () => {
       route("GET", "/api/customer/requests").handler({ auth }),
     ).resolves.toEqual({
       success: true,
-      data: [{ id: "r1" }],
+      data: [expect.objectContaining({ id: requestRow.id })],
     });
     await expect(
       route("PATCH", "/api/customer/requests/:id").handler({
         auth,
-        params: { id: "r1" },
+        params: { id: requestRow.id },
         body: { status: "RESOLVED" },
       }),
     ).resolves.toEqual({
       success: true,
-      data: { id: "r1", status: "RESOLVED" },
+      data: expect.objectContaining({ id: requestRow.id, status: "RESOLVED" }),
     });
     expect(mocks.listForStaff).toHaveBeenCalledWith(auth);
-    expect(mocks.updateForStaff).toHaveBeenCalledWith(auth, "r1", "RESOLVED");
+    expect(mocks.updateForStaff).toHaveBeenCalledWith(
+      auth,
+      requestRow.id,
+      "RESOLVED",
+    );
   });
 });

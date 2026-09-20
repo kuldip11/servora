@@ -17,14 +17,19 @@ const mocks = vi.hoisted(() => {
     phone: "1",
     profileImageUrl: "https://x.test/a.png",
   };
+  const authState = {
+    user,
+    setContext,
+    membershipId: "m1",
+    franchiseId: "f1",
+    branchId: "b1",
+  };
   const authHook = Object.assign(
-    vi.fn(() => ({ user, setContext })),
+    vi.fn((selector?: (state: typeof authState) => unknown) =>
+      selector ? selector(authState) : authState,
+    ),
     {
-      getState: vi.fn(() => ({
-        membershipId: "m1",
-        franchiseId: "f1",
-        branchId: "b1",
-      })),
+      getState: vi.fn(() => authState),
     },
   );
   return {
@@ -49,19 +54,20 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.notifySuccess,
   notifyError: mocks.notifyError,
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useMutation: (options: any) => ({
-    isPending: false,
-    mutate: async (variables: any) => {
-      try {
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useMutation: (options: any) => ({
+      isPending: false,
+      mutateAsync: async (variables: any) => {
         const value = await options.mutationFn(variables);
         options.onSuccess?.(value);
-      } catch (error) {
-        options.onError?.(error);
-      }
-    },
-  }),
-}));
+        return value;
+      },
+    }),
+  };
+});
 vi.mock("@pos/ui", () => ({
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
@@ -78,6 +84,8 @@ vi.mock("@pos/ui", () => ({
       </label>
     ),
   ),
+  FormErrorSummary: ({ messages }: { messages: string[] }) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   Page: ({ children }: React.PropsWithChildren) => <main>{children}</main>,
   PageHeader: ({ title, description }: any) => (
     <header>
@@ -104,7 +112,11 @@ describe("ProfilePage coverage", () => {
     fireEvent.change(screen.getByLabelText("First name"), {
       target: { value: "Grace" },
     });
-    fireEvent.click(screen.getByText("Save profile"));
+    const saveButton = screen.getByRole("button", { name: "Save profile" });
+    await waitFor(() =>
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(saveButton);
     await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalled());
     expect(mocks.setContext).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -116,13 +128,20 @@ describe("ProfilePage coverage", () => {
     expect(mocks.notifySuccess).toHaveBeenCalledWith("Profile updated");
 
     mocks.updateProfile.mockRejectedValueOnce(new Error("bad"));
-    fireEvent.click(screen.getByText("Save profile"));
+    fireEvent.change(screen.getByLabelText("First name"), {
+      target: { value: "Katherine" },
+    });
     await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not update profile",
-      ),
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Save profile",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("bad");
   });
 
   it("validates and changes password including error path", async () => {
@@ -143,7 +162,13 @@ describe("ProfilePage coverage", () => {
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
       target: { value: "new-pass-1" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    const changeButton = screen.getByRole("button", {
+      name: "Change password",
+    });
+    await waitFor(() =>
+      expect((changeButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(changeButton);
     await waitFor(() =>
       expect(mocks.changePassword).toHaveBeenCalledWith({
         currentPassword: "old-pass",
@@ -162,31 +187,48 @@ describe("ProfilePage coverage", () => {
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
       target: { value: "another1" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
     await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not change password",
-      ),
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Change password",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("wrong");
   });
 
-  it("shows required and minimum-length validation", async () => {
+  it("disables submit until client validation passes", async () => {
     render(<ProfilePage />);
-    fireEvent.change(screen.getByLabelText("First name"), {
-      target: { value: "" },
-    });
-    fireEvent.click(screen.getByText("Save profile"));
+
+    const saveButton = screen.getByRole("button", { name: "Save profile" });
+    expect((saveButton as HTMLButtonElement).disabled).toBe(true);
+
+    const firstName = screen.getByLabelText("First name");
+    fireEvent.change(firstName, { target: { value: "" } });
+    expect(screen.queryByText("First name is required")).toBeNull();
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.blur(firstName);
     expect(await screen.findByText("First name is required")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("New password"), {
+    const passwordButton = screen.getByRole("button", {
+      name: "Change password",
+    });
+    expect((passwordButton as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Current password"), {
+      target: { value: "old-pass" },
+    });
+    const newPassword = screen.getByLabelText("New password");
+    fireEvent.change(newPassword, { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), {
       target: { value: "short" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
-    expect(
-      await screen.findByText("Current password is required"),
-    ).toBeTruthy();
-    expect(screen.getByText("Use at least 8 characters")).toBeTruthy();
-    expect(screen.getByText("Confirm the password")).toBeTruthy();
+    expect(screen.queryByText("Use at least 8 characters")).toBeNull();
+    fireEvent.blur(newPassword);
+    expect(await screen.findByText("Use at least 8 characters")).toBeTruthy();
+    expect((passwordButton as HTMLButtonElement).disabled).toBe(false);
   });
 });

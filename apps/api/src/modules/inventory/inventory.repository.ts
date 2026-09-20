@@ -1,6 +1,7 @@
 import { eq, and, or, isNull, isNotNull, inArray, sql } from "drizzle-orm";
 import type { InventoryTransactionType, InventoryUnit } from "@pos/types";
 import { db } from "@/db";
+import { InternalError } from "@/core/errors";
 import {
   inventoryItems,
   inventoryTransactions,
@@ -412,7 +413,7 @@ export const inventoryRepository = {
             item.id === line.orderItemId && item.menuItemId === line.menuItemId,
         );
         if (!exactTicketItem) {
-          throw new Error(
+          throw new InternalError(
             `Order item ${line.orderItemId} is missing from kitchen ticket ${kitchenTicketId}`,
           );
         }

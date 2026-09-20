@@ -1,9 +1,10 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import type { Menu } from "@pos/types";
-import { Button, Input, Modal } from "@pos/ui";
+import { Button, FormErrorSummary, Input, Modal } from "@pos/ui";
 import { useUpdateMenu } from "@/features/menu/hooks/useMenus";
 import { FULFILLMENT_TYPES, MENU_CHANNELS } from "@/features/menu/constants";
 import { MenuScheduleEditor } from "@/features/menu/components/MenuScheduleEditor";
+import { extractApiError } from "@/shared/lib/api-client";
 
 interface BranchOption {
   id: string;
@@ -83,10 +84,14 @@ export const MenuAvailabilityDialog = ({
   onClose,
 }: MenuAvailabilityDialogProps) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [formErrorMessages, setFormErrorMessages] = useState<string[]>([]);
   const updateMenu = useUpdateMenu();
 
   useEffect(() => {
-    if (menu) dispatch({ type: "reset", menu, branches });
+    if (menu) {
+      dispatch({ type: "reset", menu, branches });
+      setFormErrorMessages([]);
+    }
   }, [branches, menu]);
 
   return (
@@ -101,6 +106,7 @@ export const MenuAvailabilityDialog = ({
         onSubmit={(event) => {
           event.preventDefault();
           if (!menu) return;
+          setFormErrorMessages([]);
           updateMenu.mutate(
             {
               id: menu.id,
@@ -122,10 +128,17 @@ export const MenuAvailabilityDialog = ({
                   : null,
               },
             },
-            { onSuccess: onClose },
+            {
+              onSuccess: onClose,
+              onError: (error) =>
+                setFormErrorMessages([
+                  extractApiError(error, "Failed to update menu availability"),
+                ]),
+            },
           );
         }}
       >
+        <FormErrorSummary messages={formErrorMessages} />
         <ScopeChoices
           label="Ordering channels"
           options={MENU_CHANNELS}
@@ -176,7 +189,11 @@ export const MenuAvailabilityDialog = ({
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" loading={updateMenu.isPending}>
+          <Button
+            type="submit"
+            loading={updateMenu.isPending}
+            disabled={updateMenu.isPending}
+          >
             Save availability
           </Button>
         </div>

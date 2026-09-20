@@ -4,8 +4,10 @@ import { db } from "@/db";
 import { paymentWebhookEvents } from "@/db/schema";
 import { razorpayWebhookService } from "./razorpay-webhook.service";
 import { metrics } from "@/core/observability/metrics";
+import { createLogger, toError } from "@/core/logger/logger";
 
 import { RAZORPAY_WEBHOOK_QUEUE } from "./constants";
+const logger = createLogger({}, "razorpay-webhook-worker");
 const queueUrl = process.env["REDIS_URL"];
 
 const recoverDurableEvents = async () => {
@@ -67,14 +69,16 @@ export const startRazorpayWebhookWorker = () => {
           metrics.increment("servora_payment_webhook_failures_total", {
             stage: "worker",
           });
-          console.error(`[Razorpay Worker] Failed event ${eventId}`, error);
+          logger.error("razorpay_worker.event_failed", toError(error), {
+            eventId,
+          });
         }
       } catch (error) {
         if (!stopped) {
           metrics.increment("servora_payment_webhook_failures_total", {
             stage: "queue",
           });
-          console.error("[Razorpay Worker] Redis error", error);
+          logger.error("razorpay_worker.redis_error", toError(error));
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
@@ -83,11 +87,14 @@ export const startRazorpayWebhookWorker = () => {
 
   recoveryTimer = setInterval(() => {
     void recoverDurableEvents().catch((error) =>
-      console.error("[Razorpay Worker] Recovery scan failed", error),
+      logger.error("razorpay_worker.recovery_scan_failed", toError(error)),
     );
   }, 30_000);
   void recoverDurableEvents().catch((error) =>
-    console.error("[Razorpay Worker] Initial recovery scan failed", error),
+    logger.error(
+      "razorpay_worker.initial_recovery_scan_failed",
+      toError(error),
+    ),
   );
   void run();
 

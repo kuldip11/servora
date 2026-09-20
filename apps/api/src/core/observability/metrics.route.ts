@@ -2,6 +2,12 @@ import { Elysia } from "elysia";
 import { timingSafeEqual } from "crypto";
 import { env } from "@/config/env";
 import { metrics } from "./metrics";
+import { createApiErrorResponse } from "@/core/errors";
+import { randomUUID } from "node:crypto";
+import {
+  apiErrorResponseSchema,
+  prometheusMetricsResponseSchema,
+} from "@pos/contracts";
 
 const tokenMatches = (value: string | undefined): boolean => {
   const prefix = "Bearer ";
@@ -16,9 +22,20 @@ export const metricsRouter = new Elysia().get(
   ({ headers, set }) => {
     if (!tokenMatches(headers.authorization)) {
       set.status = 404;
-      return "Not Found";
+      return createApiErrorResponse({
+        code: "ROUTE_NOT_FOUND",
+        message: "The requested API endpoint was not found.",
+        statusCode: 404,
+        requestId: headers["x-request-id"] ?? randomUUID(),
+      });
     }
     set.headers["content-type"] = "text/plain; version=0.0.4; charset=utf-8";
     return metrics.renderPrometheus();
+  },
+  {
+    response: {
+      200: prometheusMetricsResponseSchema,
+      404: apiErrorResponseSchema,
+    },
   },
 );

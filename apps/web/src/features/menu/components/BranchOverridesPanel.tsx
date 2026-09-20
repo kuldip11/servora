@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { MENU_ITEM_STATUS_OPTIONS } from "@/features/menu/constants";
 import { useBranches } from "@/features/branches/hooks/useBranches";
 import { useMenuItemBranchOverrides } from "@/features/menu/hooks/useMenuItemBranchOverrides";
 import { useSaveBranchOverride } from "@/features/menu/hooks/useSaveBranchOverride";
 import { useResetBranchOverride } from "@/features/menu/hooks/useResetBranchOverride";
-import type { MenuItemBranchOverride, MenuItemStatus } from "@pos/types";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import {
+  type BranchOverrideDraft,
+  validateBranchOverrideDraft,
+} from "@/features/menu/helpers/branch-override-form";
+import type { MenuItemBranchOverride } from "@pos/types";
 
 interface Props {
   itemId: string;
@@ -14,26 +27,17 @@ interface Props {
   basePrepTimeMinutes: number | null;
 }
 
-interface RowDraft {
-  price: string;
-  taxRate: string;
-  prepTimeMinutes: string;
-  status: MenuItemStatus | "";
-  isHidden: boolean;
-  availabilityReason: string;
-}
-
-const toDraft = (o: MenuItemBranchOverride | undefined): RowDraft => {
-  return {
-    price: o?.price != null ? String(o.price) : "",
-    taxRate: o?.taxRate != null ? String(o.taxRate) : "",
-    prepTimeMinutes:
-      o?.prepTimeMinutes != null ? String(o.prepTimeMinutes) : "",
-    status: o?.status ?? "",
-    isHidden: o?.isHidden ?? false,
-    availabilityReason: o?.availabilityReason ?? "",
-  };
-};
+const toDraft = (
+  override: MenuItemBranchOverride | undefined,
+): BranchOverrideDraft => ({
+  price: override?.price != null ? String(override.price) : "",
+  taxRate: override?.taxRate != null ? String(override.taxRate) : "",
+  prepTimeMinutes:
+    override?.prepTimeMinutes != null ? String(override.prepTimeMinutes) : "",
+  status: override?.status ?? "",
+  isHidden: override?.isHidden ?? false,
+  availabilityReason: override?.availabilityReason ?? "",
+});
 
 export const BranchOverridesPanel = ({
   itemId,
@@ -41,53 +45,103 @@ export const BranchOverridesPanel = ({
   baseTaxRate,
   basePrepTimeMinutes,
 }: Props) => {
-  const { data: branches } = useBranches();
-  const { data: overrides, isLoading } = useMenuItemBranchOverrides(itemId);
-
-  const overrideByBranch = new Map(
-    (overrides ?? []).map((o) => [o.branchId, o]),
-  );
-
+  const branchesQuery = useBranches();
+  const overridesQuery = useMenuItemBranchOverrides(itemId);
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<RowDraft>(toDraft(undefined));
+  const [draft, setDraft] = useState<BranchOverrideDraft>(toDraft(undefined));
+  const {
+    fieldErrors,
+    formErrorMessages,
+    clearErrors,
+    clearFieldError,
+    fieldError,
+    touchField,
+    markSubmitted,
+    resetValidation,
+    handleApiError,
+  } = useLocalFormApiErrors();
 
   const saveMutation = useSaveBranchOverride(itemId);
   const resetMutation = useResetBranchOverride(itemId);
+  const clientErrors = useMemo(
+    () => validateBranchOverrideDraft(draft),
+    [draft],
+  );
+  const dependencyFailed =
+    (branchesQuery.isError && !branchesQuery.data) ||
+    (overridesQuery.isError && !overridesQuery.data);
 
-  if (isLoading)
+  if (branchesQuery.isLoading || overridesQuery.isLoading) {
     return <p className="text-xs text-text-disabled">Loading branches…</p>;
-  if (!branches?.length)
+  }
+
+  if (dependencyFailed) {
+    return (
+      <QueryErrorState
+        title="Unable to load branch overrides"
+        description="Branches or existing overrides could not be loaded. Retry before editing branch-specific pricing or availability."
+        onRetry={() =>
+          void Promise.all([branchesQuery.refetch(), overridesQuery.refetch()])
+        }
+        isRetrying={branchesQuery.isFetching || overridesQuery.isFetching}
+      />
+    );
+  }
+
+  const branches = branchesQuery.data ?? [];
+  const overrides = overridesQuery.data ?? [];
+  const overrideByBranch = new Map(
+    overrides.map((override) => [override.branchId, override]),
+  );
+
+  if (!branches.length) {
     return (
       <p className="text-xs text-text-disabled">No branches set up yet.</p>
     );
+  }
 
   return (
     <div>
-      <label className="text-sm font-medium text-text-primary mb-1.5 block">
+      <label className="mb-1.5 block text-sm font-medium text-text-primary">
         Per-branch overrides{" "}
         <span className="font-normal text-text-disabled">
           (price, tax, prep time, status, or hide — leave blank to use the
           default above)
         </span>
       </label>
+      {(branchesQuery.isError || overridesQuery.isError) && (
+        <StaleDataBanner
+          message="Branch override data could not be refreshed. Showing the latest cached configuration."
+          onRetry={() =>
+            void Promise.all([
+              branchesQuery.refetch(),
+              overridesQuery.refetch(),
+            ])
+          }
+          isRetrying={branchesQuery.isFetching || overridesQuery.isFetching}
+        />
+      )}
       <div className="space-y-1.5">
-        {branches.map((b) => {
-          const override = overrideByBranch.get(b.id);
-          const isEditing = editingBranchId === b.id;
+        {branches.map((branch) => {
+          const override = overrideByBranch.get(branch.id);
+          const isEditing = editingBranchId === branch.id;
           return (
-            <div key={b.id} className="border border-border rounded-md p-2.5">
+            <div
+              key={branch.id}
+              className="rounded-md border border-border p-2.5"
+            >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm font-medium text-text-primary truncate">
-                    {b.name}
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-medium text-text-primary">
+                    {branch.name}
                   </span>
                   {override && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary-surface text-primary font-medium">
+                    <span className="rounded bg-primary-surface px-1.5 py-0.5 text-[11px] font-medium text-primary">
                       Overridden
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-text-secondary shrink-0">
+                <div className="flex shrink-0 items-center gap-3 text-xs text-text-secondary">
                   {!isEditing && (
                     <>
                       <span>
@@ -97,24 +151,27 @@ export const BranchOverridesPanel = ({
                         {override?.isHidden
                           ? "Hidden"
                           : MENU_ITEM_STATUS_OPTIONS.find(
-                              (o) => o.value === (override?.status ?? "ACTIVE"),
+                              (option) =>
+                                option.value === (override?.status ?? "ACTIVE"),
                             )?.label}
                       </span>
                       {override && (
                         <button
                           type="button"
-                          onClick={() => resetMutation.mutate(b.id)}
-                          className="text-text-disabled hover:text-danger"
+                          disabled={resetMutation.isPending}
+                          onClick={() => resetMutation.mutate(branch.id)}
+                          className="text-text-disabled hover:text-danger disabled:opacity-40"
                           title="Reset to default"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
+                          <RotateCcw className="h-3.5 w-3.5" />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => {
+                          resetValidation();
                           setDraft(toDraft(override));
-                          setEditingBranchId(b.id);
+                          setEditingBranchId(branch.id);
                         }}
                         className="font-medium text-primary hover:text-primary-hover"
                       >
@@ -127,110 +184,160 @@ export const BranchOverridesPanel = ({
 
               {isEditing && (
                 <div className="mt-2 space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input
+                  <FormErrorSummary messages={formErrorMessages} />
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <Input
                       type="number"
                       min="0"
                       step="0.01"
                       placeholder={`Price: ₹${basePrice}`}
                       value={draft.price}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, price: e.target.value }))
-                      }
+                      error={fieldError("price", clientErrors.price)}
+                      onBlur={() => touchField("price")}
+                      onChange={(event) => {
+                        clearFieldError("price");
+                        setDraft((current) => ({
+                          ...current,
+                          price: event.target.value,
+                        }));
+                      }}
                       aria-label="Branch price override"
-                      className="w-28 px-2 py-1.5 text-sm border border-border rounded-md"
                     />
-                    <input
+                    <Input
                       type="number"
                       min="0"
+                      max="100"
                       step="0.01"
                       placeholder={`Tax %: ${baseTaxRate}`}
                       value={draft.taxRate}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, taxRate: e.target.value }))
-                      }
+                      error={fieldError("taxRate", clientErrors.taxRate)}
+                      onBlur={() => touchField("taxRate")}
+                      onChange={(event) => {
+                        clearFieldError("taxRate");
+                        setDraft((current) => ({
+                          ...current,
+                          taxRate: event.target.value,
+                        }));
+                      }}
                       aria-label="Branch tax rate override"
-                      className="w-24 px-2 py-1.5 text-sm border border-border rounded-md"
                     />
-                    <input
+                    <Input
                       type="number"
                       min="0"
                       step="1"
                       placeholder={`Prep min: ${basePrepTimeMinutes ?? "-"}`}
                       value={draft.prepTimeMinutes}
-                      onChange={(e) =>
-                        setDraft((d) => ({
-                          ...d,
-                          prepTimeMinutes: e.target.value,
-                        }))
-                      }
+                      error={fieldError(
+                        "prepTimeMinutes",
+                        clientErrors.prepTimeMinutes,
+                      )}
+                      onBlur={() => touchField("prepTimeMinutes")}
+                      onChange={(event) => {
+                        clearFieldError("prepTimeMinutes");
+                        setDraft((current) => ({
+                          ...current,
+                          prepTimeMinutes: event.target.value,
+                        }));
+                      }}
                       aria-label="Branch prep time override (minutes)"
-                      className="w-28 px-2 py-1.5 text-sm border border-border rounded-md"
                     />
-                    <select
+                    <Select
+                      aria-label="Branch status override"
                       value={draft.status}
-                      onChange={(e) =>
-                        setDraft((d) => ({
-                          ...d,
-                          status: e.target.value as MenuItemStatus | "",
-                        }))
-                      }
-                      className="px-2 py-1.5 text-sm border border-border rounded-md"
-                    >
-                      <option value="">Default status</option>
-                      {MENU_ITEM_STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      error={fieldErrors.status}
+                      onChange={(event) => {
+                        clearFieldError("status");
+                        setDraft((current) => ({
+                          ...current,
+                          status: event.target
+                            .value as BranchOverrideDraft["status"],
+                        }));
+                      }}
+                      options={[
+                        { value: "", label: "Default status" },
+                        ...MENU_ITEM_STATUS_OPTIONS.map((option) => ({
+                          value: option.value,
+                          label: option.label,
+                        })),
+                      ]}
+                    />
                     <label className="flex items-center gap-1.5 text-xs text-text-secondary">
                       <input
                         type="checkbox"
                         checked={draft.isHidden}
-                        onChange={(e) =>
-                          setDraft((d) => ({
-                            ...d,
-                            isHidden: e.target.checked,
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            isHidden: event.target.checked,
                           }))
                         }
                       />
                       Hide at this branch
                     </label>
                   </div>
-                  <input
+                  <Input
                     placeholder="Reason (optional)"
                     value={draft.availabilityReason}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        availabilityReason: e.target.value,
-                      }))
-                    }
+                    error={fieldErrors.availabilityReason}
+                    onChange={(event) => {
+                      clearFieldError("availabilityReason");
+                      setDraft((current) => ({
+                        ...current,
+                        availabilityReason: event.target.value,
+                      }));
+                    }}
                     aria-label="Branch override reason"
-                    className="w-full px-2 py-1.5 text-sm border border-border rounded-md"
                   />
-                  <div className="flex gap-2 justify-end">
-                    <button
+                  <div className="flex justify-end gap-2">
+                    <Button
                       type="button"
-                      onClick={() => setEditingBranchId(null)}
-                      className="text-xs text-text-secondary hover:text-text-primary px-2 py-1"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        resetValidation();
+                        setEditingBranchId(null);
+                      }}
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      onClick={() =>
-                        saveMutation.mutate(
-                          { branchId: b.id, input: draft },
-                          { onSuccess: () => setEditingBranchId(null) },
-                        )
+                      size="sm"
+                      loading={saveMutation.isPending}
+                      disabled={
+                        saveMutation.isPending ||
+                        Object.keys(clientErrors).length > 0
                       }
-                      disabled={saveMutation.isPending}
-                      className="text-xs font-medium text-primary-foreground bg-primary hover:bg-primary-hover disabled:opacity-40 px-3 py-1 rounded-md"
+                      onClick={() => {
+                        markSubmitted();
+                        clearErrors();
+                        if (Object.keys(clientErrors).length) return;
+                        saveMutation.mutate(
+                          { branchId: branch.id, input: draft },
+                          {
+                            onSuccess: () => {
+                              resetValidation();
+                              setEditingBranchId(null);
+                            },
+                            onError: (error) =>
+                              handleApiError(
+                                error,
+                                [
+                                  "price",
+                                  "taxRate",
+                                  "prepTimeMinutes",
+                                  "status",
+                                  "isHidden",
+                                  "availabilityReason",
+                                ],
+                                "Failed to save branch override",
+                              ),
+                          },
+                        );
+                      }}
                     >
-                      {saveMutation.isPending ? "Saving…" : "Save"}
-                    </button>
+                      Save
+                    </Button>
                   </div>
                 </div>
               )}

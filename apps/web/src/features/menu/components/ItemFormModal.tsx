@@ -1,6 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Modal, Input, Select } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Modal,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { FoodTypeDot } from "./FoodTypeDot";
 import {
   MENU_FOOD_TYPE_OPTIONS,
@@ -14,6 +22,7 @@ import { useMenuAllergens } from "@/features/menu/hooks/useMenuAllergens";
 import { useSaveMenuItem } from "@/features/menu/hooks/useSaveMenuItem";
 import { useItemFormWorkflow } from "@/features/menu/hooks/useItemFormWorkflow";
 import { ItemAdvancedOptions } from "./ItemAdvancedOptions";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import type {
   MenuItem,
   FoodType,
@@ -40,9 +49,11 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     setValue,
     watch,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty: formIsDirty, isValid },
   } = useForm<MenuItemFormValues>({
     resolver: zodResolver(menuItemFormSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       name: item?.name ?? "",
       description: item?.description ?? "",
@@ -111,12 +122,35 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     setSelectedTagIds,
     setSelectedAllergenIds,
   } = workflow;
-  const { data: allGroups } = useModifierGroups();
-  const { data: allTags } = useMenuTags();
-  const { data: allAllergens } = useMenuAllergens();
-  const { data: allCategories } = useMenuCategories();
+  const groupsQuery = useModifierGroups();
+  const tagsQuery = useMenuTags();
+  const allergensQuery = useMenuAllergens();
+  const categoriesQuery = useMenuCategories();
+  const allGroups = groupsQuery.data;
+  const allTags = tagsQuery.data;
+  const allAllergens = allergensQuery.data;
+  const allCategories = categoriesQuery.data;
+  const dependencyQueries = [
+    groupsQuery,
+    tagsQuery,
+    allergensQuery,
+    categoriesQuery,
+  ];
+  const advancedDependencyFailed =
+    showAdvanced &&
+    dependencyQueries.some((query) => query.isError && !query.data);
+  const advancedDependencyStale =
+    showAdvanced &&
+    dependencyQueries.some((query) => query.isError && Boolean(query.data));
+  const retryAdvancedDependencies = () => {
+    for (const query of dependencyQueries) {
+      if (query.isError) void query.refetch();
+    }
+  };
 
   const saveMutation = useSaveMenuItem();
+  const formApiErrors = useFormApiErrors<MenuItemFormValues>();
+  const editUnchanged = isEdit && !formIsDirty && !workflow.isDirty;
 
   function handleSave(values: MenuItemFormValues) {
     const parsed = menuItemFormSchema.safeParse({
@@ -222,7 +256,37 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       allergenIds: selectedAllergenIds,
       imageUrls,
     };
-    saveMutation.mutate({ item, payload }, { onSuccess: onClose });
+    saveMutation.mutate(
+      { item, payload },
+      {
+        onSuccess: onClose,
+        onError: (error) =>
+          formApiErrors.handleApiError(
+            error,
+            setError,
+            [
+              "name",
+              "description",
+              "basePrice",
+              "manualCost",
+              "taxRate",
+              "foodType",
+              "spiceLevel",
+              "sku",
+              "prepTimeMinutes",
+              "hsnCode",
+              "status",
+              "availabilityReason",
+              "variants",
+              "imageUrls",
+              "modifierGroupIds",
+              "tagIds",
+              "allergenIds",
+            ],
+            "Failed to save menu item",
+          ),
+      },
+    );
   }
 
   return (
@@ -235,10 +299,15 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       <form
         className="space-y-5"
         noValidate
-        onSubmit={handleSubmit(handleSave)}
+        onSubmit={handleSubmit((values) => {
+          formApiErrors.clearFormErrors();
+          handleSave(values);
+        })}
       >
+        <FormErrorSummary messages={formApiErrors.formErrorMessages} />
         <Input
           label="Item name"
+          required
           placeholder="Chicken Tikka"
           error={errors.name?.message}
           {...register("name")}
@@ -264,6 +333,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Input
             label="Selling price (₹)"
+            required
             type="number"
             min="0"
             step="0.01"
@@ -285,6 +355,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Input
             label="Tax rate (%)"
+            required
             type="number"
             min="0"
             max="100"
@@ -313,7 +384,10 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
               id="item-food-type-label"
               className="text-sm font-medium text-text-primary mb-1.5 block"
             >
-              Food type
+              Food type{" "}
+              <span className="text-danger" aria-hidden="true">
+                *
+              </span>
             </span>
             <div
               role="group"
@@ -325,7 +399,10 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
                   type="button"
                   key={opt.value}
                   onClick={() =>
-                    setValue("foodType", opt.value, { shouldValidate: true })
+                    setValue("foodType", opt.value, {
+                      shouldValidate: true,
+                      shouldTouch: true,
+                    })
                   }
                   className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md border text-xs font-medium transition-colors ${
                     form.foodType === opt.value
@@ -349,6 +426,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Select
             label="Status"
+            required
             error={errors.status?.message}
             {...register("status")}
             options={MENU_ITEM_STATUS_OPTIONS}
@@ -370,7 +448,23 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
           {showAdvanced ? "Hide advanced options" : "Show advanced options"}
         </button>
 
-        {showAdvanced && (
+        {showAdvanced && advancedDependencyFailed ? (
+          <QueryErrorState
+            title="Unable to load advanced menu options"
+            description="Modifier groups, tags, allergens, or categories could not be loaded. Retry before saving advanced changes."
+            onRetry={retryAdvancedDependencies}
+            isRetrying={dependencyQueries.some((query) => query.isFetching)}
+          />
+        ) : null}
+        {showAdvanced && advancedDependencyStale ? (
+          <StaleDataBanner
+            message="Advanced menu options could not be refreshed. Showing cached options; saving is disabled until refreshed."
+            onRetry={retryAdvancedDependencies}
+            isRetrying={dependencyQueries.some((query) => query.isFetching)}
+          />
+        ) : null}
+
+        {showAdvanced && !advancedDependencyFailed && (
           <ItemAdvancedOptions
             item={item}
             form={form}
@@ -389,7 +483,17 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" loading={saveMutation.isPending}>
+          <Button
+            type="submit"
+            loading={saveMutation.isPending}
+            disabled={
+              saveMutation.isPending ||
+              !isValid ||
+              editUnchanged ||
+              advancedDependencyFailed ||
+              advancedDependencyStale
+            }
+          >
             {isEdit ? "Save Changes" : "Add Item"}
           </Button>
         </div>

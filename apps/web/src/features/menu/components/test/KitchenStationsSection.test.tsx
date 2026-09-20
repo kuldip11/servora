@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
@@ -9,17 +9,33 @@ const h = vi.hoisted(() => ({
   delStation: vi.fn(),
 }));
 vi.mock("@/features/menu/hooks/useKitchenStations", () => ({
-  useKitchenStations: () => ({ data: h.stations, isLoading: h.loading }),
+  useKitchenStations: () => ({
+    data: h.stations,
+    isLoading: h.loading,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
   useCreateKitchenStation: () => ({
     isPending: false,
     mutate: h.createStation,
+    mutateAsync: h.createStation,
   }),
-  useDeleteKitchenStation: () => ({ mutate: h.delStation }),
+  useDeleteKitchenStation: () => ({ mutate: h.delStation, isPending: false }),
 }));
 vi.mock("@/config/app-urls", () => ({
   appUrls: { kitchen: "https://kds.test" },
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages }: any) =>
+    messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -40,7 +56,7 @@ describe("KitchenStationsSection", () => {
     h.loading = false;
   });
 
-  it("renders loading/empty states and supports create, links and delete", () => {
+  it("renders loading/empty states and supports create, links and delete", async () => {
     h.loading = true;
     const { rerender } = render(<KitchenStationsSection />);
     expect(screen.getByText(/Loading stations/)).toBeTruthy();
@@ -57,9 +73,8 @@ describe("KitchenStationsSection", () => {
     fireEvent.submit(
       screen.getByRole("button", { name: /Create/ }).closest("form")!,
     );
-    expect(h.createStation).toHaveBeenCalledWith(
-      { name: "Grill" },
-      expect.anything(),
+    await waitFor(() =>
+      expect(h.createStation).toHaveBeenCalledWith({ name: "Grill" }),
     );
 
     h.stations = [

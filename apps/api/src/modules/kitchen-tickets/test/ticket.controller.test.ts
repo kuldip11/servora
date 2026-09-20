@@ -6,6 +6,13 @@ const { getQueueForCurrentBranch, updateStatus } = vi.hoisted(() => ({
 vi.mock("../ticket.service", () => ({
   ticketService: { getQueueForCurrentBranch, updateStatus },
 }));
+
+vi.mock("../ticket.mapper", () => ({
+  toKitchenQueueTicketResponse: (value: unknown) => value,
+}));
+vi.mock("../stations/station.mapper", () => ({
+  toKitchenStationResponse: (value: unknown) => value,
+}));
 import { ticketController } from "@/modules/kitchen-tickets/ticket.controller";
 const auth = { userId: "u1", tenantId: "t1", branchId: "b1" } as any;
 const logger = { info: vi.fn() } as any;

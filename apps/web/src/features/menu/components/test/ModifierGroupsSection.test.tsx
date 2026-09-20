@@ -10,15 +10,32 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/menu/hooks/useModifierGroups", () => ({
-  useModifierGroups: () => ({ data: mocks.groups, isLoading: mocks.loading }),
+  useModifierGroups: () => ({
+    data: mocks.groups,
+    isLoading: mocks.loading,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/menu/hooks/useSaveModifierGroup", () => ({
-  useSaveModifierGroup: () => ({ isPending: false, mutate: mocks.save }),
+  useSaveModifierGroup: () => ({ isPending: false, mutateAsync: mocks.save }),
 }));
 vi.mock("@/features/menu/hooks/useDeleteModifierGroup", () => ({
   useDeleteModifierGroup: () => ({ mutate: mocks.remove }),
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div role="alert">
+      {title}
+      {onRetry ? <button onClick={onRetry}>Retry</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div role="status">{message}</div>,
+  FieldErrorText: ({ id, message }: any) =>
+    message ? <span id={id}>{message}</span> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -125,9 +142,7 @@ describe("ModifierGroupsSection coverage", () => {
     vi.clearAllMocks();
     mocks.groups = groups;
     mocks.loading = false;
-    mocks.save.mockImplementation((_arg: any, options?: any) =>
-      options?.onSuccess?.(),
-    );
+    mocks.save.mockResolvedValue({});
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -191,6 +206,15 @@ describe("ModifierGroupsSection coverage", () => {
       screen.getAllByPlaceholderText("Replaces (e.g. Fries)")[0]!,
       { target: { value: "  Aioli  " } },
     );
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Create Group",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Create Group" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     const arg = mocks.save.mock.calls[0]![0];
@@ -253,6 +277,15 @@ describe("ModifierGroupsSection coverage", () => {
       target: { value: "33333333-3333-4333-8333-333333333333" },
     });
     fireEvent.click(screen.getByLabelText("Remove option 2"));
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Save Changes",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalled());
     expect(mocks.save.mock.calls[0]![0]).toEqual(

@@ -48,9 +48,21 @@ const auth = { tenantId: "tenant-1" } as any;
 describe("approval routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.list.mockReturnValue([{ id: "a1" }]);
-    mocks.upsert.mockResolvedValue({ id: "a1" });
-    mocks.issue.mockResolvedValue({ token: "tok" });
+    const threshold = {
+      id: "00000000-0000-4000-8000-000000000001",
+      tenantId: "00000000-0000-4000-8000-000000000002",
+      actionType: "VOID",
+      thresholdAmount: "42.00",
+      requiresRole: "Manager",
+      createdAt: new Date("2026-09-18T00:00:00.000Z"),
+      updatedAt: new Date("2026-09-18T00:00:00.000Z"),
+    };
+    mocks.list.mockReturnValue([threshold]);
+    mocks.upsert.mockResolvedValue(threshold);
+    mocks.issue.mockResolvedValue({
+      token: "00000000-0000-4000-8000-000000000003",
+      expiresAt: new Date("2026-09-18T00:05:00.000Z"),
+    });
   });
 
   it("registers every approval endpoint and validation schema", () => {
@@ -71,7 +83,17 @@ describe("approval routes", () => {
   it("executes all route handlers and delegates their inputs", async () => {
     expect(await route("GET", "/thresholds").handler({ auth })).toEqual({
       success: true,
-      data: [{ id: "a1" }],
+      data: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          tenantId: "00000000-0000-4000-8000-000000000002",
+          actionType: "VOID",
+          thresholdAmount: "42.00",
+          requiresRole: "Manager",
+          createdAt: "2026-09-18T00:00:00.000Z",
+          updatedAt: "2026-09-18T00:00:00.000Z",
+        },
+      ],
     });
     await route("PUT", "/thresholds/:actionType").handler({
       auth,

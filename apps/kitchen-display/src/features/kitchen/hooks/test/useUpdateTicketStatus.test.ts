@@ -17,6 +17,10 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: mocks.useMutation,
 }));
 vi.mock("@pos/ui", () => ({ toast: mocks.toast }));
+vi.mock("@pos/api-client", () => ({
+  extractApiError: (error: unknown, fallback?: string) =>
+    error instanceof Error ? error.message : (fallback ?? "Unexpected error"),
+}));
 vi.mock("../../api/tickets", () => ({
   updateTicketStatus: mocks.updateTicketStatus,
 }));
@@ -38,9 +42,9 @@ describe("useUpdateTicketStatus", () => {
       title: "Ticket updated",
       tone: "success",
     });
-    options.onError();
+    options.onError(new Error("ticket failed"));
     expect(mocks.toast).toHaveBeenCalledWith({
-      title: "Failed to update ticket",
+      title: "ticket failed",
       tone: "danger",
     });
   });

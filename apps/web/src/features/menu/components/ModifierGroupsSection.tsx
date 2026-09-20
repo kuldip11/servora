@@ -11,6 +11,9 @@ import {
   Select,
   Spinner,
   Badge,
+  FormErrorSummary,
+  QueryErrorState,
+  StaleDataBanner,
 } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils";
 import { useModifierGroups } from "@/features/menu/hooks/useModifierGroups";
@@ -21,6 +24,8 @@ import {
   modifierGroupFormSchema,
   type ModifierGroupFormValues,
 } from "@pos/validation";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
+import type { FieldPath } from "react-hook-form";
 
 const emptyGroup: ModifierGroupFormValues = {
   name: "",
@@ -36,7 +41,8 @@ export const ModifierGroupsSection = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ModifierGroup | null>(null);
 
-  const { data: groups, isLoading } = useModifierGroups();
+  const groupsQuery = useModifierGroups();
+  const groups = groupsQuery.data;
   const saveMutation = useSaveModifierGroup();
   const deleteMutation = useDeleteModifierGroup();
 
@@ -45,23 +51,30 @@ export const ModifierGroupsSection = () => {
     control,
     reset,
     handleSubmit,
-    formState: { errors, isDirty },
+    setError,
+    formState: { errors, isDirty, isValid },
   } = useForm<ModifierGroupFormValues>({
     resolver: zodResolver(modifierGroupFormSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: emptyGroup,
   });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<ModifierGroupFormValues>();
   const { fields, append, remove } = useFieldArray({
     control,
     name: "options",
   });
 
-  function openCreate() {
+  const openCreate = () => {
+    clearFormErrors();
     setEditing(null);
     reset(emptyGroup);
     setShowForm(true);
-  }
+  };
 
-  function openEdit(group: ModifierGroup) {
+  const openEdit = (group: ModifierGroup) => {
+    clearFormErrors();
     setEditing(group);
     reset({
       name: group.name,
@@ -83,9 +96,10 @@ export const ModifierGroupsSection = () => {
         : [{ name: "", additionalPrice: "0", maxQuantity: "1" }],
     });
     setShowForm(true);
-  }
+  };
 
-  function handleSave(values: ModifierGroupFormValues) {
+  const handleSave = async (values: ModifierGroupFormValues) => {
+    clearFormErrors();
     const payload = {
       name: values.name.trim(),
       selectionType: values.selectionType,
@@ -106,16 +120,37 @@ export const ModifierGroupsSection = () => {
           : {}),
       })),
     };
-    saveMutation.mutate(
-      { existingId: editing?.id ?? null, payload },
-      {
-        onSuccess: () => {
-          setShowForm(false);
-          setEditing(null);
-        },
-      },
-    );
-  }
+    try {
+      await saveMutation.mutateAsync({
+        existingId: editing?.id ?? null,
+        payload,
+      });
+      setShowForm(false);
+      setEditing(null);
+    } catch (error) {
+      const optionFields = values.options.flatMap((_, index) => [
+        `options.${index}.name`,
+        `options.${index}.additionalPrice`,
+        `options.${index}.maxQuantity`,
+        `options.${index}.isDefault`,
+        `options.${index}.replacesDefaultComponent`,
+      ]) as FieldPath<ModifierGroupFormValues>[];
+      handleApiError(
+        error,
+        setError,
+        [
+          "name",
+          "selectionType",
+          "groupType",
+          "minSelections",
+          "maxSelections",
+          "dependsOnOptionId",
+          ...optionFields,
+        ],
+        "Failed to save modifier group",
+      );
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -129,12 +164,31 @@ export const ModifierGroupsSection = () => {
             to any item.
           </p>
         </div>
-        <Button size="sm" onClick={openCreate}>
+        <Button
+          size="sm"
+          onClick={openCreate}
+          disabled={groupsQuery.isError && !groups}
+        >
           <Plus className="w-3.5 h-3.5" /> New Group
         </Button>
       </div>
 
-      {isLoading ? (
+      {groupsQuery.isError && groups ? (
+        <StaleDataBanner
+          message="Modifier group refresh failed — showing the last available data."
+          onRetry={() => void groupsQuery.refetch()}
+          isRetrying={groupsQuery.isFetching}
+        />
+      ) : null}
+
+      {groupsQuery.isError && !groups ? (
+        <QueryErrorState
+          title="Unable to load modifier groups"
+          description="Modifier groups could not be loaded. Retry before creating or editing groups."
+          onRetry={() => void groupsQuery.refetch()}
+          isRetrying={groupsQuery.isFetching}
+        />
+      ) : groupsQuery.isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner className="w-5 h-5" />
         </div>
@@ -229,11 +283,13 @@ export const ModifierGroupsSection = () => {
           onSubmit={handleSubmit(handleSave)}
           className="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
         >
+          <FormErrorSummary messages={formErrorMessages} />
           <Input
             label="Group name"
+            required
             placeholder="Choose your sides"
             error={errors.name?.message}
-            {...register("name")}
+            {...register("name", { onChange: clearFormErrors })}
           />
 
           <div className="grid grid-cols-3 gap-3">
@@ -243,12 +299,16 @@ export const ModifierGroupsSection = () => {
               render={({ field }) => (
                 <Select
                   label="Group type"
+                  required
                   value={field.value}
                   options={[
                     { value: "ADDON", label: "Addon" },
                     { value: "SUBSTITUTION", label: "Substitution" },
                   ]}
-                  onChange={field.onChange}
+                  onChange={(value) => {
+                    clearFormErrors();
+                    field.onChange(value);
+                  }}
                 />
               )}
             />
@@ -258,21 +318,26 @@ export const ModifierGroupsSection = () => {
               render={({ field }) => (
                 <Select
                   label="Selection"
+                  required
                   value={field.value}
                   options={[
                     { value: "SINGLE", label: "Pick one" },
                     { value: "MULTIPLE", label: "Pick multiple" },
                   ]}
-                  onChange={field.onChange}
+                  onChange={(value) => {
+                    clearFormErrors();
+                    field.onChange(value);
+                  }}
                 />
               )}
             />
             <Input
               label="Min required"
+              required
               type="number"
               min="0"
               error={errors.minSelections?.message}
-              {...register("minSelections")}
+              {...register("minSelections", { onChange: clearFormErrors })}
             />
             <Input
               label="Max allowed"
@@ -280,7 +345,7 @@ export const ModifierGroupsSection = () => {
               min="1"
               placeholder="No limit — leave blank"
               error={errors.maxSelections?.message}
-              {...register("maxSelections")}
+              {...register("maxSelections", { onChange: clearFormErrors })}
             />
           </div>
           <p className="text-xs text-text-disabled -mt-2">
@@ -305,7 +370,10 @@ export const ModifierGroupsSection = () => {
                       })),
                     ),
                 ]}
-                onChange={(value) => field.onChange(value || null)}
+                onChange={(value) => {
+                  clearFormErrors();
+                  field.onChange(value || null);
+                }}
               />
             )}
           />
@@ -315,36 +383,62 @@ export const ModifierGroupsSection = () => {
               Options
             </p>
             <div className="space-y-2">
+              <div
+                className="hidden items-center gap-2 text-xs font-medium text-text-secondary md:flex"
+                aria-hidden="true"
+              >
+                <span className="flex-1">
+                  Option name <span className="text-danger">*</span>
+                </span>
+                <span className="w-24">
+                  Price <span className="text-danger">*</span>
+                </span>
+                <span className="w-24">
+                  Max qty <span className="text-danger">*</span>
+                </span>
+                <span className="w-8" />
+                <span className="w-[4.25rem]">Default</span>
+                <span className="w-32">Replaces</span>
+              </div>
               {fields.map((field, i) => (
                 <div key={field.id} className="space-y-1">
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
                       <Input
+                        required
                         placeholder="Option name (e.g. Aachar)"
                         aria-label={`Option ${i + 1} name`}
                         error={errors.options?.[i]?.name?.message}
-                        {...register(`options.${i}.name`)}
+                        {...register(`options.${i}.name`, {
+                          onChange: clearFormErrors,
+                        })}
                       />
                     </div>
                     <div className="w-24">
                       <Input
+                        required
                         type="number"
                         min="0"
                         step="0.01"
                         placeholder="₹0"
                         aria-label={`Option ${i + 1} additional price`}
                         error={errors.options?.[i]?.additionalPrice?.message}
-                        {...register(`options.${i}.additionalPrice`)}
+                        {...register(`options.${i}.additionalPrice`, {
+                          onChange: clearFormErrors,
+                        })}
                       />
                     </div>
                     <div className="w-24">
                       <Input
+                        required
                         type="number"
                         min="1"
                         placeholder="Qty"
                         aria-label={`Option ${i + 1} max quantity`}
                         error={errors.options?.[i]?.maxQuantity?.message}
-                        {...register(`options.${i}.maxQuantity`)}
+                        {...register(`options.${i}.maxQuantity`, {
+                          onChange: clearFormErrors,
+                        })}
                       />
                     </div>
                     <button
@@ -358,14 +452,18 @@ export const ModifierGroupsSection = () => {
                     <label className="mt-2 flex items-center gap-1 text-xs">
                       <input
                         type="checkbox"
-                        {...register(`options.${i}.isDefault`)}
+                        {...register(`options.${i}.isDefault`, {
+                          onChange: clearFormErrors,
+                        })}
                       />{" "}
                       Default
                     </label>
                     <div className="w-32">
                       <Input
                         placeholder="Replaces (e.g. Fries)"
-                        {...register(`options.${i}.replacesDefaultComponent`)}
+                        {...register(`options.${i}.replacesDefaultComponent`, {
+                          onChange: clearFormErrors,
+                        })}
                       />
                     </div>
                   </div>
@@ -405,7 +503,12 @@ export const ModifierGroupsSection = () => {
             <Button
               type="submit"
               loading={saveMutation.isPending}
-              disabled={!isDirty && !editing}
+              disabled={
+                !isValid ||
+                !isDirty ||
+                saveMutation.isPending ||
+                (groupsQuery.isError && !groups)
+              }
             >
               {editing ? "Save Changes" : "Create Group"}
             </Button>

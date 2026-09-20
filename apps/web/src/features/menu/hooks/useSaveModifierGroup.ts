@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { notifySuccess } from "@/shared/lib/notify";
 import {
   modifierGroupsService,
   type ModifierGroupPayload,
@@ -23,6 +23,5 @@ export const useSaveModifierGroup = () => {
         existingId ? "Modifier group updated" : "Modifier group created",
       );
     },
-    onError: (err) => notifyError(err, "Failed to save modifier group"),
   });
 };

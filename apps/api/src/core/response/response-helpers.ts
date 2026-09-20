@@ -1,20 +1,14 @@
-export interface SuccessResponse<T> {
-  success: true;
-  data: T;
-}
+import type {
+  PaginatedResponse,
+  PaginationMeta,
+  SuccessResponse,
+} from "@pos/contracts";
 
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
-}
-
-export interface PaginatedResponse<T> {
-  success: true;
-  data: T[];
-  pagination: PaginationMeta;
-}
+export type {
+  PaginatedResponse,
+  PaginationMeta,
+  SuccessResponse,
+} from "@pos/contracts";
 
 export const successResponse = <T>(data: T): SuccessResponse<T> => ({
   success: true,

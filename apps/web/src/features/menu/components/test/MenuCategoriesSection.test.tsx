@@ -49,6 +49,8 @@ vi.mock("@pos/ui", () => ({
       </div>
     ) : null,
   Spinner: () => <span>spinner</span>,
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
 }));
 
 import { MenuCategoriesSection } from "../MenuCategoriesSection";

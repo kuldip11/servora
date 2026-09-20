@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, GitBranch, Plus, Store } from "lucide-react";
-import { Button, Card, Page, PageHeader, Spinner } from "@pos/ui";
+import {
+  Button,
+  Card,
+  Page,
+  PageHeader,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
+} from "@pos/ui";
 import type { OrganizationSummary, Tenant, Branch } from "@pos/types";
 import { businessService } from "@/features/business/services/business.service";
 import { OrganizationModal } from "@/features/business/components/forms/OrganizationModal";
@@ -11,6 +19,7 @@ import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
 import { usePermissions } from "@/shared/auth/permissions";
 import { BusinessOnboardingCard } from "@/features/business/components/BusinessOnboardingCard";
+import { extractApiError } from "@/shared/lib/api-client";
 import {
   BusinessEntityDetails,
   type BusinessBranch,
@@ -49,7 +58,7 @@ export const BusinessPage = () => {
       const organizations = await businessService.organizations();
       const franchiseGroups = await Promise.all(
         organizations.map((organization) =>
-          businessService.franchises(organization.id).catch(() => []),
+          businessService.franchises(organization.id),
         ),
       );
       return { organizations, franchises: franchiseGroups.flat() };
@@ -132,6 +141,26 @@ export const BusinessPage = () => {
       </div>
     );
 
+  if (query.isError && query.data === undefined) {
+    return (
+      <Page>
+        <PageHeader
+          title="Business"
+          description="Manage your Organization → Franchise → Branch hierarchy and operational status."
+        />
+        <QueryErrorState
+          title="Unable to load business structure"
+          description={extractApiError(
+            query.error,
+            "Your business structure could not be loaded. Retry before creating or changing business entities.",
+          )}
+          isRetrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      </Page>
+    );
+  }
+
   return (
     <Page>
       <PageHeader
@@ -154,6 +183,14 @@ export const BusinessPage = () => {
           ) : undefined
         }
       />
+
+      {query.isError ? (
+        <StaleDataBanner
+          message="Business structure refresh failed — showing the latest data available."
+          isRetrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
 
       {onboarding && (
         <BusinessOnboardingCard

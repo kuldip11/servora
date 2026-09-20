@@ -1,21 +1,22 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import {
+  createStaffBodySchema,
+  staffIdParamsSchema,
+  staffListQuerySchema,
+  staffListResponseSchema,
+  staffMemberResponseSchema,
+  staffRemoveResponseSchema,
+  standardErrorResponseSchemas,
+  updateStaffBodySchema,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { staffController } from "./staff.controller";
-import {
-  createStaffBody,
-  updateStaffBody,
-  staffIdParams,
-} from "./staff.validator";
 
 export const staffRouter = new Elysia()
   .use(requireAuthPlugin())
   .get("/api/staff/", ({ auth, query }) => staffController.list(auth, query), {
-    query: t.Object({
-      page: t.Optional(t.Integer({ minimum: 1 })),
-      limit: t.Optional(t.Integer({ minimum: 1, maximum: 100 })),
-      search: t.Optional(t.String({ maxLength: 100 })),
-      status: t.Optional(t.String()),
-    }),
+    query: staffListQuerySchema,
+    response: { 200: staffListResponseSchema, ...standardErrorResponseSchemas },
   })
   .post(
     "/api/staff/",
@@ -23,17 +24,34 @@ export const staffRouter = new Elysia()
       set.status = 201;
       return staffController.create(auth, body);
     },
-    { body: createStaffBody },
+    {
+      body: createStaffBodySchema,
+      response: {
+        201: staffMemberResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/api/staff/:id",
     ({ auth, params, body }) => staffController.update(auth, params.id, body),
-    { params: staffIdParams, body: updateStaffBody },
+    {
+      params: staffIdParamsSchema,
+      body: updateStaffBodySchema,
+      response: {
+        200: staffMemberResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .delete(
     "/api/staff/:id",
     ({ auth, params }) => staffController.remove(auth, params.id),
     {
-      params: staffIdParams,
+      params: staffIdParamsSchema,
+      response: {
+        200: staffRemoveResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

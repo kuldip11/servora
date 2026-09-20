@@ -1,7 +1,7 @@
 import type { AuthContext } from "@/core/auth";
 import { modifierRepository } from "./modifier.repository";
 import { requirePermission } from "@/core/auth";
-import { ValidationError } from "@/core/errors";
+import { ValidationError, InternalError } from "@/core/errors";
 import {
   assertMenuResourceBranch,
   resolveMenuBranch,
@@ -136,7 +136,8 @@ export const modifierService = {
       branchId,
       options: input.options?.map(withStringPrice),
     });
-    if (!created) throw new Error("Modifier group could not be created");
+    if (!created)
+      throw new InternalError("Modifier group could not be created");
     await menuChangeLog.record(
       auth,
       "MODIFIER_GROUP",

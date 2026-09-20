@@ -46,4 +46,20 @@ describe("SelectMenu", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Required");
   });
+  it("marks required menu selects visually and semantically", () => {
+    render(
+      <SelectMenu
+        label="Choice"
+        required
+        options={options}
+        value={undefined}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByText("*")).toBeVisible();
+    expect(screen.getByRole("combobox", { name: /Choice/ })).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
 });

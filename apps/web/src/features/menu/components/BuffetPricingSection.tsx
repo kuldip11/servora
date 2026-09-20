@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
+import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import type { PriceRule } from "@pos/types";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
@@ -13,11 +13,11 @@ export const BuffetPricingSection = () => {
   const [tier, setTier] = useState<"" | "ADULT" | "CHILD">("");
   const [price, setPrice] = useState("");
   const key = ["menu", "per-cover-price-rules"];
-  const { data: allRules = [] } = useQuery<PriceRule[]>({
+  const rulesQuery = useQuery<PriceRule[]>({
     queryKey: key,
     queryFn: () => menuApi.listPriceRulesFor<PriceRule>(),
   });
-  const rules = allRules.filter((rule) => rule.isPerCover);
+  const rules = (rulesQuery.data ?? []).filter((rule) => rule.isPerCover);
   const save = useMutation({
     mutationFn: () =>
       menuApi.createPriceRule<PriceRule>({
@@ -36,6 +36,7 @@ export const BuffetPricingSection = () => {
   const remove = useMutation({
     mutationFn: (id: string) => menuApi.removePriceRule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to remove per-cover rate"),
   });
   return (
     <section className="space-y-4">
@@ -48,6 +49,21 @@ export const BuffetPricingSection = () => {
           lines remain kitchen/inventory records and are excluded from billing.
         </p>
       </div>
+      {rulesQuery.isError && !rulesQuery.data ? (
+        <QueryErrorState
+          title="Unable to load per-cover rates"
+          description="Pricing rules could not be loaded. Retry before changing buffet pricing."
+          onRetry={() => void rulesQuery.refetch()}
+          isRetrying={rulesQuery.isFetching}
+        />
+      ) : null}
+      {rulesQuery.isError && rulesQuery.data ? (
+        <StaleDataBanner
+          message="Per-cover rates could not be refreshed. Showing cached pricing."
+          onRetry={() => void rulesQuery.refetch()}
+          isRetrying={rulesQuery.isFetching}
+        />
+      ) : null}
       <div className="grid max-w-xl grid-cols-2 gap-2">
         <label className="text-sm font-medium text-text-primary">
           Cover tier
@@ -63,6 +79,7 @@ export const BuffetPricingSection = () => {
         </label>
         <Input
           label="Rate per cover"
+          required
           type="number"
           min="0"
           step="0.01"
@@ -71,7 +88,12 @@ export const BuffetPricingSection = () => {
         />
         <Button
           type="button"
-          disabled={!price}
+          disabled={
+            !price ||
+            !Number.isFinite(Number(price)) ||
+            Number(price) < 0 ||
+            (rulesQuery.isError && !rulesQuery.data)
+          }
           loading={save.isPending}
           onClick={() => save.mutate()}
         >

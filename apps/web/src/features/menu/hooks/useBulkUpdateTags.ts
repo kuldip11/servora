@@ -19,6 +19,6 @@ export const useBulkUpdateTags = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Updated tags on ${data.updated} item(s)`);
     },
-    onError: () => notifyError(undefined, "Failed to update tags"),
+    onError: (error) => notifyError(error, "Failed to update tags"),
   });
 };

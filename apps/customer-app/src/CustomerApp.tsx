@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Skeleton } from "@pos/ui";
+import { Skeleton, StaleDataBanner } from "@pos/ui";
 import { CartView } from "./features/cart/CartView";
 import { useCustomerCart } from "./features/cart/useCustomerCart";
 import { ComboCustomization } from "./features/menu/ComboCustomization";
@@ -22,6 +22,9 @@ export const CustomerApp = () => {
     setCart,
     placedOrder,
     setPlacedOrder,
+    activeOrderError,
+    activeOrderRefreshing,
+    retryActiveOrder,
     loading,
     setLoading,
     error,
@@ -123,21 +126,41 @@ export const CustomerApp = () => {
   }
   if (!session) return null;
 
+  if (activeOrderError && !placedOrder) {
+    return (
+      <StatusScreen
+        title="We can't refresh your order"
+        message={activeOrderError}
+        actionLabel="Try again"
+        onAction={retryActiveOrder}
+      />
+    );
+  }
+
   if (view === "order" && placedOrder) {
     return (
-      <OrderStatus
-        order={placedOrder}
-        mode={session.mode}
-        table={session.table ?? "Takeaway"}
-        estimatedTime={session.estimatedTime}
-        onMenu={handleMenu}
-        live={live}
-        onRequest={requestHelp}
-        requestBusy={requestBusy}
-        requestMessage={requestMessage}
-        onPay={checkout.retryTakeawayPayment}
-        payBusy={loading}
-      />
+      <>
+        {activeOrderError ? (
+          <StaleDataBanner
+            message="Order status could not be refreshed — showing the latest order information available."
+            isRetrying={activeOrderRefreshing}
+            onRetry={retryActiveOrder}
+          />
+        ) : null}
+        <OrderStatus
+          order={placedOrder}
+          mode={session.mode}
+          table={session.table ?? "Takeaway"}
+          estimatedTime={session.estimatedTime}
+          onMenu={handleMenu}
+          live={live}
+          onRequest={requestHelp}
+          requestBusy={requestBusy}
+          requestMessage={requestMessage}
+          onPay={checkout.retryTakeawayPayment}
+          payBusy={loading}
+        />
+      </>
     );
   }
 

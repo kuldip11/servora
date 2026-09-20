@@ -1,9 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Input, Select } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
 import { usePromotionFormState } from "@/features/menu/hooks/usePromotionFormState";
+import { notifyError } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validatePromotionForm } from "@/features/menu/helpers/promotion-form";
 
 const menuApi = createMenuApi(apiClient);
 import type {
@@ -12,22 +22,25 @@ import type {
 } from "@pos/types";
 
 function PromotionStats({ id }: { id: string }) {
-  const { data } = useQuery<PromotionStatsData>({
+  const statsQuery = useQuery<PromotionStatsData>({
     queryKey: ["menu", "promotions", id, "stats"],
     queryFn: () => menuApi.promotionStats<PromotionStatsData>(id),
   });
   return (
     <span>
-      {data
-        ? `${data.uses} uses · ${Number(data.discountAmount).toFixed(2)} discounted`
-        : "Loading stats…"}
+      {statsQuery.data
+        ? `${statsQuery.data.uses} uses · ${Number(statsQuery.data.discountAmount).toFixed(2)} discounted`
+        : statsQuery.isError
+          ? "Stats unavailable"
+          : "Loading stats…"}
     </span>
   );
 }
 
 export const PromotionsSection = () => {
   const queryClient = useQueryClient();
-  const { data: categories = [] } = useMenuCategories();
+  const categoriesQuery = useMenuCategories();
+  const categories = categoriesQuery.data ?? [];
   const categoryOptions = categories.map((category) => ({
     value: category.id,
     label: category.name,
@@ -62,6 +75,8 @@ export const PromotionsSection = () => {
     stackableWithLoyalty,
     beginEdit,
     resetAfterSave,
+    cancelEdit,
+    isDirty,
     setName,
     setRuleType,
     setScope,
@@ -82,13 +97,24 @@ export const PromotionsSection = () => {
     setRewardQuantity,
     setRewardDiscountPercent,
     setStackableWithLoyalty,
-    setEditingId,
   } = usePromotionFormState();
   const key = ["menu", "promotions"];
-  const { data: promotions = [] } = useQuery<Promotion[]>({
+  const promotionsQuery = useQuery<Promotion[]>({
     queryKey: key,
     queryFn: () => menuApi.listPromotionsFor<Promotion>(),
   });
+  const promotions = promotionsQuery.data;
+  const {
+    fieldErrors,
+    formErrorMessages,
+    clearErrors,
+    clearFieldError,
+    fieldError,
+    touchField,
+    markSubmitted,
+    resetValidation,
+    handleApiError,
+  } = useLocalFormApiErrors();
   const create = useMutation({
     mutationFn: () => {
       const payload = {
@@ -131,6 +157,7 @@ export const PromotionsSection = () => {
         : menuApi.createPromotion<Promotion>(payload);
     },
     onSuccess: () => {
+      resetValidation();
       queryClient.invalidateQueries({ queryKey: key });
       resetAfterSave();
     },
@@ -139,22 +166,40 @@ export const PromotionsSection = () => {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       menuApi.updatePromotion<Promotion>(id, { isActive }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to update promotion"),
   });
   const remove = useMutation({
     mutationFn: (id: string) => menuApi.removePromotion(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to delete promotion"),
   });
 
-  const bogoValid =
-    ruleType !== "BOGO" ||
-    (triggerId &&
-      Number(triggerQuantity) > 0 &&
-      Number(rewardQuantity) > 0 &&
-      Number(rewardDiscountPercent) > 0 &&
-      (rewardType === "SAME" || rewardId));
-  const ordinaryValid =
-    ruleType === "BOGO" ||
-    (Number(value) > 0 && (scope === "ORDER" || targetId));
+  const clientErrors = validatePromotionForm({
+    name,
+    ruleType,
+    scope,
+    value,
+    targetId,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    maxUsesTotal,
+    maxUsesPerCustomer,
+    triggerId,
+    rewardType,
+    rewardId,
+    triggerQuantity,
+    rewardQuantity,
+    rewardDiscountPercent,
+  });
+  const formInvalid = Object.keys(clientErrors).length > 0;
+  const categoryDependencyRequired =
+    ruleType === "BOGO" || scope === "CATEGORY" || scope === "ITEM";
+  const categoryDependencyFailed =
+    categoryDependencyRequired &&
+    categoriesQuery.isError &&
+    !categoriesQuery.data;
 
   return (
     <div className="space-y-5">
@@ -167,14 +212,54 @@ export const PromotionsSection = () => {
           are committed transactionally and loyalty stacking is explicit.
         </p>
       </div>
+      {promotionsQuery.isError && !promotions ? (
+        <QueryErrorState
+          title="Unable to load promotions"
+          description="Promotions could not be loaded. Retry before making promotion changes."
+          onRetry={() => void promotionsQuery.refetch()}
+          isRetrying={promotionsQuery.isFetching}
+        />
+      ) : null}
+      {promotionsQuery.isError && promotions ? (
+        <StaleDataBanner
+          message="Promotion refresh failed — showing the last available promotions."
+          onRetry={() => void promotionsQuery.refetch()}
+          isRetrying={promotionsQuery.isFetching}
+        />
+      ) : null}
+      {categoryDependencyFailed ? (
+        <QueryErrorState
+          title="Unable to load promotion targets"
+          description="Menu items and categories are required to configure the selected promotion. Retry before saving."
+          onRetry={() => void categoriesQuery.refetch()}
+          isRetrying={categoriesQuery.isFetching}
+        />
+      ) : null}
+      {categoriesQuery.isError && categoriesQuery.data ? (
+        <StaleDataBanner
+          message="Menu-item/category refresh failed — promotion targeting uses the last available options."
+          onRetry={() => void categoriesQuery.refetch()}
+          isRetrying={categoriesQuery.isFetching}
+        />
+      ) : null}
       <div className="grid max-w-5xl gap-3 rounded-xl border border-border p-4 md:grid-cols-3">
+        <div className="md:col-span-3">
+          <FormErrorSummary messages={formErrorMessages} />
+        </div>
         <Input
           label="Name"
+          required
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          error={fieldError("name", clientErrors.name)}
+          onBlur={() => touchField("name")}
+          onChange={(e) => {
+            clearFieldError("name");
+            setName(e.target.value);
+          }}
         />
         <Select
           label="Type"
+          required
           value={ruleType}
           onChange={(e) => setRuleType(e.target.value as Promotion["ruleType"])}
           options={[
@@ -186,14 +271,21 @@ export const PromotionsSection = () => {
         {ruleType !== "BOGO" && (
           <Input
             label={ruleType === "PERCENTAGE" ? "Percent off" : "Amount off"}
+            required
             type="number"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            error={fieldError("value", clientErrors.value)}
+            onBlur={() => touchField("value")}
+            onChange={(e) => {
+              clearFieldError("value");
+              setValue(e.target.value);
+            }}
           />
         )}
         {ruleType !== "BOGO" && (
           <Select
             label="Scope"
+            required
             value={scope}
             onChange={(e) => setScope(e.target.value as Promotion["scope"])}
             options={[
@@ -206,6 +298,7 @@ export const PromotionsSection = () => {
         {ruleType !== "BOGO" && scope !== "ORDER" && (
           <Select
             label={scope === "CATEGORY" ? "Category" : "Menu item"}
+            required
             value={targetId}
             options={[
               {
@@ -215,13 +308,19 @@ export const PromotionsSection = () => {
               },
               ...(scope === "CATEGORY" ? categoryOptions : itemOptions),
             ]}
-            onChange={(e) => setTargetId(e.target.value)}
+            error={fieldError("targetId", clientErrors.targetId)}
+            onBlur={() => touchField("targetId")}
+            onChange={(e) => {
+              clearFieldError("targetId");
+              setTargetId(e.target.value);
+            }}
           />
         )}
         {ruleType === "BOGO" && (
           <>
             <Select
               label="Buy target"
+              required
               value={triggerType}
               onChange={(e) =>
                 setTriggerType(e.target.value as "ITEM" | "CATEGORY")
@@ -233,6 +332,7 @@ export const PromotionsSection = () => {
             />
             <Select
               label={triggerType === "ITEM" ? "Buy item" : "Buy category"}
+              required
               value={triggerId}
               options={[
                 {
@@ -244,16 +344,31 @@ export const PromotionsSection = () => {
                 },
                 ...(triggerType === "ITEM" ? itemOptions : categoryOptions),
               ]}
-              onChange={(e) => setTriggerId(e.target.value)}
+              error={fieldError("triggerId", clientErrors.triggerId)}
+              onBlur={() => touchField("triggerId")}
+              onChange={(e) => {
+                clearFieldError("triggerId");
+                setTriggerId(e.target.value);
+              }}
             />
             <Input
               label="Buy quantity"
+              required
               type="number"
               value={triggerQuantity}
-              onChange={(e) => setTriggerQuantity(e.target.value)}
+              error={fieldError(
+                "triggerQuantity",
+                clientErrors.triggerQuantity,
+              )}
+              onBlur={() => touchField("triggerQuantity")}
+              onChange={(e) => {
+                clearFieldError("triggerQuantity");
+                setTriggerQuantity(e.target.value);
+              }}
             />
             <Select
               label="Reward target"
+              required
               value={rewardType}
               onChange={(e) =>
                 setRewardType(e.target.value as "SAME" | "ITEM" | "CATEGORY")
@@ -269,6 +384,7 @@ export const PromotionsSection = () => {
                 label={
                   rewardType === "ITEM" ? "Reward item" : "Reward category"
                 }
+                required
                 value={rewardId}
                 options={[
                   {
@@ -280,27 +396,51 @@ export const PromotionsSection = () => {
                   },
                   ...(rewardType === "ITEM" ? itemOptions : categoryOptions),
                 ]}
-                onChange={(e) => setRewardId(e.target.value)}
+                error={fieldError("rewardId", clientErrors.rewardId)}
+                onBlur={() => touchField("rewardId")}
+                onChange={(e) => {
+                  clearFieldError("rewardId");
+                  setRewardId(e.target.value);
+                }}
               />
             )}
             <Input
               label="Reward quantity"
+              required
               type="number"
               value={rewardQuantity}
-              onChange={(e) => setRewardQuantity(e.target.value)}
+              error={fieldError("rewardQuantity", clientErrors.rewardQuantity)}
+              onBlur={() => touchField("rewardQuantity")}
+              onChange={(e) => {
+                clearFieldError("rewardQuantity");
+                setRewardQuantity(e.target.value);
+              }}
             />
             <Input
               label="Reward discount %"
+              required
               type="number"
               value={rewardDiscountPercent}
-              onChange={(e) => setRewardDiscountPercent(e.target.value)}
+              error={fieldError(
+                "rewardDiscountPercent",
+                clientErrors.rewardDiscountPercent,
+              )}
+              onBlur={() => touchField("rewardDiscountPercent")}
+              onChange={(e) => {
+                clearFieldError("rewardDiscountPercent");
+                setRewardDiscountPercent(e.target.value);
+              }}
             />
           </>
         )}
         <Input
           label="Coupon code (optional)"
           value={couponCode}
-          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+          error={fieldErrors.couponCode}
+          onChange={(e) => {
+            clearFieldError("couponCode");
+            setCouponCode(e.target.value.toUpperCase());
+          }}
         />
         <Input
           label="Start date"
@@ -312,7 +452,12 @@ export const PromotionsSection = () => {
           label="End date"
           type="date"
           value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
+          error={fieldError("endDate", clientErrors.endDate)}
+          onBlur={() => touchField("endDate")}
+          onChange={(e) => {
+            clearFieldError("endDate");
+            setEndDate(e.target.value);
+          }}
         />
         <Input
           label="Start time"
@@ -324,19 +469,37 @@ export const PromotionsSection = () => {
           label="End time"
           type="time"
           value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
+          error={fieldError("endTime", clientErrors.endTime)}
+          onBlur={() => touchField("endTime")}
+          onChange={(e) => {
+            clearFieldError("endTime");
+            setEndTime(e.target.value);
+          }}
         />
         <Input
           label="Max uses total"
           type="number"
           value={maxUsesTotal}
-          onChange={(e) => setMaxUsesTotal(e.target.value)}
+          error={fieldError("maxUsesTotal", clientErrors.maxUsesTotal)}
+          onBlur={() => touchField("maxUsesTotal")}
+          onChange={(e) => {
+            clearFieldError("maxUsesTotal");
+            setMaxUsesTotal(e.target.value);
+          }}
         />
         <Input
           label="Max uses / customer"
           type="number"
           value={maxUsesPerCustomer}
-          onChange={(e) => setMaxUsesPerCustomer(e.target.value)}
+          error={fieldError(
+            "maxUsesPerCustomer",
+            clientErrors.maxUsesPerCustomer,
+          )}
+          onBlur={() => touchField("maxUsesPerCustomer")}
+          onChange={(e) => {
+            clearFieldError("maxUsesPerCustomer");
+            setMaxUsesPerCustomer(e.target.value);
+          }}
         />
         <label className="flex items-center gap-2 text-sm text-text-secondary">
           <input
@@ -348,9 +511,50 @@ export const PromotionsSection = () => {
         </label>
         <div className="flex items-end gap-2">
           <Button
-            disabled={!name.trim() || !bogoValid || !ordinaryValid}
+            disabled={
+              create.isPending ||
+              formInvalid ||
+              !isDirty ||
+              categoryDependencyFailed
+            }
             loading={create.isPending}
-            onClick={() => create.mutate()}
+            onClick={() => {
+              markSubmitted();
+              clearErrors();
+              if (formInvalid || categoryDependencyFailed || !isDirty) return;
+              create.mutate(undefined, {
+                onError: (error) =>
+                  handleApiError(
+                    error,
+                    [
+                      "name",
+                      "value",
+                      "couponCode",
+                      "targetId",
+                      "triggerId",
+                      "rewardId",
+                      "triggerQuantity",
+                      "rewardQuantity",
+                      "rewardDiscountPercent",
+                      "startDate",
+                      "endDate",
+                      "startTime",
+                      "endTime",
+                      "maxUsesTotal",
+                      "maxUsesPerCustomer",
+                    ],
+                    "Failed to save promotion",
+                    {
+                      scopeCategoryId: "targetId",
+                      scopeMenuItemId: "targetId",
+                      triggerMenuItemId: "triggerId",
+                      triggerCategoryId: "triggerId",
+                      rewardMenuItemId: "rewardId",
+                      rewardCategoryId: "rewardId",
+                    },
+                  ),
+              });
+            }}
           >
             {editingId ? "Save promotion" : "Create promotion"}
           </Button>
@@ -358,8 +562,8 @@ export const PromotionsSection = () => {
             <Button
               variant="secondary"
               onClick={() => {
-                setEditingId(null);
-                setName("");
+                resetValidation();
+                cancelEdit();
               }}
             >
               Cancel
@@ -368,7 +572,7 @@ export const PromotionsSection = () => {
         </div>
       </div>
       <div className="space-y-2">
-        {promotions.map((promotion) => (
+        {promotions?.map((promotion) => (
           <div
             key={promotion.id}
             className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3"
@@ -392,7 +596,10 @@ export const PromotionsSection = () => {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => beginEdit(promotion)}
+              onClick={() => {
+                resetValidation();
+                beginEdit(promotion);
+              }}
             >
               Edit
             </Button>

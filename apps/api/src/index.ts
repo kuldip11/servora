@@ -1,8 +1,15 @@
 import { Elysia } from "elysia";
+import {
+  healthResponseSchema,
+  livenessResponseSchema,
+  readinessSuccessResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 
 import { requestContextPlugin } from "./core/context";
+import { queryNormalizationPlugin } from "./core/transport/query-normalization";
 import type { RequestContext } from "./core/context/request-context";
 import { securityHeadersPlugin, rateLimitPlugin } from "./core/security";
 import {
@@ -11,7 +18,7 @@ import {
   frontendTelemetryRouter,
   requestLoggingPlugin,
 } from "./core/observability";
-import { AppError } from "./core/errors";
+import { createApiErrorResponse, handleApiError } from "./core/errors";
 import { rootLogger } from "./core/logger";
 
 import { authRouter, authMeRouter } from "./modules/auth/auth.route";
@@ -52,11 +59,13 @@ import { auditRouter } from "./modules/audit/audit.route";
 import {
   realtimeRouter,
   customerRealtimeRouter,
+  startRealtimeRedisSubscription,
 } from "./modules/realtime/gateway";
 import { customerRouter } from "./modules/customer/customer.route";
 import { customerRequestRouter } from "./modules/customer/customer-requests.route";
 import { razorpayWebhookRouter } from "./modules/billing/razorpay-webhook.route";
 import { startRazorpayWebhookWorker } from "./modules/billing/razorpay-webhook.worker";
+import { startInventoryDeductionWorker } from "./modules/inventory/inventory-deduction.worker";
 import { db, closeDatabaseConnections } from "./db";
 import { sql } from "drizzle-orm";
 import { env } from "./config/env";
@@ -105,111 +114,93 @@ let app = new Elysia()
     }),
   )
   .use(requestContextPlugin())
+  .use(queryNormalizationPlugin())
   .use(securityHeadersPlugin())
   .use(rateLimitPlugin())
   .use(requestLoggingPlugin())
   .use(metricsRouter)
   .use(frontendTelemetryRouter)
 
-  .get("/health", () => ({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    version: env.APP_VERSION,
-  }))
-  .get("/health/live", () => ({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  }))
-  .get("/health/ready", async ({ set }) => {
-    const checks = { database: false, redis: false };
-    const dbStarted = performance.now();
-    try {
-      await db.execute(sql`select 1`);
-      checks.database = true;
-    } catch {
-    } finally {
-      metrics.observeDuration(
-        "servora_db_query_duration_ms",
-        performance.now() - dbStarted,
-        { operation: "readiness" },
-      );
-    }
-    try {
-      checks.redis = (await redis.ping()) === "PONG";
-    } catch {}
-    metrics.setGauge("servora_redis_available", checks.redis ? 1 : 0);
+  .get(
+    "/health",
+    () => ({
+      status: "ok" as const,
+      timestamp: new Date().toISOString(),
+      version: env.APP_VERSION,
+    }),
+    {
+      response: { 200: healthResponseSchema, ...standardErrorResponseSchemas },
+    },
+  )
+  .get(
+    "/health/live",
+    () => ({
+      status: "ok" as const,
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      response: {
+        200: livenessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
+  )
+  .get(
+    "/health/ready",
+    async ({ set, requestContext }) => {
+      const checks = { database: false, redis: false };
+      const dbStarted = performance.now();
+      try {
+        await db.execute(sql`select 1`);
+        checks.database = true;
+      } catch {
+        // Readiness reports the aggregate dependency failure below.
+      } finally {
+        metrics.observeDuration(
+          "servora_db_query_duration_ms",
+          performance.now() - dbStarted,
+          { operation: "readiness" },
+        );
+      }
+      try {
+        checks.redis = (await redis.ping()) === "PONG";
+      } catch {
+        // Readiness reports the aggregate dependency failure below.
+      }
+      metrics.setGauge("servora_redis_available", checks.redis ? 1 : 0);
 
-    if (!checks.database || !checks.redis) {
-      set.status = 503;
+      if (!checks.database || !checks.redis) {
+        set.status = 503;
+        rootLogger.warn("readiness.failed", {
+          requestId: requestContext.requestId,
+          checks,
+        });
+        return createApiErrorResponse({
+          code: "SERVICE_NOT_READY",
+          message:
+            "Servora is temporarily unavailable while required services recover. Please try again.",
+          statusCode: 503,
+          requestId: requestContext.requestId,
+        });
+      }
       return {
-        status: "not_ready",
+        status: "ready" as const,
         checks,
         timestamp: new Date().toISOString(),
       };
-    }
-    return { status: "ready", checks, timestamp: new Date().toISOString() };
-  })
+    },
+    {
+      response: {
+        200: readinessSuccessResponseSchema,
+        503: standardErrorResponseSchemas[503],
+      },
+    },
+  )
   // Error hooks must be registered before route plugins so failures from route
   // handlers and scoped auth derives inherit the shared status-code mapper.
-  .onError((context) => {
-    const { code, error, set } = context;
-    const requestContext =
-      "requestContext" in context
-        ? (context as unknown as { requestContext?: RequestContext })
-            .requestContext
-        : undefined;
-
-    const appError = AppError.unwrap(error);
-    if (appError) {
-      rootLogger.warn(`API Error: ${appError.code}`, {
-        requestId: requestContext?.requestId,
-        statusCode: appError.statusCode,
-        message: appError.message,
-        details: appError.details,
-      });
-      set.status = appError.statusCode;
-      return appError.toJSON();
-    }
-
-    rootLogger.error(
-      `Unhandled API error: ${code}`,
-      error instanceof Error ? error : undefined,
-      { requestId: requestContext?.requestId },
-    );
-
-    if (code === "VALIDATION") {
-      set.status = 400;
-      return {
-        success: false,
-        code: "VALIDATION_ERROR",
-        message: "Invalid request data",
-        details: error.message,
-      };
-    }
-    if (code === "NOT_FOUND") {
-      set.status = 404;
-      return { success: false, code: "NOT_FOUND", message: "Route not found" };
-    }
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "23505"
-    ) {
-      set.status = 409;
-      return {
-        success: false,
-        code: "CONFLICT",
-        message: "The requested resource conflicts with an existing record",
-      };
-    }
-    set.status = 500;
-    return {
-      success: false,
-      code: "INTERNAL_ERROR",
-      message: "Internal server error",
-    };
-  }) as unknown as WidenedElysia;
+  .onError((context) =>
+    handleApiError(context as unknown as Record<string, unknown>),
+  ) as unknown as WidenedElysia;
 
 app = app
   .use(authRouter)
@@ -260,37 +251,48 @@ app = app
   .use(realtimeRouter)
   .use(customerRealtimeRouter) as unknown as WidenedElysia;
 
-const port = env.PORT;
+const startServer = () => {
+  const port = env.PORT;
+  const stopRazorpayWebhookWorker = startRazorpayWebhookWorker();
+  const stopInventoryDeductionWorker = startInventoryDeductionWorker();
+  void startRealtimeRedisSubscription().catch((error) => {
+    rootLogger.error(
+      "realtime.redis_subscription_failed",
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  });
 
-const stopRazorpayWebhookWorker = startRazorpayWebhookWorker();
+  app.listen(port, () => {
+    console.log(`🚀 API running at http://localhost:${port}`);
+    console.log(`📖 Swagger docs at http://localhost:${port}/swagger`);
+  });
 
-app.listen(port, () => {
-  console.log(`🚀 API running at http://localhost:${port}`);
-  console.log(`📖 Swagger docs at http://localhost:${port}/swagger`);
-});
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    rootLogger.info("shutdown.started", { signal });
+    stopRazorpayWebhookWorker();
+    stopInventoryDeductionWorker();
+    try {
+      await Promise.resolve(app.stop());
+    } catch (error) {
+      rootLogger.warn("shutdown.http_stop_failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    await Promise.allSettled([
+      closeRedisConnections(),
+      closeDatabaseConnections(),
+    ]);
+    rootLogger.info("shutdown.complete", { signal });
+  };
 
-let shuttingDown = false;
-
-const shutdown = async (signal: string) => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  rootLogger.info("shutdown.started", { signal });
-  stopRazorpayWebhookWorker();
-  try {
-    await Promise.resolve(app.stop());
-  } catch (error) {
-    rootLogger.warn("shutdown.http_stop_failed", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-  await Promise.allSettled([
-    closeRedisConnections(),
-    closeDatabaseConnections(),
-  ]);
-  rootLogger.info("shutdown.complete", { signal });
+  process.once("SIGINT", () => void shutdown("SIGINT"));
+  process.once("SIGTERM", () => void shutdown("SIGTERM"));
 };
 
-process.once("SIGINT", () => void shutdown("SIGINT"));
-process.once("SIGTERM", () => void shutdown("SIGTERM"));
+if (import.meta.main) startServer();
 
+export { app };
 export type App = typeof app;

@@ -17,4 +17,12 @@ describe("TextArea", () => {
     render(<TextArea label="Notes" error="Required" />);
     expect(screen.getByRole("alert")).toHaveTextContent("Required");
   });
+  it("marks required textareas visually and semantically", () => {
+    render(<TextArea label="Notes" required />);
+    expect(screen.getByText("*")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: /Notes/ })).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
 });

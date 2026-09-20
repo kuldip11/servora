@@ -13,6 +13,7 @@ import {
   useCustomerBootstrap,
 } from "@/features/session/useCustomerBootstrap";
 import { useCustomerPersistence } from "@/features/session/useCustomerPersistence";
+import { extractApiError } from "@pos/api-client";
 
 export type { CustomerSessionState } from "@/features/session/useCustomerBootstrap";
 
@@ -103,6 +104,10 @@ export const useCustomerSession = () => {
     retry: false,
   });
   const placedOrder = orderQuery.data ?? null;
+  const activeOrderError =
+    persistence.placedOrderId && orderQuery.error
+      ? extractApiError(orderQuery.error, "Unable to refresh your order status")
+      : null;
 
   const requestMutation = useMutation({
     mutationFn: (type: CustomerRequestType) => {
@@ -124,9 +129,7 @@ export const useCustomerSession = () => {
         );
       } catch (requestError) {
         setRequestMessage(
-          requestError instanceof Error
-            ? requestError.message
-            : "Could not send request",
+          extractApiError(requestError, "Could not send request"),
         );
       }
     },
@@ -138,13 +141,18 @@ export const useCustomerSession = () => {
     void bootstrapQuery.refetch();
   }, [bootstrapQuery, persistence]);
 
+  const retryActiveOrder = useCallback(() => {
+    void orderQuery.refetch();
+  }, [orderQuery]);
+
   const missingQrError = qrToken
     ? null
     : "Open this page from a restaurant table QR code to start an ordering session.";
   const bootstrapError = bootstrapQuery.error
-    ? bootstrapQuery.error instanceof Error
-      ? bootstrapQuery.error.message
-      : "Unable to load this ordering session"
+    ? extractApiError(
+        bootstrapQuery.error,
+        "Unable to load this ordering session",
+      )
     : null;
 
   return {
@@ -156,6 +164,9 @@ export const useCustomerSession = () => {
     setCart: persistence.setCart,
     placedOrder,
     setPlacedOrder,
+    activeOrderError,
+    activeOrderRefreshing: orderQuery.isFetching,
+    retryActiveOrder,
     loading: isActionLoading || (Boolean(qrToken) && bootstrapQuery.isPending),
     setLoading: setIsActionLoading,
     error: persistence.localError ?? bootstrapError ?? missingQrError,

@@ -19,6 +19,8 @@ vi.mock("@pos/ui", () => ({
       {error && <span>{error}</span>}
     </label>
   ),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Select: ({ label, options = [], error, ...p }: any) => (
     <label>
       {label}
@@ -58,6 +60,8 @@ describe("TableFormModal coverage", () => {
         register={register}
         handleSubmit={handleSubmit as any}
         pending={false}
+        formErrorMessages={[]}
+        submitDisabled={false}
         onClose={close}
         onSubmit={submit}
       />,
@@ -89,6 +93,8 @@ describe("TableFormModal coverage", () => {
         register={register}
         handleSubmit={handleSubmit as any}
         pending
+        formErrorMessages={[]}
+        submitDisabled={false}
         onClose={vi.fn()}
         onSubmit={vi.fn()}
       />,

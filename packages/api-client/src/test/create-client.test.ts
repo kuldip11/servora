@@ -180,6 +180,26 @@ describe("createApiClient response interceptor", () => {
     expect(failure).not.toHaveBeenCalled();
   });
 
+  it("does not refresh authentication endpoint failures", async () => {
+    const harness = makeClientHarness();
+    const failure = vi.fn();
+    createApiClient({
+      baseURL: "/api",
+      timeout: 1000,
+      storage: storage(),
+      onRefreshFailure: failure,
+    });
+    const handler = installedInterceptors(harness).responseRejected;
+
+    for (const url of ["/auth/login", "/auth/signup", "/auth/refresh"]) {
+      const error = { response: { status: 401 }, config: { url } };
+      await expect(handler(error)).rejects.toBe(error);
+    }
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(failure).not.toHaveBeenCalled();
+  });
+
   it("rejects a 401 for the refresh endpoint and an already retried request", async () => {
     const harness = makeClientHarness();
     const failure = vi.fn();

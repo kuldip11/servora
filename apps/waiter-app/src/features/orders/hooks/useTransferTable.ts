@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import { transferOrderTable } from "@/features/orders/api/orders";
+import { extractApiError } from "@pos/api-client";
 import { orderKeys } from "@/features/orders/constants";
 
 export const useTransferTable = (orderId: string) => {
@@ -19,6 +20,10 @@ export const useTransferTable = (orderId: string) => {
       queryClient.invalidateQueries({ queryKey: ["tables"] });
       toast({ title: "Table transferred", tone: "success" });
     },
-    onError: () => toast({ title: "Failed to transfer table", tone: "danger" }),
+    onError: (error) =>
+      toast({
+        title: extractApiError(error, "Failed to transfer table"),
+        tone: "danger",
+      }),
   });
 };

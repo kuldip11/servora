@@ -1,7 +1,7 @@
 import type { FoodType, MenuItemStatus, SpiceLevel } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { requirePermission } from "@/core/auth";
-import { ValidationError } from "@/core/errors";
+import { ValidationError, InternalError } from "@/core/errors";
 import {
   assertMenuResourceBranch,
   resolveMenuBranch,
@@ -219,7 +219,7 @@ export const itemService = {
         price: String(v.price),
       })),
     });
-    if (!created) throw new Error("Menu item could not be created");
+    if (!created) throw new InternalError("Menu item could not be created");
     await menuChangeLog.record(
       auth,
       "MENU_ITEM",
@@ -411,7 +411,9 @@ export const itemService = {
     const existing = await itemRepository.findById(auth.tenantId, itemId);
     if (!existing) throw itemNotFound(itemId);
     assertMenuResourceBranch(auth, existing.branchId);
-    const item = await itemRepository.publish(auth.tenantId, itemId);
+    const published = await itemRepository.publish(auth.tenantId, itemId);
+    if (!published) throw itemNotFound(itemId);
+    const item = await itemRepository.findById(auth.tenantId, itemId);
     if (!item) throw itemNotFound(itemId);
     await menuChangeLog.record(
       auth,
@@ -428,7 +430,9 @@ export const itemService = {
     const existing = await itemRepository.findById(auth.tenantId, itemId);
     if (!existing) throw itemNotFound(itemId);
     assertMenuResourceBranch(auth, existing.branchId);
-    const item = await itemRepository.unpublish(auth.tenantId, itemId);
+    const unpublished = await itemRepository.unpublish(auth.tenantId, itemId);
+    if (!unpublished) throw itemNotFound(itemId);
+    const item = await itemRepository.findById(auth.tenantId, itemId);
     if (!item) throw itemNotFound(itemId);
     await menuChangeLog.record(
       auth,
@@ -450,12 +454,14 @@ export const itemService = {
     const existing = await itemRepository.findById(auth.tenantId, itemId);
     if (!existing) throw itemNotFound(itemId);
     assertMenuResourceBranch(auth, existing.branchId);
-    const item = await itemRepository.updateStatus(
+    const updated = await itemRepository.updateStatus(
       auth.tenantId,
       itemId,
       status,
       reason,
     );
+    if (!updated) throw itemNotFound(itemId);
+    const item = await itemRepository.findById(auth.tenantId, itemId);
     if (!item) throw itemNotFound(itemId);
     await menuChangeLog.record(
       auth,
@@ -477,12 +483,14 @@ export const itemService = {
     const existing = await itemRepository.findById(auth.tenantId, itemId);
     if (!existing) throw itemNotFound(itemId);
     assertMenuResourceBranch(auth, existing.branchId);
-    const item = await itemRepository.updateStatus(
+    const updated = await itemRepository.updateStatus(
       auth.tenantId,
       itemId,
       isAvailable ? "ACTIVE" : "OUT_OF_STOCK",
       reason,
     );
+    if (!updated) throw itemNotFound(itemId);
+    const item = await itemRepository.findById(auth.tenantId, itemId);
     if (!item) throw itemNotFound(itemId);
     await menuChangeLog.record(
       auth,

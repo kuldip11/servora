@@ -11,6 +11,6 @@ export const useDeleteSchedule = (itemId: string) => {
       queryClient.invalidateQueries({
         queryKey: menuKeys.itemSchedules(itemId),
       }),
-    onError: () => notifyError(undefined, "Failed to remove schedule"),
+    onError: (error) => notifyError(error, "Failed to remove schedule"),
   });
 };

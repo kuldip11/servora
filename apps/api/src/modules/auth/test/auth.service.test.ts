@@ -173,7 +173,7 @@ describe("auth service", () => {
         lastName: "B",
       } as any),
     ).resolves.toMatchObject({
-      user: { id: "u1", tenantId: "", branchId: null },
+      user: { id: "u1", tenantId: null, branchId: null },
     });
     expect(createUserWithGlobalOwnerRole).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@example.com", firstName: "A" }),

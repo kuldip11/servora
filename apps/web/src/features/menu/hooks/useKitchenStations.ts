@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { kitchenStationsService } from "@/features/menu/services/kitchen-stations.service";
 import { queryClient } from "@/shared/lib/query-client";
+import { notifyError } from "@/shared/lib/notify";
 
 export const useKitchenStations = () =>
   useQuery({
@@ -25,6 +26,7 @@ export const useDeleteKitchenStation = () => {
     mutationFn: kitchenStationsService.remove,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["kitchen-stations"] }),
+    onError: (error) => notifyError(error, "Failed to delete kitchen station"),
   });
 };
 export const useSetItemStationRoute = (itemId: string) => {
@@ -49,5 +51,6 @@ export const useSetItemStationRoute = (itemId: string) => {
       queryClient.invalidateQueries({
         queryKey: ["kitchen-stations", "routes", itemId],
       }),
+    onError: (error) => notifyError(error, "Failed to update kitchen routing"),
   });
 };

@@ -121,6 +121,7 @@ export const SelectMenu = ({
                 : undefined
             }
             aria-label={label ? undefined : ariaLabel}
+            aria-required={required || undefined}
             aria-invalid={!!error || undefined}
             aria-describedby={describedBy(hintId, errorId, hint, error)}
             onKeyDown={handleTriggerKeyDown}

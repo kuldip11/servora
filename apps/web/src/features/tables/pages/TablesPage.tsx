@@ -14,11 +14,16 @@ import {
   SelectMenu,
   SearchInput,
   FilterBar,
+  QueryErrorState,
+  StaleDataBanner,
 } from "@pos/ui";
 import { useAuthStore } from "@/store/auth";
 import { useBranches } from "@/features/branches/hooks/useBranches";
 import { createTablesApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import { notifyError } from "@/shared/lib/notify";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
 const tablesApi = createTablesApi(apiClient);
 import { useTables } from "@/features/tables/hooks/useTables";
@@ -84,15 +89,23 @@ export const TablesPage = () => {
     handleSubmit,
     reset,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty, isValid },
   } = useForm<TableFormValues>({
     resolver: zodResolver(tableFormSchema),
     defaultValues: EMPTY_TABLE_FORM,
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
 
-  const { data: branches } = useBranches({ enabled: isAggregate });
-  const { data: tables, isLoading } = useTables();
-  const { data: openOrders = [] } = useOrders({ status: "OPEN", limit: 100 });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<TableFormValues>();
+
+  const branchesQuery = useBranches({ enabled: isAggregate });
+  const tablesQuery = useTables();
+  const openOrdersQuery = useOrders({ status: "OPEN", limit: 100 });
+  const branches = branchesQuery.data;
+  const tables = tablesQuery.data;
+  const openOrders = openOrdersQuery.data ?? [];
   useTablesRealtimeSync();
 
   const addMutation = useCreateTable();
@@ -136,7 +149,7 @@ export const TablesPage = () => {
       setTakeawayQr(await tablesApi.getTakeawayQr(branchId));
       setTakeawayQrOpen(true);
     } catch (error) {
-      console.error("Unable to load takeaway QR", error);
+      notifyError(error, "Unable to load takeaway QR");
     } finally {
       setTakeawayQrBusy(false);
     }
@@ -148,23 +161,26 @@ export const TablesPage = () => {
       setTakeawayQrBusy(true);
       setTakeawayQr(await tablesApi.regenerateTakeawayQr(branchId));
     } catch (error) {
-      console.error("Unable to regenerate takeaway QR", error);
+      notifyError(error, "Unable to regenerate takeaway QR");
     } finally {
       setTakeawayQrBusy(false);
     }
   }
 
   function openAdd() {
+    clearFormErrors();
     reset(EMPTY_TABLE_FORM);
     setShowAdd(true);
   }
 
   function closeAdd() {
+    clearFormErrors();
     setShowAdd(false);
     reset(EMPTY_TABLE_FORM);
   }
 
   function openEdit(table: RestaurantTable) {
+    clearFormErrors();
     setEditing(table);
     reset({
       name: table.name,
@@ -175,6 +191,7 @@ export const TablesPage = () => {
   }
 
   function closeEdit() {
+    clearFormErrors();
     setEditing(null);
     reset(EMPTY_TABLE_FORM);
   }
@@ -187,6 +204,10 @@ export const TablesPage = () => {
       ...(values.branchId && { branchId: values.branchId }),
     };
   }
+
+  const tableFormFields = ["name", "capacity", "section", "branchId"] as const;
+  const addDependencyBlocked =
+    isAggregate && (branchesQuery.isLoading || branchesQuery.isError);
 
   return (
     <Page>
@@ -214,6 +235,22 @@ export const TablesPage = () => {
           </>
         }
       />
+
+      {tablesQuery.isError && tables !== undefined ? (
+        <StaleDataBanner
+          message="Tables refresh failed — showing the latest table data available."
+          isRetrying={tablesQuery.isFetching}
+          onRetry={() => void tablesQuery.refetch()}
+        />
+      ) : null}
+
+      {openOrdersQuery.isError ? (
+        <StaleDataBanner
+          message="Open orders are unavailable. Table transfer and merge actions are blocked until they reload."
+          isRetrying={openOrdersQuery.isFetching}
+          onRetry={() => void openOrdersQuery.refetch()}
+        />
+      ) : null}
 
       <Card padding="sm">
         <FilterBar
@@ -273,12 +310,22 @@ export const TablesPage = () => {
         </FilterBar>
       </Card>
 
-      {isLoading ? (
+      {tablesQuery.isLoading ? (
         <Grid columns={{ base: 2, sm: 3, lg: 4 }} gap="md">
           {[0, 1, 2, 3].map((i) => (
             <Card key={i} className="h-40 animate-pulse" />
           ))}
         </Grid>
+      ) : tablesQuery.isError && tables === undefined ? (
+        <QueryErrorState
+          title="Unable to load tables"
+          description={extractApiError(
+            tablesQuery.error,
+            "Tables could not be loaded. Retry before relying on table availability.",
+          )}
+          isRetrying={tablesQuery.isFetching}
+          onRetry={() => void tablesQuery.refetch()}
+        />
       ) : !filteredTables.length ? (
         <EmptyState
           icon={Table2}
@@ -325,8 +372,16 @@ export const TablesPage = () => {
                 statusMutation.mutate({ id, status })
               }
               onShowQr={setQrTable}
-              onTransfer={has("orders:update") ? setTransferSource : undefined}
-              onMerge={has("orders:update") ? setMergeSource : undefined}
+              onTransfer={
+                has("orders:update") && openOrdersQuery.isSuccess
+                  ? setTransferSource
+                  : undefined
+              }
+              onMerge={
+                has("orders:update") && openOrdersQuery.isSuccess
+                  ? setMergeSource
+                  : undefined
+              }
             />
           </div>
         ))
@@ -339,8 +394,16 @@ export const TablesPage = () => {
           }}
           onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
           onShowQr={setQrTable}
-          onTransfer={has("orders:update") ? setTransferSource : undefined}
-          onMerge={has("orders:update") ? setMergeSource : undefined}
+          onTransfer={
+            has("orders:update") && openOrdersQuery.isSuccess
+              ? setTransferSource
+              : undefined
+          }
+          onMerge={
+            has("orders:update") && openOrdersQuery.isSuccess
+              ? setMergeSource
+              : undefined
+          }
         />
       )}
 
@@ -351,16 +414,36 @@ export const TablesPage = () => {
         branches={branches ?? []}
         aggregate={isAggregate}
         errors={errors}
+        formErrorMessages={formErrorMessages}
         register={register}
         handleSubmit={handleSubmit}
         pending={addMutation.isPending}
+        submitDisabled={!isValid || addDependencyBlocked}
+        {...(isAggregate && branchesQuery.isError
+          ? {
+              dependencyError: extractApiError(
+                branchesQuery.error,
+                "Branches could not be loaded. Retry before adding a table.",
+              ),
+              onRetryDependency: () => void branchesQuery.refetch(),
+            }
+          : {})}
         onClose={closeAdd}
         onSubmit={(values) => {
           if (isAggregate && !values.branchId) {
             setError("branchId", { message: "Select a branch" });
             return;
           }
-          addMutation.mutate(toPayload(values), { onSuccess: closeAdd });
+          addMutation.mutate(toPayload(values), {
+            onSuccess: closeAdd,
+            onError: (error) =>
+              handleApiError(
+                error,
+                setError,
+                tableFormFields,
+                "Unable to add table",
+              ),
+          });
         }}
       />
       <TableFormModal
@@ -370,9 +453,11 @@ export const TablesPage = () => {
         branches={branches ?? []}
         aggregate={false}
         errors={errors}
+        formErrorMessages={formErrorMessages}
         register={register}
         handleSubmit={handleSubmit}
         pending={updateMutation.isPending}
+        submitDisabled={!isValid || !isDirty}
         onClose={closeEdit}
         onSubmit={(values) => {
           if (!editing) return;
@@ -386,7 +471,16 @@ export const TablesPage = () => {
                 ...(payload.section && { section: payload.section }),
               },
             },
-            { onSuccess: closeEdit },
+            {
+              onSuccess: closeEdit,
+              onError: (error) =>
+                handleApiError(
+                  error,
+                  setError,
+                  tableFormFields,
+                  "Unable to update table",
+                ),
+            },
           );
         }}
       />

@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { notifySuccess } from "@/shared/lib/notify";
 import {
   inventoryService,
   type StockUpdateInput,
@@ -23,6 +23,5 @@ export const useUpdateInventoryStock = () => {
       });
       notifySuccess("Stock updated");
     },
-    onError: (err) => notifyError(err, "Failed to update stock"),
   });
 };

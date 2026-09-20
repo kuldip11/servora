@@ -15,6 +15,8 @@ const { invalidateQueries, api, customers } = vi.hoisted(() => ({
 let queryData: unknown[] = [];
 
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

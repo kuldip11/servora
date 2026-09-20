@@ -77,12 +77,14 @@ export const ManagerApprovalDialog = ({
         </p>
         <Input
           label="Manager email"
+          required
           type="email"
           value={managerEmail}
           onChange={(event) => setManagerEmail(event.target.value)}
         />
         <Input
           label="Manager password"
+          required
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}

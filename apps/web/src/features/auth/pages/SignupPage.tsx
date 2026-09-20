@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
@@ -7,21 +6,23 @@ import { z } from "zod";
 
 import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
-import { Button, Card, Input, toast } from "@pos/ui";
-import { extractApiError } from "@/shared/lib/api-client";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
+import { Button, Card, FormErrorSummary, Input, toast } from "@pos/ui";
 import { signupSchema } from "@pos/validation";
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
+const signupFieldPaths = [
+  "firstName",
+  "lastName",
+  "email",
+  "password",
+] as const satisfies readonly (keyof SignupFormValues)[];
+
 export const SignupPage = () => {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
-  const [loading, setLoading] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SignupFormValues>({
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       firstName: "",
@@ -29,21 +30,20 @@ export const SignupPage = () => {
       email: "",
       password: "",
     },
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<SignupFormValues>();
 
-  async function handleSignup(form: SignupFormValues) {
-    setLoading(true);
+  const handleSignup = form.handleSubmit(async (values) => {
+    clearFormErrors();
     try {
-      await authService.signup({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        password: form.password,
-      });
+      await authService.signup(values);
 
       const login = await authService.login({
-        email: form.email,
-        password: form.password,
+        email: values.email,
+        password: values.password,
       });
       setAuth(login);
       toast({
@@ -51,12 +51,17 @@ export const SignupPage = () => {
         tone: "success",
       });
       router.navigate({ to: "/business" });
-    } catch (err: unknown) {
-      toast({ title: extractApiError(err), tone: "danger" });
-    } finally {
-      setLoading(false);
+    } catch (error: unknown) {
+      handleApiError(
+        error,
+        form.setError,
+        signupFieldPaths,
+        "Could not create your account",
+      );
     }
-  }
+  });
+
+  const isSubmitting = form.formState.isSubmitting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-surface via-surface to-background flex items-center justify-center p-4">
@@ -72,45 +77,51 @@ export const SignupPage = () => {
         </div>
 
         <Card className="rounded-xl p-8" padding="none">
-          <form
-            onSubmit={handleSubmit(handleSignup)}
-            className="space-y-5"
-            noValidate
-          >
+          <form onSubmit={handleSignup} className="space-y-5" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First name"
+                required
                 placeholder="John"
-                error={errors.firstName?.message}
+                error={form.formState.errors.firstName?.message}
                 autoComplete="given-name"
-                {...register("firstName")}
+                {...form.register("firstName")}
               />
               <Input
                 label="Last name"
+                required
                 placeholder="Doe"
-                error={errors.lastName?.message}
+                error={form.formState.errors.lastName?.message}
                 autoComplete="family-name"
-                {...register("lastName")}
+                {...form.register("lastName")}
               />
             </div>
             <Input
               label="Email address"
+              required
               type="email"
               placeholder="you@restaurant.com"
-              error={errors.email?.message}
+              error={form.formState.errors.email?.message}
               autoComplete="email"
-              {...register("email")}
+              {...form.register("email")}
             />
             <Input
               label="Password"
+              required
               type="password"
               placeholder="Min. 8 characters"
-              error={errors.password?.message}
+              error={form.formState.errors.password?.message}
               autoComplete="new-password"
-              {...register("password")}
+              {...form.register("password")}
             />
-            <Button type="submit" loading={loading} className="w-full mt-2">
-              Create account
+            <FormErrorSummary messages={formErrorMessages} />
+            <Button
+              type="submit"
+              loading={isSubmitting}
+              disabled={!form.formState.isValid || isSubmitting}
+              className="w-full mt-2"
+            >
+              {isSubmitting ? "Creating…" : "Create account"}
             </Button>
           </form>
 

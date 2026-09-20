@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { Button, Input, Modal, SelectMenu } from "@pos/ui";
+import {
+  Button,
+  Input,
+  Modal,
+  QueryErrorState,
+  SelectMenu,
+  StaleDataBanner,
+} from "@pos/ui";
 import { useTables } from "@/features/menu/hooks/useTables";
 import { useTransferTable } from "@/features/orders/hooks/useTransferTable";
+import { extractApiError } from "@pos/api-client";
 
 interface Props {
   open: boolean;
@@ -19,7 +27,8 @@ export const TransferTableDialog = ({
   const [destinationTableId, setDestinationTableId] = useState("");
   const [reason, setReason] = useState("");
   const transferTable = useTransferTable(orderId);
-  const { data: tables = [] } = useTables(open);
+  const tablesQuery = useTables(open);
+  const tables = tablesQuery.data ?? [];
 
   const close = () => {
     setDestinationTableId("");
@@ -30,33 +39,53 @@ export const TransferTableDialog = ({
   return (
     <Modal open={open} onClose={close} title="Transfer table">
       <div className="space-y-4">
-        <SelectMenu
-          label="Destination"
-          placeholder="Select an available table"
-          value={destinationTableId || undefined}
-          onChange={setDestinationTableId}
-          className="min-h-11 rounded-xl"
-          options={tables
-            .filter((table) => table.id !== currentTableId)
-            .sort((left, right) =>
-              left.status === right.status
-                ? left.name.localeCompare(right.name)
-                : left.status === "AVAILABLE"
-                  ? -1
-                  : 1,
-            )
-            .map((table) => ({
-              value: table.id,
-              label: table.name,
-              description:
-                table.status === "AVAILABLE"
-                  ? `${table.capacity} seats`
-                  : table.status.charAt(0) +
-                    table.status.slice(1).toLowerCase(),
-              group: table.status === "AVAILABLE" ? "Available" : "Unavailable",
-              disabled: table.status !== "AVAILABLE",
-            }))}
-        />
+        {tablesQuery.isError && tablesQuery.data ? (
+          <StaleDataBanner
+            message="Table availability refresh failed — showing the latest table data available."
+            isRetrying={tablesQuery.isFetching}
+            onRetry={() => void tablesQuery.refetch()}
+          />
+        ) : null}
+        {tablesQuery.isError && !tablesQuery.data ? (
+          <QueryErrorState
+            title="Unable to load tables"
+            description={extractApiError(
+              tablesQuery.error,
+              "Could not load transfer destinations.",
+            )}
+            isRetrying={tablesQuery.isFetching}
+            onRetry={() => void tablesQuery.refetch()}
+          />
+        ) : (
+          <SelectMenu
+            label="Destination"
+            placeholder="Select an available table"
+            value={destinationTableId || undefined}
+            onChange={setDestinationTableId}
+            className="min-h-11 rounded-xl"
+            options={tables
+              .filter((table) => table.id !== currentTableId)
+              .sort((left, right) =>
+                left.status === right.status
+                  ? left.name.localeCompare(right.name)
+                  : left.status === "AVAILABLE"
+                    ? -1
+                    : 1,
+              )
+              .map((table) => ({
+                value: table.id,
+                label: table.name,
+                description:
+                  table.status === "AVAILABLE"
+                    ? `${table.capacity} seats`
+                    : table.status.charAt(0) +
+                      table.status.slice(1).toLowerCase(),
+                group:
+                  table.status === "AVAILABLE" ? "Available" : "Unavailable",
+                disabled: table.status !== "AVAILABLE",
+              }))}
+          />
+        )}
         <Input
           label="Reason (optional)"
           value={reason}
@@ -67,7 +96,7 @@ export const TransferTableDialog = ({
             Cancel
           </Button>
           <Button
-            disabled={!destinationTableId}
+            disabled={!destinationTableId || tablesQuery.isError}
             loading={transferTable.isPending}
             onClick={() =>
               transferTable.mutate(

@@ -1,5 +1,10 @@
 import type { RealtimeClientConfig } from "./types";
 
+const isTypedMessage = (value: unknown): value is { type: string } =>
+  typeof value === "object" &&
+  value !== null &&
+  typeof (value as Record<string, unknown>)["type"] === "string";
+
 export interface RealtimeClient<E extends { type: string }> {
   subscribe(handler: (event: E) => void): () => void;
   isConnected(): boolean;
@@ -56,13 +61,16 @@ export function createRealtimeClient<E extends { type: string }>(
 
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data) as E & { type: string };
-        if (message.type === "connected") {
+        const parsed: unknown = JSON.parse(event.data);
+        if (!isTypedMessage(parsed)) return;
+        if (parsed.type === "connected") {
           setConnected(true);
           return;
         }
-        handlers.forEach((handler) => handler(message));
-      } catch {}
+        handlers.forEach((handler) => handler(parsed as E));
+      } catch {
+        // Ignore malformed/untrusted realtime frames; the connection remains usable.
+      }
     };
 
     ws.onclose = () => {

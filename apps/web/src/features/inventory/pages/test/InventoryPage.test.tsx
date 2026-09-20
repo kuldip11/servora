@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   has: vi.fn(),
   items: { current: {} as any },
-  low: { current: [] as any[] },
+  low: { current: {} as any },
   branches: { current: [] as any[] },
   transactions: { current: [] as any[] },
   reasons: { current: [] as any[] },
@@ -30,13 +30,19 @@ vi.mock("@/features/branches/hooks/useBranches", () => ({
 }));
 vi.mock("@/features/inventory/hooks/useInventoryItems", () => ({
   useInventoryItems: () => mocks.items.current,
-  useLowStockItems: () => ({ data: mocks.low.current }),
+  useLowStockItems: () => mocks.low.current,
 }));
 vi.mock("@/features/inventory/hooks/useAddInventoryItem", () => ({
-  useAddInventoryItem: () => ({ mutate: mocks.add, isPending: false }),
+  useAddInventoryItem: () => ({
+    mutateAsync: async (value: any) => mocks.add(value),
+    isPending: false,
+  }),
 }));
 vi.mock("@/features/inventory/hooks/useUpdateInventoryStock", () => ({
-  useUpdateInventoryStock: () => ({ mutate: mocks.update, isPending: false }),
+  useUpdateInventoryStock: () => ({
+    mutateAsync: async (value: any) => mocks.update(value),
+    isPending: false,
+  }),
 }));
 vi.mock("@/features/inventory/hooks/useInventoryRealtimeSync", () => ({
   useInventoryRealtimeSync: mocks.realtime,
@@ -67,6 +73,8 @@ vi.mock("lucide-react", () => ({
   MoreHorizontal: () => null,
 }));
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -122,6 +130,19 @@ vi.mock("@pos/ui", () => ({
     </header>
   ),
   Grid: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div role="alert">
+      <span>{title}</span>
+      <span>{description}</span>
+      {onRetry ? <button onClick={onRetry}>retry-query</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div role="status">
+      <span>{message}</span>
+      {onRetry ? <button onClick={onRetry}>retry-stale</button> : null}
+    </div>
+  ),
   FilterBar: ({ children, onClearAll }: any) => (
     <div>
       {children}
@@ -216,8 +237,16 @@ describe("InventoryPage coverage", () => {
     mocks.items.current = {
       data: { items: [item, item2], pagination: { total: 52 } },
       isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
     };
-    mocks.low.current = [item];
+    mocks.low.current = {
+      data: [item],
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
     mocks.branches.current = [{ id: "b1", name: "Central" }];
     mocks.transactions.current = [
       {
@@ -296,10 +325,12 @@ describe("InventoryPage coverage", () => {
     fireEvent.change(screen.getByLabelText("Quantity"), {
       target: { value: "4" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    const updateButton = screen.getByRole("button", { name: "Update" });
+    await waitFor(() =>
+      expect((updateButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(updateButton);
     await waitFor(() => expect(mocks.update).toHaveBeenCalled());
-    const updateOptions = mocks.update.mock.calls.at(-1)?.[1];
-    act(() => updateOptions.onSuccess());
   });
   it("adds items and handles waste and recipe impact flows", async () => {
     render(<InventoryPage />);
@@ -307,12 +338,14 @@ describe("InventoryPage coverage", () => {
     fireEvent.change(screen.getByLabelText("Item name"), {
       target: { value: "Oil" },
     });
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Add Item" }).at(-1)!,
+    const addButton = screen
+      .getAllByRole("button", { name: "Add Item" })
+      .at(-1)!;
+    await waitFor(() =>
+      expect((addButton as HTMLButtonElement).disabled).toBe(false),
     );
+    fireEvent.click(addButton);
     await waitFor(() => expect(mocks.add).toHaveBeenCalled());
-    const addOptions = mocks.add.mock.calls.at(-1)?.[1];
-    act(() => addOptions.onSuccess());
     fireEvent.click(screen.getAllByRole("button", { name: "Log waste" })[0]!);
     expect(
       screen.getByRole("heading", { name: "Log Waste: Chicken" }),
@@ -430,5 +463,29 @@ describe("InventoryPage coverage", () => {
     expect(
       screen.getByRole("heading", { name: "Add Inventory Item" }),
     ).toBeTruthy();
+  });
+  it("does not turn failed inventory or low-stock reads into healthy empty values", () => {
+    mocks.items.current = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("inventory unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+    mocks.low.current = {
+      data: undefined,
+      isError: true,
+      error: new Error("low stock unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+
+    render(<InventoryPage />);
+
+    expect(screen.getByText("Unable to load inventory")).toBeTruthy();
+    expect(screen.getAllByText(/Unavailable/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Do not interpret the KPI as zero/)).toBeTruthy();
+    expect(screen.queryByText("No inventory items")).toBeNull();
   });
 });

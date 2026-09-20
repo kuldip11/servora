@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Input } from "@pos/ui";
+import {
+  Button,
+  Card,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import { ShieldCheck } from "lucide-react";
 import { createApprovalsApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import { notifySuccess } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validateApprovalThreshold } from "@/features/settings/helpers/settings-validation";
 
 const approvalsApi = createApprovalsApi(apiClient);
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 
 type ApprovalAction = "VOID" | "COMP";
 type ThresholdRow = {
@@ -28,23 +37,22 @@ export const ApprovalThresholdSettingsCard = () => {
   const queryKey = useMemo(() => ["approval-thresholds"] as const, []);
   const [drafts, setDrafts] =
     useState<Record<ApprovalAction, ThresholdDraft>>(DEFAULTS);
-
+  const formErrors = useLocalFormApiErrors();
   const touchedRef = useRef<Record<ApprovalAction, boolean>>({
     VOID: false,
     COMP: false,
   });
 
-  const { data: thresholds } = useQuery<ThresholdRow[]>({
+  const thresholdsQuery = useQuery<ThresholdRow[]>({
     queryKey,
     queryFn: () => approvalsApi.listThresholds<ThresholdRow>(),
   });
 
   useEffect(() => {
-    if (!thresholds) return;
-
+    if (!thresholdsQuery.data) return;
     setDrafts((current) => {
       const next = { ...current };
-      for (const row of thresholds) {
+      for (const row of thresholdsQuery.data) {
         if (touchedRef.current[row.actionType]) continue;
         next[row.actionType] = {
           thresholdAmount: String(row.thresholdAmount),
@@ -53,7 +61,7 @@ export const ApprovalThresholdSettingsCard = () => {
       }
       return next;
     });
-  }, [thresholds]);
+  }, [thresholdsQuery.data]);
 
   const save = useMutation({
     mutationFn: async ({
@@ -62,34 +70,44 @@ export const ApprovalThresholdSettingsCard = () => {
     }: {
       actionType: ApprovalAction;
       draft: ThresholdDraft;
-    }) => {
-      const thresholdAmount = Number(draft.thresholdAmount);
-      if (!Number.isFinite(thresholdAmount) || thresholdAmount < 0)
-        throw new Error("Threshold must be zero or greater");
-      if (!draft.requiresRole.trim())
-        throw new Error("Approval role is required");
-      return approvalsApi.setThreshold<ThresholdRow>(actionType, {
-        thresholdAmount,
+    }) =>
+      approvalsApi.setThreshold<ThresholdRow>(actionType, {
+        thresholdAmount: Number(draft.thresholdAmount),
         requiresRole: draft.requiresRole.trim(),
-      });
-    },
+      }),
     onSuccess: (_response, variables) => {
+      formErrors.resetValidation();
       touchedRef.current[variables.actionType] = false;
       void queryClient.invalidateQueries({ queryKey });
       notifySuccess(
         `${variables.actionType === "VOID" ? "Void" : "Comp"} approval threshold updated`,
       );
     },
-    onError: (error) =>
-      notifyError(error, "Failed to update manager approval threshold"),
   });
 
-  function update(actionType: ApprovalAction, patch: Partial<ThresholdDraft>) {
+  const update = (
+    actionType: ApprovalAction,
+    patch: Partial<ThresholdDraft>,
+  ) => {
+    for (const field of Object.keys(patch)) formErrors.clearFieldError(field);
     touchedRef.current[actionType] = true;
     setDrafts((current) => ({
       ...current,
       [actionType]: { ...current[actionType], ...patch },
     }));
+  };
+
+  if (thresholdsQuery.isError && !thresholdsQuery.data) {
+    return (
+      <Card>
+        <QueryErrorState
+          title="Unable to load approval thresholds"
+          description="Void and comp approval thresholds could not be loaded. Retry before changing approval policy."
+          onRetry={() => void thresholdsQuery.refetch()}
+          isRetrying={thresholdsQuery.isFetching}
+        />
+      </Card>
+    );
   }
 
   return (
@@ -108,9 +126,40 @@ export const ApprovalThresholdSettingsCard = () => {
           </p>
         </div>
       </div>
+      {thresholdsQuery.isError && thresholdsQuery.data ? (
+        <StaleDataBanner
+          message="Approval thresholds could not be refreshed. Showing the latest cached policy."
+          onRetry={() => void thresholdsQuery.refetch()}
+          isRetrying={thresholdsQuery.isFetching}
+        />
+      ) : null}
+      <FormErrorSummary
+        messages={formErrors.formErrorMessages}
+        className="mb-3"
+      />
       <div className="space-y-5">
         {(["VOID", "COMP"] as const).map((actionType) => {
           const draft = drafts[actionType];
+          const clientErrors = validateApprovalThreshold(draft);
+          const isCurrentErrorAction =
+            save.variables?.actionType === actionType;
+          const thresholdError =
+            (isCurrentErrorAction
+              ? formErrors.fieldErrors.thresholdAmount
+              : undefined) ??
+            formErrors.clientError(
+              `${actionType}.thresholdAmount`,
+              clientErrors.thresholdAmount,
+            );
+          const roleError =
+            (isCurrentErrorAction
+              ? formErrors.fieldErrors.requiresRole
+              : undefined) ??
+            formErrors.clientError(
+              `${actionType}.requiresRole`,
+              clientErrors.requiresRole,
+            );
+          const isDirty = touchedRef.current[actionType];
           return (
             <div
               key={actionType}
@@ -126,27 +175,52 @@ export const ApprovalThresholdSettingsCard = () => {
                   min="0"
                   step="0.01"
                   value={draft.thresholdAmount}
-                  onChange={(event) =>
-                    update(actionType, { thresholdAmount: event.target.value })
+                  error={thresholdError}
+                  onBlur={() =>
+                    formErrors.touchField(`${actionType}.thresholdAmount`)
                   }
+                  onChange={(event) => {
+                    if (isCurrentErrorAction)
+                      formErrors.clearFieldError("thresholdAmount");
+                    update(actionType, { thresholdAmount: event.target.value });
+                  }}
                 />
                 <Input
                   label="Required role"
                   value={draft.requiresRole}
-                  onChange={(event) =>
-                    update(actionType, { requiresRole: event.target.value })
+                  error={roleError}
+                  onBlur={() =>
+                    formErrors.touchField(`${actionType}.requiresRole`)
                   }
+                  onChange={(event) => {
+                    if (isCurrentErrorAction)
+                      formErrors.clearFieldError("requiresRole");
+                    update(actionType, { requiresRole: event.target.value });
+                  }}
                   placeholder="Manager"
                 />
                 <Button
                   loading={
                     save.isPending && save.variables?.actionType === actionType
                   }
-                  disabled={
-                    !draft.requiresRole.trim() ||
-                    Number(draft.thresholdAmount) < 0
-                  }
-                  onClick={() => save.mutate({ actionType, draft })}
+                  disabled={save.isPending || !isDirty}
+                  onClick={() => {
+                    formErrors.touchField(`${actionType}.thresholdAmount`);
+                    formErrors.touchField(`${actionType}.requiresRole`);
+                    formErrors.clearErrors();
+                    if (!isDirty || Object.keys(clientErrors).length) return;
+                    save.mutate(
+                      { actionType, draft },
+                      {
+                        onError: (error) =>
+                          formErrors.handleApiError(
+                            error,
+                            ["thresholdAmount", "requiresRole"],
+                            "Failed to update manager approval threshold",
+                          ),
+                      },
+                    );
+                  }}
                 >
                   Save
                 </Button>

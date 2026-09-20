@@ -8,6 +8,9 @@ export * from "./components/Spinner";
 export * from "./components/EmptyState";
 export * from "./components/AppErrorBoundary";
 export * from "./components/ConnectivityBanner";
+export * from "./components/QueryErrorState";
+export * from "./components/StaleDataBanner";
+export * from "./components/FormErrorSummary";
 export * from "./components/StatCard";
 export * from "./theme/ThemeProvider";
 
@@ -24,6 +27,7 @@ export * from "./components/form/TextInput";
 export * from "./components/form/TextArea";
 export * from "./components/form/SearchInput";
 export * from "./components/form/PasswordInput";
+export * from "./components/form/FieldErrorText";
 
 export type { SelectOption } from "./components/selection/shared";
 export * from "./components/selection/SelectMenu";

@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { extractApiFieldErrors } from "@pos/api-client";
 import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { tablesService } from "@/features/tables/services/tables.service";
@@ -18,6 +19,9 @@ export const useUpdateTable = () => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all });
       notifySuccess("Table updated");
     },
-    onError: (err) => notifyError(err, "Failed to update table"),
+    onError: (err) => {
+      if (!Object.keys(extractApiFieldErrors(err)).length)
+        notifyError(err, "Failed to update table");
+    },
   });
 };

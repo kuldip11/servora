@@ -16,6 +16,8 @@ import {
   Table,
   type Column,
   type StatusTone,
+  QueryErrorState,
+  StaleDataBanner,
 } from "@pos/ui";
 import { useBranches } from "@/features/branches/hooks/useBranches";
 import { useStaff } from "@/features/staff/hooks/useStaff";
@@ -35,6 +37,7 @@ import { AddStaffForm } from "@/features/staff/components/forms/AddStaffForm";
 import { EditStaffForm } from "@/features/staff/components/forms/EditStaffForm";
 import { RoleManager } from "@/features/staff/components/roles/RoleManager";
 import { useStaffPageState } from "@/features/staff/hooks/useStaffPageState";
+import { extractApiError } from "@/shared/lib/api-client";
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: "success",
@@ -71,17 +74,20 @@ export const StaffPage = () => {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const { data: staffResult, isLoading } = useStaff({
+  const staffQuery = useStaff({
     page,
     limit: pageSize,
     search: debouncedSearch,
     status: statusFilter,
   });
+  const staffResult = staffQuery.data;
   const staff = staffResult?.items ?? [];
   const staffTotal = staffResult?.pagination.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(staffTotal / pageSize));
-  const { data: rolesData } = useRoles();
-  const { data: branches } = useBranches();
+  const rolesQuery = useRoles();
+  const branchesQuery = useBranches();
+  const rolesData = rolesQuery.data;
+  const branches = branchesQuery.data;
 
   const addMutation = useAddStaff();
   const deleteMutation = useDeleteStaff();
@@ -104,7 +110,6 @@ export const StaffPage = () => {
       notifySuccess("Staff member updated");
       setEditing(null);
     },
-    onError: (err) => notifyError(err, "Failed to update staff"),
   });
 
   const columns: Column<StaffRow>[] = [
@@ -226,7 +231,11 @@ export const StaffPage = () => {
     <Page>
       <PageHeader
         title="Staff"
-        description={`${staffTotal.toLocaleString()} team members`}
+        description={
+          staffQuery.isError && staffResult === undefined
+            ? "Team data is currently unavailable"
+            : `${staffTotal.toLocaleString()} team members`
+        }
         actions={
           activeTab === "team" &&
           has("staff:create") && (
@@ -237,6 +246,14 @@ export const StaffPage = () => {
           )
         }
       />
+
+      {staffQuery.isError && staffResult !== undefined ? (
+        <StaleDataBanner
+          message="Staff refresh failed — showing the latest team data available."
+          isRetrying={staffQuery.isFetching}
+          onRetry={() => void staffQuery.refetch()}
+        />
+      ) : null}
 
       <div className="flex gap-1 border-b border-border">
         {(["team", "roles"] as const).map((tab) => (
@@ -282,13 +299,25 @@ export const StaffPage = () => {
         </Card>
       )}
 
-      {activeTab === "team" && (
+      {activeTab === "team" &&
+      staffQuery.isError &&
+      staffResult === undefined ? (
+        <QueryErrorState
+          title="Unable to load staff"
+          description={extractApiError(
+            staffQuery.error,
+            "Staff could not be loaded. Retry before relying on the team list.",
+          )}
+          isRetrying={staffQuery.isFetching}
+          onRetry={() => void staffQuery.refetch()}
+        />
+      ) : activeTab === "team" ? (
         <Card padding="none" className="overflow-hidden">
           <Table
             columns={columns}
             data={staff}
             getRowId={(member) => member.id}
-            loading={isLoading}
+            loading={staffQuery.isLoading}
             maxHeight="min(55vh, 36rem)"
             emptyIcon={Users}
             emptyTitle="No staff members"
@@ -311,15 +340,27 @@ export const StaffPage = () => {
             onPageSizeChange={setPageSize}
           />
         </Card>
-      )}
+      ) : null}
 
-      {activeTab === "roles" && (
+      {activeTab === "roles" &&
+      rolesQuery.isError &&
+      rolesData === undefined ? (
+        <QueryErrorState
+          title="Unable to load roles"
+          description={extractApiError(
+            rolesQuery.error,
+            "Roles and permissions could not be loaded.",
+          )}
+          isRetrying={rolesQuery.isFetching}
+          onRetry={() => void rolesQuery.refetch()}
+        />
+      ) : activeTab === "roles" ? (
         <RoleManager
           roles={rolesData ?? []}
           canManage={has("roles:create")}
           canManagePermissions={has("roles:assign_permissions")}
         />
-      )}
+      ) : null}
 
       <Modal
         open={showAdd}
@@ -331,9 +372,10 @@ export const StaffPage = () => {
           branches={branches ?? []}
           loading={addMutation.isPending}
           onCancel={() => setShowAdd(false)}
-          onSubmit={(values) =>
-            addMutation.mutate(values, { onSuccess: () => setShowAdd(false) })
-          }
+          onSubmit={async (values) => {
+            await addMutation.mutateAsync(values);
+            setShowAdd(false);
+          }}
         />
       </Modal>
 
@@ -348,9 +390,9 @@ export const StaffPage = () => {
             roles={rolesData ?? []}
             branches={branches ?? []}
             onCancel={() => setEditing(null)}
-            onSubmit={(input) =>
-              updateMutation.mutate({ id: editing.id, input })
-            }
+            onSubmit={async (input) => {
+              await updateMutation.mutateAsync({ id: editing.id, input });
+            }}
             loading={updateMutation.isPending}
           />
         )}

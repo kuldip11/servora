@@ -99,7 +99,7 @@ describe("ImportWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Excel template/ }));
     await waitFor(() =>
       expect(h.notifyError).toHaveBeenCalledWith(
-        undefined,
+        expect.any(Error),
         "Failed to download template",
       ),
     );
@@ -131,7 +131,7 @@ describe("ImportWizard", () => {
       target: { files: [new File(["x"], "bad.csv")] },
     });
     await waitFor(() =>
-      expect(screen.getByText(/Click to upload/)).toBeTruthy(),
+      expect(screen.queryByText(/Click to upload/)).toBeNull(),
     );
 
     h.validateMutate.mockImplementation((_file: any, opts: any) =>

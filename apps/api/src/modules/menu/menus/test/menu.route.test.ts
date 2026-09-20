@@ -86,6 +86,7 @@ describe("menusRouter coverage", () => {
     await route("POST", "/api/menu/menus/").handler({
       auth,
       body: { name: "M" },
+      set: {},
     });
     await route("GET", "/api/menu/menus/:id/schedules").handler({
       auth,
@@ -95,6 +96,7 @@ describe("menusRouter coverage", () => {
       auth,
       params: { id: "m1" },
       body: { scheduleType: "DAILY" },
+      set: {},
     });
     await route("DELETE", "/api/menu/menus/schedules/:id").handler({
       auth,

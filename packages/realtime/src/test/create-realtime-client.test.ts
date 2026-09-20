@@ -91,6 +91,8 @@ describe("createRealtimeClient", () => {
     });
     client.subscribe(handler);
     FakeWebSocket.instances[0]!.message("{not-json");
+    FakeWebSocket.instances[0]!.message(null);
+    FakeWebSocket.instances[0]!.message({ id: "missing-type" });
     expect(handler).not.toHaveBeenCalled();
   });
 

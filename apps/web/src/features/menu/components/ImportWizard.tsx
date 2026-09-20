@@ -53,8 +53,8 @@ export const ImportWizard = ({ onClose }: Props) => {
   async function downloadTemplate(format: "csv" | "xlsx") {
     try {
       await menuImportService.downloadTemplate(format);
-    } catch {
-      notifyError(undefined, "Failed to download template");
+    } catch (error) {
+      notifyError(error, "Failed to download template");
     }
   }
 
@@ -65,7 +65,7 @@ export const ImportWizard = ({ onClose }: Props) => {
     setResult(null);
     validateMutation.mutate(f, {
       onSuccess: (data) => setResult(data),
-      onError: () => setFile(null),
+      onError: () => setResult(null),
     });
   }
 

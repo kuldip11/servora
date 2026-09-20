@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Input, Select } from "@pos/ui";
-import { createCustomersApi } from "@pos/api-client";
-import { createMenuApi } from "@pos/api-client";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import { createCustomersApi, createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
+import { notifyError } from "@/shared/lib/notify";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import {
+  validateLoyaltyCustomerDraft,
+  validateLoyaltyTierDraft,
+} from "@/features/menu/helpers/loyalty-form";
 import type { CustomerLoyaltyTier, LoyaltyCustomer } from "@pos/types";
 
+const menuApi = createMenuApi(apiClient);
 const customersApi = createCustomersApi(apiClient);
 
 export const LoyaltySection = () => {
@@ -21,23 +32,47 @@ export const LoyaltySection = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerTierId, setCustomerTierId] = useState("");
-  const { data: tiers = [] } = useQuery<CustomerLoyaltyTier[]>({
+
+  const tiersQuery = useQuery<CustomerLoyaltyTier[]>({
     queryKey: ["loyalty", "tiers"],
     queryFn: () => menuApi.listLoyaltyTiers<CustomerLoyaltyTier>(),
   });
-  const { data: customers = [] } = useQuery<LoyaltyCustomer[]>({
+  const customersQuery = useQuery<LoyaltyCustomer[]>({
     queryKey: ["loyalty", "customers"],
     queryFn: customersApi.list,
   });
+
+  const tierErrors = useLocalFormApiErrors();
+  const customerErrors = useLocalFormApiErrors();
+  const tierClientErrors = useMemo(
+    () =>
+      validateLoyaltyTierDraft({
+        name: tierName,
+        discountType,
+        discountValue,
+      }),
+    [discountType, discountValue, tierName],
+  );
+  const customerClientErrors = useMemo(
+    () =>
+      validateLoyaltyCustomerDraft({
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail,
+      }),
+    [customerEmail, customerName, customerPhone],
+  );
+
   const createTier = useMutation({
     mutationFn: () =>
       menuApi.createLoyaltyTier<CustomerLoyaltyTier>({
-        name: tierName,
+        name: tierName.trim(),
         ...(discountType === "PERCENT"
           ? { discountPercent: Number(discountValue) }
           : { discountFixed: Number(discountValue) }),
       }),
     onSuccess: () => {
+      tierErrors.resetValidation();
       qc.invalidateQueries({ queryKey: ["loyalty"] });
       setTierName("");
     },
@@ -45,16 +80,18 @@ export const LoyaltySection = () => {
   const createCustomer = useMutation({
     mutationFn: () =>
       customersApi.create({
-        name: customerName,
-        ...(customerPhone ? { phone: customerPhone } : {}),
-        ...(customerEmail ? { email: customerEmail } : {}),
+        name: customerName.trim(),
+        ...(customerPhone.trim() ? { phone: customerPhone.trim() } : {}),
+        ...(customerEmail.trim() ? { email: customerEmail.trim() } : {}),
         ...(customerTierId ? { loyaltyTierId: customerTierId } : {}),
       }),
     onSuccess: () => {
+      customerErrors.resetValidation();
       qc.invalidateQueries({ queryKey: ["loyalty", "customers"] });
       setCustomerName("");
       setCustomerPhone("");
       setCustomerEmail("");
+      setCustomerTierId("");
     },
   });
   const assign = useMutation({
@@ -67,11 +104,33 @@ export const LoyaltySection = () => {
     }) => customersApi.assignTier(id, loyaltyTierId),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["loyalty", "customers"] }),
+    onError: (error) =>
+      notifyError(error, "Failed to update customer loyalty tier"),
   });
   const removeTier = useMutation({
     mutationFn: (id: string) => menuApi.removeLoyaltyTier(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["loyalty"] }),
+    onError: (error) => notifyError(error, "Failed to delete loyalty tier"),
   });
+
+  const dependencyFailed =
+    (tiersQuery.isError && !tiersQuery.data) ||
+    (customersQuery.isError && !customersQuery.data);
+  if (dependencyFailed) {
+    return (
+      <QueryErrorState
+        title="Unable to load loyalty configuration"
+        description="Loyalty tiers or customers could not be loaded. Retry before making loyalty changes so missing records are not treated as an empty configuration."
+        onRetry={() =>
+          void Promise.all([tiersQuery.refetch(), customersQuery.refetch()])
+        }
+        isRetrying={tiersQuery.isFetching || customersQuery.isFetching}
+      />
+    );
+  }
+
+  const tiers = tiersQuery.data ?? [];
+  const customers = customersQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -83,17 +142,38 @@ export const LoyaltySection = () => {
           discount wins.
         </p>
       </div>
+
+      {(tiersQuery.isError || customersQuery.isError) && (
+        <StaleDataBanner
+          message="Loyalty data could not be refreshed. Showing the latest cached tiers and customers."
+          onRetry={() =>
+            void Promise.all([tiersQuery.refetch(), customersQuery.refetch()])
+          }
+          isRetrying={tiersQuery.isFetching || customersQuery.isFetching}
+        />
+      )}
+
       <div className="grid gap-3 rounded-xl border border-border p-4 md:grid-cols-4">
+        <div className="md:col-span-4">
+          <FormErrorSummary messages={tierErrors.formErrorMessages} />
+        </div>
         <Input
           label="Tier name"
+          required
           value={tierName}
-          onChange={(e) => setTierName(e.target.value)}
+          error={tierErrors.fieldError("name", tierClientErrors.name)}
+          onBlur={() => tierErrors.touchField("name")}
+          onChange={(event) => {
+            tierErrors.clearFieldError("name");
+            setTierName(event.target.value);
+          }}
         />
         <Select
           label="Discount"
+          required
           value={discountType}
-          onChange={(e) =>
-            setDiscountType(e.target.value as "PERCENT" | "FIXED")
+          onChange={(event) =>
+            setDiscountType(event.target.value as "PERCENT" | "FIXED")
           }
           options={[
             { value: "PERCENT", label: "Percentage" },
@@ -102,20 +182,52 @@ export const LoyaltySection = () => {
         />
         <Input
           label={discountType === "PERCENT" ? "Percent" : "Amount"}
+          required
           type="number"
+          min={0}
+          max={discountType === "PERCENT" ? 100 : undefined}
+          step="0.01"
           value={discountValue}
-          onChange={(e) => setDiscountValue(e.target.value)}
+          error={
+            tierErrors.fieldErrors.discountPercent ??
+            tierErrors.fieldErrors.discountFixed ??
+            tierErrors.fieldError(
+              "discountValue",
+              tierClientErrors.discountValue,
+            )
+          }
+          onBlur={() => tierErrors.touchField("discountValue")}
+          onChange={(event) => {
+            tierErrors.clearFieldError("discountPercent");
+            tierErrors.clearFieldError("discountFixed");
+            setDiscountValue(event.target.value);
+          }}
         />
         <div className="flex items-end">
           <Button
-            disabled={!tierName.trim() || Number(discountValue) <= 0}
+            disabled={
+              createTier.isPending || Object.keys(tierClientErrors).length > 0
+            }
             loading={createTier.isPending}
-            onClick={() => createTier.mutate()}
+            onClick={() => {
+              tierErrors.markSubmitted();
+              tierErrors.clearErrors();
+              if (Object.keys(tierClientErrors).length) return;
+              createTier.mutate(undefined, {
+                onError: (error) =>
+                  tierErrors.handleApiError(
+                    error,
+                    ["name", "discountPercent", "discountFixed"],
+                    "Failed to create loyalty tier",
+                  ),
+              });
+            }}
           >
             Add tier
           </Button>
         </div>
       </div>
+
       <div className="space-y-2">
         {tiers.map((tier) => (
           <div
@@ -133,6 +245,8 @@ export const LoyaltySection = () => {
             <Button
               size="sm"
               variant="ghost"
+              loading={removeTier.isPending && removeTier.variables === tier.id}
+              disabled={removeTier.isPending}
               onClick={() => removeTier.mutate(tier.id)}
             >
               Delete
@@ -140,42 +254,89 @@ export const LoyaltySection = () => {
           </div>
         ))}
       </div>
+
       <div>
         <h3 className="mb-3 font-medium text-text-primary">Customers</h3>
         <div className="grid gap-3 rounded-xl border border-border p-4 md:grid-cols-4">
+          <div className="md:col-span-4">
+            <FormErrorSummary messages={customerErrors.formErrorMessages} />
+          </div>
           <Input
             label="Name"
+            required
             value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+            error={customerErrors.fieldError("name", customerClientErrors.name)}
+            onBlur={() => customerErrors.touchField("name")}
+            onChange={(event) => {
+              customerErrors.clearFieldError("name");
+              setCustomerName(event.target.value);
+            }}
           />
           <Input
             label="Phone"
             value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
+            error={customerErrors.fieldError(
+              "phone",
+              customerClientErrors.phone,
+            )}
+            onBlur={() => customerErrors.touchField("phone")}
+            onChange={(event) => {
+              customerErrors.clearFieldError("phone");
+              setCustomerPhone(event.target.value);
+            }}
           />
           <Input
             label="Email"
+            type="email"
             value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
+            error={customerErrors.fieldError(
+              "email",
+              customerClientErrors.email,
+            )}
+            onBlur={() => customerErrors.touchField("email")}
+            onChange={(event) => {
+              customerErrors.clearFieldError("email");
+              setCustomerEmail(event.target.value);
+            }}
           />
           <Select
             label="Loyalty tier"
             value={customerTierId}
-            onChange={(e) => setCustomerTierId(e.target.value)}
+            error={customerErrors.fieldErrors.loyaltyTierId}
+            onChange={(event) => {
+              customerErrors.clearFieldError("loyaltyTierId");
+              setCustomerTierId(event.target.value);
+            }}
             options={[
               { value: "", label: "No tier" },
               ...tiers.map((tier) => ({ value: tier.id, label: tier.name })),
             ]}
           />
           <Button
-            disabled={!customerName.trim()}
+            disabled={
+              createCustomer.isPending ||
+              Object.keys(customerClientErrors).length > 0
+            }
             loading={createCustomer.isPending}
-            onClick={() => createCustomer.mutate()}
+            onClick={() => {
+              customerErrors.markSubmitted();
+              customerErrors.clearErrors();
+              if (Object.keys(customerClientErrors).length) return;
+              createCustomer.mutate(undefined, {
+                onError: (error) =>
+                  customerErrors.handleApiError(
+                    error,
+                    ["name", "phone", "email", "loyaltyTierId"],
+                    "Failed to create customer",
+                  ),
+              });
+            }}
           >
             Add customer
           </Button>
         </div>
       </div>
+
       <div className="space-y-2">
         {customers.map((customer) => (
           <div
@@ -191,10 +352,11 @@ export const LoyaltySection = () => {
             <Select
               aria-label={`Loyalty tier for ${customer.name}`}
               value={customer.loyaltyTierId ?? ""}
-              onChange={(e) =>
+              disabled={assign.isPending}
+              onChange={(event) =>
                 assign.mutate({
                   id: customer.id,
-                  loyaltyTierId: e.target.value || null,
+                  loyaltyTierId: event.target.value || null,
                 })
               }
               options={[

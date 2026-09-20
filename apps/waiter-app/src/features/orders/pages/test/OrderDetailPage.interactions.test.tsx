@@ -53,6 +53,7 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (config: any) => ({
     isPending: false,
+    reset: vi.fn(),
     mutate: (variables: any, options?: any) => {
       const result = config.mutationFn(variables);
       Promise.resolve(result).then((value) => {
@@ -64,6 +65,8 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   Spinner: () => <span>spinner</span>,
   IconButton: ({ onClick, "aria-label": label }: any) => (
     <button aria-label={label} onClick={onClick} />
@@ -143,6 +146,14 @@ vi.mock("@/features/menu/hooks/useTables", () => ({
 vi.mock("@/features/auth/storage", () => ({ hasPermission: () => true }));
 vi.mock("@pos/api-client", () => ({
   extractApiError: (e: any) => String(e?.message ?? e),
+  toApiClientError: (e: any) => ({
+    code:
+      e?.message === "Manager approval required"
+        ? "MANAGER_APPROVAL_REQUIRED"
+        : "UNEXPECTED_ERROR",
+    message: String(e?.message ?? e),
+    retryable: false,
+  }),
 }));
 vi.mock("@/features/orders/api/orders", () => ({
   fetchCancellationReasons: vi.fn(),

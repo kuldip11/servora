@@ -1,3 +1,4 @@
+import type { FieldPath } from "react-hook-form";
 import type {
   BusinessBranchFormValues,
   FranchiseBusinessFormValues,
@@ -88,3 +89,12 @@ export const branchDefaults: BusinessBranchFormValues = {
   inventoryTrackingEnabled: true,
   negativeStockPolicy: "BLOCK",
 };
+export const organizationFieldPaths = Object.keys(
+  organizationDefaults,
+) as FieldPath<OrganizationBusinessFormValues>[];
+export const franchiseFieldPaths = Object.keys(
+  franchiseDefaults,
+) as FieldPath<FranchiseBusinessFormValues>[];
+export const branchFieldPaths = Object.keys(
+  branchDefaults,
+) as FieldPath<BusinessBranchFormValues>[];

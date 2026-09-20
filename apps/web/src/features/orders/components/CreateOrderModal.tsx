@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Modal } from "@pos/ui";
+import { Modal, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { MenuPicker } from "./create-order/MenuPicker";
 import { OrderCart } from "./create-order/OrderCart";
 import { useTables } from "@/features/tables/hooks/useTables";
@@ -43,16 +43,17 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
   const [courseMode, setCourseMode] = useState(false);
   const courseSequencingAvailable = useCourseSequencingEnabled();
 
-  const { data: branchesInScope } = useBranches();
+  const branchesQuery = useBranches();
+  const branchesInScope = branchesQuery.data;
 
   const currentBranch =
     branchesInScope?.length === 1 ? branchesInScope[0] : undefined;
 
   const availableOrderTypes = currentBranch
     ? ALL_ORDER_TYPES.filter((t) => currentBranch[t.capabilityKey])
-    : ALL_ORDER_TYPES;
+    : [];
 
-  const tablesEnabled = currentBranch ? currentBranch.tablesEnabled : true;
+  const tablesEnabled = currentBranch?.tablesEnabled === true;
 
   useEffect(() => {
     if (!availableOrderTypes.length) return;
@@ -62,11 +63,13 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [currentBranch?.id]);
 
-  const { data: categories } = useMenuCategories();
-  const { data: activeMenus = [] } = useQuery<ActiveMenuSummary[]>({
+  const categoriesQuery = useMenuCategories();
+  const categories = categoriesQuery.data;
+  const activeMenusQuery = useQuery<ActiveMenuSummary[]>({
     queryKey: ["menus", "active", orderType],
     queryFn: () => menuApi.listActiveMenus(orderType),
   });
+  const activeMenus = activeMenusQuery.data ?? [];
   useEffect(() => {
     if (!activeMenus.some((menu) => menu.id === selectedMenuId))
       setSelectedMenuId(activeMenus[0]?.id ?? "");
@@ -77,9 +80,33 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
     selectedMenuId,
   );
 
-  const { data: tables } = useTables({
+  const tablesQuery = useTables({
     enabled: orderType === "DINE_IN" && tablesEnabled,
   });
+  const tables = tablesQuery.data;
+
+  const requiredDependencyFailed =
+    (branchesQuery.isError && !branchesQuery.data) ||
+    (categoriesQuery.isError && !categoriesQuery.data) ||
+    (activeMenusQuery.isError && !activeMenusQuery.data) ||
+    (orderType === "DINE_IN" &&
+      tablesEnabled &&
+      tablesQuery.isError &&
+      !tablesQuery.data);
+  const requiredDependencyStale =
+    (branchesQuery.isError && Boolean(branchesQuery.data)) ||
+    (categoriesQuery.isError && Boolean(categoriesQuery.data)) ||
+    (activeMenusQuery.isError && Boolean(activeMenusQuery.data)) ||
+    (orderType === "DINE_IN" &&
+      tablesEnabled &&
+      tablesQuery.isError &&
+      Boolean(tablesQuery.data));
+  const retryDependencies = () => {
+    if (branchesQuery.isError) void branchesQuery.refetch();
+    if (categoriesQuery.isError) void categoriesQuery.refetch();
+    if (activeMenusQuery.isError) void activeMenusQuery.refetch();
+    if (tablesQuery.isError) void tablesQuery.refetch();
+  };
 
   const createMutation = useCreateOrder();
 
@@ -205,7 +232,32 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
       size="full"
       bodyClassName="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden"
     >
-      {courseSequencingAvailable && (
+      {requiredDependencyFailed ? (
+        <QueryErrorState
+          title="Unable to load order-entry data"
+          description="Branch capabilities, menu data, or required table data could not be loaded. Retry before creating an order."
+          onRetry={retryDependencies}
+          isRetrying={
+            branchesQuery.isFetching ||
+            categoriesQuery.isFetching ||
+            activeMenusQuery.isFetching ||
+            tablesQuery.isFetching
+          }
+        />
+      ) : null}
+      {requiredDependencyStale ? (
+        <StaleDataBanner
+          message="Some order-entry data could not be refreshed. Showing cached data; verify availability before submitting."
+          onRetry={retryDependencies}
+          isRetrying={
+            branchesQuery.isFetching ||
+            categoriesQuery.isFetching ||
+            activeMenusQuery.isFetching ||
+            tablesQuery.isFetching
+          }
+        />
+      ) : null}
+      {!requiredDependencyFailed && courseSequencingAvailable && (
         <label className="mb-4 flex items-center gap-2 rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm text-text-secondary">
           <input
             type="checkbox"
@@ -230,67 +282,70 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
           </span>
         </label>
       )}
-      <div className="grid min-h-0 grid-cols-1 gap-5 lg:h-full lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <div className="min-h-0 space-y-3 lg:overflow-hidden">
-          {activeMenus.length > 1 && (
-            <label className="block text-sm font-medium">
-              Menu
-              <select
-                className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
-                value={selectedMenuId}
-                onChange={(event) => setSelectedMenuId(event.target.value)}
-              >
-                {activeMenus.map((menu) => (
-                  <option key={menu.id} value={menu.id}>
-                    {menu.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <MenuPicker
-            orderType={orderType}
-            tableId={tableId}
-            tablesEnabled={tablesEnabled}
-            tables={tables}
-            categories={scopedCategories}
-            filter={foodTypeFilter}
-            availableOrderTypes={availableOrderTypes}
-            onOrderTypeChange={(v) => {
-              setOrderType(v);
-              setTableId("");
-            }}
-            onTableChange={setTableId}
-            onFilterChange={setFoodTypeFilter}
-            onItemClick={handleItemClick}
-            emptyMessage={
-              activeMenus.length === 0
-                ? "No active menu is available for this branch and order type."
-                : "This menu has no published items available for this branch."
+      {!requiredDependencyFailed && (
+        <div className="grid min-h-0 grid-cols-1 gap-5 lg:h-full lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+          <div className="min-h-0 space-y-3 lg:overflow-hidden">
+            {activeMenus.length > 1 && (
+              <label className="block text-sm font-medium">
+                Menu
+                <select
+                  className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
+                  value={selectedMenuId}
+                  onChange={(event) => setSelectedMenuId(event.target.value)}
+                >
+                  {activeMenus.map((menu) => (
+                    <option key={menu.id} value={menu.id}>
+                      {menu.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <MenuPicker
+              orderType={orderType}
+              tableId={tableId}
+              tablesEnabled={tablesEnabled}
+              tables={tables}
+              categories={scopedCategories}
+              filter={foodTypeFilter}
+              availableOrderTypes={availableOrderTypes}
+              onOrderTypeChange={(v) => {
+                setOrderType(v);
+                setTableId("");
+              }}
+              onTableChange={setTableId}
+              onFilterChange={setFoodTypeFilter}
+              onItemClick={handleItemClick}
+              emptyMessage={
+                activeMenus.length === 0
+                  ? "No active menu is available for this branch and order type."
+                  : "This menu has no published items available for this branch."
+              }
+            />
+          </div>
+          <OrderCart
+            items={items}
+            notes={notes}
+            total={total}
+            pending={createMutation.isPending}
+            canSubmit={
+              !!items.length &&
+              !!availableOrderTypes.length &&
+              !(orderType === "DINE_IN" && tablesEnabled && !tableId) &&
+              !requiredDependencyStale
             }
+            validationError={validationError}
+            courseMode={courseMode}
+            onQty={updateQty}
+            onEdit={editCartItem}
+            onCourse={updateCourse}
+            onNotes={setNotes}
+            onSubmit={handleSubmit}
           />
         </div>
-        <OrderCart
-          items={items}
-          notes={notes}
-          total={total}
-          pending={createMutation.isPending}
-          canSubmit={
-            !!items.length &&
-            !!availableOrderTypes.length &&
-            !(orderType === "DINE_IN" && tablesEnabled && !tableId)
-          }
-          validationError={validationError}
-          courseMode={courseMode}
-          onQty={updateQty}
-          onEdit={editCartItem}
-          onCourse={updateCourse}
-          onNotes={setNotes}
-          onSubmit={handleSubmit}
-        />
-      </div>
+      )}
 
-      {customising && (
+      {!requiredDependencyFailed && customising && (
         <ItemCustomizerModal
           item={customising.item}
           {...(customising.existing

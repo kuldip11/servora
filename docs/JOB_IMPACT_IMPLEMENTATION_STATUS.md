@@ -36,3 +36,15 @@ bun run test:visual
 ```
 
 The standard `test:e2e` flow does not run screenshot comparisons unless `VISUAL_REGRESSION=1` is set.
+
+## API error contract
+
+Status: **COMPLETED**
+
+- Central frontend-safe failure envelope across API routes.
+- 229 HTTP endpoints included in the generated contract inventory.
+- Missing/malformed bearer-token checks applied automatically to every bearer-protected endpoint.
+- Malformed request-body checks applied automatically to every body-accepting endpoint.
+- Parser failures mapped to `400 MALFORMED_REQUEST` rather than `500 INTERNAL_ERROR`.
+- API client/frontend consumers use normalized error codes instead of backend message-string matching.
+- API verification: 315 test files / 1,843 tests pass in isolated batches; TypeScript passes.

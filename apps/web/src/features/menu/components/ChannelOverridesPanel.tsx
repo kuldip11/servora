@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
+import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
 const menuApi = createMenuApi(apiClient);
 import { queryClient } from "@/shared/lib/query-client";
+import { notifyError } from "@/shared/lib/notify";
 
 interface ChannelOverrideRow {
   id: string;
@@ -24,10 +25,11 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
   const [isHidden, setIsHidden] = useState(false);
   const [reason, setReason] = useState("");
   const key = ["menu-items", itemId, "channel-overrides"];
-  const { data: overrides = [] } = useQuery<ChannelOverrideRow[]>({
+  const overridesQuery = useQuery<ChannelOverrideRow[]>({
     queryKey: key,
     queryFn: () => menuApi.listChannelOverrides<ChannelOverrideRow>(itemId),
   });
+  const overrides = overridesQuery.data ?? [];
   const save = useMutation({
     mutationFn: () =>
       menuApi.saveChannelOverride<ChannelOverrideRow>(itemId, {
@@ -38,10 +40,12 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         availabilityReason: reason || null,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to save channel override"),
   });
   const remove = useMutation({
     mutationFn: (id: string) => menuApi.removeChannelOverride(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onError: (error) => notifyError(error, "Failed to remove channel override"),
   });
   return (
     <div className="space-y-2">
@@ -51,6 +55,21 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
           (overrides this item only for the selected ordering context)
         </span>
       </span>
+      {overridesQuery.isError && !overridesQuery.data ? (
+        <QueryErrorState
+          title="Unable to load channel overrides"
+          description="Existing channel availability could not be loaded. Retry before changing overrides."
+          onRetry={() => void overridesQuery.refetch()}
+          isRetrying={overridesQuery.isFetching}
+        />
+      ) : null}
+      {overridesQuery.isError && overridesQuery.data ? (
+        <StaleDataBanner
+          message="Channel overrides could not be refreshed. Showing cached values; saving is disabled until refreshed."
+          onRetry={() => void overridesQuery.refetch()}
+          isRetrying={overridesQuery.isFetching}
+        />
+      ) : null}
       {overrides.map((override) => (
         <div
           key={override.id}
@@ -119,6 +138,7 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
           type="button"
           size="sm"
           loading={save.isPending}
+          disabled={save.isPending || overridesQuery.isError}
           onClick={() => save.mutate()}
         >
           Save override

@@ -14,6 +14,6 @@ export const useResetBranchOverride = (itemId: string) => {
         queryKey: menuKeys.branchOverrides(itemId),
       });
     },
-    onError: () => notifyError(undefined, "Failed to reset"),
+    onError: (error) => notifyError(error, "Failed to reset"),
   });
 };

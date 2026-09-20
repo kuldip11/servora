@@ -1,19 +1,29 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createStaffSchema, type CreateStaffInput } from "@pos/validation";
-import { Button } from "@pos/ui";
+import { Button, FormErrorSummary } from "@pos/ui";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import {
   StaffFormFields,
   type StaffBranchOption,
   type StaffRoleOption,
 } from "./StaffFormFields";
 
+const staffFieldPaths = [
+  "firstName",
+  "lastName",
+  "email",
+  "password",
+  "roleId",
+  "branchId",
+] as const satisfies readonly (keyof CreateStaffInput)[];
+
 interface Props {
   roles: StaffRoleOption[];
   branches: StaffBranchOption[];
   loading?: boolean;
   onCancel: () => void;
-  onSubmit: (input: CreateStaffInput) => void;
+  onSubmit: (input: CreateStaffInput) => Promise<void>;
 }
 
 export const AddStaffForm = ({
@@ -23,13 +33,7 @@ export const AddStaffForm = ({
   onCancel,
   onSubmit,
 }: Props) => {
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<CreateStaffInput>({
+  const form = useForm<CreateStaffInput>({
     resolver: zodResolver(createStaffSchema),
     defaultValues: {
       firstName: "",
@@ -39,28 +43,53 @@ export const AddStaffForm = ({
       roleId: "",
       branchId: undefined,
     },
+    mode: "onTouched",
+    reValidateMode: "onChange",
+  });
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<CreateStaffInput>();
+  const roleId = form.watch("roleId");
+  const selectedRole = roles.find((role) => role.id === roleId);
+  const branchRequired = selectedRole?.scope === "BRANCH";
+  const branchId = form.watch("branchId");
+  const canSubmit =
+    form.formState.isValid &&
+    (!branchRequired || Boolean(branchId)) &&
+    !loading &&
+    !form.formState.isSubmitting;
+
+  const submit = form.handleSubmit(async (data) => {
+    clearFormErrors();
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      handleApiError(
+        error,
+        form.setError,
+        staffFieldPaths,
+        "Failed to add staff member",
+      );
+    }
   });
 
   return (
-    <form
-      onSubmit={handleSubmit((data) => onSubmit(data))}
-      className="space-y-4"
-    >
+    <form onSubmit={submit} className="space-y-4">
       <StaffFormFields
-        register={register}
-        errors={errors}
-        roleId={watch("roleId")}
-        branchId={watch("branchId")}
+        register={form.register}
+        errors={form.formState.errors}
+        roleId={roleId}
+        branchId={branchId}
         roles={roles}
         branches={branches}
-        setValue={setValue}
+        setValue={form.setValue}
       />
-      <div className="flex gap-2 justify-end">
+      <FormErrorSummary messages={formErrorMessages} />
+      <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" loading={loading}>
-          Add Staff
+        <Button type="submit" loading={loading} disabled={!canSubmit}>
+          {loading ? "Adding…" : "Add Staff"}
         </Button>
       </div>
     </form>

@@ -1,37 +1,43 @@
 import React from "react";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  listRequests: vi.fn(),
-  resolveRequest: vi.fn(),
   useOrders: vi.fn(),
-  realtime: new Map<string, (event: any) => void>(),
+  useCustomerRequests: vi.fn(),
+  resolveMutate: vi.fn(),
+  ordersRefetch: vi.fn(),
+  requestsRefetch: vi.fn(),
 }));
 
-vi.mock("@pos/api-client", () => ({
-  createCustomersApi: () => ({
-    listRequests: mocks.listRequests,
-    resolveRequest: mocks.resolveRequest,
-  }),
-}));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/orders/hooks/useOrders", () => ({
   useOrders: mocks.useOrders,
 }));
-vi.mock("@/shared/lib/realtime", () => ({
-  useRealtimeEvent: (name: string, handler: (event: any) => void) => {
-    mocks.realtime.set(name, handler);
-  },
+vi.mock("@/features/home/hooks/useCustomerRequests", () => ({
+  useCustomerRequests: mocks.useCustomerRequests,
+  useResolveCustomerRequest: () => ({
+    mutate: mocks.resolveMutate,
+    isPending: false,
+    variables: undefined,
+  }),
+}));
+vi.mock("@pos/api-client", () => ({
+  extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
 vi.mock("@pos/ui", () => ({
   Card: ({ children }: any) => <div>{children}</div>,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>Retry attention</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div>
+      <span>{message}</span>
+      <button onClick={onRetry}>Retry stale</button>
+    </div>
+  ),
 }));
 vi.mock("@/features/orders/components/OrderCard", () => ({
   OrderCard: ({ order, onSelect }: any) => (
@@ -47,58 +53,49 @@ const order = (id: string, status = "OPEN", ready = false) => ({
   kitchenTickets: ready ? [{ id: `${id}-ticket`, status: "READY" }] : [],
 });
 
-const flush = async () => {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-};
+const ordersQuery = (overrides: Record<string, unknown> = {}) => ({
+  data: [],
+  isError: false,
+  error: null,
+  isFetching: false,
+  refetch: mocks.ordersRefetch,
+  ...overrides,
+});
+const requestsQuery = (overrides: Record<string, unknown> = {}) => ({
+  data: [],
+  isError: false,
+  error: null,
+  isFetching: false,
+  refetch: mocks.requestsRefetch,
+  ...overrides,
+});
 
 describe("HomePage interactions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.realtime.clear();
-    mocks.listRequests.mockResolvedValue([]);
-    mocks.resolveRequest.mockResolvedValue(undefined);
-    mocks.useOrders.mockReturnValue({ data: [] });
+    mocks.useOrders.mockReturnValue(ordersQuery());
+    mocks.useCustomerRequests.mockReturnValue(requestsQuery());
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("renders active attention groups and handles navigation and request resolution", async () => {
-    mocks.useOrders.mockReturnValue({
-      data: [
-        order("ready", "OPEN", true),
-        order("bill", "BILL_REQUESTED"),
-        order("hidden-bill", "BILL_REQUESTED"),
-        order("closed", "PAID"),
-      ],
-    });
-    mocks.listRequests.mockResolvedValue([
-      {
-        id: "water",
-        tableId: "1234567890",
-        orderId: null,
-        type: "WATER",
-        status: "OPEN",
-      },
-      {
-        id: "bill-request",
-        tableId: "T2",
-        orderId: "hidden-bill",
-        type: "BILL",
-        status: "OPEN",
-      },
-      {
-        id: "food",
-        tableId: "T3",
-        orderId: null,
-        type: "OTHER_REQUEST",
-        status: "OPEN",
-      },
-    ]);
+  it("renders attention groups and resolves requests through the mutation hook", () => {
+    mocks.useOrders.mockReturnValue(
+      ordersQuery({
+        data: [order("ready", "OPEN", true), order("bill", "BILL_REQUESTED")],
+      }),
+    );
+    mocks.useCustomerRequests.mockReturnValue(
+      requestsQuery({
+        data: [
+          {
+            id: "water",
+            tableId: "1234567890",
+            orderId: null,
+            type: "WATER",
+            status: "OPEN",
+          },
+        ],
+      }),
+    );
     const onNewOrder = vi.fn();
     const onViewOrders = vi.fn();
     const onSelectOrder = vi.fn();
@@ -110,34 +107,27 @@ describe("HomePage interactions", () => {
         onSelectOrder={onSelectOrder}
       />,
     );
-    await flush();
 
-    expect(screen.getByText("2", { selector: "strong" })).toBeTruthy();
     expect(screen.getByText("water requested")).toBeTruthy();
-    expect(screen.getByText("other request requested")).toBeTruthy();
-    expect(screen.queryByText("bill requested")).toBeNull();
-    expect(screen.getByText(/Table 7890/)).toBeTruthy();
     expect(screen.getByText("Order ready")).toBeTruthy();
-    expect(screen.getByText("Order bill")).toBeTruthy();
-
     fireEvent.click(screen.getByText("Start new order"));
     fireEvent.click(screen.getByText("View all"));
     fireEvent.click(screen.getByText("Order ready"));
+    fireEvent.click(screen.getByText("Done"));
     expect(onNewOrder).toHaveBeenCalledTimes(1);
     expect(onViewOrders).toHaveBeenCalledTimes(1);
     expect(onSelectOrder).toHaveBeenCalledWith("ready");
-
-    fireEvent.click(screen.getAllByText("Done")[0]!);
-    await waitFor(() =>
-      expect(mocks.resolveRequest).toHaveBeenCalledWith("water"),
-    );
-    await waitFor(() =>
-      expect(screen.queryByText("water requested")).toBeNull(),
-    );
+    expect(mocks.resolveMutate).toHaveBeenCalledWith("water");
   });
 
-  it("refreshes on focus/timer and handles realtime create/update including duplicates", async () => {
-    vi.useFakeTimers();
+  it("retries both dependencies and never renders healthy empty state on initial failure", () => {
+    mocks.useOrders.mockReturnValue(
+      ordersQuery({
+        data: undefined,
+        isError: true,
+        error: new Error("offline"),
+      }),
+    );
     render(
       <HomePage
         onNewOrder={vi.fn()}
@@ -145,101 +135,27 @@ describe("HomePage interactions", () => {
         onSelectOrder={vi.fn()}
       />,
     );
-    await flush();
-    expect(mocks.listRequests).toHaveBeenCalledTimes(1);
-
-    window.dispatchEvent(new Event("focus"));
-    await flush();
-    expect(mocks.listRequests).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      vi.advanceTimersByTime(10_000);
-      await Promise.resolve();
-    });
-    expect(mocks.listRequests).toHaveBeenCalledTimes(3);
-
-    const created = mocks.realtime.get("customer.request.created")!;
-    const updated = mocks.realtime.get("customer.request.updated")!;
-    act(() => {
-      created({
-        payload: {
-          id: "r1",
-          tableId: "T1",
-          orderId: null,
-          type: "BILL",
-          status: "OPEN",
-        },
-      });
-      created({
-        payload: {
-          id: "r1",
-          tableId: "T1",
-          orderId: null,
-          type: "BILL",
-          status: "OPEN",
-        },
-      });
-    });
-    expect(screen.getAllByText("bill requested")).toHaveLength(1);
-
-    act(() => updated({ payload: { id: "r1", status: "OPEN" } }));
-    expect(screen.getByText("bill requested")).toBeTruthy();
-    act(() => updated({ payload: { id: "r1", status: "RESOLVED" } }));
-    expect(screen.queryByText("bill requested")).toBeNull();
-
-    act(() => {
-      created({
-        payload: {
-          id: "r2",
-          tableId: "T2",
-          orderId: null,
-          type: "WATER",
-          status: "OPEN",
-        },
-      });
-      updated({ payload: { id: "r2", status: "CANCELLED" } });
-    });
-    expect(screen.queryByText("water requested")).toBeNull();
+    expect(screen.getByText("Unable to load attention items")).toBeTruthy();
+    expect(screen.queryByText("All caught up!")).toBeNull();
+    fireEvent.click(screen.getByText("Retry attention"));
+    expect(mocks.ordersRefetch).toHaveBeenCalledTimes(1);
+    expect(mocks.requestsRefetch).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores failed and late request refreshes after unmount", async () => {
-    let resolveLate!: (value: any[]) => void;
-    mocks.listRequests.mockImplementationOnce(
-      () =>
-        new Promise<any[]>((resolve) => {
-          resolveLate = resolve;
-        }),
+  it("keeps stale attention data visible and labels refresh failure", () => {
+    mocks.useOrders.mockReturnValue(
+      ordersQuery({ data: [order("ready", "OPEN", true)], isError: true }),
     );
-    const { unmount } = render(
+    render(
       <HomePage
         onNewOrder={vi.fn()}
         onViewOrders={vi.fn()}
         onSelectOrder={vi.fn()}
       />,
     );
-    unmount();
-    await act(async () =>
-      resolveLate([
-        {
-          id: "late",
-          tableId: "T",
-          orderId: null,
-          type: "WATER",
-          status: "OPEN",
-        },
-      ]),
-    );
-
-    mocks.listRequests.mockRejectedValueOnce(new Error("offline"));
-    const second = render(
-      <HomePage
-        onNewOrder={vi.fn()}
-        onViewOrders={vi.fn()}
-        onSelectOrder={vi.fn()}
-      />,
-    );
-    await flush();
-    expect(screen.getByText("All caught up!")).toBeTruthy();
-    second.unmount();
+    expect(screen.getByText("Order ready")).toBeTruthy();
+    expect(
+      screen.getByText(/Attention data could not be refreshed/),
+    ).toBeTruthy();
   });
 });

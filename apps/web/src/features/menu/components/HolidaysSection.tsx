@@ -2,25 +2,56 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createHolidaySchema, type CreateHolidayInput } from "@pos/validation";
 import { Plus, X, CalendarDays } from "lucide-react";
-import { Button, Input } from "@pos/ui";
+import {
+  Button,
+  FormErrorSummary,
+  Input,
+  QueryErrorState,
+  StaleDataBanner,
+} from "@pos/ui";
 import { useMenuHolidays } from "@/features/menu/hooks/useMenuHolidays";
 import { useAddHoliday } from "@/features/menu/hooks/useAddHoliday";
 import { useDeleteHoliday } from "@/features/menu/hooks/useDeleteHoliday";
+import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
 export const HolidaysSection = () => {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    setError,
+    formState: { errors, isValid },
   } = useForm<CreateHolidayInput>({
     resolver: zodResolver(createHolidaySchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: "", holidayDate: "", region: "" },
   });
 
-  const { data: holidays } = useMenuHolidays();
+  const holidaysQuery = useMenuHolidays();
+  const holidays = holidaysQuery.data;
   const addMutation = useAddHoliday();
   const deleteMutation = useDeleteHoliday();
+  const { formErrorMessages, clearFormErrors, handleApiError } =
+    useFormApiErrors<CreateHolidayInput>();
+
+  const submit = handleSubmit(async (values) => {
+    clearFormErrors();
+    try {
+      await addMutation.mutateAsync({
+        ...values,
+        ...(values.region?.trim() ? { region: values.region.trim() } : {}),
+      });
+      reset({ name: "", holidayDate: "", region: "" });
+    } catch (error) {
+      handleApiError(
+        error,
+        setError,
+        ["name", "holidayDate", "region"],
+        "Failed to add holiday",
+      );
+    }
+  });
 
   return (
     <div className="space-y-4">
@@ -33,8 +64,24 @@ export const HolidaysSection = () => {
         </p>
       </div>
 
+      {holidaysQuery.isError && !holidays ? (
+        <QueryErrorState
+          title="Unable to load holidays"
+          description="Holiday schedules could not be loaded. Retry before making changes."
+          onRetry={() => void holidaysQuery.refetch()}
+          isRetrying={holidaysQuery.isFetching}
+        />
+      ) : null}
+      {holidaysQuery.isError && holidays ? (
+        <StaleDataBanner
+          message="Holiday refresh failed — showing the last available holiday data."
+          onRetry={() => void holidaysQuery.refetch()}
+          isRetrying={holidaysQuery.isFetching}
+        />
+      ) : null}
+
       <div className="space-y-1.5">
-        {!holidays?.length && (
+        {!holidaysQuery.isError && !holidays?.length && (
           <p className="text-sm text-text-disabled">No holidays added yet.</p>
         )}
         {holidays?.map((h) => (
@@ -65,43 +112,41 @@ export const HolidaysSection = () => {
         ))}
       </div>
 
-      <form
-        onSubmit={handleSubmit((values) =>
-          addMutation.mutate(
-            {
-              ...values,
-              ...(values.region?.trim()
-                ? { region: values.region.trim() }
-                : {}),
-            },
-            {
-              onSuccess: () => reset({ name: "", holidayDate: "", region: "" }),
-            },
-          ),
-        )}
-        className="flex items-end gap-2 max-w-xl"
-      >
-        <Input
-          label="Name"
-          placeholder="Diwali"
-          error={errors.name?.message}
-          {...register("name")}
-        />
-        <Input
-          label="Date"
-          type="date"
-          error={errors.holidayDate?.message}
-          {...register("holidayDate")}
-        />
-        <Input
-          label="Region (optional)"
-          placeholder="India"
-          error={errors.region?.message}
-          {...register("region")}
-        />
-        <Button type="submit" size="sm" loading={addMutation.isPending}>
-          <Plus className="w-3.5 h-3.5" />
-        </Button>
+      <form onSubmit={submit} className="space-y-3 max-w-xl">
+        <FormErrorSummary messages={formErrorMessages} />
+        <div className="flex items-end gap-2">
+          <Input
+            label="Name"
+            required
+            placeholder="Diwali"
+            error={errors.name?.message}
+            {...register("name", { onChange: clearFormErrors })}
+          />
+          <Input
+            label="Date"
+            required
+            type="date"
+            error={errors.holidayDate?.message}
+            {...register("holidayDate", { onChange: clearFormErrors })}
+          />
+          <Input
+            label="Region (optional)"
+            placeholder="India"
+            error={errors.region?.message}
+            {...register("region", { onChange: clearFormErrors })}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            loading={addMutation.isPending}
+            disabled={
+              !isValid || addMutation.isPending || holidaysQuery.isError
+            }
+            aria-label="Add holiday"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </form>
     </div>
   );

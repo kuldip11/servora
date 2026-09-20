@@ -2,7 +2,7 @@ import type { RoleName } from "@pos/types";
 
 import { eq, and, isNull, gt, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { ServiceUnavailableError } from "@/core/errors";
+import { ServiceUnavailableError, InternalError } from "@/core/errors";
 import {
   users,
   roles,
@@ -203,7 +203,7 @@ export const authRepository = {
         .insert(users)
         .values({ ...data, email: normalizeEmail(data.email) })
         .returning();
-      if (!user) throw new Error("User creation failed");
+      if (!user) throw new InternalError("User creation failed");
 
       let role = await tx.query.roles.findFirst({
         where: and(
@@ -224,7 +224,8 @@ export const authRepository = {
           .returning();
         role = createdRole;
       }
-      if (!role) throw new Error("Unable to provision GLOBAL OWNER role");
+      if (!role)
+        throw new InternalError("Unable to provision GLOBAL OWNER role");
 
       const allPermissions = await tx
         .select({ id: permissions.id })
@@ -275,7 +276,8 @@ export const authRepository = {
           .returning();
         role = createdRole;
       }
-      if (!role) throw new Error("Unable to provision GLOBAL OWNER role");
+      if (!role)
+        throw new InternalError("Unable to provision GLOBAL OWNER role");
 
       const allPermissions = await tx
         .select({ id: permissions.id })

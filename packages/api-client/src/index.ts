@@ -1,7 +1,22 @@
 export { createApiClient } from "./create-client";
 export type { ApiClientConfig } from "./create-client";
 export type { TokenStorageAdapter } from "./types";
-export { extractApiError } from "./extract-error";
+export {
+  extractApiError,
+  extractApiFieldErrors,
+  isRetryableApiError,
+} from "./extract-error";
+export {
+  ApiClientErrorException,
+  apiClientErrorFromResponse,
+  toApiClientError,
+} from "./api-error";
+export type { ApiClientError, ApiFieldErrors } from "./api-error";
+export { classifyApiErrorForUi } from "./error-presentation";
+export type {
+  ApiErrorUiKind,
+  ApiErrorUiPresentation,
+} from "./error-presentation";
 export { createOrdersApi } from "./domains/orders";
 export type {
   OrdersListFilters,

@@ -22,7 +22,6 @@ export const useCreateMenu = () => {
       invalidate();
       notifySuccess("Menu created");
     },
-    onError: (error) => notifyError(error, "Failed to create menu"),
   });
 };
 
@@ -39,8 +38,6 @@ export const useUpdateMenu = () => {
       invalidate();
       notifySuccess("Menu availability updated");
     },
-    onError: (error) =>
-      notifyError(error, "Failed to update menu availability"),
   });
 };
 

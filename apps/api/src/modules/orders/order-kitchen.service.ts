@@ -1,3 +1,4 @@
+import { createLogger, toError } from "@/core/logger/logger";
 import type { KitchenTicket, Order } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import {
@@ -24,6 +25,8 @@ import {
   orderItemNotFound,
   orderItemCannotBeRefired,
 } from "./order.errors";
+
+const logger = createLogger({}, "order-kitchen");
 
 export const orderKitchenService = {
   async refireItem(
@@ -202,7 +205,7 @@ export const orderKitchenService = {
     });
     if (detailedTicket) {
       try {
-        await inventoryService.deductForOrderItems(
+        await inventoryService.deductForOrderItemsWithRetry(
           auth.tenantId,
           order.branchId,
           orderId,
@@ -234,11 +237,11 @@ export const orderKitchenService = {
           auth.userId,
         );
       } catch (err) {
-        console.error(
-          "Inventory deduction failed for refire",
-          result.replacement.id,
-          err,
-        );
+        logger.error("order.refire_inventory_deduction_failed", toError(err), {
+          orderId,
+          orderItemId: result.replacement.id,
+          branchId: order.branchId,
+        });
       }
     }
     return fullOrder;
@@ -355,7 +358,7 @@ export const orderKitchenService = {
         order.branchId,
       );
       try {
-        await inventoryService.deductForOrderItems(
+        await inventoryService.deductForOrderItemsWithRetry(
           auth.tenantId,
           order.branchId,
           orderId,
@@ -387,11 +390,11 @@ export const orderKitchenService = {
           auth.userId,
         );
       } catch (err) {
-        console.error(
-          "Inventory deduction failed for refill",
-          result.replacement.id,
-          err,
-        );
+        logger.error("order.refill_inventory_deduction_failed", toError(err), {
+          orderId,
+          orderItemId: result.replacement.id,
+          branchId: order.branchId,
+        });
       }
     }
     await writeAudit({

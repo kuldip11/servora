@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { extractApiFieldErrors } from "@pos/api-client";
 import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import {
@@ -21,6 +22,9 @@ export const useSaveMenuItem = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(item ? "Item updated" : "Item added");
     },
-    onError: (err) => notifyError(err, "Failed to save item"),
+    onError: (err) => {
+      if (!Object.keys(extractApiFieldErrors(err)).length)
+        notifyError(err, "Failed to save item");
+    },
   });
 };

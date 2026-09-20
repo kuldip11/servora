@@ -1,4 +1,11 @@
 import { Elysia } from "elysia";
+import {
+  menuTemplateApplyResponseSchema,
+  menuTemplateListResponseSchema,
+  menuTemplateResponseSchema,
+  nullSuccessResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { templatesController } from "./templates.controller";
 import {
@@ -10,9 +17,18 @@ import {
 
 export const menuTemplatesRouter = new Elysia({ prefix: "/api/menu/templates" })
   .use(requireAuthPlugin())
-  .get("/", ({ auth }) => templatesController.list(auth))
+  .get("/", ({ auth }) => templatesController.list(auth), {
+    response: {
+      200: menuTemplateListResponseSchema,
+      ...standardErrorResponseSchemas,
+    },
+  })
   .get("/:id", ({ auth, params }) => templatesController.get(auth, params.id), {
     params: templateIdParams,
+    response: {
+      200: menuTemplateResponseSchema,
+      ...standardErrorResponseSchemas,
+    },
   })
   .post(
     "/from-category/:categoryId",
@@ -25,7 +41,14 @@ export const menuTemplatesRouter = new Elysia({ prefix: "/api/menu/templates" })
         body.description,
       );
     },
-    { params: categoryIdParams, body: createFromCategoryBody },
+    {
+      params: categoryIdParams,
+      body: createFromCategoryBody,
+      response: {
+        201: menuTemplateResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/:id/apply",
@@ -33,10 +56,23 @@ export const menuTemplatesRouter = new Elysia({ prefix: "/api/menu/templates" })
       set.status = 201;
       return templatesController.apply(auth, params.id, body ?? {});
     },
-    { params: templateIdParams, body: applyTemplateBody },
+    {
+      params: templateIdParams,
+      body: applyTemplateBody,
+      response: {
+        201: menuTemplateApplyResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .delete(
     "/:id",
     ({ auth, params }) => templatesController.delete(auth, params.id),
-    { params: templateIdParams },
+    {
+      params: templateIdParams,
+      response: {
+        200: nullSuccessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   );

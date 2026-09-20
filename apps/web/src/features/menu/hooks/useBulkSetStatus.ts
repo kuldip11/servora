@@ -20,6 +20,6 @@ export const useBulkSetStatus = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Updated status for ${data.updated} item(s)`);
     },
-    onError: () => notifyError(undefined, "Failed to update status"),
+    onError: (error) => notifyError(error, "Failed to update status"),
   });
 };

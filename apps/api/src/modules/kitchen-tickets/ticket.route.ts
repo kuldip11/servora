@@ -1,7 +1,14 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { requireAuthPlugin } from "@/core/auth";
 import { ticketController } from "./ticket.controller";
 import { updateTicketStatusBody, ticketIdParams } from "./ticket.validator";
+import {
+  kitchenStationListResponseSchema,
+  kitchenQueueTicketListResponseSchema,
+  kitchenTicketQueueQuerySchema,
+  kitchenQueueTicketResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 
 export const kitchenTicketsRouter = new Elysia()
   .use(requireAuthPlugin())
@@ -9,11 +16,22 @@ export const kitchenTicketsRouter = new Elysia()
     "/api/kitchen-tickets/",
     ({ auth, query }) => ticketController.getQueue(auth, query.stationId),
     {
-      query: t.Object({ stationId: t.Optional(t.String({ format: "uuid" })) }),
+      query: kitchenTicketQueueQuerySchema,
+      response: {
+        200: kitchenQueueTicketListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
-  .get("/api/kitchen-tickets/stations", ({ auth }) =>
-    ticketController.listStations(auth),
+  .get(
+    "/api/kitchen-tickets/stations",
+    ({ auth }) => ticketController.listStations(auth),
+    {
+      response: {
+        200: kitchenStationListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/api/kitchen-tickets/:id/status",
@@ -22,5 +40,9 @@ export const kitchenTicketsRouter = new Elysia()
     {
       params: ticketIdParams,
       body: updateTicketStatusBody,
+      response: {
+        200: kitchenQueueTicketResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

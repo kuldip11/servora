@@ -13,6 +13,10 @@ let inventory: any[] | undefined = [];
 let subs: any[] | undefined = [];
 let pending = false;
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
+  FieldErrorText: ({ message }: any) =>
+    message ? <span>{message}</span> : null,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -52,17 +56,27 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
   notifySuccess: h.success,
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
-  useMutation: (cfg: any) => ({
-    isPending: pending,
-    mutate: (arg?: any) =>
-      Promise.resolve()
-        .then(() => cfg.mutationFn(arg))
-        .then((v) => cfg.onSuccess?.(v))
-        .catch((e) => cfg.onError?.(e)),
-  }),
-}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+    useMutation: (cfg: any) => ({
+      isPending: pending,
+      mutate: (arg?: any, callbacks?: any) =>
+        Promise.resolve()
+          .then(() => cfg.mutationFn(arg))
+          .then((v) => {
+            cfg.onSuccess?.(v);
+            callbacks?.onSuccess?.(v);
+          })
+          .catch((e) => {
+            cfg.onError?.(e);
+            callbacks?.onError?.(e);
+          }),
+    }),
+  };
+});
 import { SubRecipeManager } from "../SubRecipeManager";
 
 describe("SubRecipeManager coverage", () => {
@@ -132,11 +146,17 @@ describe("SubRecipeManager coverage", () => {
   it("covers sub-recipe source selection and ingredient removal/validation", async () => {
     render(<SubRecipeManager />);
     fireEvent.click(screen.getByRole("button", { name: /New sub-recipe/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Create component" }));
-    expect(h.error).toHaveBeenCalledWith(
-      undefined,
-      expect.stringContaining("Name, positive yield"),
+    const createButton = screen.getByRole("button", {
+      name: "Create component",
+    });
+    expect((createButton as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByLabelText("Name").getAttribute("error")).toBeNull();
+    expect(screen.queryByText("Add at least one ingredient")).toBeNull();
+    fireEvent.click(createButton);
+    expect(screen.getByLabelText("Name").getAttribute("error")).toBe(
+      "Name is required",
     );
+    expect(screen.getByText("Add at least one ingredient")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Add ingredient" }));
     let selects = screen.getAllByRole("combobox");
     fireEvent.change(selects[1]!, { target: { value: "sub" } });

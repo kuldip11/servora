@@ -13,9 +13,14 @@ const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
 
 vi.mock("@pos/api-client", () => ({
   createMenuApi: () => ({ listCombos, updateCombo, createCombo, removeCombo }),
+  extractApiFieldErrors: (error: unknown) =>
+    (error as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {},
 }));
 vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
   useMenuCategories: () => ({
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
     data: [
       {
         id: "category-1",
@@ -94,7 +99,7 @@ describe("CombosSection", () => {
     await screen.findByText("Lunch Combo");
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
-    const name = screen.getByLabelText("Combo name");
+    const name = screen.getByLabelText(/Combo name/);
     fireEvent.change(name, { target: { value: "Dinner Combo" } });
     fireEvent.click(screen.getByRole("button", { name: "Save combo" }));
 
@@ -156,19 +161,19 @@ describe("CombosSection", () => {
     await screen.findByText("Refill Combo");
     expect(screen.getByText("Refill-enabled")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "Weekend Combo" },
     });
     fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "  Deal  " },
     });
-    fireEvent.change(screen.getByLabelText("Pricing"), {
+    fireEvent.change(screen.getByLabelText(/Pricing/), {
       target: { value: "PERCENT_OFF_SUM" },
     });
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "20" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
+    fireEvent.change(screen.getByLabelText(/Choice 1/), {
       target: { value: "item-1" },
     });
     fireEvent.change(screen.getByLabelText("Variant"), {
@@ -185,7 +190,7 @@ describe("CombosSection", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]!);
 
     fireEvent.click(screen.getByRole("button", { name: "+ Add slot" }));
-    expect(screen.getByLabelText("Slot 2")).toBeTruthy();
+    expect(screen.getByLabelText(/Slot 2/)).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Remove slot" })[1]!);
 
     fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
@@ -215,7 +220,7 @@ describe("CombosSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel edit" }));
     expect(
-      (screen.getByLabelText("Combo name") as HTMLInputElement).value,
+      (screen.getByLabelText(/Combo name/) as HTMLInputElement).value,
     ).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -225,16 +230,16 @@ describe("CombosSection", () => {
   it("keeps invalid percent and slot configurations from saving", async () => {
     listCombos.mockResolvedValue([]);
     renderSection();
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "Bad" },
     });
-    fireEvent.change(screen.getByLabelText("Pricing"), {
+    fireEvent.change(screen.getByLabelText(/Pricing/), {
       target: { value: "PERCENT_OFF_SUM" },
     });
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "101" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
+    fireEvent.change(screen.getByLabelText(/Choice 1/), {
       target: { value: "item-1" },
     });
     expect(
@@ -244,10 +249,10 @@ describe("CombosSection", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "10" },
     });
-    fireEvent.change(screen.getByLabelText("Minimum"), {
+    fireEvent.change(screen.getByLabelText(/Minimum/), {
       target: { value: "2" },
     });
     expect(
@@ -291,19 +296,19 @@ describe("CombosSection", () => {
     removeCombo.mockRejectedValueOnce(new Error("delete failed"));
     renderSection();
     await screen.findByText("Error Combo");
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "New Error" },
     });
-    fireEvent.change(screen.getByLabelText("Slot 1"), {
+    fireEvent.change(screen.getByLabelText(/Slot 1/), {
       target: { value: "Entrée" },
     });
-    fireEvent.change(screen.getByLabelText("Minimum"), {
+    fireEvent.change(screen.getByLabelText(/Minimum/), {
       target: { value: "0" },
     });
-    fireEvent.change(screen.getByLabelText("Maximum"), {
+    fireEvent.change(screen.getByLabelText(/Maximum/), {
       target: { value: "2" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
+    fireEvent.change(screen.getByLabelText(/Choice 1/), {
       target: { value: "item-1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
@@ -322,8 +327,8 @@ describe("CombosSection", () => {
 
     const slots = screen.getAllByLabelText(/Slot \d/);
     fireEvent.change(slots[0]!, { target: { value: "Primary" } });
-    const minimums = screen.getAllByLabelText("Minimum");
-    const maximums = screen.getAllByLabelText("Maximum");
+    const minimums = screen.getAllByLabelText(/Minimum/);
+    const maximums = screen.getAllByLabelText(/Maximum/);
     fireEvent.change(minimums[0]!, { target: { value: "1" } });
     fireEvent.change(maximums[0]!, { target: { value: "2" } });
 

@@ -26,6 +26,8 @@ export const LoginPage = () => {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -77,6 +79,7 @@ export const LoginPage = () => {
           >
             <Input
               label="Email address"
+              required
               type="email"
               placeholder="you@restaurant.com"
               error={errors.email?.message}
@@ -87,6 +90,7 @@ export const LoginPage = () => {
             <Input
               id="login-password"
               label="Password"
+              required
               type={showPass ? "text" : "password"}
               placeholder="••••••••"
               autoComplete="current-password"

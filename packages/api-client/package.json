@@ -12,7 +12,7 @@
   "dependencies": {
     "axios": "^1.7.2",
     "@pos/types": "workspace:*",
-    "@pos/validation": "workspace:*"
+    "@pos/contracts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

@@ -44,7 +44,7 @@ export const deductTicketWhenFired = async (
   ticket: Awaited<ReturnType<typeof ticketRepository.findDetailedById>>,
 ) => {
   if (!ticket) return;
-  await inventoryService.deductForOrderItems(
+  await inventoryService.deductForOrderItemsWithRetry(
     auth.tenantId,
     ticket.branchId,
     ticket.orderId,

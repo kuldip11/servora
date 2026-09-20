@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     updateBranch: vi.fn(),
     archiveBranch: vi.fn(),
     capturedQueryFn: null as null | (() => Promise<any>),
+    refetch: vi.fn(),
   };
 });
 
@@ -67,6 +68,9 @@ vi.mock("@/features/auth/services/auth.service", () => ({
 }));
 vi.mock("@/shared/auth/active-context", () => ({
   activateMembershipContext: mocks.activate,
+}));
+vi.mock("@/shared/lib/api-client", () => ({
+  extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
@@ -121,6 +125,17 @@ vi.mock("@pos/ui", () => ({
     </header>
   ),
   Spinner: () => <div>spinner</div>,
+  QueryErrorState: ({ title, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <button onClick={onRetry}>retry business</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
+  FieldErrorText: ({ message }: any) =>
+    message ? <span>{message}</span> : null,
 }));
 
 import { useAuthStore } from "@/store/auth";
@@ -192,6 +207,10 @@ describe("BusinessPage coverage", () => {
     mocks.queryResult.current = {
       data: { organizations: [organization], franchises: [franchise] },
       isLoading: false,
+      isError: false,
+      error: null,
+      isFetching: false,
+      refetch: mocks.refetch,
     };
     mocks.organizations.mockResolvedValue([organization]);
     mocks.franchises.mockResolvedValue([franchise]);
@@ -216,16 +235,35 @@ describe("BusinessPage coverage", () => {
     );
   });
 
-  it("renders loading and executes the hierarchy query function including franchise failure fallback", async () => {
-    mocks.queryResult.current = { data: undefined, isLoading: true };
+  it("renders loading and lets franchise failures fail the hierarchy query", async () => {
+    mocks.queryResult.current = {
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      isFetching: false,
+      refetch: mocks.refetch,
+    };
     render(<BusinessPage />);
     expect(screen.getByText("spinner")).toBeTruthy();
     expect(mocks.capturedQueryFn).toBeTypeOf("function");
     mocks.franchises.mockRejectedValueOnce(new Error("hidden"));
-    expect(await mocks.capturedQueryFn!()).toEqual({
-      organizations: [organization],
-      franchises: [],
-    });
+    await expect(mocks.capturedQueryFn!()).rejects.toThrow("hidden");
+  });
+
+  it("does not render onboarding when the business query fails", () => {
+    mocks.queryResult.current = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("offline"),
+      isFetching: false,
+      refetch: mocks.refetch,
+    };
+    render(<BusinessPage />);
+    expect(screen.getByText("Unable to load business structure")).toBeTruthy();
+    expect(screen.queryByText("Set up your business")).toBeNull();
+    fireEvent.click(screen.getByText("retry business"));
+    expect(mocks.refetch).toHaveBeenCalled();
   });
 
   it("covers owner onboarding and organization creation", async () => {
@@ -425,12 +463,7 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateOrganization.mockRejectedValueOnce(new Error("org-save"));
     fireEvent.submit(screen.getByText("Save business").closest("form")!);
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not save organization",
-      ),
-    );
+    expect(await screen.findByText("Could not save organization")).toBeTruthy();
     mocks.archiveOrganization.mockRejectedValueOnce(new Error("org-archive"));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
     await waitFor(() =>
@@ -445,12 +478,7 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateFranchise.mockRejectedValueOnce(new Error("franchise-save"));
     fireEvent.submit(screen.getByText("Save Franchise").closest("form")!);
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not save franchise",
-      ),
-    );
+    expect(await screen.findByText("Could not save franchise")).toBeTruthy();
     mocks.archiveFranchise.mockRejectedValueOnce(
       new Error("franchise-archive"),
     );
@@ -467,12 +495,7 @@ describe("BusinessPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     mocks.updateBranch.mockRejectedValueOnce(new Error("branch-save"));
     fireEvent.submit(screen.getByText("Save Branch").closest("form")!);
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not save branch",
-      ),
-    );
+    expect(await screen.findByText("Could not save branch")).toBeTruthy();
     mocks.archiveBranch.mockRejectedValueOnce(new Error("branch-archive"));
     fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
     await waitFor(() =>

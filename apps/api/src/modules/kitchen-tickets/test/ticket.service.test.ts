@@ -52,7 +52,7 @@ vi.mock("../../../lib/event-bus", () => ({
   eventBus: { publish, subscribe: subscribeLocal },
 }));
 vi.mock("../../inventory/inventory.service", () => ({
-  inventoryService: { deductForOrderItems },
+  inventoryService: { deductForOrderItemsWithRetry: deductForOrderItems },
 }));
 vi.mock("../stations/station.repository", () => ({
   stationRepository: { findById: stationFindById, list: stationList },

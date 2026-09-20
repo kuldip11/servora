@@ -15,12 +15,15 @@ export const LoginForm = ({
     formState: { errors },
   } = useForm<CredentialsForm>({
     resolver: zodResolver(credentialsSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { email: "", password: "" },
   });
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <TextInput
         label="Email"
+        required
         type="email"
         placeholder="chef@restaurant.com"
         {...register("email")}
@@ -28,6 +31,7 @@ export const LoginForm = ({
       />
       <PasswordInput
         label="Password"
+        required
         placeholder="••••••••"
         {...register("password")}
         error={errors.password?.message}

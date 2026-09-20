@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
-import { Button, Modal, StatusBadge } from "@pos/ui";
+import { Button, Modal, QueryErrorState, Spinner, StatusBadge } from "@pos/ui";
 import type { Bill, Order } from "@pos/types";
 import { billingService } from "@/features/billing/services/billing.service";
 import { printBills } from "@/features/billing/utils/print-bills";
+import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 
 const fallbackBill = (order: Order): Bill => ({
@@ -40,13 +41,43 @@ export const PrintBillsDialog = ({
   onClose: () => void;
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const { data: orderBills = [] } = useQuery<Bill[]>({
+  const billsQuery = useQuery<Bill[]>({
     queryKey: ["billing", "order", order?.id],
     queryFn: () => billingService.getOrderBills(order!.id),
     enabled: !!order,
   });
 
   if (!order) return null;
+
+  if (billsQuery.isLoading) {
+    return (
+      <Modal open title="Preview and print bills" size="md" onClose={onClose}>
+        <div className="flex min-h-48 items-center justify-center">
+          <span role="status" aria-label="Loading bills">
+            <Spinner />
+          </span>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (billsQuery.isError) {
+    return (
+      <Modal open title="Preview and print bills" size="md" onClose={onClose}>
+        <QueryErrorState
+          title="Unable to load bills"
+          description={extractApiError(
+            billsQuery.error,
+            "Bills could not be loaded. Printing is blocked until the latest billing state is available.",
+          )}
+          isRetrying={billsQuery.isFetching}
+          onRetry={() => void billsQuery.refetch()}
+        />
+      </Modal>
+    );
+  }
+
+  const orderBills = billsQuery.data ?? [];
   const printableBills = orderBills.length ? orderBills : [fallbackBill(order)];
 
   return (

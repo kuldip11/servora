@@ -41,7 +41,14 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: vi.fn(),
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mocks.queryData }),
+  useQuery: () => ({
+    data: mocks.queryData,
+    isLoading: false,
+    isError: false,
+    isSuccess: true,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
   useMutation: (options: any) => ({
     mutate: (vars: any) => {
       try {

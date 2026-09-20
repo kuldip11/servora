@@ -1,6 +1,11 @@
 import type { AuthContext } from "@/core/auth";
 import { requirePermission } from "@/core/auth";
-import { ForbiddenError, NotFoundError, ValidationError } from "@/core/errors";
+import {
+  ForbiddenError,
+  InternalError,
+  NotFoundError,
+  ValidationError,
+} from "@/core/errors";
 import { writeAudit } from "@/core/audit";
 import { permissionRepository } from "./permission.repository";
 
@@ -47,6 +52,12 @@ export const permissionService = {
       entityId: roleId,
       metadata: { permissionIds: uniqueIds },
     });
-    return permissionRepository.findRole(auth.tenantId, roleId);
+    const updatedRole = await permissionRepository.findRole(
+      auth.tenantId,
+      roleId,
+    );
+    if (!updatedRole)
+      throw new InternalError("Updated role permissions could not be loaded");
+    return updatedRole;
   },
 };

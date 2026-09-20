@@ -23,6 +23,16 @@ export class AppErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     this.props.onError?.(error, info);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("servora:react-error", {
+          detail: {
+            message: error.message,
+            componentStack: info.componentStack ?? undefined,
+          },
+        }),
+      );
+    }
   }
 
   private handleReset = () => {

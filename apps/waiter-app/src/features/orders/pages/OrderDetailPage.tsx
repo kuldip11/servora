@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Spinner, IconButton } from "@pos/ui";
+import {
+  IconButton,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
+  toast,
+} from "@pos/ui";
 import { X } from "lucide-react";
 import { useOrder } from "@/features/orders/hooks/useOrder";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
@@ -27,7 +33,7 @@ import {
   ManagerApprovalDialog,
   type ManagerApprovalRequest,
 } from "@/features/orders/components/ManagerApprovalDialog";
-import { extractApiError } from "@pos/api-client";
+import { extractApiError, toApiClientError } from "@pos/api-client";
 
 interface Props {
   orderId: string;
@@ -37,13 +43,19 @@ interface Props {
 
 export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
   const qc = useQueryClient();
-  const { data: order, isLoading } = useOrder(orderId);
+  const orderQuery = useOrder(orderId);
+  const { data: order, isLoading } = orderQuery;
   const updateStatus = useUpdateOrderStatus();
   const updateTicketStatus = useUpdateTicketStatus();
   const lineAdjustments = useLineAdjustments(orderId);
   const refill = useMutation({
     mutationFn: (itemId: string) => refillOrderItem(orderId, itemId),
     onSuccess: () => qc.invalidateQueries(),
+    onError: (error) =>
+      toast({
+        title: extractApiError(error, "Failed to refill item"),
+        tone: "danger",
+      }),
   });
   const [seatShareDialog, setSeatShareDialog] = useState<{
     itemId: string;
@@ -55,10 +67,11 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
   >(null);
   const [pendingApproval, setPendingApproval] =
     useState<ManagerApprovalRequest | null>(null);
-  const { data: cancellationReasons = [] } = useQuery({
+  const cancellationReasonsQuery = useQuery({
     queryKey: ["cancellation-reasons", "active"],
     queryFn: fetchCancellationReasons,
   });
+  const cancellationReasons = cancellationReasonsQuery.data ?? [];
   const [showTransfer, setShowTransfer] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
@@ -79,7 +92,7 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
           setPendingApproval(null);
         },
         onError: (error) => {
-          if (extractApiError(error).includes("Manager approval required")) {
+          if (toApiClientError(error).code === "MANAGER_APPROVAL_REQUIRED") {
             setReasonAction(null);
             setPendingApproval(request);
           }
@@ -121,6 +134,54 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
       </div>
     );
 
+  if (orderQuery.isError && !order) {
+    const apiError = toApiClientError(orderQuery.error);
+    const notFound = apiError.status === 404;
+    const forbidden = apiError.status === 403;
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
+          <IconButton
+            icon={X}
+            aria-label="Back to Orders"
+            size="lg"
+            className="h-9 w-9 rounded-xl bg-surface-secondary hover:bg-surface-secondary"
+            onClick={onBack}
+          />
+          <h2 className="font-bold text-text-primary">Order Detail</h2>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-4">
+          <QueryErrorState
+            className="w-full max-w-lg"
+            title={
+              notFound
+                ? "Order not found"
+                : forbidden
+                  ? "You do not have access to this order"
+                  : "Unable to load order"
+            }
+            description={
+              notFound
+                ? "This order no longer exists or the link is invalid."
+                : extractApiError(
+                    orderQuery.error,
+                    forbidden
+                      ? "Your current role does not allow access to this order."
+                      : "The order could not be loaded. Please retry before acting on it.",
+                  )
+            }
+            isRetrying={orderQuery.isFetching}
+            onRetry={
+              notFound || forbidden
+                ? undefined
+                : () => void orderQuery.refetch()
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!order) return null;
 
   const tickets = order.kitchenTickets ?? [];
@@ -142,6 +203,14 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
   return (
     <div className="flex flex-col h-screen bg-background">
       <OrderDetailHeader order={order} onBack={onBack} />
+
+      {orderQuery.isError ? (
+        <StaleDataBanner
+          message="Order refresh failed — showing the latest order data available."
+          isRetrying={orderQuery.isFetching}
+          onRetry={() => void orderQuery.refetch()}
+        />
+      ) : null}
 
       <div className="flex-1 overflow-y-auto">
         <OrderBanners order={order} readyTickets={readyTickets} />
@@ -290,6 +359,20 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
         }
         reasons={cancellationReasons}
         loading={updateStatus.isPending || lineAdjustments.isPending}
+        {...(cancellationReasonsQuery.isError
+          ? {
+              reasonsError: extractApiError(
+                cancellationReasonsQuery.error,
+                "Cancellation reasons could not be loaded.",
+              ),
+            }
+          : {})}
+        reasonsStale={
+          cancellationReasonsQuery.isError &&
+          cancellationReasonsQuery.data !== undefined
+        }
+        reasonsRetrying={cancellationReasonsQuery.isFetching}
+        onRetryReasons={() => void cancellationReasonsQuery.refetch()}
         onClose={() => setReasonAction(null)}
         onSubmit={(reason) => {
           if (!reasonAction) return;

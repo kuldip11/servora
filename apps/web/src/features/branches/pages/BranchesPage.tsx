@@ -40,6 +40,8 @@ export const BranchesPage = () => {
     formState: { errors },
   } = useForm<BranchFormValues>({
     resolver: zodResolver(branchFormSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: emptyForm,
   });
   const form = watch();

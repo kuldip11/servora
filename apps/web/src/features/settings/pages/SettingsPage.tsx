@@ -1,13 +1,18 @@
 import { useAuthStore } from "@/store/auth";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import {
+  Button,
   Card,
+  FormErrorSummary,
+  Grid,
+  Input,
   Page,
   PageHeader,
-  Grid,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
   StatusBadge,
   ThemeSwitcher,
 } from "@pos/ui";
@@ -21,16 +26,23 @@ import { cancellationReasonsService } from "@/features/orders/services/cancellat
 import { PricingSettingsCard } from "@/features/settings/components/PricingSettingsCard";
 import { KitchenOperationsSettingsCard } from "@/features/settings/components/KitchenOperationsSettingsCard";
 import { ApprovalThresholdSettingsCard } from "@/features/settings/components/ApprovalThresholdSettingsCard";
+import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
+import { validateCancellationReason } from "@/features/settings/helpers/settings-validation";
 
 export const SettingsPage = () => {
   const { user, franchiseId } = useAuthStore();
   const { has } = usePermissions();
   const queryClient = useQueryClient();
-  const { data: cancellationReasons = [] } = useCancellationReasons(
+  const cancellationReasonsQuery = useCancellationReasons(
     false,
     has("settings:update") && has("orders:read"),
   );
+  const cancellationReasons = cancellationReasonsQuery.data ?? [];
   const [newCancellationReason, setNewCancellationReason] = useState("");
+  const cancellationFormErrors = useLocalFormApiErrors();
+  const cancellationReasonError = validateCancellationReason(
+    newCancellationReason,
+  );
   const reasonMutation = useMutation({
     mutationFn: (
       action:
@@ -42,16 +54,17 @@ export const SettingsPage = () => {
         : cancellationReasonsService.update(action.id, {
             isActive: action.isActive,
           }),
-    onSuccess: () => {
+    onSuccess: (_data, action) => {
       queryClient.invalidateQueries({ queryKey: cancellationReasonKeys.all });
       queryClient.invalidateQueries({
         queryKey: cancellationReasonKeys.active,
       });
-      setNewCancellationReason("");
+      if (action.type === "create") {
+        setNewCancellationReason("");
+        cancellationFormErrors.resetValidation();
+      }
       notifySuccess("Cancellation reasons updated");
     },
-    onError: (error) =>
-      notifyError(error, "Failed to update cancellation reasons"),
   });
   return (
     <Page>
@@ -71,7 +84,7 @@ export const SettingsPage = () => {
           <ApprovalThresholdSettingsCard />
         )}
 
-        {has("settings:update") && (
+        {has("settings:update") && has("orders:read") && (
           <Card>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center">
@@ -81,62 +94,124 @@ export const SettingsPage = () => {
                 Cancellation reasons
               </h2>
             </div>
-            <div className="space-y-2 mb-4">
-              {cancellationReasons.map((reason) => (
-                <div
-                  key={reason.id}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span
-                    className={
-                      reason.isActive
-                        ? "text-text-primary"
-                        : "text-text-disabled line-through"
-                    }
-                  >
-                    {reason.label}
-                  </span>
+            {cancellationReasonsQuery.isLoading &&
+            !cancellationReasonsQuery.data ? (
+              <div className="flex min-h-24 items-center justify-center">
+                <Spinner className="h-5 w-5" />
+              </div>
+            ) : cancellationReasonsQuery.isError &&
+              !cancellationReasonsQuery.data ? (
+              <QueryErrorState
+                title="Unable to load cancellation reasons"
+                description="Cancellation reasons could not be loaded. Retry before changing the configured reasons."
+                onRetry={() => void cancellationReasonsQuery.refetch()}
+                isRetrying={cancellationReasonsQuery.isFetching}
+              />
+            ) : (
+              <>
+                {cancellationReasonsQuery.isError &&
+                cancellationReasonsQuery.data ? (
+                  <StaleDataBanner
+                    message="Cancellation reasons could not be refreshed. Showing the latest cached list."
+                    onRetry={() => void cancellationReasonsQuery.refetch()}
+                    isRetrying={cancellationReasonsQuery.isFetching}
+                  />
+                ) : null}
+                <div className="mb-4 space-y-2">
+                  {cancellationReasons.map((reason) => (
+                    <div
+                      key={reason.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span
+                        className={
+                          reason.isActive
+                            ? "text-text-primary"
+                            : "text-text-disabled line-through"
+                        }
+                      >
+                        {reason.label}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={reasonMutation.isPending}
+                        onClick={() =>
+                          reasonMutation.mutate(
+                            {
+                              type: "toggle",
+                              id: reason.id,
+                              isActive: !reason.isActive,
+                            },
+                            {
+                              onError: (error) =>
+                                notifyError(
+                                  error,
+                                  "Failed to update cancellation reason",
+                                ),
+                            },
+                          )
+                        }
+                      >
+                        {reason.isActive ? "Disable" : "Enable"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <FormErrorSummary
+                  messages={cancellationFormErrors.formErrorMessages}
+                  className="mb-3"
+                />
+                <div className="flex items-end gap-2">
+                  <Input
+                    label="New reason"
+                    required
+                    value={newCancellationReason}
+                    maxLength={120}
+                    error={cancellationFormErrors.fieldError(
+                      "label",
+                      cancellationReasonError,
+                    )}
+                    onBlur={() => cancellationFormErrors.touchField("label")}
+                    onChange={(event) => {
+                      cancellationFormErrors.clearFieldError("label");
+                      setNewCancellationReason(event.target.value);
+                    }}
+                  />
                   <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() =>
-                      reasonMutation.mutate({
-                        type: "toggle",
-                        id: reason.id,
-                        isActive: !reason.isActive,
-                      })
+                    disabled={reasonMutation.isPending}
+                    loading={
+                      reasonMutation.isPending &&
+                      reasonMutation.variables?.type === "create"
                     }
+                    onClick={() => {
+                      cancellationFormErrors.markSubmitted();
+                      cancellationFormErrors.clearErrors();
+                      if (cancellationReasonError) return;
+                      reasonMutation.mutate(
+                        {
+                          type: "create",
+                          label: newCancellationReason.trim(),
+                        },
+                        {
+                          onError: (error) =>
+                            cancellationFormErrors.handleApiError(
+                              error,
+                              ["label"],
+                              "Failed to add cancellation reason",
+                            ),
+                        },
+                      );
+                    }}
                   >
-                    {reason.isActive ? "Disable" : "Enable"}
+                    Add
                   </Button>
                 </div>
-              ))}
-            </div>
-            <div className="flex items-end gap-2">
-              <Input
-                label="New reason"
-                value={newCancellationReason}
-                onChange={(event) =>
-                  setNewCancellationReason(event.target.value)
-                }
-              />
-              <Button
-                disabled={!newCancellationReason.trim()}
-                loading={reasonMutation.isPending}
-                onClick={() =>
-                  reasonMutation.mutate({
-                    type: "create",
-                    label: newCancellationReason.trim(),
-                  })
-                }
-              >
-                Add
-              </Button>
-            </div>
+              </>
+            )}
           </Card>
         )}
 
-        {}
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-9 h-9 bg-violet-50 rounded-lg flex items-center justify-center">

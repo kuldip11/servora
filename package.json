@@ -21,7 +21,7 @@
     "docker:down": "docker compose down",
     "test:a11y": "cd apps/web && bun run test:a11y",
     "audit:rbac": "bash scripts/audit/rbac-static.sh && node scripts/audit/verify-permissions.mjs",
-    "test:coverage": "bun run test:coverage:validation && bun run test:coverage:types && bun run test:coverage:config && bun run test:coverage:api-client && bun run test:coverage:realtime && bun run test:coverage:api && bun run test:coverage:ui && bun run test:coverage:web && bun run test:coverage:waiter && bun run test:coverage:kitchen && bun run test:coverage:customer && bun run test:coverage:website",
+    "test:coverage": "bun run test:coverage:validation && bun run test:coverage:types && bun run test:coverage:config && bun run test:coverage:api-client && bun run test:coverage:realtime && bun run test:coverage:observability && bun run test:coverage:api && bun run test:coverage:ui && bun run test:coverage:web && bun run test:coverage:waiter && bun run test:coverage:kitchen && bun run test:coverage:customer && bun run test:coverage:website",
     "test:coverage:api": "cd apps/api && bun run test:coverage",
     "test:coverage:ui": "cd packages/ui && bun run test:coverage",
     "test:e2e": "cd apps/web && bun run test:e2e",
@@ -68,7 +68,15 @@
     "seo:check": "node scripts/seo/validate-seo.mjs",
     "seo:assets": "node scripts/seo/validate-assets.mjs",
     "seo:audit": "node scripts/seo/audit-built-pages.mjs",
-    "seo:sync-assets": "node scripts/seo/sync-assets.mjs"
+    "seo:sync-assets": "node scripts/seo/sync-assets.mjs",
+    "verify:frontend-performance": "node scripts/performance/check-frontend-budgets.mjs",
+    "test:coverage:observability": "cd packages/observability && bun run test:coverage",
+    "storybook": "cd packages/ui && bun run storybook",
+    "storybook:build": "cd packages/ui && bun run storybook:build",
+    "contracts:generate": "node scripts/contracts/generate-openapi-contract.mjs",
+    "contracts:generate:file": "node scripts/contracts/generate-openapi-contract.mjs docs/openapi.json",
+    "contracts:verify": "node scripts/contracts/generate-openapi-contract.mjs --check",
+    "contracts:verify:file": "node scripts/contracts/generate-openapi-contract.mjs docs/openapi.json --check"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

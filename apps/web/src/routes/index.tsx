@@ -117,6 +117,28 @@ const dashboardRoute = createRoute({
   ),
 });
 
+const operationsCenterRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: "/operations",
+  beforeLoad: requirePermission("analytics:read"),
+  component: lazyPage(() =>
+    import("../features/operations/pages/OperationsCenterPage").then((m) => ({
+      default: m.OperationsCenterPage,
+    })),
+  ),
+});
+
+const branchHealthRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: "/branch-health",
+  beforeLoad: requirePermission("analytics:read"),
+  component: lazyPage(() =>
+    import("../features/operations/pages/BranchHealthPage").then((m) => ({
+      default: m.BranchHealthPage,
+    })),
+  ),
+});
+
 const menuEngineeringRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/menu-engineering",
@@ -280,6 +302,8 @@ const routeTree = rootRoute.addChildren([
     businessRoute,
     forbiddenRoute,
     dashboardRoute,
+    operationsCenterRoute,
+    branchHealthRoute,
     menuEngineeringRoute,
     ordersRoute,
     orderDetailRoute,

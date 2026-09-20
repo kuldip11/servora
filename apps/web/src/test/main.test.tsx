@@ -19,6 +19,7 @@ vi.mock("@pos/ui", () => ({
   ThemeProvider: ({ children }: any) => <>{children}</>,
   AppErrorBoundary: ({ children }: any) => <>{children}</>,
   Toaster: () => <div>toaster</div>,
+  ConnectivityBanner: () => <div>connectivity</div>,
 }));
 vi.mock("../routes", () => ({ router: {} }));
 vi.mock("../shared/lib/query-client", () => ({ queryClient: {} }));

@@ -135,7 +135,50 @@ describe("DifferentiatorsPage coverage", () => {
       totalAmount: 90,
     });
     mocks.createPromotion.mockResolvedValue({});
-    mocks.explain.mockResolvedValue({ source: "pricing", total: 100 });
+    mocks.explain.mockResolvedValue({
+      orderId: "order-1",
+      asOf: "2026-09-15T12:00:00.000Z",
+      completeHistory: true,
+      historyNotice: "Pricing and availability history verified",
+      totals: {
+        subtotal: 100,
+        discountAmount: 0,
+        taxAmount: 5,
+        serviceChargeAmount: 0,
+        roundingAdjustment: 0,
+        totalAmount: 105,
+      },
+      lines: [
+        {
+          orderItemId: "oi-1",
+          name: "Paneer Tikka",
+          historicalEvidenceComplete: true,
+          availabilityAtOrder: {
+            effectiveStatus: "AVAILABLE",
+            reason: null,
+            cause: "BASE_STATUS",
+            channel: "STAFF",
+            fulfillmentType: "DINE_IN",
+          },
+          pricingReplay: {
+            priceSource: { description: "Menu-item base price" },
+            baseResolvedUnitPrice: 100,
+            variantDelta: 0,
+            modifierDelta: 0,
+            comboDelta: 0,
+            promotionDelta: 0,
+            loyaltyDelta: 0,
+            persistedSubtotal: 100,
+            matchesSnapshot: true,
+          },
+          authoritativePricingReplay: { matchesSnapshot: true },
+          authoritativeAvailabilityReplay: { matchesSnapshot: true },
+          trace: [
+            { stage: "BASE_PRICE", explanation: "Resolved from the menu item" },
+          ],
+        },
+      ],
+    });
     mocks.setThreshold.mockResolvedValue({});
   });
 
@@ -200,7 +243,8 @@ describe("DifferentiatorsPage coverage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Explain" }));
     await waitFor(() => expect(mocks.explain).toHaveBeenCalledWith("order-1"));
-    expect(screen.getByText(/pricing/)).toBeTruthy();
+    expect(screen.getByText("Why this price")).toBeTruthy();
+    expect(screen.getByText("Pricing replay matched")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Guided builder" }));
     fireEvent.change(screen.getByPlaceholderText("Lunch combo"), {

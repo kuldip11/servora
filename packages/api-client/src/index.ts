@@ -65,3 +65,5 @@ export type { AvailabilityDashboardParams } from "./domains/availability";
 export { createSettingsApi } from "./domains/settings";
 export { createOrganizationsApi } from "./domains/organizations";
 export { createKitchenApi } from "./domains/kitchen";
+
+export * from "./generated/openapi-contract";

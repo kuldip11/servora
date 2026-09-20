@@ -5,7 +5,11 @@ import { moduleBySlug } from "@/content/modules";
 import { CtaBanner } from "./CtaBanner";
 import { ProductPreview } from "./ProductPreview";
 import { getSiteUrl } from "@/lib/seo";
-import { createBreadcrumbSchema, createOrganizationSchema, createSoftwareApplicationSchema } from "@pos/seo";
+import {
+  createBreadcrumbSchema,
+  createOrganizationSchema,
+  createSoftwareApplicationSchema,
+} from "@pos/seo";
 
 export const ProductDetail = ({ module }: { module: Module }) => {
   const base = getSiteUrl();
@@ -146,7 +150,9 @@ export const ProductDetail = ({ module }: { module: Module }) => {
               ))}
             </div>
             <p className="mt-7 text-sm leading-6 text-[var(--text-secondary)]">
-              {module.name} stays connected to ordering, kitchen and business context so teams can work from the same operational record instead of isolated tools.
+              {module.name} stays connected to ordering, kitchen and business
+              context so teams can work from the same operational record instead
+              of isolated tools.
             </p>
           </section>
         </div>

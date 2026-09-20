@@ -43,7 +43,8 @@ export const AddStaffForm = ({
       roleId: "",
       branchId: undefined,
     },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<CreateStaffInput>();

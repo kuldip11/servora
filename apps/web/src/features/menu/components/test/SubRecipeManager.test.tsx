@@ -56,23 +56,27 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
   notifySuccess: h.success,
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
-  useMutation: (cfg: any) => ({
-    isPending: pending,
-    mutate: (arg?: any, callbacks?: any) =>
-      Promise.resolve()
-        .then(() => cfg.mutationFn(arg))
-        .then((v) => {
-          cfg.onSuccess?.(v);
-          callbacks?.onSuccess?.(v);
-        })
-        .catch((e) => {
-          cfg.onError?.(e);
-          callbacks?.onError?.(e);
-        }),
-  }),
-}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+    useMutation: (cfg: any) => ({
+      isPending: pending,
+      mutate: (arg?: any, callbacks?: any) =>
+        Promise.resolve()
+          .then(() => cfg.mutationFn(arg))
+          .then((v) => {
+            cfg.onSuccess?.(v);
+            callbacks?.onSuccess?.(v);
+          })
+          .catch((e) => {
+            cfg.onError?.(e);
+            callbacks?.onError?.(e);
+          }),
+    }),
+  };
+});
 import { SubRecipeManager } from "../SubRecipeManager";
 
 describe("SubRecipeManager coverage", () => {
@@ -145,7 +149,10 @@ describe("SubRecipeManager coverage", () => {
     const createButton = screen.getByRole("button", {
       name: "Create component",
     });
-    expect((createButton as HTMLButtonElement).disabled).toBe(true);
+    expect((createButton as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByLabelText("Name").getAttribute("error")).toBeNull();
+    expect(screen.queryByText("Add at least one ingredient")).toBeNull();
+    fireEvent.click(createButton);
     expect(screen.getByLabelText("Name").getAttribute("error")).toBe(
       "Name is required",
     );

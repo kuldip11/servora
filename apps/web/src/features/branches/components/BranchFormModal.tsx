@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type {
   FieldErrors,
   UseFormHandleSubmit,
@@ -29,6 +30,11 @@ export const BranchFormModal = ({
   onClose: () => void;
   onSubmit: (values: BranchFormValues) => void;
 }) => {
+  const [orderTypesTouched, setOrderTypesTouched] = useState(false);
+  useEffect(() => {
+    if (open) setOrderTypesTouched(false);
+  }, [open, mode]);
+
   const valid =
     form.dineInEnabled ||
     form.takeawayEnabled ||
@@ -44,7 +50,14 @@ export const BranchFormModal = ({
       onClose={onClose}
       title={mode === "add" ? "Add Branch" : "Edit Branch"}
     >
-      <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(event) => {
+          if (!valid) setOrderTypesTouched(true);
+          void handleSubmit(onSubmit)(event);
+        }}
+      >
         <Input
           label={`Branch name${mode === "add" ? "" : " "}`}
           placeholder="Mall Road Branch"
@@ -54,12 +67,14 @@ export const BranchFormModal = ({
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Branch code"
+            required
             placeholder="MALL-01"
             error={errors.code?.message}
             {...register("code")}
           />
           <Input
             label="Currency"
+            required
             placeholder="INR"
             error={errors.currency?.message}
             {...register("currency")}
@@ -67,6 +82,7 @@ export const BranchFormModal = ({
         </div>
         <Input
           label="Timezone"
+          required
           placeholder="Asia/Kolkata"
           error={errors.timezone?.message}
           {...register("timezone")}
@@ -92,6 +108,7 @@ export const BranchFormModal = ({
               <input
                 type="checkbox"
                 checked={form.takeawayEnabled}
+                onBlur={() => setOrderTypesTouched(true)}
                 onChange={(e) =>
                   setValue("takeawayEnabled", e.target.checked, {
                     shouldValidate: true,
@@ -104,6 +121,7 @@ export const BranchFormModal = ({
               <input
                 type="checkbox"
                 checked={form.deliveryEnabled}
+                onBlur={() => setOrderTypesTouched(true)}
                 onChange={(e) =>
                   setValue("deliveryEnabled", e.target.checked, {
                     shouldValidate: true,
@@ -116,6 +134,7 @@ export const BranchFormModal = ({
               <input
                 type="checkbox"
                 checked={form.onlineEnabled}
+                onBlur={() => setOrderTypesTouched(true)}
                 onChange={(e) =>
                   setValue("onlineEnabled", e.target.checked, {
                     shouldValidate: true,
@@ -128,6 +147,7 @@ export const BranchFormModal = ({
               <input
                 type="checkbox"
                 checked={form.dineInEnabled}
+                onBlur={() => setOrderTypesTouched(true)}
                 onChange={(e) => setDineIn(e.target.checked)}
               />
               Dine-in &amp; Tables
@@ -140,7 +160,7 @@ export const BranchFormModal = ({
               ? " Turning dine-in off is blocked while the branch has open dine-in orders."
               : ""}
           </p>
-          {!valid && (
+          {orderTypesTouched && !valid && (
             <p className="text-xs text-danger">
               Select at least one order type.
             </p>

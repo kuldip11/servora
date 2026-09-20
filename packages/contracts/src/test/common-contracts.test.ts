@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { FormatRegistry } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import {
+  activeMenuListResponseSchema,
   apiErrorResponseSchema,
   idParamsSchema,
   managerApprovalIssueBodySchema,
@@ -8,6 +10,14 @@ import {
 } from "../index";
 
 describe("shared transport contracts", () => {
+  beforeAll(() => {
+    if (!FormatRegistry.Has("date-time")) {
+      FormatRegistry.Set(
+        "date-time",
+        (value) => !Number.isNaN(Date.parse(value)),
+      );
+    }
+  });
   it("validates UUID params", () => {
     expect(
       Value.Check(idParamsSchema, {
@@ -39,6 +49,50 @@ describe("shared transport contracts", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("accepts active menus with memberships", () => {
+    const menuId = "11111111-1111-4111-8111-111111111111";
+    const tenantId = "22222222-2222-4222-8222-222222222222";
+    const itemId = "33333333-3333-4333-8333-333333333333";
+    const categoryId = "44444444-4444-4444-8444-444444444444";
+    const activeMenuPayload = {
+      success: true,
+      data: [
+        {
+          id: menuId,
+          tenantId,
+          organizationId: null,
+          name: "Dinner",
+          description: null,
+          status: "PUBLISHED",
+          isDefault: true,
+          availableChannels: ["STAFF"],
+          availableFulfillmentTypes: ["DINE_IN"],
+          availableBranchIds: null,
+          effectiveFrom: null,
+          createdAt: "2026-09-20T00:00:00.000Z",
+          updatedAt: "2026-09-20T00:00:00.000Z",
+          memberships: [
+            {
+              id: "membership-1",
+              menuId,
+              menuItemId: itemId,
+              categoryId,
+              sortOrder: 0,
+            },
+          ],
+        },
+      ],
+    };
+
+    const errors = [
+      ...Value.Errors(activeMenuListResponseSchema, activeMenuPayload),
+    ];
+    expect(errors).toEqual([]);
+    expect(Value.Check(activeMenuListResponseSchema, activeMenuPayload)).toBe(
+      true,
+    );
   });
 
   it("validates manager approval transport input", () => {

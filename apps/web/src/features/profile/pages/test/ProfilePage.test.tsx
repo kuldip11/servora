@@ -206,27 +206,29 @@ describe("ProfilePage coverage", () => {
     const saveButton = screen.getByRole("button", { name: "Save profile" });
     expect((saveButton as HTMLButtonElement).disabled).toBe(true);
 
-    fireEvent.change(screen.getByLabelText("First name"), {
-      target: { value: "" },
-    });
+    const firstName = screen.getByLabelText("First name");
+    fireEvent.change(firstName, { target: { value: "" } });
+    expect(screen.queryByText("First name is required")).toBeNull();
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.blur(firstName);
     expect(await screen.findByText("First name is required")).toBeTruthy();
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true);
 
     const passwordButton = screen.getByRole("button", {
       name: "Change password",
     });
-    expect((passwordButton as HTMLButtonElement).disabled).toBe(true);
+    expect((passwordButton as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.change(screen.getByLabelText("Current password"), {
       target: { value: "old-pass" },
     });
-    fireEvent.change(screen.getByLabelText("New password"), {
-      target: { value: "short" },
-    });
+    const newPassword = screen.getByLabelText("New password");
+    fireEvent.change(newPassword, { target: { value: "short" } });
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
       target: { value: "short" },
     });
+    expect(screen.queryByText("Use at least 8 characters")).toBeNull();
+    fireEvent.blur(newPassword);
     expect(await screen.findByText("Use at least 8 characters")).toBeTruthy();
-    expect((passwordButton as HTMLButtonElement).disabled).toBe(true);
+    expect((passwordButton as HTMLButtonElement).disabled).toBe(false);
   });
 });

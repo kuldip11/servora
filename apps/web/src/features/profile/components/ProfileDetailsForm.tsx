@@ -27,9 +27,10 @@ export const ProfileDetailsForm = ({ user }: { user: User | null }) => {
       phone: user?.phone ?? "",
       profileImageUrl: user?.profileImageUrl ?? "",
     },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
-  const { errors, isDirty, isSubmitting, isValid } = useFormState({
+  const { errors, isDirty, isSubmitting } = useFormState({
     control: form.control,
   });
   const mutation = useUpdateProfile();
@@ -56,11 +57,13 @@ export const ProfileDetailsForm = ({ user }: { user: User | null }) => {
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           label="First name"
+          required
           error={errors.firstName?.message}
           {...form.register("firstName")}
         />
         <Input
           label="Last name"
+          required
           error={errors.lastName?.message}
           {...form.register("lastName")}
         />
@@ -86,7 +89,7 @@ export const ProfileDetailsForm = ({ user }: { user: User | null }) => {
       <Button
         type="submit"
         loading={mutation.isPending}
-        disabled={!isValid || !isDirty || mutation.isPending || isSubmitting}
+        disabled={!isDirty || mutation.isPending || isSubmitting}
       >
         {mutation.isPending ? "Saving…" : "Save profile"}
       </Button>

@@ -54,6 +54,10 @@ export const BranchOverridesPanel = ({
     formErrorMessages,
     clearErrors,
     clearFieldError,
+    fieldError,
+    touchField,
+    markSubmitted,
+    resetValidation,
     handleApiError,
   } = useLocalFormApiErrors();
 
@@ -165,7 +169,7 @@ export const BranchOverridesPanel = ({
                       <button
                         type="button"
                         onClick={() => {
-                          clearErrors();
+                          resetValidation();
                           setDraft(toDraft(override));
                           setEditingBranchId(branch.id);
                         }}
@@ -188,7 +192,8 @@ export const BranchOverridesPanel = ({
                       step="0.01"
                       placeholder={`Price: ₹${basePrice}`}
                       value={draft.price}
-                      error={fieldErrors.price ?? clientErrors.price}
+                      error={fieldError("price", clientErrors.price)}
+                      onBlur={() => touchField("price")}
                       onChange={(event) => {
                         clearFieldError("price");
                         setDraft((current) => ({
@@ -205,7 +210,8 @@ export const BranchOverridesPanel = ({
                       step="0.01"
                       placeholder={`Tax %: ${baseTaxRate}`}
                       value={draft.taxRate}
-                      error={fieldErrors.taxRate ?? clientErrors.taxRate}
+                      error={fieldError("taxRate", clientErrors.taxRate)}
+                      onBlur={() => touchField("taxRate")}
                       onChange={(event) => {
                         clearFieldError("taxRate");
                         setDraft((current) => ({
@@ -221,10 +227,11 @@ export const BranchOverridesPanel = ({
                       step="1"
                       placeholder={`Prep min: ${basePrepTimeMinutes ?? "-"}`}
                       value={draft.prepTimeMinutes}
-                      error={
-                        fieldErrors.prepTimeMinutes ??
-                        clientErrors.prepTimeMinutes
-                      }
+                      error={fieldError(
+                        "prepTimeMinutes",
+                        clientErrors.prepTimeMinutes,
+                      )}
+                      onBlur={() => touchField("prepTimeMinutes")}
                       onChange={(event) => {
                         clearFieldError("prepTimeMinutes");
                         setDraft((current) => ({
@@ -287,7 +294,7 @@ export const BranchOverridesPanel = ({
                       variant="secondary"
                       size="sm"
                       onClick={() => {
-                        clearErrors();
+                        resetValidation();
                         setEditingBranchId(null);
                       }}
                     >
@@ -302,12 +309,16 @@ export const BranchOverridesPanel = ({
                         Object.keys(clientErrors).length > 0
                       }
                       onClick={() => {
+                        markSubmitted();
                         clearErrors();
                         if (Object.keys(clientErrors).length) return;
                         saveMutation.mutate(
                           { branchId: branch.id, input: draft },
                           {
-                            onSuccess: () => setEditingBranchId(null),
+                            onSuccess: () => {
+                              resetValidation();
+                              setEditingBranchId(null);
+                            },
                             onError: (error) =>
                               handleApiError(
                                 error,

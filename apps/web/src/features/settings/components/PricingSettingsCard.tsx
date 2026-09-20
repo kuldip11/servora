@@ -91,7 +91,7 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
         defaultTaxMode,
       }),
     onSuccess: () => {
-      formErrors.clearErrors();
+      formErrors.resetValidation();
       qc.invalidateQueries({ queryKey: key });
       notifySuccess("Pricing settings updated");
     },
@@ -144,7 +144,8 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
           max="100"
           step="0.01"
           value={serviceChargePercent}
-          error={formErrors.fieldErrors.serviceChargePercent ?? clientError}
+          error={formErrors.fieldError("serviceChargePercent", clientError)}
+          onBlur={() => formErrors.touchField("serviceChargePercent")}
           onChange={(event) => {
             formErrors.clearFieldError("serviceChargePercent");
             setServiceChargePercent(event.target.value);
@@ -194,13 +195,9 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
       <div className="mt-4 flex justify-end">
         <Button
           loading={save.isPending}
-          disabled={
-            settingsQuery.isLoading ||
-            save.isPending ||
-            Boolean(clientError) ||
-            !isDirty
-          }
+          disabled={settingsQuery.isLoading || save.isPending || !isDirty}
           onClick={() => {
+            formErrors.markSubmitted();
             formErrors.clearErrors();
             if (clientError || !isDirty) return;
             save.mutate(undefined, {

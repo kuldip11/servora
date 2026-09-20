@@ -43,7 +43,12 @@ vi.mock("@pos/api-client", () => ({
   }),
   createCustomersApi: () => ({ listGroups: h.listGroups }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
+  toApiClientError: () => ({}),
+}));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: h.invalidate },
 }));

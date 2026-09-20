@@ -37,7 +37,8 @@ export const OrganizationModal = ({
   const form = useForm<OrganizationBusinessFormValues>({
     resolver: zodResolver(organizationBusinessFormSchema),
     defaultValues: organizationDefaults,
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<OrganizationBusinessFormValues>();
@@ -104,13 +105,18 @@ export const OrganizationModal = ({
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Organization / Business name"
+            required
             placeholder="e.g. KKS Hospitality Pvt Ltd"
             error={e.name?.message}
             {...form.register("name")}
           />
           <label className="text-sm font-medium">
-            Business type
+            Business type{" "}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
             <select
+              aria-required="true"
               className={`mt-1 ${inputClass}`}
               aria-invalid={Boolean(e.businessType)}
               {...form.register("businessType")}
@@ -132,12 +138,14 @@ export const OrganizationModal = ({
           </label>
           <Input
             label="Primary contact name"
+            required
             placeholder="e.g. Kuldip Sharma"
             error={e.primaryContactName?.message}
             {...form.register("primaryContactName")}
           />
           <Input
             label="Business email"
+            required
             type="email"
             placeholder="e.g. operations@kkshospitality.com"
             error={e.businessEmail?.message}
@@ -145,6 +153,7 @@ export const OrganizationModal = ({
           />
           <Input
             label="Business phone"
+            required
             placeholder="e.g. +91 98765 43210"
             error={e.businessPhone?.message}
             {...form.register("businessPhone")}
@@ -157,6 +166,7 @@ export const OrganizationModal = ({
           />
           <Input
             label="Address line 1"
+            required
             placeholder="Street address and building"
             error={e.addressLine1?.message}
             {...form.register("addressLine1")}
@@ -169,36 +179,42 @@ export const OrganizationModal = ({
           />
           <Input
             label="City"
+            required
             placeholder="e.g. Gurugram"
             error={e.city?.message}
             {...form.register("city")}
           />
           <Input
             label="State / Province"
+            required
             placeholder="e.g. Haryana"
             error={e.stateProvince?.message}
             {...form.register("stateProvince")}
           />
           <Input
             label="Postal code"
+            required
             placeholder="e.g. 122001"
             error={e.postalCode?.message}
             {...form.register("postalCode")}
           />
           <Input
             label="Country code"
+            required
             placeholder="e.g. IN"
             error={e.country?.message}
             {...form.register("country")}
           />
           <Input
             label="Timezone"
+            required
             placeholder="e.g. Asia/Kolkata"
             error={e.timezone?.message}
             {...form.register("timezone")}
           />
           <Input
             label="Currency"
+            required
             placeholder="e.g. INR"
             error={e.currency?.message}
             {...form.register("currency")}

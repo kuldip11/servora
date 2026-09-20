@@ -23,7 +23,8 @@ export const HolidaysSection = () => {
     formState: { errors, isValid },
   } = useForm<CreateHolidayInput>({
     resolver: zodResolver(createHolidaySchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: "", holidayDate: "", region: "" },
   });
 
@@ -116,12 +117,14 @@ export const HolidaysSection = () => {
         <div className="flex items-end gap-2">
           <Input
             label="Name"
+            required
             placeholder="Diwali"
             error={errors.name?.message}
             {...register("name", { onChange: clearFormErrors })}
           />
           <Input
             label="Date"
+            required
             type="date"
             error={errors.holidayDate?.message}
             {...register("holidayDate", { onChange: clearFormErrors })}

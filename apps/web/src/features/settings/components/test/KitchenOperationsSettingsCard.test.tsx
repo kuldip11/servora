@@ -10,7 +10,12 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
+  toApiClientError: () => ({}),
+}));
 vi.mock("@pos/api-client", () => ({
   extractApiFieldErrors: () => ({}),
   extractApiError: (_error: unknown, fallback: string) => fallback,

@@ -22,9 +22,10 @@ export const ChangePasswordForm = () => {
       newPassword: "",
       confirmPassword: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
-  const { errors, isSubmitting, isValid } = useFormState({
+  const { errors, isSubmitting } = useFormState({
     control: form.control,
   });
   const mutation = useChangePassword();
@@ -53,6 +54,7 @@ export const ChangePasswordForm = () => {
     <form className="space-y-4" onSubmit={submit}>
       <Input
         label="Current password"
+        required
         type="password"
         autoComplete="current-password"
         error={errors.currentPassword?.message}
@@ -60,6 +62,7 @@ export const ChangePasswordForm = () => {
       />
       <Input
         label="New password"
+        required
         type="password"
         autoComplete="new-password"
         error={errors.newPassword?.message}
@@ -67,6 +70,7 @@ export const ChangePasswordForm = () => {
       />
       <Input
         label="Confirm new password"
+        required
         type="password"
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
@@ -76,7 +80,7 @@ export const ChangePasswordForm = () => {
       <Button
         type="submit"
         loading={mutation.isPending}
-        disabled={!isValid || mutation.isPending || isSubmitting}
+        disabled={mutation.isPending || isSubmitting}
       >
         {mutation.isPending ? "Changing…" : "Change password"}
       </Button>

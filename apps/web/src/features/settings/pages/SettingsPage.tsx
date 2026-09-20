@@ -61,7 +61,7 @@ export const SettingsPage = () => {
       });
       if (action.type === "create") {
         setNewCancellationReason("");
-        cancellationFormErrors.clearErrors();
+        cancellationFormErrors.resetValidation();
       }
       notifySuccess("Cancellation reasons updated");
     },
@@ -165,27 +165,27 @@ export const SettingsPage = () => {
                 <div className="flex items-end gap-2">
                   <Input
                     label="New reason"
+                    required
                     value={newCancellationReason}
                     maxLength={120}
-                    error={
-                      cancellationFormErrors.fieldErrors.label ??
-                      cancellationReasonError
-                    }
+                    error={cancellationFormErrors.fieldError(
+                      "label",
+                      cancellationReasonError,
+                    )}
+                    onBlur={() => cancellationFormErrors.touchField("label")}
                     onChange={(event) => {
                       cancellationFormErrors.clearFieldError("label");
                       setNewCancellationReason(event.target.value);
                     }}
                   />
                   <Button
-                    disabled={
-                      reasonMutation.isPending ||
-                      Boolean(cancellationReasonError)
-                    }
+                    disabled={reasonMutation.isPending}
                     loading={
                       reasonMutation.isPending &&
                       reasonMutation.variables?.type === "create"
                     }
                     onClick={() => {
+                      cancellationFormErrors.markSubmitted();
                       cancellationFormErrors.clearErrors();
                       if (cancellationReasonError) return;
                       reasonMutation.mutate(

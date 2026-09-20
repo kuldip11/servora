@@ -18,10 +18,11 @@ export const SaveTemplateModal = ({
     register,
     handleSubmit,
     setError,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<SaveTemplateInput>({
     resolver: zodResolver(saveTemplateSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: category.name, description: "" },
   });
 
@@ -58,6 +59,7 @@ export const SaveTemplateModal = ({
         <FormErrorSummary messages={formErrorMessages} />
         <Input
           label="Template name"
+          required
           error={errors.name?.message}
           {...register("name", { onChange: clearFormErrors })}
         />
@@ -78,7 +80,7 @@ export const SaveTemplateModal = ({
           <Button
             type="submit"
             loading={saveMutation.isPending}
-            disabled={!isValid || saveMutation.isPending}
+            disabled={saveMutation.isPending}
           >
             Save
           </Button>

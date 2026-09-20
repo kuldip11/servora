@@ -55,7 +55,8 @@ export const ModifierGroupsSection = () => {
     formState: { errors, isDirty, isValid },
   } = useForm<ModifierGroupFormValues>({
     resolver: zodResolver(modifierGroupFormSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: emptyGroup,
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
@@ -285,6 +286,7 @@ export const ModifierGroupsSection = () => {
           <FormErrorSummary messages={formErrorMessages} />
           <Input
             label="Group name"
+            required
             placeholder="Choose your sides"
             error={errors.name?.message}
             {...register("name", { onChange: clearFormErrors })}
@@ -297,6 +299,7 @@ export const ModifierGroupsSection = () => {
               render={({ field }) => (
                 <Select
                   label="Group type"
+                  required
                   value={field.value}
                   options={[
                     { value: "ADDON", label: "Addon" },
@@ -315,6 +318,7 @@ export const ModifierGroupsSection = () => {
               render={({ field }) => (
                 <Select
                   label="Selection"
+                  required
                   value={field.value}
                   options={[
                     { value: "SINGLE", label: "Pick one" },
@@ -329,6 +333,7 @@ export const ModifierGroupsSection = () => {
             />
             <Input
               label="Min required"
+              required
               type="number"
               min="0"
               error={errors.minSelections?.message}
@@ -378,11 +383,29 @@ export const ModifierGroupsSection = () => {
               Options
             </p>
             <div className="space-y-2">
+              <div
+                className="hidden items-center gap-2 text-xs font-medium text-text-secondary md:flex"
+                aria-hidden="true"
+              >
+                <span className="flex-1">
+                  Option name <span className="text-danger">*</span>
+                </span>
+                <span className="w-24">
+                  Price <span className="text-danger">*</span>
+                </span>
+                <span className="w-24">
+                  Max qty <span className="text-danger">*</span>
+                </span>
+                <span className="w-8" />
+                <span className="w-[4.25rem]">Default</span>
+                <span className="w-32">Replaces</span>
+              </div>
               {fields.map((field, i) => (
                 <div key={field.id} className="space-y-1">
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
                       <Input
+                        required
                         placeholder="Option name (e.g. Aachar)"
                         aria-label={`Option ${i + 1} name`}
                         error={errors.options?.[i]?.name?.message}
@@ -393,6 +416,7 @@ export const ModifierGroupsSection = () => {
                     </div>
                     <div className="w-24">
                       <Input
+                        required
                         type="number"
                         min="0"
                         step="0.01"
@@ -406,6 +430,7 @@ export const ModifierGroupsSection = () => {
                     </div>
                     <div className="w-24">
                       <Input
+                        required
                         type="number"
                         min="1"
                         placeholder="Qty"

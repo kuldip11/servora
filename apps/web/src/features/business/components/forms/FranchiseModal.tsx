@@ -48,7 +48,8 @@ export const FranchiseModal = ({
   const form = useForm<FranchiseBusinessFormValues>({
     resolver: zodResolver(franchiseBusinessFormSchema),
     defaultValues: franchiseDefaults,
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<FranchiseBusinessFormValues>();
@@ -143,6 +144,7 @@ export const FranchiseModal = ({
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Franchise / Brand name"
+            required
             placeholder="e.g. KKS Kitchen"
             error={e.name?.message}
             {...form.register("name")}
@@ -155,6 +157,7 @@ export const FranchiseModal = ({
           />
           <Input
             label="Cuisine types"
+            required
             placeholder="e.g. Indian, Continental, Cafe"
             error={e.cuisineTypes?.message}
             value={values.cuisineTypes.join(", ")}
@@ -170,8 +173,12 @@ export const FranchiseModal = ({
             }
           />
           <label className="text-sm font-medium">
-            Business model
+            Business model{" "}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
             <select
+              aria-required="true"
               className={`mt-1 ${inputClass}`}
               {...form.register("businessModel")}
             >
@@ -193,19 +200,25 @@ export const FranchiseModal = ({
           </label>
           <Input
             label="Default currency"
+            required
             placeholder="e.g. INR"
             error={e.defaultCurrency?.message}
             {...form.register("defaultCurrency")}
           />
           <Input
             label="Default timezone"
+            required
             placeholder="e.g. Asia/Kolkata"
             error={e.defaultTimezone?.message}
             {...form.register("defaultTimezone")}
           />
           <label className="text-sm font-medium">
-            Default tax mode
+            Default tax mode{" "}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
             <select
+              aria-required="true"
               className={`mt-1 ${inputClass}`}
               {...form.register("defaultTaxMode")}
             >

@@ -67,6 +67,10 @@ export const PriceRulesPanel = ({
     formErrorMessages,
     clearErrors,
     clearFieldError,
+    fieldError,
+    touchField,
+    markSubmitted,
+    resetValidation,
     handleApiError,
   } = useLocalFormApiErrors();
 
@@ -114,7 +118,7 @@ export const PriceRulesPanel = ({
         priority: Number(priority) || 0,
       }),
     onSuccess: () => {
-      clearErrors();
+      resetValidation();
       markSaved();
       queryClient.invalidateQueries({ queryKey: key });
     },
@@ -225,7 +229,8 @@ export const PriceRulesPanel = ({
           aria-label="Rule start date"
           type="date"
           value={startDate}
-          error={fieldErrors.startDate ?? clientErrors.startDate}
+          error={fieldError("startDate", clientErrors.startDate)}
+          onBlur={() => touchField("startDate")}
           onChange={(event) => {
             clearFieldError("startDate");
             setField("startDate", event.target.value);
@@ -236,7 +241,8 @@ export const PriceRulesPanel = ({
           aria-label="Rule end date"
           type="date"
           value={endDate}
-          error={fieldErrors.endDate ?? clientErrors.endDate}
+          error={fieldError("endDate", clientErrors.endDate)}
+          onBlur={() => touchField("endDate")}
           onChange={(event) => {
             clearFieldError("endDate");
             setField("endDate", event.target.value);
@@ -247,7 +253,8 @@ export const PriceRulesPanel = ({
           aria-label="Rule start time"
           type="time"
           value={startTime}
-          error={fieldErrors.startTime ?? clientErrors.startTime}
+          error={fieldError("startTime", clientErrors.startTime)}
+          onBlur={() => touchField("startTime")}
           onChange={(event) => {
             clearFieldError("startTime");
             setField("startTime", event.target.value);
@@ -258,7 +265,8 @@ export const PriceRulesPanel = ({
           aria-label="Rule end time"
           type="time"
           value={endTime}
-          error={fieldErrors.endTime ?? clientErrors.endTime}
+          error={fieldError("endTime", clientErrors.endTime)}
+          onBlur={() => touchField("endTime")}
           onChange={(event) => {
             clearFieldError("endTime");
             setField("endTime", event.target.value);
@@ -287,7 +295,8 @@ export const PriceRulesPanel = ({
           min={0}
           step="0.01"
           value={price}
-          error={fieldErrors.price ?? clientErrors.price}
+          error={fieldError("price", clientErrors.price)}
+          onBlur={() => touchField("price")}
           onChange={(event) => {
             clearFieldError("price");
             setField("price", event.target.value);
@@ -298,7 +307,8 @@ export const PriceRulesPanel = ({
           aria-label="Rule priority"
           type="number"
           value={priority}
-          error={fieldErrors.priority ?? clientErrors.priority}
+          error={fieldError("priority", clientErrors.priority)}
+          onBlur={() => touchField("priority")}
           onChange={(event) => {
             clearFieldError("priority");
             setField("priority", event.target.value);
@@ -316,6 +326,7 @@ export const PriceRulesPanel = ({
             Object.keys(clientErrors).length > 0
           }
           onClick={() => {
+            markSubmitted();
             clearErrors();
             if (Object.keys(clientErrors).length) return;
             save.mutate(undefined, {

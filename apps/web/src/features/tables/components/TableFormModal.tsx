@@ -65,6 +65,7 @@ export const TableFormModal = ({
         ) : null}
         <Input
           label="Table name"
+          required
           placeholder="T-01"
           error={errors.name?.message}
           {...register("name")}
@@ -72,6 +73,7 @@ export const TableFormModal = ({
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Capacity"
+            required
             type="number"
             min={1}
             error={errors.capacity?.message}
@@ -87,6 +89,7 @@ export const TableFormModal = ({
         {mode === "add" && aggregate && (
           <Select
             label="Branch"
+            required
             options={[
               { value: "", label: "Select branch" },
               ...branches.map((b) => ({ value: b.id, label: b.name })),

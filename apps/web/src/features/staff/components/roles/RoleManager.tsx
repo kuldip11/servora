@@ -139,7 +139,7 @@ export const RoleManager = ({
           {canManage && (
             <Button
               onClick={() => {
-                roleFormErrors.clearErrors();
+                roleFormErrors.resetValidation();
                 setOpen(true);
               }}
             >
@@ -208,11 +208,19 @@ export const RoleManager = ({
         </div>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Create Role">
+      <Modal
+        open={open}
+        onClose={() => {
+          roleFormErrors.resetValidation();
+          setOpen(false);
+        }}
+        title="Create Role"
+      >
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
+            roleFormErrors.markSubmitted();
             roleFormErrors.clearErrors();
             if (Object.keys(roleClientErrors).length) return;
             createRole.mutate(
@@ -238,7 +246,8 @@ export const RoleManager = ({
           <Input
             label="Role name"
             value={name}
-            error={roleFormErrors.fieldErrors.name ?? roleClientErrors.name}
+            error={roleFormErrors.fieldError("name", roleClientErrors.name)}
+            onBlur={() => roleFormErrors.touchField("name")}
             onChange={(event) => {
               roleFormErrors.clearFieldError("name");
               setName(event.target.value);
@@ -250,10 +259,11 @@ export const RoleManager = ({
           <Input
             label="Description"
             value={description}
-            error={
-              roleFormErrors.fieldErrors.description ??
-              roleClientErrors.description
-            }
+            error={roleFormErrors.fieldError(
+              "description",
+              roleClientErrors.description,
+            )}
+            onBlur={() => roleFormErrors.touchField("description")}
             onChange={(event) => {
               roleFormErrors.clearFieldError("description");
               setDescription(event.target.value);

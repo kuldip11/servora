@@ -72,7 +72,7 @@ export const LoyaltySection = () => {
           : { discountFixed: Number(discountValue) }),
       }),
     onSuccess: () => {
-      tierErrors.clearErrors();
+      tierErrors.resetValidation();
       qc.invalidateQueries({ queryKey: ["loyalty"] });
       setTierName("");
     },
@@ -86,7 +86,7 @@ export const LoyaltySection = () => {
         ...(customerTierId ? { loyaltyTierId: customerTierId } : {}),
       }),
     onSuccess: () => {
-      customerErrors.clearErrors();
+      customerErrors.resetValidation();
       qc.invalidateQueries({ queryKey: ["loyalty", "customers"] });
       setCustomerName("");
       setCustomerPhone("");
@@ -159,8 +159,10 @@ export const LoyaltySection = () => {
         </div>
         <Input
           label="Tier name"
+          required
           value={tierName}
-          error={tierErrors.fieldErrors.name ?? tierClientErrors.name}
+          error={tierErrors.fieldError("name", tierClientErrors.name)}
+          onBlur={() => tierErrors.touchField("name")}
           onChange={(event) => {
             tierErrors.clearFieldError("name");
             setTierName(event.target.value);
@@ -168,6 +170,7 @@ export const LoyaltySection = () => {
         />
         <Select
           label="Discount"
+          required
           value={discountType}
           onChange={(event) =>
             setDiscountType(event.target.value as "PERCENT" | "FIXED")
@@ -179,6 +182,7 @@ export const LoyaltySection = () => {
         />
         <Input
           label={discountType === "PERCENT" ? "Percent" : "Amount"}
+          required
           type="number"
           min={0}
           max={discountType === "PERCENT" ? 100 : undefined}
@@ -187,8 +191,12 @@ export const LoyaltySection = () => {
           error={
             tierErrors.fieldErrors.discountPercent ??
             tierErrors.fieldErrors.discountFixed ??
-            tierClientErrors.discountValue
+            tierErrors.fieldError(
+              "discountValue",
+              tierClientErrors.discountValue,
+            )
           }
+          onBlur={() => tierErrors.touchField("discountValue")}
           onChange={(event) => {
             tierErrors.clearFieldError("discountPercent");
             tierErrors.clearFieldError("discountFixed");
@@ -202,6 +210,7 @@ export const LoyaltySection = () => {
             }
             loading={createTier.isPending}
             onClick={() => {
+              tierErrors.markSubmitted();
               tierErrors.clearErrors();
               if (Object.keys(tierClientErrors).length) return;
               createTier.mutate(undefined, {
@@ -254,8 +263,10 @@ export const LoyaltySection = () => {
           </div>
           <Input
             label="Name"
+            required
             value={customerName}
-            error={customerErrors.fieldErrors.name ?? customerClientErrors.name}
+            error={customerErrors.fieldError("name", customerClientErrors.name)}
+            onBlur={() => customerErrors.touchField("name")}
             onChange={(event) => {
               customerErrors.clearFieldError("name");
               setCustomerName(event.target.value);
@@ -264,9 +275,11 @@ export const LoyaltySection = () => {
           <Input
             label="Phone"
             value={customerPhone}
-            error={
-              customerErrors.fieldErrors.phone ?? customerClientErrors.phone
-            }
+            error={customerErrors.fieldError(
+              "phone",
+              customerClientErrors.phone,
+            )}
+            onBlur={() => customerErrors.touchField("phone")}
             onChange={(event) => {
               customerErrors.clearFieldError("phone");
               setCustomerPhone(event.target.value);
@@ -276,9 +289,11 @@ export const LoyaltySection = () => {
             label="Email"
             type="email"
             value={customerEmail}
-            error={
-              customerErrors.fieldErrors.email ?? customerClientErrors.email
-            }
+            error={customerErrors.fieldError(
+              "email",
+              customerClientErrors.email,
+            )}
+            onBlur={() => customerErrors.touchField("email")}
             onChange={(event) => {
               customerErrors.clearFieldError("email");
               setCustomerEmail(event.target.value);
@@ -304,6 +319,7 @@ export const LoyaltySection = () => {
             }
             loading={createCustomer.isPending}
             onClick={() => {
+              customerErrors.markSubmitted();
               customerErrors.clearErrors();
               if (Object.keys(customerClientErrors).length) return;
               createCustomer.mutate(undefined, {

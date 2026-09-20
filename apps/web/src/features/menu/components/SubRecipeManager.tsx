@@ -52,7 +52,7 @@ export const SubRecipeManager = () => {
   const create = useMutation({
     mutationFn: menuSubRecipesService.create,
     onSuccess: async () => {
-      formErrors.clearErrors();
+      formErrors.resetValidation();
       await refresh();
       setName("");
       setYieldQuantity("1");
@@ -74,7 +74,7 @@ export const SubRecipeManager = () => {
   const addIngredient = () => {
     const firstInventory = inventory?.[0];
     if (firstInventory) {
-      formErrors.clearErrors();
+      formErrors.clearFieldError("ingredients");
       setIngredients((rows) => [
         ...rows,
         {
@@ -89,7 +89,7 @@ export const SubRecipeManager = () => {
     }
     const firstSubRecipe = subRecipes?.[0];
     if (firstSubRecipe) {
-      formErrors.clearErrors();
+      formErrors.clearFieldError("ingredients");
       setIngredients((rows) => [
         ...rows,
         {
@@ -106,6 +106,7 @@ export const SubRecipeManager = () => {
   };
 
   const save = () => {
+    formErrors.markSubmitted();
     formErrors.clearErrors();
     if (Object.keys(clientErrors).length) return;
     const knownFields = [
@@ -181,7 +182,7 @@ export const SubRecipeManager = () => {
           variant="secondary"
           disabled={subRecipesQuery.isLoading || inventoryQuery.isLoading}
           onClick={() => {
-            formErrors.clearErrors();
+            formErrors.resetValidation();
             setOpen((value) => !value);
           }}
         >
@@ -236,8 +237,10 @@ export const SubRecipeManager = () => {
           <div className="grid gap-3 sm:grid-cols-4">
             <Input
               label="Name"
+              required
               value={name}
-              error={formErrors.fieldErrors.name ?? clientErrors.name}
+              error={formErrors.fieldError("name", clientErrors.name)}
+              onBlur={() => formErrors.touchField("name")}
               onChange={(event) => {
                 formErrors.clearFieldError("name");
                 setName(event.target.value);
@@ -246,14 +249,16 @@ export const SubRecipeManager = () => {
             />
             <Input
               label="Batch yield"
+              required
               type="number"
               min="0.001"
               step="0.001"
               value={yieldQuantity}
-              error={
-                formErrors.fieldErrors.yieldQuantity ??
-                clientErrors.yieldQuantity
-              }
+              error={formErrors.fieldError(
+                "yieldQuantity",
+                clientErrors.yieldQuantity,
+              )}
+              onBlur={() => formErrors.touchField("yieldQuantity")}
               onChange={(event) => {
                 formErrors.clearFieldError("yieldQuantity");
                 setYieldQuantity(event.target.value);
@@ -261,6 +266,7 @@ export const SubRecipeManager = () => {
             />
             <Select
               label="Yield unit"
+              required
               value={yieldUnit}
               error={formErrors.fieldErrors.yieldUnit}
               onChange={(event) => {
@@ -279,9 +285,11 @@ export const SubRecipeManager = () => {
               max="100"
               step="0.01"
               value={yieldPercent}
-              error={
-                formErrors.fieldErrors.yieldPercent ?? clientErrors.yieldPercent
-              }
+              error={formErrors.fieldError(
+                "yieldPercent",
+                clientErrors.yieldPercent,
+              )}
+              onBlur={() => formErrors.touchField("yieldPercent")}
               onChange={(event) => {
                 formErrors.clearFieldError("yieldPercent");
                 setYieldPercent(event.target.value);
@@ -289,11 +297,18 @@ export const SubRecipeManager = () => {
               placeholder="100"
             />
           </div>
-          {clientErrors.ingredients ? (
-            <FieldErrorText message={clientErrors.ingredients} />
+          {formErrors.clientError("ingredients", clientErrors.ingredients) ? (
+            <FieldErrorText
+              message={formErrors.clientError(
+                "ingredients",
+                clientErrors.ingredients,
+              )}
+            />
           ) : null}
           <div className="space-y-2">
             {ingredients.map((row, index) => {
+              const sourceKey = `ingredients.${index}.sourceId`;
+              const quantityKey = `ingredients.${index}.quantity`;
               const sourceError =
                 formErrors.fieldErrors[
                   `ingredients.${index}.inventoryItemId`
@@ -301,10 +316,11 @@ export const SubRecipeManager = () => {
                 formErrors.fieldErrors[
                   `ingredients.${index}.ingredientSubRecipeId`
                 ] ??
-                clientErrors[`ingredients.${index}.sourceId`];
-              const quantityError =
-                formErrors.fieldErrors[`ingredients.${index}.quantity`] ??
-                clientErrors[`ingredients.${index}.quantity`];
+                formErrors.clientError(sourceKey, clientErrors[sourceKey]);
+              const quantityError = formErrors.fieldError(
+                quantityKey,
+                clientErrors[quantityKey],
+              );
               return (
                 <div
                   key={row.clientKey}
@@ -313,7 +329,12 @@ export const SubRecipeManager = () => {
                   <select
                     value={row.source}
                     onChange={(event) => {
-                      formErrors.clearErrors();
+                      formErrors.clearFieldError(
+                        `ingredients.${index}.inventoryItemId`,
+                      );
+                      formErrors.clearFieldError(
+                        `ingredients.${index}.ingredientSubRecipeId`,
+                      );
                       const source = event.target.value as "inventory" | "sub";
                       const first =
                         source === "inventory"
@@ -345,8 +366,14 @@ export const SubRecipeManager = () => {
                     <select
                       value={row.sourceId}
                       aria-invalid={sourceError ? true : undefined}
+                      onBlur={() => formErrors.touchField(sourceKey)}
                       onChange={(event) => {
-                        formErrors.clearErrors();
+                        formErrors.clearFieldError(
+                          `ingredients.${index}.inventoryItemId`,
+                        );
+                        formErrors.clearFieldError(
+                          `ingredients.${index}.ingredientSubRecipeId`,
+                        );
                         const sourceId = event.target.value;
                         const nextUnit =
                           row.source === "inventory"
@@ -390,8 +417,9 @@ export const SubRecipeManager = () => {
                       step="0.001"
                       value={row.quantity}
                       aria-invalid={quantityError ? true : undefined}
+                      onBlur={() => formErrors.touchField(quantityKey)}
                       onChange={(event) => {
-                        formErrors.clearErrors();
+                        formErrors.clearFieldError(quantityKey);
                         setIngredients((previous) =>
                           previous.map((entry, rowIndex) =>
                             rowIndex === index
@@ -449,9 +477,7 @@ export const SubRecipeManager = () => {
               size="sm"
               onClick={save}
               loading={create.isPending}
-              disabled={
-                create.isPending || Object.keys(clientErrors).length > 0
-              }
+              disabled={create.isPending}
             >
               Create component
             </Button>

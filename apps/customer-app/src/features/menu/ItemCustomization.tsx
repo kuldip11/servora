@@ -39,6 +39,7 @@ export const ItemCustomization = memo(function ItemCustomization({
   editing = false,
 }: Props) {
   const [activeZone, setActiveZone] = useState<Zone>("LEFT");
+  const [showValidation, setShowValidation] = useState(false);
   const validationError = validateItemConfiguration(
     item,
     variantId,
@@ -77,7 +78,10 @@ export const ItemCustomization = memo(function ItemCustomization({
         <ItemCustomizationOverview
           item={item}
           variantId={variantId}
-          onVariantChange={onVariantChange}
+          onVariantChange={(nextVariantId) => {
+            setShowValidation(true);
+            onVariantChange(nextVariantId);
+          }}
         />
         <ItemModifierGroups
           item={item}
@@ -85,10 +89,16 @@ export const ItemCustomization = memo(function ItemCustomization({
           variantId={variantId}
           activeZone={activeZone}
           onZoneChange={setActiveZone}
-          onToggle={onToggle}
-          onOptionQuantity={onOptionQuantity}
+          onToggle={(optionId, groupId, zoneLabel) => {
+            setShowValidation(true);
+            onToggle(optionId, groupId, zoneLabel);
+          }}
+          onOptionQuantity={(optionId, delta, zoneLabel) => {
+            setShowValidation(true);
+            onOptionQuantity(optionId, delta, zoneLabel);
+          }}
         />
-        {validationError && (
+        {showValidation && validationError && (
           <p role="alert" className="text-sm text-danger">
             {validationError}
           </p>

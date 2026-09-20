@@ -52,7 +52,8 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     formState: { errors, isDirty: formIsDirty, isValid },
   } = useForm<MenuItemFormValues>({
     resolver: zodResolver(menuItemFormSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       name: item?.name ?? "",
       description: item?.description ?? "",
@@ -306,6 +307,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <FormErrorSummary messages={formApiErrors.formErrorMessages} />
         <Input
           label="Item name"
+          required
           placeholder="Chicken Tikka"
           error={errors.name?.message}
           {...register("name")}
@@ -331,6 +333,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Input
             label="Selling price (₹)"
+            required
             type="number"
             min="0"
             step="0.01"
@@ -352,6 +355,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Input
             label="Tax rate (%)"
+            required
             type="number"
             min="0"
             max="100"
@@ -380,7 +384,10 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
               id="item-food-type-label"
               className="text-sm font-medium text-text-primary mb-1.5 block"
             >
-              Food type
+              Food type{" "}
+              <span className="text-danger" aria-hidden="true">
+                *
+              </span>
             </span>
             <div
               role="group"
@@ -392,7 +399,10 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
                   type="button"
                   key={opt.value}
                   onClick={() =>
-                    setValue("foodType", opt.value, { shouldValidate: true })
+                    setValue("foodType", opt.value, {
+                      shouldValidate: true,
+                      shouldTouch: true,
+                    })
                   }
                   className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md border text-xs font-medium transition-colors ${
                     form.foodType === opt.value
@@ -416,6 +426,7 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Select
             label="Status"
+            required
             error={errors.status?.message}
             {...register("status")}
             options={MENU_ITEM_STATUS_OPTIONS}

@@ -80,6 +80,7 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
   }, [recipeQuery.data, dirty]);
 
   const handleSave = () => {
+    formErrors.markSubmitted();
     formErrors.clearErrors();
     if (Object.keys(rowErrors).length) return;
     const ingredients = rows.map((row) => ({
@@ -112,7 +113,31 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
   };
 
   const updateRow = (index: number, patch: Partial<RecipeDraftRow>) => {
-    formErrors.clearErrors();
+    const serverFieldsByDraftField: Partial<
+      Record<keyof RecipeDraftRow, string[]>
+    > = {
+      sourceType: [
+        `ingredients.${index}.inventoryItemId`,
+        `ingredients.${index}.subRecipeId`,
+      ],
+      inventoryItemId: [`ingredients.${index}.inventoryItemId`],
+      subRecipeId: [`ingredients.${index}.subRecipeId`],
+      scopeType: [
+        `ingredients.${index}.variantId`,
+        `ingredients.${index}.modifierOptionId`,
+      ],
+      variantId: [`ingredients.${index}.variantId`],
+      modifierOptionId: [`ingredients.${index}.modifierOptionId`],
+      quantity: [`ingredients.${index}.quantity`],
+      unit: [`ingredients.${index}.unit`],
+      yieldPercent: [`ingredients.${index}.yieldPercent`],
+      isOptional: [`ingredients.${index}.isOptional`],
+    };
+    for (const key of Object.keys(patch) as (keyof RecipeDraftRow)[]) {
+      for (const field of serverFieldsByDraftField[key] ?? []) {
+        formErrors.clearFieldError(field);
+      }
+    }
     setDirty(true);
     setRows((current) =>
       current.map((row, rowIndex) =>
@@ -121,7 +146,6 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
     );
   };
   const removeRow = (index: number) => {
-    formErrors.clearErrors();
     setDirty(true);
     setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
   };
@@ -131,7 +155,6 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
       notifyError(undefined, "Add an inventory item or sub-recipe first");
       return;
     }
-    formErrors.clearErrors();
     setDirty(true);
     setRows((current) => [
       ...current,
@@ -231,6 +254,34 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
         <p className="text-xs text-text-disabled">Loading…</p>
       ) : (
         <div className="space-y-3">
+          {rows.length > 0 ? (
+            <div className="hidden space-y-1 md:block" aria-hidden="true">
+              <div className="grid gap-2 px-3 text-xs font-medium text-text-secondary md:grid-cols-[8rem_1fr_8rem_7rem_auto]">
+                <span>
+                  Source type <span className="text-danger">*</span>
+                </span>
+                <span>
+                  Ingredient <span className="text-danger">*</span>
+                </span>
+                <span>
+                  Quantity <span className="text-danger">*</span>
+                </span>
+                <span>
+                  Unit <span className="text-danger">*</span>
+                </span>
+                <span />
+              </div>
+              <div className="grid gap-2 px-3 text-xs font-medium text-text-secondary md:grid-cols-[8rem_1fr_8rem_auto_auto]">
+                <span>
+                  Scope <span className="text-danger">*</span>
+                </span>
+                <span>Scope target</span>
+                <span>Yield %</span>
+                <span>Optional</span>
+                <span />
+              </div>
+            </div>
+          ) : null}
           {rows.map((row, index) => {
             const inventoryItem = invMap.get(row.inventoryItemId);
             const short =
@@ -239,18 +290,30 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
               Number(row.quantity || "0") > inventoryItem.currentStock;
             const quantityError =
               formErrors.fieldErrors[`ingredients.${index}.quantity`] ??
-              rowErrors[index]?.quantity;
+              formErrors.clientError(
+                `${row.clientKey}.quantity`,
+                rowErrors[index]?.quantity,
+              );
             const yieldError =
               formErrors.fieldErrors[`ingredients.${index}.yieldPercent`] ??
-              rowErrors[index]?.yieldPercent;
+              formErrors.clientError(
+                `${row.clientKey}.yieldPercent`,
+                rowErrors[index]?.yieldPercent,
+              );
             const sourceError =
               formErrors.fieldErrors[`ingredients.${index}.inventoryItemId`] ??
               formErrors.fieldErrors[`ingredients.${index}.subRecipeId`] ??
-              rowErrors[index]?.source;
+              formErrors.clientError(
+                `${row.clientKey}.source`,
+                rowErrors[index]?.source,
+              );
             const scopeError =
               formErrors.fieldErrors[`ingredients.${index}.variantId`] ??
               formErrors.fieldErrors[`ingredients.${index}.modifierOptionId`] ??
-              rowErrors[index]?.scope;
+              formErrors.clientError(
+                `${row.clientKey}.scope`,
+                rowErrors[index]?.scope,
+              );
 
             return (
               <div
@@ -260,6 +323,8 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                 <div className="grid gap-2 md:grid-cols-[8rem_1fr_8rem_7rem_auto]">
                   <select
                     value={row.sourceType}
+                    aria-required="true"
+                    aria-label={`Source type for recipe row ${index + 1}`}
                     onChange={(event) => {
                       const sourceType = event.target
                         .value as RecipeDraftRow["sourceType"];
@@ -290,7 +355,12 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                     {row.sourceType === "inventory" ? (
                       <select
                         value={row.inventoryItemId}
+                        aria-required="true"
+                        aria-label={`Ingredient for recipe row ${index + 1}`}
                         aria-invalid={sourceError ? true : undefined}
+                        onBlur={() =>
+                          formErrors.touchField(`${row.clientKey}.source`)
+                        }
                         onChange={(event) => {
                           const next = inventoryItems?.find(
                             (candidate) => candidate.id === event.target.value,
@@ -311,7 +381,12 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                     ) : (
                       <select
                         value={row.subRecipeId}
+                        aria-required="true"
+                        aria-label={`Sub-recipe for recipe row ${index + 1}`}
                         aria-invalid={sourceError ? true : undefined}
+                        onBlur={() =>
+                          formErrors.touchField(`${row.clientKey}.source`)
+                        }
                         onChange={(event) => {
                           const next = subRecipes?.find(
                             (candidate) => candidate.id === event.target.value,
@@ -335,10 +410,14 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                   <div>
                     <input
                       type="number"
+                      aria-required="true"
                       min="0.001"
                       step="0.001"
                       value={row.quantity}
                       aria-invalid={quantityError ? true : undefined}
+                      onBlur={() =>
+                        formErrors.touchField(`${row.clientKey}.quantity`)
+                      }
                       onChange={(event) =>
                         updateRow(index, { quantity: event.target.value })
                       }
@@ -349,6 +428,8 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                   </div>
                   <select
                     value={row.unit}
+                    aria-required="true"
+                    aria-label={`Unit for recipe row ${index + 1}`}
                     onChange={(event) =>
                       updateRow(index, {
                         unit: event.target.value as InventoryUnit,
@@ -374,7 +455,12 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                 <div className="grid items-center gap-2 md:grid-cols-[8rem_1fr_8rem_auto_auto]">
                   <select
                     value={row.scopeType}
+                    aria-required="true"
+                    aria-label={`Scope for recipe row ${index + 1}`}
                     aria-invalid={scopeError ? true : undefined}
+                    onBlur={() =>
+                      formErrors.touchField(`${row.clientKey}.scope`)
+                    }
                     onChange={(event) =>
                       updateRow(index, {
                         scopeType: event.target
@@ -403,6 +489,8 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                     {row.scopeType === "variant" ? (
                       <select
                         value={row.variantId}
+                        aria-required="true"
+                        aria-label={`Variant for recipe row ${index + 1}`}
                         onChange={(event) =>
                           updateRow(index, { variantId: event.target.value })
                         }
@@ -417,6 +505,8 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                     ) : row.scopeType === "modifier" ? (
                       <select
                         value={row.modifierOptionId}
+                        aria-required="true"
+                        aria-label={`Modifier option for recipe row ${index + 1}`}
                         onChange={(event) =>
                           updateRow(index, {
                             modifierOptionId: event.target.value,
@@ -447,6 +537,9 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
                       value={row.yieldPercent}
                       placeholder="100"
                       aria-invalid={yieldError ? true : undefined}
+                      onBlur={() =>
+                        formErrors.touchField(`${row.clientKey}.yieldPercent`)
+                      }
                       onChange={(event) =>
                         updateRow(index, { yieldPercent: event.target.value })
                       }

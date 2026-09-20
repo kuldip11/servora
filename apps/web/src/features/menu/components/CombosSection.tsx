@@ -23,6 +23,7 @@ import {
 } from "@/features/menu/helpers/combo-form";
 import { queryClient } from "@/shared/lib/query-client";
 import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useFormValidationVisibility } from "@/shared/hooks/useFormValidationVisibility";
 
 const menuApi = createMenuApi(apiClient);
 
@@ -78,6 +79,7 @@ export const CombosSection = () => {
   const [editingInitialPayload, setEditingInitialPayload] = useState<
     string | null
   >(null);
+  const validationVisibility = useFormValidationVisibility();
 
   const itemChoices = useMemo(
     () =>
@@ -108,6 +110,7 @@ export const CombosSection = () => {
     setSlots([newSlot()]);
     setFieldErrors({});
     setFormErrorMessages([]);
+    validationVisibility.resetVisibility();
     setEditingInitialPayload(null);
   };
 
@@ -123,7 +126,9 @@ export const CombosSection = () => {
     : true;
   const dependencyUnavailable =
     categoriesQuery.isError && !categoriesQuery.data;
-  const visibleError = (key: string) => fieldErrors[key] ?? clientErrors[key];
+  const visibleError = (key: string) =>
+    fieldErrors[key] ??
+    validationVisibility.clientError(key, clientErrors[key]);
   const clearFieldError = (key: string) => {
     setFieldErrors((current) => {
       if (!(key in current)) return current;
@@ -131,11 +136,12 @@ export const CombosSection = () => {
       delete next[key];
       return next;
     });
-    setFormErrorMessages([]);
   };
-  const updateSlots = (updater: (current: DraftSlot[]) => DraftSlot[]) => {
-    setFieldErrors({});
-    setFormErrorMessages([]);
+  const updateSlots = (
+    updater: (current: DraftSlot[]) => DraftSlot[],
+    fieldKey?: string,
+  ) => {
+    if (fieldKey) clearFieldError(fieldKey);
     setSlots(updater);
   };
 
@@ -204,6 +210,7 @@ export const CombosSection = () => {
     setSlots(editSlots);
     setFieldErrors({});
     setFormErrorMessages([]);
+    validationVisibility.resetVisibility();
     setEditingInitialPayload(
       JSON.stringify(
         buildComboPayload({
@@ -270,8 +277,10 @@ export const CombosSection = () => {
         <div className="grid gap-3 md:grid-cols-2">
           <Input
             label="Combo name"
+            required
             value={name}
             error={visibleError(comboFieldKey.name)}
+            onBlur={() => validationVisibility.touchField(comboFieldKey.name)}
             onChange={(event) => {
               clearFieldError(comboFieldKey.name);
               setName(event.target.value);
@@ -281,12 +290,12 @@ export const CombosSection = () => {
             label="Description (optional)"
             value={description}
             onChange={(event) => {
-              setFormErrorMessages([]);
               setDescription(event.target.value);
             }}
           />
           <Select
             label="Pricing"
+            required
             value={policy}
             options={[
               { value: "FIXED", label: "Fixed total" },
@@ -299,12 +308,14 @@ export const CombosSection = () => {
           />
           <Input
             label={policy === "FIXED" ? "Fixed price" : "Percent off"}
+            required
             type="number"
             min="0"
             max={policy === "PERCENT_OFF_SUM" ? "100" : undefined}
             step="0.01"
             value={amount}
             error={visibleError(comboFieldKey.amount)}
+            onBlur={() => validationVisibility.touchField(comboFieldKey.amount)}
             onChange={(event) => {
               clearFieldError(comboFieldKey.amount);
               setAmount(event.target.value);
@@ -318,49 +329,70 @@ export const CombosSection = () => {
               <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
                 <Input
                   label={`Slot ${slotIndex + 1}`}
+                  required
                   value={slot.name}
                   error={visibleError(comboFieldKey.slotName(slot.key))}
-                  onChange={(event) =>
+                  onBlur={() =>
+                    validationVisibility.touchField(
+                      comboFieldKey.slotName(slot.key),
+                    )
+                  }
+                  onChange={(event) => {
+                    clearFieldError(comboFieldKey.slotName(slot.key));
                     updateSlots((current) =>
                       current.map((value) =>
                         value.key === slot.key
                           ? { ...value, name: event.target.value }
                           : value,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 />
                 <Input
                   label="Minimum"
+                  required
                   type="number"
                   min="0"
                   value={slot.minSelections}
                   error={visibleError(comboFieldKey.slotMin(slot.key))}
-                  onChange={(event) =>
+                  onBlur={() =>
+                    validationVisibility.touchField(
+                      comboFieldKey.slotMin(slot.key),
+                    )
+                  }
+                  onChange={(event) => {
+                    clearFieldError(comboFieldKey.slotMin(slot.key));
                     updateSlots((current) =>
                       current.map((value) =>
                         value.key === slot.key
                           ? { ...value, minSelections: event.target.value }
                           : value,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 />
                 <Input
                   label="Maximum"
+                  required
                   type="number"
                   min="1"
                   value={slot.maxSelections}
                   error={visibleError(comboFieldKey.slotMax(slot.key))}
-                  onChange={(event) =>
+                  onBlur={() =>
+                    validationVisibility.touchField(
+                      comboFieldKey.slotMax(slot.key),
+                    )
+                  }
+                  onChange={(event) => {
+                    clearFieldError(comboFieldKey.slotMax(slot.key));
                     updateSlots((current) =>
                       current.map((value) =>
                         value.key === slot.key
                           ? { ...value, maxSelections: event.target.value }
                           : value,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 />
                 <Button
                   type="button"
@@ -388,6 +420,7 @@ export const CombosSection = () => {
                     >
                       <Select
                         label={`Choice ${optionIndex + 1}`}
+                        required
                         value={option.menuItemId}
                         options={[
                           { value: "", label: "Choose an item" },
@@ -399,7 +432,15 @@ export const CombosSection = () => {
                         error={visibleError(
                           comboFieldKey.optionItem(slot.key, option.key),
                         )}
-                        onChange={(event) =>
+                        onBlur={() =>
+                          validationVisibility.touchField(
+                            comboFieldKey.optionItem(slot.key, option.key),
+                          )
+                        }
+                        onChange={(event) => {
+                          clearFieldError(
+                            comboFieldKey.optionItem(slot.key, option.key),
+                          );
                           updateSlots((current) =>
                             current.map((value) =>
                               value.key === slot.key
@@ -417,8 +458,8 @@ export const CombosSection = () => {
                                   }
                                 : value,
                             ),
-                          )
-                        }
+                          );
+                        }}
                       />
                       <Select
                         label="Variant"
@@ -431,7 +472,7 @@ export const CombosSection = () => {
                             label: variant.name,
                           })),
                         ]}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           updateSlots((current) =>
                             current.map((value) =>
                               value.key === slot.key
@@ -448,8 +489,8 @@ export const CombosSection = () => {
                                   }
                                 : value,
                             ),
-                          )
-                        }
+                          );
+                        }}
                       />
                       <Input
                         label="Upcharge"
@@ -459,7 +500,15 @@ export const CombosSection = () => {
                         error={visibleError(
                           comboFieldKey.optionUpcharge(slot.key, option.key),
                         )}
-                        onChange={(event) =>
+                        onBlur={() =>
+                          validationVisibility.touchField(
+                            comboFieldKey.optionUpcharge(slot.key, option.key),
+                          )
+                        }
+                        onChange={(event) => {
+                          clearFieldError(
+                            comboFieldKey.optionUpcharge(slot.key, option.key),
+                          );
                           updateSlots((current) =>
                             current.map((value) =>
                               value.key === slot.key
@@ -476,8 +525,8 @@ export const CombosSection = () => {
                                   }
                                 : value,
                             ),
-                          )
-                        }
+                          );
+                        }}
                       />
                       <label className="flex h-10 items-center gap-2 text-sm text-text-primary">
                         <input
@@ -577,8 +626,10 @@ export const CombosSection = () => {
             }
             loading={save.isPending}
             onClick={() => {
+              validationVisibility.markSubmitted();
               setFieldErrors({});
               setFormErrorMessages([]);
+              if (!valid) return;
               save.mutate();
             }}
           >

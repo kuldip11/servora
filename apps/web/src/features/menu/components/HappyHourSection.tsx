@@ -102,6 +102,7 @@ export const HappyHourSection = () => {
       <div className="grid max-w-4xl gap-3 rounded-xl border border-border p-4 md:grid-cols-3">
         <Select
           label="Scope"
+          required
           value={scopeType}
           onChange={(event) => {
             setScopeType(event.target.value as "CATEGORY" | "MENU");
@@ -126,6 +127,7 @@ export const HappyHourSection = () => {
         />
         <Input
           label="Percent off"
+          required
           type="number"
           min={0.01}
           max={100}
@@ -135,12 +137,14 @@ export const HappyHourSection = () => {
         />
         <Input
           label="Starts daily"
+          required
           type="time"
           value={startTime}
           onChange={(event) => setStartTime(event.target.value)}
         />
         <Input
           label="Ends daily"
+          required
           type="time"
           value={endTime}
           onChange={(event) => setEndTime(event.target.value)}

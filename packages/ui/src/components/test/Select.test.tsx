@@ -35,4 +35,20 @@ describe("Select", () => {
     expect(onChange).toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("Required");
   });
+  it("marks required selects visually and semantically", () => {
+    render(
+      <Select
+        label="Choice"
+        required
+        options={options}
+        value="one"
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByText("*")).toBeVisible();
+    expect(screen.getByLabelText(/Choice/)).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
 });

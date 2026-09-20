@@ -46,10 +46,11 @@ export const MenusSection = () => {
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<CreateMenuFormValues>({
     resolver: zodResolver(createMenuFormSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: "" },
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
@@ -131,6 +132,7 @@ export const MenusSection = () => {
         <div className="flex items-end gap-2">
           <Input
             label="New menu"
+            required
             placeholder="Weekend Menu"
             error={errors.name?.message}
             {...register("name", { onChange: clearFormErrors })}
@@ -138,7 +140,7 @@ export const MenusSection = () => {
           <Button
             type="submit"
             loading={createMenu.isPending}
-            disabled={!isValid || createMenu.isPending || menusQuery.isError}
+            disabled={createMenu.isPending || menusQuery.isError}
           >
             <Plus className="h-4 w-4" /> Create
           </Button>

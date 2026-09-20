@@ -31,7 +31,8 @@ export const UpdateInventoryStockForm = ({
   const form = useForm<UpdateInventoryStockInput>({
     resolver: zodResolver(updateInventoryStockSchema),
     defaultValues: { quantity: 0, transactionType: "IN", notes: "" },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const mutation = useUpdateInventoryStock();
   const { formErrorMessages, clearFormErrors, handleApiError } =
@@ -60,12 +61,14 @@ export const UpdateInventoryStockForm = ({
     <form onSubmit={submit} className="space-y-4">
       <Select
         label="Transaction Type"
+        required
         options={INVENTORY_TRANSACTION_OPTIONS}
         error={form.formState.errors.transactionType?.message}
         {...form.register("transactionType")}
       />
       <Input
         label="Quantity"
+        required
         type="number"
         min="0.001"
         step="0.001"

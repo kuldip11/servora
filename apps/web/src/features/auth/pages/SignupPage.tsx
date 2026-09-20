@@ -30,7 +30,8 @@ export const SignupPage = () => {
       email: "",
       password: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<SignupFormValues>();
@@ -80,6 +81,7 @@ export const SignupPage = () => {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First name"
+                required
                 placeholder="John"
                 error={form.formState.errors.firstName?.message}
                 autoComplete="given-name"
@@ -87,6 +89,7 @@ export const SignupPage = () => {
               />
               <Input
                 label="Last name"
+                required
                 placeholder="Doe"
                 error={form.formState.errors.lastName?.message}
                 autoComplete="family-name"
@@ -95,6 +98,7 @@ export const SignupPage = () => {
             </div>
             <Input
               label="Email address"
+              required
               type="email"
               placeholder="you@restaurant.com"
               error={form.formState.errors.email?.message}
@@ -103,6 +107,7 @@ export const SignupPage = () => {
             />
             <Input
               label="Password"
+              required
               type="password"
               placeholder="Min. 8 characters"
               error={form.formState.errors.password?.message}

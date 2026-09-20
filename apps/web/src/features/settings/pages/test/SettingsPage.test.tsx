@@ -23,6 +23,13 @@ vi.mock("@/features/orders/hooks/useCancellationReasons", () => ({
 vi.mock("@/features/orders/services/cancellation-reasons.service", () => ({
   cancellationReasonsService: { create: mocks.create, update: mocks.update },
 }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback,
+  toApiClientError: () => ({}),
+}));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
@@ -134,7 +141,7 @@ describe("SettingsPage coverage", () => {
     );
 
     const add = screen.getByRole("button", { name: "Add" });
-    expect(add).toHaveProperty("disabled", true);
+    expect(add).toHaveProperty("disabled", false);
     fireEvent.change(screen.getByLabelText("New reason"), {
       target: { value: "  Guest changed mind  " },
     });

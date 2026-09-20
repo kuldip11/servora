@@ -76,7 +76,7 @@ export const ApprovalThresholdSettingsCard = () => {
         requiresRole: draft.requiresRole.trim(),
       }),
     onSuccess: (_response, variables) => {
-      formErrors.clearErrors();
+      formErrors.resetValidation();
       touchedRef.current[variables.actionType] = false;
       void queryClient.invalidateQueries({ queryKey });
       notifySuccess(
@@ -89,7 +89,7 @@ export const ApprovalThresholdSettingsCard = () => {
     actionType: ApprovalAction,
     patch: Partial<ThresholdDraft>,
   ) => {
-    formErrors.clearErrors();
+    for (const field of Object.keys(patch)) formErrors.clearFieldError(field);
     touchedRef.current[actionType] = true;
     setDrafts((current) => ({
       ...current,
@@ -146,11 +146,19 @@ export const ApprovalThresholdSettingsCard = () => {
           const thresholdError =
             (isCurrentErrorAction
               ? formErrors.fieldErrors.thresholdAmount
-              : undefined) ?? clientErrors.thresholdAmount;
+              : undefined) ??
+            formErrors.clientError(
+              `${actionType}.thresholdAmount`,
+              clientErrors.thresholdAmount,
+            );
           const roleError =
             (isCurrentErrorAction
               ? formErrors.fieldErrors.requiresRole
-              : undefined) ?? clientErrors.requiresRole;
+              : undefined) ??
+            formErrors.clientError(
+              `${actionType}.requiresRole`,
+              clientErrors.requiresRole,
+            );
           const isDirty = touchedRef.current[actionType];
           return (
             <div
@@ -168,29 +176,37 @@ export const ApprovalThresholdSettingsCard = () => {
                   step="0.01"
                   value={draft.thresholdAmount}
                   error={thresholdError}
-                  onChange={(event) =>
-                    update(actionType, { thresholdAmount: event.target.value })
+                  onBlur={() =>
+                    formErrors.touchField(`${actionType}.thresholdAmount`)
                   }
+                  onChange={(event) => {
+                    if (isCurrentErrorAction)
+                      formErrors.clearFieldError("thresholdAmount");
+                    update(actionType, { thresholdAmount: event.target.value });
+                  }}
                 />
                 <Input
                   label="Required role"
                   value={draft.requiresRole}
                   error={roleError}
-                  onChange={(event) =>
-                    update(actionType, { requiresRole: event.target.value })
+                  onBlur={() =>
+                    formErrors.touchField(`${actionType}.requiresRole`)
                   }
+                  onChange={(event) => {
+                    if (isCurrentErrorAction)
+                      formErrors.clearFieldError("requiresRole");
+                    update(actionType, { requiresRole: event.target.value });
+                  }}
                   placeholder="Manager"
                 />
                 <Button
                   loading={
                     save.isPending && save.variables?.actionType === actionType
                   }
-                  disabled={
-                    save.isPending ||
-                    !isDirty ||
-                    Object.keys(clientErrors).length > 0
-                  }
+                  disabled={save.isPending || !isDirty}
                   onClick={() => {
+                    formErrors.touchField(`${actionType}.thresholdAmount`);
+                    formErrors.touchField(`${actionType}.requiresRole`);
                     formErrors.clearErrors();
                     if (!isDirty || Object.keys(clientErrors).length) return;
                     save.mutate(

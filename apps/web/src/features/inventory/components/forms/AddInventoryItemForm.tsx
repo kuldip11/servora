@@ -46,7 +46,8 @@ export const AddInventoryItemForm = ({
   const form = useForm<CreateInventoryItemInput>({
     resolver: zodResolver(createInventoryItemSchema),
     defaultValues,
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const mutation = useAddInventoryItem();
   const { formErrorMessages, clearFormErrors, handleApiError } =
@@ -72,12 +73,14 @@ export const AddInventoryItemForm = ({
     <form onSubmit={submit} className="space-y-4">
       <Input
         label="Item name"
+        required
         placeholder="e.g. Chicken Breast"
         error={form.formState.errors.name?.message}
         {...form.register("name")}
       />
       <Select
         label="Unit"
+        required
         options={INVENTORY_UNIT_OPTIONS}
         error={form.formState.errors.unit?.message}
         {...form.register("unit")}
@@ -85,6 +88,7 @@ export const AddInventoryItemForm = ({
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Current Stock"
+          required
           type="number"
           min="0"
           step="0.001"
@@ -93,6 +97,7 @@ export const AddInventoryItemForm = ({
         />
         <Input
           label="Minimum Stock"
+          required
           type="number"
           min="0"
           step="0.001"
@@ -101,6 +106,7 @@ export const AddInventoryItemForm = ({
         />
         <Input
           label="Reorder Point"
+          required
           type="number"
           min="0"
           step="0.001"
@@ -109,6 +115,7 @@ export const AddInventoryItemForm = ({
         />
         <Input
           label="Cost per Unit (₹)"
+          required
           type="number"
           min="0"
           step="0.01"
@@ -119,6 +126,7 @@ export const AddInventoryItemForm = ({
       {aggregate ? (
         <Select
           label="Branch"
+          required
           options={[
             { value: "", label: "Select branch" },
             ...branches.map((branch) => ({

@@ -3,12 +3,14 @@ import {
   extractApiError,
   extractApiFieldErrors,
   toApiClientError,
-} from "@pos/api-client";
+} from "@/shared/lib/api-client";
 import { reportFrontendUiError } from "@pos/observability";
+import { useFormValidationVisibility } from "@/shared/hooks/useFormValidationVisibility";
 
 export const useLocalFormApiErrors = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formErrorMessages, setFormErrorMessages] = useState<string[]>([]);
+  const visibility = useFormValidationVisibility();
 
   const clearErrors = useCallback(() => {
     setFieldErrors({});
@@ -22,37 +24,48 @@ export const useLocalFormApiErrors = () => {
       delete next[field];
       return next;
     });
-    setFormErrorMessages([]);
   }, []);
+
+  const resetValidation = useCallback(() => {
+    setFieldErrors({});
+    setFormErrorMessages([]);
+    visibility.resetVisibility();
+  }, [visibility]);
+
+  const fieldError = useCallback(
+    (field: string, localError?: string) =>
+      visibility.fieldError(field, fieldErrors[field], localError),
+    [fieldErrors, visibility],
+  );
 
   const handleApiError = useCallback(
     (
       error: unknown,
       knownFields: readonly string[],
       fallbackMessage: string,
-      fieldMap: Readonly<Record<string, string>> = {},
+      fieldMap?: Readonly<Record<string, string>>,
     ) => {
       const apiFields = extractApiFieldErrors(error);
       const known = new Set(knownFields);
-      const nextFields: Record<string, string> = {};
+      const nextFieldErrors: Record<string, string> = {};
       const unknownMessages: string[] = [];
+      const unknownFields: string[] = [];
 
       for (const [serverField, messages] of Object.entries(apiFields)) {
-        const field = fieldMap[serverField] ?? serverField;
-        const message = messages.find(
-          (candidate) => candidate.trim().length > 0,
-        );
+        const mappedField = fieldMap?.[serverField] ?? serverField;
+        const message = messages[0];
         if (!message) continue;
-        if (known.has(field)) nextFields[field] = message;
-        else unknownMessages.push(message);
+        if (known.has(mappedField)) {
+          nextFieldErrors[mappedField] = message;
+        } else {
+          unknownFields.push(serverField);
+          unknownMessages.push(message);
+        }
       }
 
+      setFieldErrors(nextFieldErrors);
       if (unknownMessages.length) {
         const normalized = toApiClientError(error);
-        const unknownFields = Object.keys(apiFields).filter((serverField) => {
-          const field = fieldMap[serverField] ?? serverField;
-          return !known.has(field);
-        });
         reportFrontendUiError({
           message: "Backend field-error contract drift",
           ...(normalized.code ? { code: normalized.code } : {}),
@@ -61,18 +74,14 @@ export const useLocalFormApiErrors = () => {
           operation: "form-field-error-mapping",
           unknownFields,
         });
+        setFormErrorMessages([...new Set(unknownMessages)]);
+      } else if (!Object.keys(nextFieldErrors).length) {
+        setFormErrorMessages([extractApiError(error, fallbackMessage)]);
+      } else {
+        setFormErrorMessages([]);
       }
 
-      setFieldErrors(nextFields);
-      setFormErrorMessages(
-        unknownMessages.length
-          ? [...new Set(unknownMessages)]
-          : Object.keys(nextFields).length
-            ? []
-            : [extractApiError(error, fallbackMessage)],
-      );
-
-      return Object.keys(nextFields).length > 0;
+      return Object.keys(nextFieldErrors).length > 0;
     },
     [],
   );
@@ -82,6 +91,12 @@ export const useLocalFormApiErrors = () => {
     formErrorMessages,
     clearErrors,
     clearFieldError,
+    resetValidation,
+    touchField: visibility.touchField,
+    touchFields: visibility.touchFields,
+    markSubmitted: visibility.markSubmitted,
+    clientError: visibility.clientError,
+    fieldError,
     handleApiError,
   };
 };

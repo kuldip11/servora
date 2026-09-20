@@ -12,7 +12,11 @@ export const FieldErrorText = ({
   className,
 }: FieldErrorTextProps) =>
   message ? (
-    <p id={id} className={cn("mt-1 text-xs text-danger", className)}>
+    <p
+      id={id}
+      role="alert"
+      className={cn("mt-1 text-xs text-danger", className)}
+    >
       {message}
     </p>
   ) : null;

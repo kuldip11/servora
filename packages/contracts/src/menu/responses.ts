@@ -49,10 +49,13 @@ export const menuSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const activeMenuSchema = Type.Intersect([
-  menuSchema,
-  Type.Object({ memberships: Type.Array(menuMembershipSummarySchema) }),
-]);
+export const activeMenuSchema = Type.Object(
+  {
+    ...menuSchema.properties,
+    memberships: Type.Array(menuMembershipSummarySchema),
+  },
+  { additionalProperties: false },
+);
 
 export const menuScheduleSchema = Type.Object(
   {

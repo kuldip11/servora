@@ -79,6 +79,7 @@ export const BuffetPricingSection = () => {
         </label>
         <Input
           label="Rate per cover"
+          required
           type="number"
           min="0"
           step="0.01"

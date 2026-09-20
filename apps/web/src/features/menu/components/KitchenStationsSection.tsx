@@ -31,10 +31,11 @@ export const KitchenStationsSection = () => {
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<KitchenStationFormValues>({
     resolver: zodResolver(kitchenStationFormSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: "" },
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
@@ -90,6 +91,7 @@ export const KitchenStationsSection = () => {
         <div className="flex items-end gap-2">
           <Input
             label="New station"
+            required
             placeholder="Grill"
             error={errors.name?.message}
             {...register("name", { onChange: clearFormErrors })}
@@ -97,7 +99,7 @@ export const KitchenStationsSection = () => {
           <Button
             type="submit"
             loading={create.isPending}
-            disabled={!isValid || create.isPending || stationsQuery.isError}
+            disabled={create.isPending || stationsQuery.isError}
           >
             <Plus className="h-4 w-4" /> Create
           </Button>

@@ -42,8 +42,8 @@ describe("LoginPage accessibility", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    const email = screen.getByLabelText("Email address");
-    const password = screen.getByLabelText("Password");
+    const email = screen.getByLabelText(/^Email address/);
+    const password = screen.getByLabelText(/^Password/);
 
     await waitFor(() => expect(document.activeElement).toBe(email));
     expect(email.getAttribute("aria-invalid")).toBe("true");
@@ -67,7 +67,9 @@ describe("LoginPage accessibility", () => {
     expect(document.activeElement).toBe(toggle);
 
     fireEvent.click(toggle);
-    expect(screen.getByLabelText("Password").getAttribute("type")).toBe("text");
+    expect(screen.getByLabelText(/^Password/).getAttribute("type")).toBe(
+      "text",
+    );
     expect(screen.getByRole("button", { name: "Hide password" })).toBeTruthy();
   });
 });

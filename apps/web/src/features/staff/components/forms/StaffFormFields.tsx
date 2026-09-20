@@ -52,12 +52,14 @@ export const StaffFormFields = ({
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="First name"
+          required
           placeholder="John"
           error={errors.firstName?.message}
           {...register("firstName")}
         />
         <Input
           label="Last name"
+          required
           placeholder="Doe"
           error={errors.lastName?.message}
           {...register("lastName")}
@@ -65,6 +67,7 @@ export const StaffFormFields = ({
       </div>
       <Input
         label="Email"
+        required
         type="email"
         placeholder="staff@restaurant.com"
         error={errors.email?.message}
@@ -72,6 +75,7 @@ export const StaffFormFields = ({
       />
       <Input
         label="Password"
+        required
         type="password"
         placeholder="Min. 8 characters"
         error={errors.password?.message}
@@ -79,6 +83,7 @@ export const StaffFormFields = ({
       />
       <Select
         label="Role"
+        required
         options={[
           { value: "", label: "Select role" },
           ...roles
@@ -91,6 +96,7 @@ export const StaffFormFields = ({
       {branchRequired && (
         <Select
           label="Branch"
+          required={branchRequired}
           options={[
             { value: "", label: "Select branch" },
             ...branches.map((item) => ({ value: item.id, label: item.name })),

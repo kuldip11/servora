@@ -109,6 +109,10 @@ export const PromotionsSection = () => {
     formErrorMessages,
     clearErrors,
     clearFieldError,
+    fieldError,
+    touchField,
+    markSubmitted,
+    resetValidation,
     handleApiError,
   } = useLocalFormApiErrors();
   const create = useMutation({
@@ -153,7 +157,7 @@ export const PromotionsSection = () => {
         : menuApi.createPromotion<Promotion>(payload);
     },
     onSuccess: () => {
-      clearErrors();
+      resetValidation();
       queryClient.invalidateQueries({ queryKey: key });
       resetAfterSave();
     },
@@ -244,8 +248,10 @@ export const PromotionsSection = () => {
         </div>
         <Input
           label="Name"
+          required
           value={name}
-          error={fieldErrors.name ?? clientErrors.name}
+          error={fieldError("name", clientErrors.name)}
+          onBlur={() => touchField("name")}
           onChange={(e) => {
             clearFieldError("name");
             setName(e.target.value);
@@ -253,6 +259,7 @@ export const PromotionsSection = () => {
         />
         <Select
           label="Type"
+          required
           value={ruleType}
           onChange={(e) => setRuleType(e.target.value as Promotion["ruleType"])}
           options={[
@@ -264,9 +271,11 @@ export const PromotionsSection = () => {
         {ruleType !== "BOGO" && (
           <Input
             label={ruleType === "PERCENTAGE" ? "Percent off" : "Amount off"}
+            required
             type="number"
             value={value}
-            error={fieldErrors.value ?? clientErrors.value}
+            error={fieldError("value", clientErrors.value)}
+            onBlur={() => touchField("value")}
             onChange={(e) => {
               clearFieldError("value");
               setValue(e.target.value);
@@ -276,6 +285,7 @@ export const PromotionsSection = () => {
         {ruleType !== "BOGO" && (
           <Select
             label="Scope"
+            required
             value={scope}
             onChange={(e) => setScope(e.target.value as Promotion["scope"])}
             options={[
@@ -288,6 +298,7 @@ export const PromotionsSection = () => {
         {ruleType !== "BOGO" && scope !== "ORDER" && (
           <Select
             label={scope === "CATEGORY" ? "Category" : "Menu item"}
+            required
             value={targetId}
             options={[
               {
@@ -297,7 +308,8 @@ export const PromotionsSection = () => {
               },
               ...(scope === "CATEGORY" ? categoryOptions : itemOptions),
             ]}
-            error={fieldErrors.targetId ?? clientErrors.targetId}
+            error={fieldError("targetId", clientErrors.targetId)}
+            onBlur={() => touchField("targetId")}
             onChange={(e) => {
               clearFieldError("targetId");
               setTargetId(e.target.value);
@@ -308,6 +320,7 @@ export const PromotionsSection = () => {
           <>
             <Select
               label="Buy target"
+              required
               value={triggerType}
               onChange={(e) =>
                 setTriggerType(e.target.value as "ITEM" | "CATEGORY")
@@ -319,6 +332,7 @@ export const PromotionsSection = () => {
             />
             <Select
               label={triggerType === "ITEM" ? "Buy item" : "Buy category"}
+              required
               value={triggerId}
               options={[
                 {
@@ -330,7 +344,8 @@ export const PromotionsSection = () => {
                 },
                 ...(triggerType === "ITEM" ? itemOptions : categoryOptions),
               ]}
-              error={fieldErrors.triggerId ?? clientErrors.triggerId}
+              error={fieldError("triggerId", clientErrors.triggerId)}
+              onBlur={() => touchField("triggerId")}
               onChange={(e) => {
                 clearFieldError("triggerId");
                 setTriggerId(e.target.value);
@@ -338,11 +353,14 @@ export const PromotionsSection = () => {
             />
             <Input
               label="Buy quantity"
+              required
               type="number"
               value={triggerQuantity}
-              error={
-                fieldErrors.triggerQuantity ?? clientErrors.triggerQuantity
-              }
+              error={fieldError(
+                "triggerQuantity",
+                clientErrors.triggerQuantity,
+              )}
+              onBlur={() => touchField("triggerQuantity")}
               onChange={(e) => {
                 clearFieldError("triggerQuantity");
                 setTriggerQuantity(e.target.value);
@@ -350,6 +368,7 @@ export const PromotionsSection = () => {
             />
             <Select
               label="Reward target"
+              required
               value={rewardType}
               onChange={(e) =>
                 setRewardType(e.target.value as "SAME" | "ITEM" | "CATEGORY")
@@ -365,6 +384,7 @@ export const PromotionsSection = () => {
                 label={
                   rewardType === "ITEM" ? "Reward item" : "Reward category"
                 }
+                required
                 value={rewardId}
                 options={[
                   {
@@ -376,7 +396,8 @@ export const PromotionsSection = () => {
                   },
                   ...(rewardType === "ITEM" ? itemOptions : categoryOptions),
                 ]}
-                error={fieldErrors.rewardId ?? clientErrors.rewardId}
+                error={fieldError("rewardId", clientErrors.rewardId)}
+                onBlur={() => touchField("rewardId")}
                 onChange={(e) => {
                   clearFieldError("rewardId");
                   setRewardId(e.target.value);
@@ -385,9 +406,11 @@ export const PromotionsSection = () => {
             )}
             <Input
               label="Reward quantity"
+              required
               type="number"
               value={rewardQuantity}
-              error={fieldErrors.rewardQuantity ?? clientErrors.rewardQuantity}
+              error={fieldError("rewardQuantity", clientErrors.rewardQuantity)}
+              onBlur={() => touchField("rewardQuantity")}
               onChange={(e) => {
                 clearFieldError("rewardQuantity");
                 setRewardQuantity(e.target.value);
@@ -395,12 +418,14 @@ export const PromotionsSection = () => {
             />
             <Input
               label="Reward discount %"
+              required
               type="number"
               value={rewardDiscountPercent}
-              error={
-                fieldErrors.rewardDiscountPercent ??
-                clientErrors.rewardDiscountPercent
-              }
+              error={fieldError(
+                "rewardDiscountPercent",
+                clientErrors.rewardDiscountPercent,
+              )}
+              onBlur={() => touchField("rewardDiscountPercent")}
               onChange={(e) => {
                 clearFieldError("rewardDiscountPercent");
                 setRewardDiscountPercent(e.target.value);
@@ -427,7 +452,8 @@ export const PromotionsSection = () => {
           label="End date"
           type="date"
           value={endDate}
-          error={fieldErrors.endDate ?? clientErrors.endDate}
+          error={fieldError("endDate", clientErrors.endDate)}
+          onBlur={() => touchField("endDate")}
           onChange={(e) => {
             clearFieldError("endDate");
             setEndDate(e.target.value);
@@ -443,7 +469,8 @@ export const PromotionsSection = () => {
           label="End time"
           type="time"
           value={endTime}
-          error={fieldErrors.endTime ?? clientErrors.endTime}
+          error={fieldError("endTime", clientErrors.endTime)}
+          onBlur={() => touchField("endTime")}
           onChange={(e) => {
             clearFieldError("endTime");
             setEndTime(e.target.value);
@@ -453,7 +480,8 @@ export const PromotionsSection = () => {
           label="Max uses total"
           type="number"
           value={maxUsesTotal}
-          error={fieldErrors.maxUsesTotal ?? clientErrors.maxUsesTotal}
+          error={fieldError("maxUsesTotal", clientErrors.maxUsesTotal)}
+          onBlur={() => touchField("maxUsesTotal")}
           onChange={(e) => {
             clearFieldError("maxUsesTotal");
             setMaxUsesTotal(e.target.value);
@@ -463,9 +491,11 @@ export const PromotionsSection = () => {
           label="Max uses / customer"
           type="number"
           value={maxUsesPerCustomer}
-          error={
-            fieldErrors.maxUsesPerCustomer ?? clientErrors.maxUsesPerCustomer
-          }
+          error={fieldError(
+            "maxUsesPerCustomer",
+            clientErrors.maxUsesPerCustomer,
+          )}
+          onBlur={() => touchField("maxUsesPerCustomer")}
           onChange={(e) => {
             clearFieldError("maxUsesPerCustomer");
             setMaxUsesPerCustomer(e.target.value);
@@ -489,6 +519,7 @@ export const PromotionsSection = () => {
             }
             loading={create.isPending}
             onClick={() => {
+              markSubmitted();
               clearErrors();
               if (formInvalid || categoryDependencyFailed || !isDirty) return;
               create.mutate(undefined, {
@@ -531,7 +562,7 @@ export const PromotionsSection = () => {
             <Button
               variant="secondary"
               onClick={() => {
-                clearErrors();
+                resetValidation();
                 cancelEdit();
               }}
             >
@@ -565,7 +596,10 @@ export const PromotionsSection = () => {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => beginEdit(promotion)}
+              onClick={() => {
+                resetValidation();
+                beginEdit(promotion);
+              }}
             >
               Edit
             </Button>

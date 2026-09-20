@@ -24,10 +24,11 @@ export const TagsSection = () => {
     setValue,
     watch,
     setError,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<CreateMenuTagInput>({
     resolver: zodResolver(createMenuTagSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: { name: "", color: TAG_COLORS[0] ?? "#8b5cf6" },
   });
   const color = watch("color");
@@ -113,6 +114,7 @@ export const TagsSection = () => {
         <div className="flex items-end gap-2">
           <Input
             label="New tag"
+            required
             placeholder="Bestseller"
             error={errors.name?.message}
             {...register("name", { onChange: clearFormErrors })}
@@ -139,7 +141,7 @@ export const TagsSection = () => {
             type="submit"
             size="sm"
             loading={addMutation.isPending}
-            disabled={!isValid || addMutation.isPending || tagsQuery.isError}
+            disabled={addMutation.isPending || tagsQuery.isError}
             aria-label="Create tag"
           >
             <Plus className="w-3.5 h-3.5" />

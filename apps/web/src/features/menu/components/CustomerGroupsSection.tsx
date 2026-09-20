@@ -61,7 +61,8 @@ export const CustomerGroupsSection = () => {
 
   const form = useForm<CustomerGroupFormValues>({
     resolver: zodResolver(customerGroupFormSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues,
   });
   const {
@@ -191,6 +192,7 @@ export const CustomerGroupsSection = () => {
         </div>
         <Input
           label="Group name"
+          required
           placeholder="Corporate · Acme Ltd"
           error={errors.name?.message}
           {...register("name", { onChange: clearFormErrors })}

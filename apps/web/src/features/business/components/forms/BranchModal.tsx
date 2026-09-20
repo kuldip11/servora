@@ -42,7 +42,8 @@ export const BranchModal = ({
   const form = useForm<BusinessBranchFormValues>({
     resolver: zodResolver(businessBranchFormSchema),
     defaultValues: branchDefaults,
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<BusinessBranchFormValues>();
@@ -107,19 +108,25 @@ export const BranchModal = ({
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Branch name"
+            required
             placeholder="e.g. Airport Branch"
             error={e.name?.message}
             {...form.register("name")}
           />
           <Input
             label="Branch code"
+            required
             placeholder="e.g. DEL-T3"
             error={e.code?.message}
             {...form.register("code")}
           />
           <label className="text-sm font-medium">
-            Status
+            Status{" "}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
             <select
+              aria-required="true"
               className={`mt-1 ${inputClass}`}
               {...form.register("status")}
             >
@@ -130,6 +137,7 @@ export const BranchModal = ({
           </label>
           <Input
             label="Address line 1"
+            required
             placeholder="Street address and building"
             error={e.addressLine1?.message}
             {...form.register("addressLine1")}
@@ -142,36 +150,42 @@ export const BranchModal = ({
           />
           <Input
             label="City"
+            required
             placeholder="e.g. New Delhi"
             error={e.city?.message}
             {...form.register("city")}
           />
           <Input
             label="State"
+            required
             placeholder="e.g. Delhi"
             error={e.stateProvince?.message}
             {...form.register("stateProvince")}
           />
           <Input
             label="Postal code"
+            required
             placeholder="e.g. 110037"
             error={e.postalCode?.message}
             {...form.register("postalCode")}
           />
           <Input
             label="Country code"
+            required
             placeholder="e.g. IN"
             error={e.country?.message}
             {...form.register("country")}
           />
           <Input
             label="Timezone"
+            required
             placeholder="e.g. Asia/Kolkata"
             error={e.timezone?.message}
             {...form.register("timezone")}
           />
           <Input
             label="Phone"
+            required
             placeholder="e.g. +91 98765 43210"
             error={e.phone?.message}
             {...form.register("phone")}
@@ -189,13 +203,13 @@ export const BranchModal = ({
             {...form.register("email")}
           />
           <Input
-            label="Opening time"
+            label="Opening time (optional)"
             error={e.openingTime?.message}
             placeholder="09:00"
             {...form.register("openingTime")}
           />
           <Input
-            label="Closing time"
+            label="Closing time (optional)"
             error={e.closingTime?.message}
             placeholder="23:00"
             {...form.register("closingTime")}
@@ -209,7 +223,7 @@ export const BranchModal = ({
             {...form.register("taxOverride", { valueAsNumber: true })}
           />
           <Input
-            label="Service charge override %"
+            label="Service charge override % (optional)"
             error={e.serviceChargeOverride?.message}
             type="number"
             step="0.01"

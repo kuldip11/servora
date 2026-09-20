@@ -66,7 +66,8 @@ export const EditStaffForm = ({
       branchIds: initialBranchIds,
       branchRequired: initialBranchRequired,
     },
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<EditStaffFormValues>();
@@ -118,17 +119,20 @@ export const EditStaffForm = ({
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="First name"
+          required
           error={form.formState.errors.firstName?.message}
           {...form.register("firstName")}
         />
         <Input
           label="Last name"
+          required
           error={form.formState.errors.lastName?.message}
           {...form.register("lastName")}
         />
       </div>
       <Select
         label="Role"
+        required
         options={[
           { value: "", label: "Select role" },
           ...roles

@@ -6,6 +6,7 @@ import { FieldErrorText } from "../form/FieldErrorText";
 describe("FieldErrorText", () => {
   it("renders a field error when present", () => {
     render(<FieldErrorText id="name-error" message="Name is required" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Name is required");
     expect(screen.getByText("Name is required").id).toBe("name-error");
   });
 

@@ -93,7 +93,8 @@ export const TablesPage = () => {
   } = useForm<TableFormValues>({
     resolver: zodResolver(tableFormSchema),
     defaultValues: EMPTY_TABLE_FORM,
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
   });
 
   const { formErrorMessages, clearFormErrors, handleApiError } =

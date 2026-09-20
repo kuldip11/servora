@@ -38,19 +38,19 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
     adding || (editing ? name.trim() !== editing.name.trim() : false);
 
   const closeModal = () => {
-    formErrors.clearErrors();
+    formErrors.resetValidation();
     setAdding(false);
     setEditing(null);
     setName("");
   };
   const openAdd = () => {
-    formErrors.clearErrors();
+    formErrors.resetValidation();
     setName("");
     setEditing(null);
     setAdding(true);
   };
   const openEdit = (category: MenuCategory) => {
-    formErrors.clearErrors();
+    formErrors.resetValidation();
     setAdding(false);
     setName(category.name);
     setEditing(category);
@@ -161,10 +161,12 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
           <FormErrorSummary messages={formErrors.formErrorMessages} />
           <Input
             label="Category name"
+            required
             placeholder="e.g. Starters"
             value={name}
             maxLength={100}
-            error={formErrors.fieldErrors.name ?? nameError}
+            error={formErrors.fieldError("name", nameError)}
+            onBlur={() => formErrors.touchField("name")}
             onChange={(event) => {
               formErrors.clearFieldError("name");
               setName(event.target.value);
@@ -183,6 +185,7 @@ export const MenuCategoriesSection = ({ onSaveTemplate }: Props) => {
                 renameMutation.isPending
               }
               onClick={() => {
+                formErrors.markSubmitted();
                 formErrors.clearErrors();
                 if (nameError || !isDirty) return;
                 if (adding) {

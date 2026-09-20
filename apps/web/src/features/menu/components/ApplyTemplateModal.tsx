@@ -31,7 +31,8 @@ export const ApplyTemplateModal = ({
     formState: { errors, isValid },
   } = useForm<ApplyTemplateInput>({
     resolver: zodResolver(applyTemplateSchema),
-    mode: "onChange",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       branchId: "",
       categoryName: template.sourceCategoryName ?? template.name,
@@ -70,6 +71,7 @@ export const ApplyTemplateModal = ({
         <FormErrorSummary messages={formErrorMessages} />
         <Input
           label="New category name"
+          required
           error={errors.categoryName?.message}
           {...register("categoryName", { onChange: clearFormErrors })}
         />

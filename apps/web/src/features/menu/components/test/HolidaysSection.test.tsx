@@ -21,7 +21,8 @@ vi.mock("@/features/menu/hooks/useAddHoliday", () => ({
 vi.mock("@/features/menu/hooks/useDeleteHoliday", () => ({
   useDeleteHoliday: () => ({ mutate: h.delHoliday }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (

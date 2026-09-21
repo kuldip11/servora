@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Card, Page, PageHeader, Badge, Button } from "@pos/ui";
+import { Badge, Button, Card, Page, PageHeader, Select } from "@pos/ui";
 import { ShieldCheck } from "lucide-react";
 import { auditService } from "@/features/audit/services/audit.service";
 import { useState } from "react";
@@ -161,34 +161,36 @@ export const AuditLogPage = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <select
+            <Select
               aria-label="Entity type"
               value={entityType}
-              onChange={(event) => setEntityType(event.target.value)}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            >
-              <option value="">All entities</option>
-              <option value="MENU_ITEM">Items</option>
-              <option value="MENU">Menus</option>
-              <option value="CATEGORY">Categories</option>
-              <option value="PRICE_RULE">Price rules</option>
-              <option value="MENU_MEMBERSHIP">Memberships</option>
-            </select>
-            <select
+              onChange={setEntityType}
+              className="text-sm"
+              options={[
+                { value: "", label: "All entities" },
+                { value: "MENU_ITEM", label: "Items" },
+                { value: "MENU", label: "Menus" },
+                { value: "CATEGORY", label: "Categories" },
+                { value: "PRICE_RULE", label: "Price rules" },
+                { value: "MENU_MEMBERSHIP", label: "Memberships" },
+              ]}
+            />
+            <Select
               aria-label="Change type"
               value={changeType}
-              onChange={(event) => setChangeType(event.target.value)}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            >
-              <option value="">All changes</option>
-              {["CREATED", "UPDATED", "PUBLISHED", "ARCHIVED", "DELETED"].map(
-                (type) => (
-                  <option key={type} value={type}>
-                    {formatAction(type)}
-                  </option>
-                ),
-              )}
-            </select>
+              onChange={setChangeType}
+              className="text-sm"
+              options={[
+                { value: "", label: "All changes" },
+                ...[
+                  "CREATED",
+                  "UPDATED",
+                  "PUBLISHED",
+                  "ARCHIVED",
+                  "DELETED",
+                ].map((type) => ({ value: type, label: formatAction(type) })),
+              ]}
+            />
           </div>
         </div>
         {menuHistoryLoading ? (

@@ -209,7 +209,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         />
       )}
 
-      {}
       {!isAddingToExisting && (
         <OrderOptionsPanel
           availableOrderTypes={availableOrderTypes}
@@ -258,7 +257,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
             <ComboStrip combos={activeCombos} onOpenCombo={openCombo} />
           )}
 
-          {}
           <MenuGrid
             items={activeItems}
             cart={cart}
@@ -282,7 +280,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         />
       </div>
 
-      {}
       <MobileCartBar
         totalItems={totalItems}
         totalPrice={totalPrice}
@@ -290,7 +287,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         onReview={() => setCartVisible(true)}
       />
 
-      {}
       {customising && (
         <ItemCustomiser
           item={customising.item}
@@ -317,7 +313,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         />
       )}
 
-      {}
       {showCart && (
         <CartSummary
           cart={cart}

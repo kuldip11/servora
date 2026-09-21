@@ -12,7 +12,7 @@ vi.mock("@pos/ui", () => ({
         {footer}
       </section>
     ) : null,
-  SelectMenu: ({
+  Select: ({
     label,
     value,
     onChange,

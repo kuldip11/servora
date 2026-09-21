@@ -30,7 +30,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -80,7 +81,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

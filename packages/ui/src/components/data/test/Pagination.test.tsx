@@ -37,7 +37,8 @@ describe("Pagination", () => {
     expect(
       screen.getByRole("button", { name: "Previous page" }),
     ).toBeDisabled();
-    await user.selectOptions(screen.getByLabelText("Rows per page"), "25");
+    await user.click(screen.getByRole("combobox", { name: "Rows per page" }));
+    await user.click(screen.getByRole("option", { name: "25" }));
     expect(onSize).toHaveBeenCalledWith(25);
   });
 });

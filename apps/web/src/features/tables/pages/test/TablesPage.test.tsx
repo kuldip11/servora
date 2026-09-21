@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: mocks.branches.current,
     isError: false,
@@ -37,7 +37,7 @@ vi.mock("@/features/branches/hooks/useBranches", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/tables/hooks/useTables", () => ({
+vi.mock("@/features/tables", () => ({
   useTables: () => mocks.tables.current,
 }));
 vi.mock("@/features/tables/hooks/useTablesRealtimeSync", () => ({
@@ -58,13 +58,13 @@ vi.mock("@/features/tables/hooks/useDeleteTable", () => ({
 vi.mock("@/features/tables/hooks/useRegenerateTableQr", () => ({
   useRegenerateTableQr: () => ({ mutate: mocks.regen, isPending: false }),
 }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrders: () => mocks.orders.current,
-}));
-vi.mock("@/features/orders/hooks/useTransferTable", () => ({
   useTransferTable: () => ({ mutate: mocks.transfer, isPending: false }),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createTablesApi: () => ({
     getTakeawayQr: mocks.getTakeaway,
     regenerateTakeawayQr: mocks.regenTakeaway,
@@ -102,7 +102,8 @@ vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
 vi.mock("qrcode.react", () => ({
   QRCodeSVG: ({ value }: any) => <div>qr-{value}</div>,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Plus: () => null,
   Table2: () => null,
   Users: () => null,
@@ -142,7 +143,8 @@ vi.mock("@/features/tables/components/TableFormModal", () => ({
       </div>
     ) : null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -187,26 +189,15 @@ vi.mock("@pos/ui", () => ({
   Select: ({ options = [], value, onChange, ...props }: any) => (
     <select
       aria-label={props["aria-label"] ?? `status-${value}`}
-      value={value}
-      onChange={onChange}
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value)}
       disabled={props.disabled}
     >
-      {options.map((o: any) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
+      {options.map((option: any) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
         </option>
       ))}
-    </select>
-  ),
-  SelectMenu: ({ value, onChange, ...props }: any) => (
-    <select
-      aria-label={props["aria-label"]}
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">All</option>
-      <option value="Hall">Hall</option>
-      <option value="Patio">Patio</option>
     </select>
   ),
   SearchInput: ({ value, onChange, onClear, ...props }: any) => (

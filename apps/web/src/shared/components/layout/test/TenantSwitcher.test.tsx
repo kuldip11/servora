@@ -27,7 +27,8 @@ const mocks = vi.hoisted(() => {
     },
   };
 });
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   ChevronDown: () => null,
   LogOut: () => null,
   UserRound: () => null,
@@ -54,7 +55,10 @@ vi.mock("@/shared/auth/default-route", () => ({
 vi.mock("@/shared/utils", () => ({
   cn: (...values: any[]) => values.filter(Boolean).join(" "),
 }));
-vi.mock("@pos/ui", () => ({ toast: mocks.toast }));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  toast: mocks.toast,
+}));
 vi.mock("@/store/auth", () => ({ useAuthStore: mocks.authHook }));
 
 const reset = () => {

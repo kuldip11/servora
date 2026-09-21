@@ -35,7 +35,8 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createOrganizationsApi: () => h.org,
   createBranchesApi: () => h.branches,
   createAuditApi: () => h.audit,

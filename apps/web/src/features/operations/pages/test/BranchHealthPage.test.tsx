@@ -17,7 +17,8 @@ vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: (error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Card: ({ children }: React.PropsWithChildren) => (
     <section>{children}</section>

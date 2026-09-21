@@ -1,6 +1,6 @@
 import { LogOut, Palette, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import type { KitchenStation } from "@pos/types";
-import { IconButton, Popover, ThemeSwitcher } from "@pos/ui";
+import { IconButton, Popover, Select, ThemeSwitcher } from "@pos/ui";
 
 interface KitchenToolbarProps {
   stations: KitchenStation[];
@@ -26,22 +26,23 @@ export const KitchenToolbar = ({
   onLogout,
 }: KitchenToolbarProps) => (
   <div className="flex items-center gap-3">
-    <label className="flex items-center gap-2 text-xs text-text-secondary">
-      Station
-      <select
+    <div className="flex items-center gap-2 text-xs text-text-secondary">
+      <span>Station</span>
+      <Select
         aria-label="KDS station"
-        className="rounded-md border border-border bg-surface-secondary px-2 py-1 text-text-primary"
+        className="min-h-0 px-2 py-1 text-xs"
+        containerClassName="gap-0"
         value={stationId ?? ""}
-        onChange={(event) => onStationChange(event.target.value || undefined)}
-      >
-        <option value="">All / unassigned</option>
-        {stations.map((station) => (
-          <option key={station.id} value={station.id}>
-            {station.name}
-          </option>
-        ))}
-      </select>
-    </label>
+        onChange={(value) => onStationChange(value || undefined)}
+        options={[
+          { value: "", label: "All / unassigned" },
+          ...stations.map((station) => ({
+            value: station.id,
+            label: station.name,
+          })),
+        ]}
+      />
+    </div>
     <label className="flex items-center gap-1 text-xs text-text-secondary">
       <input
         type="checkbox"

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef } from "react";
+import { Select } from "@pos/ui";
 import { track } from "@/lib/analytics";
 import { LeadFieldError } from "./LeadFieldError";
 import { useLeadForm } from "./useLeadForm";
@@ -104,21 +105,19 @@ export const ContactForm = () => {
           />
         </label>
       </div>
-      <label className="text-sm font-medium">
-        Subject
-        <select
-          name="subject"
-          value={form.values.subject}
-          onChange={(event) => form.updateField("subject", event.target.value)}
-          onFocus={startTracking}
-          className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3"
-        >
-          <option value="general">General enquiry</option>
-          <option value="sales">Sales</option>
-          <option value="support">Support</option>
-          <option value="partnership">Partnership</option>
-        </select>
-      </label>
+      <Select
+        label="Subject"
+        name="subject"
+        value={form.values.subject}
+        onChange={(value) => form.updateField("subject", value)}
+        onBlur={startTracking}
+        options={[
+          { value: "general", label: "General enquiry" },
+          { value: "sales", label: "Sales" },
+          { value: "support", label: "Support" },
+          { value: "partnership", label: "Partnership" },
+        ]}
+      />
       <label className="text-sm font-medium">
         Message
         <textarea

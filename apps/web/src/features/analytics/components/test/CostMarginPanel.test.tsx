@@ -1,11 +1,13 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 const state = vi.hoisted(() => ({ query: {} as any }));
 vi.mock("@/features/analytics/hooks/useCostMarginReport", () => ({
   useCostMarginReport: () => state.query,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Card: ({ children }: any) => <section>{children}</section>,
   Badge: ({ children }: any) => <span>{children}</span>,
   SkeletonCard: () => <div>loading-card</div>,
@@ -69,13 +71,8 @@ describe("CostMarginPanel", () => {
     };
     render(<CostMarginPanel branchId="b1" />);
     expect(screen.getByText(/Cost not configured/)).toBeTruthy();
-    fireEvent.change(
-      screen.getByLabelText("Filter margin report by category"),
-      { target: { value: "c1" } },
-    );
-    fireEvent.change(screen.getByLabelText("Sort margin report"), {
-      target: { value: "low" },
-    });
+    chooseSelectOption("Filter margin report by category", "Drinks");
+    chooseSelectOption("Sort margin report", "Margin: low to high");
     expect(screen.getByText("Toast")).toBeTruthy();
   });
 });

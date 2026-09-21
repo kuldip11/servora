@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ClipboardList } from "lucide-react";
 import { Spinner, EmptyState } from "@pos/ui";
-import { useInfiniteOrders } from "@/features/orders/hooks/useOrders";
-import { OrderCard } from "@/features/orders/components/OrderCard";
+import { useInfiniteOrders } from "@/features/orders";
+import { OrderCard } from "@/features/orders";
 
 interface Props {
   onSelectOrder: (id: string) => void;
@@ -41,7 +41,6 @@ export const OrdersPage = ({ onSelectOrder }: Props) => {
         <h1 className="text-[22px] font-medium text-text-primary">Orders</h1>
       </div>
 
-      {}
       <div className="flex gap-[7px] px-3.5 py-3">
         {(["ready", "active", "all"] as const).map((f) => (
           <button
@@ -62,7 +61,6 @@ export const OrdersPage = ({ onSelectOrder }: Props) => {
         ))}
       </div>
 
-      {}
       <div className="flex-1 overflow-y-auto">
         {isLoading || (isFetching && display.length === 0) ? (
           <div className="flex justify-center py-12">

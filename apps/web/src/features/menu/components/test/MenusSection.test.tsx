@@ -9,13 +9,14 @@ const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
   del: vi.fn(),
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Pencil: () => null,
   Plus: () => null,
   Trash2: () => null,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: mocks.branches,
     isError: false,
@@ -39,7 +40,8 @@ vi.mock("@/features/menu/hooks/useMenus", () => ({
   useSetMenuPublished: () => ({ mutate: mocks.publish, isPending: false }),
   useDeleteMenu: () => ({ mutate: mocks.del, isPending: false }),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({ listActiveMenus: vi.fn() }),
 }));
 vi.mock("@tanstack/react-query", () => ({
@@ -59,7 +61,8 @@ vi.mock("../MenuAvailabilityDialog", () => ({
       </div>
     ) : null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages }: any) =>
     messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (

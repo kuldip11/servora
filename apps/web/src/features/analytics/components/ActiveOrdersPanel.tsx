@@ -6,7 +6,7 @@ import {
   getOrderStatusColor,
   getOrderStatusLabel,
 } from "@/shared/utils/order-status";
-import { useOrders } from "@/features/orders/hooks/useOrders";
+import { useOrders } from "@/features/orders";
 import { ANALYTICS_STATUS_TONE } from "@/features/analytics/constants";
 export const ActiveOrdersPanel = () => {
   const {

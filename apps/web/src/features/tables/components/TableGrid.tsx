@@ -20,7 +20,7 @@ export function TableGrid({
   tables: RestaurantTable[];
   onEdit: (table: RestaurantTable) => void;
   onDelete: (id: string, name: string) => void;
-  onStatusChange: (id: string, status: string) => void;
+  onStatusChange: (id: string, status: RestaurantTable["status"]) => void;
   onShowQr: (table: RestaurantTable) => void;
   onTransfer?: ((table: RestaurantTable) => void) | undefined;
   onMerge?: ((table: RestaurantTable) => void) | undefined;
@@ -115,7 +115,9 @@ export function TableGrid({
             <Select
               options={TABLE_STATUS_OPTIONS}
               value={table.status}
-              onChange={(e) => onStatusChange(table.id, e.target.value)}
+              onChange={(value) =>
+                onStatusChange(table.id, value as RestaurantTable["status"])
+              }
               disabled={table.status === "OCCUPIED"}
               className="text-xs py-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
             />

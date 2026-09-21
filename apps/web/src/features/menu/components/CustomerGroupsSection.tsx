@@ -8,6 +8,7 @@ import {
   FormErrorSummary,
   Input,
   QueryErrorState,
+  Select,
   StaleDataBanner,
 } from "@pos/ui";
 import type { CustomerGroup } from "@pos/types";
@@ -70,6 +71,7 @@ export const CustomerGroupsSection = () => {
     handleSubmit,
     reset,
     setError,
+    setValue,
     watch,
     formState: { errors, isDirty, isValid },
   } = form;
@@ -197,17 +199,27 @@ export const CustomerGroupsSection = () => {
           error={errors.name?.message}
           {...register("name", { onChange: clearFormErrors })}
         />
-        <label className="text-sm font-medium text-text-primary">
-          Default discount
-          <select
-            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            {...register("discountType", { onChange: clearFormErrors })}
-          >
-            <option value="NONE">None</option>
-            <option value="PERCENT">Percent</option>
-            <option value="FIXED">Fixed amount</option>
-          </select>
-        </label>
+        <Select
+          label="Default discount"
+          value={discountType}
+          onChange={(value) => {
+            clearFormErrors();
+            setValue(
+              "discountType",
+              value as CustomerGroupFormValues["discountType"],
+              {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              },
+            );
+          }}
+          options={[
+            { value: "NONE", label: "None" },
+            { value: "PERCENT", label: "Percent" },
+            { value: "FIXED", label: "Fixed amount" },
+          ]}
+        />
         {discountType !== "NONE" ? (
           <Input
             label={discountType === "PERCENT" ? "Percent" : "Amount"}

@@ -9,7 +9,7 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import { MENU_ITEM_STATUS_OPTIONS } from "@/features/menu/constants";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { useMenuItemBranchOverrides } from "@/features/menu/hooks/useMenuItemBranchOverrides";
 import { useSaveBranchOverride } from "@/features/menu/hooks/useSaveBranchOverride";
 import { useResetBranchOverride } from "@/features/menu/hooks/useResetBranchOverride";
@@ -249,8 +249,7 @@ export const BranchOverridesPanel = ({
                         clearFieldError("status");
                         setDraft((current) => ({
                           ...current,
-                          status: event.target
-                            .value as BranchOverrideDraft["status"],
+                          status: event as BranchOverrideDraft["status"],
                         }));
                       }}
                       options={[

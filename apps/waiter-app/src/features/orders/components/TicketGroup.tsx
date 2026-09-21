@@ -231,7 +231,6 @@ export const TicketGroup = ({
       )}
       {ticket.status === "READY" && onMarkServed && (
         <div className="px-4 py-3 border-t border-divider">
-          {}
           <Button
             onClick={() => onMarkServed(ticket.id)}
             disabled={isUpdating}

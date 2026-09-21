@@ -16,7 +16,8 @@ vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: (_error: unknown, fallback: string) => fallback,
   toApiClientError: () => ({}),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiFieldErrors: () => ({}),
   extractApiError: (_error: unknown, fallback: string) => fallback,
   createSettingsApi: () => ({
@@ -28,8 +29,12 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("lucide-react", () => ({ ChefHat: () => null }));
-vi.mock("@pos/ui", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
+  ChefHat: () => null,
+}));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title }: any) => <div>{title}</div>,

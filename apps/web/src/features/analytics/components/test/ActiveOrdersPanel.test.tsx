@@ -2,13 +2,15 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ query: {} as any, refetch: vi.fn() }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrders: () => state.query,
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: any) => <a href={to ?? "/"}>{children}</a>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Card: ({ children }: any) => <section>{children}</section>,
   Badge: ({ children }: any) => <span>{children}</span>,
   Button: ({ children, ...p }: any) => <button {...p}>{children}</button>,

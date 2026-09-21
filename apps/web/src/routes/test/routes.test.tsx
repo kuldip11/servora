@@ -22,7 +22,10 @@ vi.mock("@/shared/auth/permissions", () => ({
 vi.mock("@/shared/auth/default-route", () => ({
   getAuthorizedHomePath: mocks.home,
 }));
-vi.mock("@pos/ui", () => ({ Spinner: () => null }));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  Spinner: () => null,
+}));
 
 vi.mock("@/shared/components/layout/RootLayout", () => ({
   RootLayout: () => <div>root</div>,

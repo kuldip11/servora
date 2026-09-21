@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, X, Clock } from "lucide-react";
+import { Select } from "@pos/ui";
 import { MENU_ITEM_STATUS_OPTIONS } from "@/features/menu/constants";
 import { useMenuItemSchedules } from "@/features/menu/hooks/useMenuItemSchedules";
 import { useAddSchedule } from "@/features/menu/hooks/useAddSchedule";
@@ -140,43 +141,37 @@ export const ScheduleManager = ({ itemId }: { itemId: string }) => {
 
       {draft ? (
         <div className="border border-border rounded-md p-3 space-y-2">
-          <select
+          <Select
+            aria-label="Schedule type"
             value={draft.scheduleType}
-            onChange={(e) =>
+            onChange={(value) =>
               setDraft({
                 ...draft,
-                scheduleType: e.target.value as MenuItemScheduleType,
+                scheduleType: value as MenuItemScheduleType,
               })
             }
-            className="w-full px-2 py-1.5 text-sm border border-border rounded-md"
-          >
-            {SCHEDULE_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            options={SCHEDULE_TYPE_OPTIONS}
+          />
 
           {(draft.scheduleType === "DAILY" ||
             draft.scheduleType === "WEEKLY") && (
             <div className="flex items-center gap-2">
               {draft.scheduleType === "WEEKLY" && (
-                <select
-                  value={draft.dayOfWeek}
-                  onChange={(e) =>
+                <Select
+                  aria-label="Day of week"
+                  value={String(draft.dayOfWeek)}
+                  onChange={(value) =>
                     setDraft({
                       ...draft,
-                      dayOfWeek: parseInt(e.target.value, 10),
+                      dayOfWeek: Number(value),
                     })
                   }
-                  className="px-2 py-1.5 text-sm border border-border rounded-md"
-                >
-                  {WEEK_DAYS.map((d, i) => (
-                    <option key={i} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                  options={WEEK_DAYS.map((day, index) => ({
+                    value: String(index),
+                    label: day,
+                  }))}
+                  containerClassName="min-w-28"
+                />
               )}
               <input
                 type="time"
@@ -240,22 +235,19 @@ export const ScheduleManager = ({ itemId }: { itemId: string }) => {
             <span className="text-xs text-text-secondary">
               Status during this window:
             </span>
-            <select
+            <Select
+              aria-label="Status during this window"
               value={draft.statusDuringPeriod}
-              onChange={(e) =>
+              onChange={(value) =>
                 setDraft({
                   ...draft,
-                  statusDuringPeriod: e.target.value as MenuItemStatus,
+                  statusDuringPeriod: value as MenuItemStatus,
                 })
               }
-              className="px-2 py-1 text-xs border border-border rounded-md"
-            >
-              {MENU_ITEM_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              options={MENU_ITEM_STATUS_OPTIONS}
+              containerClassName="min-w-36"
+              className="py-1 text-xs"
+            />
           </div>
 
           <div className="flex gap-2 justify-end pt-1">

@@ -38,6 +38,22 @@ export const toCartItemPayload = (item: CartItem): CartItemPayload => {
     })),
   };
 };
+export const buildCreateOrderInput = ({
+  type,
+  tableId,
+  notes,
+  items,
+}: {
+  type: string;
+  tableId: string;
+  notes: string;
+  items: CartItem[];
+}): CreateOrderInput => ({
+  type: type as CreateOrderInput["type"],
+  ...(tableId && { tableId }),
+  ...(notes && { notes }),
+  items: items.map(toCartItemPayload),
+});
 
 export const ordersService = {
   list: ordersApi.list,

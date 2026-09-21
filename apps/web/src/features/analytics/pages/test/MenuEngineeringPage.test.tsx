@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 const h = vi.hoisted(() => ({
   menuEngineering: vi.fn(),
   extract: vi.fn(() => "boom"),
@@ -9,10 +10,12 @@ vi.mock("@/shared/lib/api-client", () => ({
   apiClient: {},
   extractApiError: h.extract,
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createAnalyticsApi: () => ({ menuEngineering: h.menuEngineering }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: any) => <span>{children}</span>,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
@@ -80,14 +83,13 @@ describe("MenuEngineeringPage", () => {
     render(<MenuEngineeringPage />);
     expect(screen.getByText("spinner")).toBeTruthy();
     await screen.findByText("Zulu");
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0]!, { target: { value: "30" } });
-    fireEvent.change(selects[1]!, { target: { value: "STAR" } });
-    fireEvent.change(selects[2]!, { target: { value: "margin" } });
+    chooseSelectOption("Analysis window", "30 days");
+    chooseSelectOption("Quadrant", "Stars");
+    chooseSelectOption("Sort by", "Margin");
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() => expect(h.menuEngineering).toHaveBeenLastCalledWith(30));
-    fireEvent.change(selects[1]!, { target: { value: "ALL" } });
-    fireEvent.change(selects[2]!, { target: { value: "name" } });
+    chooseSelectOption("Quadrant", "All quadrants");
+    chooseSelectOption("Sort by", "Name");
     expect(screen.getByText(/Cost not configured/)).toBeTruthy();
   });
   it("covers empty and error states", async () => {

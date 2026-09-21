@@ -8,6 +8,7 @@ import {
   FormErrorSummary,
   Input,
   Modal,
+  Select,
 } from "@pos/ui";
 import type { OrganizationSummary, Tenant } from "@pos/types";
 import {
@@ -126,20 +127,15 @@ export const FranchiseModal = ({
         })}
       >
         {!franchise && (
-          <label className="block text-sm font-medium">
-            Organization
-            <select
-              className={`mt-1 ${inputClass}`}
-              value={organizationId}
-              onChange={(event) => onOrganizationChange(event.target.value)}
-            >
-              {organizations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Organization"
+            value={organizationId}
+            onChange={onOrganizationChange}
+            options={organizations.map((item) => ({
+              value: item.id,
+              label: item.name,
+            }))}
+          />
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -172,32 +168,30 @@ export const FranchiseModal = ({
               )
             }
           />
-          <label className="text-sm font-medium">
-            Business model{" "}
-            <span className="text-danger" aria-hidden="true">
-              *
-            </span>
-            <select
-              aria-required="true"
-              className={`mt-1 ${inputClass}`}
-              {...form.register("businessModel")}
-            >
-              {[
-                "RESTAURANT",
-                "CAFE",
-                "CLOUD_KITCHEN",
-                "QSR",
-                "FINE_DINING",
-                "FOOD_COURT",
-                "BAKERY",
-                "BAR_PUB",
-                "OTHER",
-              ].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-            <FieldErrorText message={e.businessModel?.message} />
-          </label>
+          <Select
+            label="Business model"
+            required
+            value={values.businessModel}
+            onChange={(value) =>
+              form.setValue(
+                "businessModel",
+                value as FranchiseBusinessFormValues["businessModel"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.businessModel?.message}
+            options={[
+              "RESTAURANT",
+              "CAFE",
+              "CLOUD_KITCHEN",
+              "QSR",
+              "FINE_DINING",
+              "FOOD_COURT",
+              "BAKERY",
+              "BAR_PUB",
+              "OTHER",
+            ].map((value) => ({ value, label: value }))}
+          />
           <Input
             label="Default currency"
             required
@@ -212,21 +206,23 @@ export const FranchiseModal = ({
             error={e.defaultTimezone?.message}
             {...form.register("defaultTimezone")}
           />
-          <label className="text-sm font-medium">
-            Default tax mode{" "}
-            <span className="text-danger" aria-hidden="true">
-              *
-            </span>
-            <select
-              aria-required="true"
-              className={`mt-1 ${inputClass}`}
-              {...form.register("defaultTaxMode")}
-            >
-              <option value="EXCLUSIVE">Exclusive</option>
-              <option value="INCLUSIVE">Inclusive</option>
-            </select>
-            <FieldErrorText message={e.defaultTaxMode?.message} />
-          </label>
+          <Select
+            label="Default tax mode"
+            required
+            value={values.defaultTaxMode}
+            onChange={(value) =>
+              form.setValue(
+                "defaultTaxMode",
+                value as FranchiseBusinessFormValues["defaultTaxMode"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.defaultTaxMode?.message}
+            options={[
+              { value: "EXCLUSIVE", label: "Exclusive" },
+              { value: "INCLUSIVE", label: "Inclusive" },
+            ]}
+          />
           <Input
             label="Default tax rate (optional)"
             error={e.defaultTaxRate?.message}
@@ -243,19 +239,24 @@ export const FranchiseModal = ({
             placeholder="e.g. 10"
             {...form.register("serviceChargePercent", { valueAsNumber: true })}
           />
-          <label className="text-sm font-medium">
-            Rounding policy
-            <select
-              className={`mt-1 ${inputClass}`}
-              {...form.register("roundingPolicy")}
-            >
-              <option value="NONE">None</option>
-              <option value="NEAREST_1">Nearest 1</option>
-              <option value="NEAREST_5">Nearest 5</option>
-              <option value="NEAREST_10">Nearest 10</option>
-            </select>
-            <FieldErrorText message={e.roundingPolicy?.message} />
-          </label>
+          <Select
+            label="Rounding policy"
+            value={values.roundingPolicy}
+            onChange={(value) =>
+              form.setValue(
+                "roundingPolicy",
+                value as FranchiseBusinessFormValues["roundingPolicy"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.roundingPolicy?.message}
+            options={[
+              { value: "NONE", label: "None" },
+              { value: "NEAREST_1", label: "Nearest 1" },
+              { value: "NEAREST_5", label: "Nearest 5" },
+              { value: "NEAREST_10", label: "Nearest 10" },
+            ]}
+          />
           <Input
             label="Support email (optional)"
             error={e.supportEmail?.message}

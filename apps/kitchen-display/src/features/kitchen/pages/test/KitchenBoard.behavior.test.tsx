@@ -34,7 +34,8 @@ const mocks = vi.hoisted(() => ({
   cardProps: [] as any[],
 }));
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   IconButton: ({ icon: _icon, ...props }: any) => <button {...props} />,
   Spinner: (props: any) => <span {...props}>loading</span>,
@@ -231,19 +232,29 @@ describe("KitchenBoard interaction coverage", () => {
     mocks.tickets = [{ ...ticket, id: "interactive", status: "FIRED" }];
     await mount();
 
-    const select = container.querySelector(
-      'select[aria-label="KDS station"]',
-    ) as HTMLSelectElement;
+    const stationSelect = container.querySelector(
+      '[role="combobox"][aria-label="KDS station"]',
+    ) as HTMLButtonElement;
     await act(async () => {
-      select.value = "grill";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+      stationSelect.click();
+    });
+    const grillOption = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.includes("Grill"));
+    await act(async () => {
+      grillOption?.click();
     });
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith("grill");
     expect(mocks.stationArgs.at(-1)).toBe("grill");
 
     await act(async () => {
-      select.value = "";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+      stationSelect.click();
+    });
+    const allOption = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.includes("All / unassigned"));
+    await act(async () => {
+      allOption?.click();
     });
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith(undefined);
 

@@ -12,7 +12,7 @@ import { apiClient } from "@/shared/lib/api-client";
 import { getErrorMessage } from "@/shared/lib/errors";
 
 const menuApi = createMenuApi(apiClient);
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useMenuCategories } from "@/features/menu";
 import { useMenus } from "@/features/menu/hooks/useMenus";
 
 export const HappyHourSection = () => {
@@ -105,7 +105,7 @@ export const HappyHourSection = () => {
           required
           value={scopeType}
           onChange={(event) => {
-            setScopeType(event.target.value as "CATEGORY" | "MENU");
+            setScopeType(event as "CATEGORY" | "MENU");
             setScopeId("");
           }}
           options={[
@@ -116,7 +116,7 @@ export const HappyHourSection = () => {
         <Select
           label={scopeType === "CATEGORY" ? "Category" : "Menu"}
           value={scopeId}
-          onChange={(event) => setScopeId(event.target.value)}
+          onChange={(event) => setScopeId(event)}
           options={[
             {
               value: "",

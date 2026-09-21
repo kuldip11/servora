@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 import { AvailabilityDashboardPage } from "@/features/availability/pages/AvailabilityDashboardPage";
 
 const { api, realtime } = vi.hoisted(() => ({
@@ -137,10 +138,9 @@ describe("AvailabilityDashboardPage", () => {
     });
     expect(screen.queryByText("Zulu")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /clear/i }));
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0]!, { target: { value: "STAFF" } });
-    fireEvent.change(selects[1]!, { target: { value: "DELIVERY" } });
-    fireEvent.change(selects[2]!, { target: { value: "RECIPE_DRIVEN" } });
+    chooseSelectOption("Channel", "Staff");
+    chooseSelectOption("Fulfillment", "Delivery");
+    chooseSelectOption("Cause", "RECIPE DRIVEN");
     await waitFor(() =>
       expect(api.get).toHaveBeenLastCalledWith(
         "/menu/availability/dashboard",

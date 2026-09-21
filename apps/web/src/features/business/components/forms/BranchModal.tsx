@@ -8,6 +8,7 @@ import {
   FormErrorSummary,
   Input,
   Modal,
+  Select,
 } from "@pos/ui";
 import type { Branch } from "@pos/types";
 import {
@@ -120,21 +121,27 @@ export const BranchModal = ({
             error={e.code?.message}
             {...form.register("code")}
           />
-          <label className="text-sm font-medium">
-            Status{" "}
-            <span className="text-danger" aria-hidden="true">
-              *
-            </span>
-            <select
-              aria-required="true"
-              className={`mt-1 ${inputClass}`}
-              {...form.register("status")}
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-            <FieldErrorText message={e.status?.message} />
-          </label>
+          <Select
+            label="Status"
+            required
+            value={values.status}
+            onChange={(value) =>
+              form.setValue(
+                "status",
+                value as BusinessBranchFormValues["status"],
+                {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true,
+                },
+              )
+            }
+            error={e.status?.message}
+            options={[
+              { value: "ACTIVE", label: "Active" },
+              { value: "INACTIVE", label: "Inactive" },
+            ]}
+          />
           <Input
             label="Address line 1"
             required
@@ -236,18 +243,23 @@ export const BranchModal = ({
             placeholder="e.g. DELT3"
             {...form.register("invoicePrefix")}
           />
-          <label className="text-sm font-medium">
-            Negative stock policy
-            <select
-              className={`mt-1 ${inputClass}`}
-              {...form.register("negativeStockPolicy")}
-            >
-              <option value="BLOCK">Block</option>
-              <option value="WARN">Warn</option>
-              <option value="ALLOW">Allow</option>
-            </select>
-            <FieldErrorText message={e.negativeStockPolicy?.message} />
-          </label>
+          <Select
+            label="Negative stock policy"
+            value={values.negativeStockPolicy}
+            onChange={(value) =>
+              form.setValue(
+                "negativeStockPolicy",
+                value as BusinessBranchFormValues["negativeStockPolicy"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.negativeStockPolicy?.message}
+            options={[
+              { value: "BLOCK", label: "Block" },
+              { value: "WARN", label: "Warn" },
+              { value: "ALLOW", label: "Allow" },
+            ]}
+          />
         </div>
         <label className="block text-sm font-medium">
           Weekly operating days

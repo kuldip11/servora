@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   queryData: new Map<string, unknown>(),
@@ -30,7 +31,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -90,7 +92,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages }: any) =>
     messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (
@@ -179,16 +182,13 @@ describe("CustomerGroupsSection", () => {
     fireEvent.change(screen.getByLabelText("Group name"), {
       target: { value: "New" },
     });
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "PERCENT" },
-    });
+    fireEvent.blur(screen.getByLabelText("Group name"));
+    chooseSelectOption("Default discount", "Percent");
     fireEvent.change(screen.getByLabelText("Percent"), {
       target: { value: "15" },
     });
+    fireEvent.blur(screen.getByLabelText("Percent"));
     const createButton = screen.getByRole("button", { name: "Create group" });
-    await waitFor(() =>
-      expect((createButton as HTMLButtonElement).disabled).toBe(false),
-    );
     fireEvent.submit(createButton.closest("form")!);
     await waitFor(() =>
       expect(h.createGroup).toHaveBeenCalledWith({

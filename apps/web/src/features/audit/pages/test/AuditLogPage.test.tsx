@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const mocks = vi.hoisted(() => ({
   infiniteQuery: vi.fn(),
@@ -18,8 +19,12 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@/features/audit/services/audit.service", () => ({
   auditService: { list: mocks.auditList, menuHistory: mocks.menuHistory },
 }));
-vi.mock("lucide-react", () => ({ ShieldCheck: () => <span>shield</span> }));
-vi.mock("@pos/ui", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
+  ShieldCheck: () => <span>shield</span>,
+}));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Button: ({ children, onClick, loading }: any) => (
     <button data-loading={String(Boolean(loading))} onClick={onClick}>
@@ -147,20 +152,14 @@ describe("AuditLogPage coverage", () => {
     expect(fetchAudit).toHaveBeenCalled();
     expect(fetchMenu).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Entity type"), {
-      target: { value: "MENU" },
-    });
-    fireEvent.change(screen.getByLabelText("Change type"), {
-      target: { value: "UPDATED" },
-    });
-    expect(screen.getByLabelText("Entity type")).toHaveProperty(
-      "value",
-      "MENU",
-    );
-    expect(screen.getByLabelText("Change type")).toHaveProperty(
-      "value",
-      "UPDATED",
-    );
+    chooseSelectOption("Entity type", "Menus");
+    chooseSelectOption("Change type", "Updated");
+    expect(
+      screen.getByRole("combobox", { name: "Entity type" }).textContent,
+    ).toContain("Menus");
+    expect(
+      screen.getByRole("combobox", { name: "Change type" }).textContent,
+    ).toContain("Updated");
   });
 
   it("executes query functions and pagination cursors for audit and filtered menu history", async () => {
@@ -176,12 +175,8 @@ describe("AuditLogPage coverage", () => {
     expect(mocks.options[0].getNextPageParam(auditFull)).toBe("date-49");
     expect(mocks.options[0].getNextPageParam([])).toBeUndefined();
 
-    fireEvent.change(screen.getByLabelText("Entity type"), {
-      target: { value: "MENU_ITEM" },
-    });
-    fireEvent.change(screen.getByLabelText("Change type"), {
-      target: { value: "UPDATED" },
-    });
+    chooseSelectOption("Entity type", "Items");
+    chooseSelectOption("Change type", "Updated");
     const latestMenuOptions = mocks.options[mocks.options.length - 1];
     await latestMenuOptions.queryFn({ pageParam: "menu-before" });
     expect(mocks.menuHistory).toHaveBeenCalledWith({

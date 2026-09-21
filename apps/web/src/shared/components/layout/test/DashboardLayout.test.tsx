@@ -45,7 +45,8 @@ vi.mock("@/shared/components/layout/RealtimeNotifications", () => ({
 vi.mock("@/shared/components/layout/UserMenu", () => ({
   UserMenu: () => <div>user-menu</div>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   SkipLink: () => <a href="#main-content">skip</a>,
   Dialog: ({ open, title, children, onClose }: any) =>
     open ? (

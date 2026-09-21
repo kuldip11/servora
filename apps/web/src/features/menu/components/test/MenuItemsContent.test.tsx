@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   observerCallback: null as IntersectionObserverCallback | null,
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   CheckSquare: () => null,
   Square: () => null,
   Copy: () => null,
@@ -47,7 +48,8 @@ vi.mock("@/features/menu/components/BulkActionsToolbar", () => ({
     </div>
   ),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({
     children,
     ...props
@@ -95,7 +97,7 @@ vi.mock("@pos/ui", () => ({
       <button onClick={onClear}>Clear search</button>
     </div>
   ),
-  SelectMenu: ({
+  Select: ({
     "aria-label": ariaLabel,
     value,
     onChange,

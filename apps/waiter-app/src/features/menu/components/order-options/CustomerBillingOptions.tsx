@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, SlidersHorizontal, UserRound, X } from "lucide-react";
-import { SelectMenu } from "@pos/ui";
+import { Select } from "@pos/ui";
 import type { LoyaltyCustomer } from "@pos/types";
 
 interface Props {
@@ -118,7 +118,7 @@ export const CustomerBillingOptions = ({
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <SelectMenu
+            <Select
               label="Customer group"
               placeholder="No customer group"
               value={customerGroupId || undefined}
@@ -132,7 +132,7 @@ export const CustomerBillingOptions = ({
                 })),
               ]}
             />
-            <SelectMenu
+            <Select
               label="Billing mode"
               value={billingMode}
               onChange={(value) =>
@@ -171,7 +171,7 @@ export const CustomerBillingOptions = ({
                   className="mt-1 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
                 />
               </label>
-              <SelectMenu
+              <Select
                 label="Rate"
                 placeholder="Select a rate…"
                 value={perCoverPriceRuleId || undefined}

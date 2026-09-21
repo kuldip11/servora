@@ -12,7 +12,8 @@ const h = vi.hoisted(() => ({
 let inventory: any[] | undefined = [];
 let subs: any[] | undefined = [];
 let pending = false;
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div>{messages.join(" ")}</div> : null,
   FieldErrorText: ({ message }: any) =>
@@ -27,10 +28,20 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...p} />
     </label>
   ),
-  Select: ({ label, options = [], ...p }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...p
+  }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...p}>
+      <select
+        aria-label={label}
+        {...p}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -40,7 +51,7 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@/features/inventory/hooks/useInventoryItems", () => ({
+vi.mock("@/features/inventory", () => ({
   useInventoryItems: () => ({
     data: inventory === undefined ? undefined : { items: inventory },
   }),

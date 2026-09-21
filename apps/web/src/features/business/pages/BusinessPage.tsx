@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, GitBranch, Plus, Store } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Button,
   Card,
@@ -24,17 +24,16 @@ import {
   BusinessEntityDetails,
   type BusinessBranch,
 } from "@/features/business/components/BusinessEntityDetails";
+import {
+  BusinessStructureTree,
+  type SelectedBusinessEntity,
+} from "@/features/business/components/page/BusinessStructureTree";
 
 const businessKeys = { all: ["business"] as const };
 type BusinessData = {
   organizations: OrganizationSummary[];
   franchises: Tenant[];
 };
-
-type SelectedEntity =
-  | { type: "organization"; id: string }
-  | { type: "franchise"; id: string }
-  | { type: "branch"; id: string };
 
 export const BusinessPage = () => {
   const queryClient = useQueryClient();
@@ -44,9 +43,8 @@ export const BusinessPage = () => {
   const [franchiseModal, setFranchiseModal] = useState(false);
   const [branchModal, setBranchModal] = useState(false);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
-  const [selectedEntity, setSelectedEntity] = useState<SelectedEntity | null>(
-    null,
-  );
+  const [selectedEntity, setSelectedEntity] =
+    useState<SelectedBusinessEntity | null>(null);
   const [editingOrganization, setEditingOrganization] =
     useState<OrganizationSummary | null>(null);
   const [editingFranchise, setEditingFranchise] = useState<Tenant | null>(null);
@@ -78,6 +76,12 @@ export const BusinessPage = () => {
     })),
   );
   const data = query.data ?? { organizations: [], franchises: [] };
+  const branchesByTenant = new Map<string, BusinessBranch[]>();
+  for (const branch of branches) {
+    const tenantBranches = branchesByTenant.get(branch.tenantId) ?? [];
+    tenantBranches.push(branch);
+    branchesByTenant.set(branch.tenantId, tenantBranches);
+  }
   const onboardingStep = !data.organizations.length
     ? 1
     : !data.franchises.length
@@ -206,86 +210,16 @@ export const BusinessPage = () => {
 
       {!!data.organizations.length && (
         <div className="grid min-h-[560px] gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <Card padding="none" className="overflow-hidden">
-            <div className="border-b border-divider px-4 py-4">
-              <p className="text-sm font-semibold">Business structure</p>
-              <p className="mt-1 text-xs text-text-secondary">
-                Select an entity to view or manage it.
-              </p>
-            </div>
-            <div className="max-h-[680px] overflow-y-auto p-2">
-              {data.organizations.map((organization) => {
-                const organizationFranchises = data.franchises.filter(
-                  (franchise) => franchise.organizationId === organization.id,
-                );
-                return (
-                  <div key={organization.id} className="mb-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedEntity({
-                          type: "organization",
-                          id: organization.id,
-                        });
-                        setSelectedOrganizationId(organization.id);
-                      }}
-                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors ${selectedEntity?.type === "organization" && selectedEntity.id === organization.id ? "bg-primary-surface text-primary" : "hover:bg-surface-secondary"}`}
-                    >
-                      <Building2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{organization.name}</span>
-                    </button>
-                    <div className="ml-5 border-l border-divider pl-2">
-                      {organizationFranchises.map((franchise) => {
-                        const membership = memberships.find(
-                          (item) => item.tenant.id === franchise.id,
-                        );
-                        return (
-                          <div key={franchise.id}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedEntity({
-                                  type: "franchise",
-                                  id: franchise.id,
-                                });
-                                setSelectedOrganizationId(organization.id);
-                              }}
-                              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${selectedEntity?.type === "franchise" && selectedEntity.id === franchise.id ? "bg-primary-surface font-semibold text-primary" : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"}`}
-                            >
-                              <Store className="h-4 w-4 shrink-0" />
-                              <span className="truncate">
-                                {franchise.displayName || franchise.name}
-                              </span>
-                            </button>
-                            <div className="ml-5 space-y-0.5 border-l border-divider pl-2">
-                              {(membership?.branches ?? []).map((branch) => (
-                                <button
-                                  key={branch.id}
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedEntity({
-                                      type: "branch",
-                                      id: branch.id,
-                                    })
-                                  }
-                                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${selectedEntity?.type === "branch" && selectedEntity.id === branch.id ? "bg-primary-surface font-semibold text-primary" : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"}`}
-                                >
-                                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="truncate">
-                                    {branch.name}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
+          <BusinessStructureTree
+            organizations={data.organizations}
+            franchises={data.franchises}
+            branchesByTenant={branchesByTenant}
+            selectedEntity={selectedEntity}
+            onSelect={(entity, organizationId) => {
+              setSelectedEntity(entity);
+              if (organizationId) setSelectedOrganizationId(organizationId);
+            }}
+          />
 
           <Card className="min-w-0">
             <BusinessEntityDetails

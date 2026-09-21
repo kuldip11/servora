@@ -6,7 +6,7 @@ import {
   FormErrorSummary,
   Modal,
   QueryErrorState,
-  SelectMenu,
+  Select,
 } from "@pos/ui";
 import { fetchOrders, mergeOrders } from "@/features/orders/api/orders";
 
@@ -49,7 +49,7 @@ export const MergeOrderDialog = ({ open, orderId, onClose }: Props) => {
             isRetrying={candidatesQuery.isFetching}
           />
         ) : (
-          <SelectMenu
+          <Select
             label="Merge billing into"
             placeholder="Select another open table"
             value={targetId || undefined}

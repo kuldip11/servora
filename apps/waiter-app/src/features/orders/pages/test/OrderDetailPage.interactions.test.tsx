@@ -90,12 +90,7 @@ vi.mock("@pos/ui", () => ({
         {children}
       </section>
     ) : null,
-  SelectMenu: ({
-    label,
-    onChange,
-    options = [],
-    "aria-label": ariaLabel,
-  }: any) => (
+  Select: ({ label, onChange, options = [], "aria-label": ariaLabel }: any) => (
     <label>
       {label}
       <select
@@ -131,10 +126,10 @@ vi.mock("@/features/orders/hooks/useUpdateTicketStatus", () => ({
 vi.mock("@/features/orders/hooks/useLineAdjustments", () => ({
   useLineAdjustments: () => ({ isPending: false, mutate: mocks.lineAdjust }),
 }));
-vi.mock("@/features/orders/hooks/useTransferTable", () => ({
+vi.mock("@/features/orders", () => ({
   useTransferTable: () => ({ isPending: false, mutate: mocks.transfer }),
 }));
-vi.mock("@/features/menu/hooks/useTables", () => ({
+vi.mock("@/features/menu", () => ({
   useTables: () => ({
     data: [
       { id: "table1", name: "Table 1", status: "OCCUPIED", capacity: 4 },

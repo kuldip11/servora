@@ -24,7 +24,8 @@ vi.mock("@/shared/lib/api-client", () => ({
   apiClient: {},
   extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ children, title }: any) => (
     <div>
       <h1>{title}</h1>

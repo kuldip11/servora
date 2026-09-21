@@ -1,5 +1,11 @@
 import { useReducer } from "react";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
@@ -145,37 +151,30 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
         </div>
       ))}
       <div className="space-y-2 rounded border border-border p-2">
-        <select
+        <Select
           aria-label="Menu schedule type"
           value={draft.scheduleType}
-          onChange={(event) => setField("scheduleType", event.target.value)}
-          className="w-full rounded border border-border px-2 py-1"
-        >
-          <option value="DAILY">Every day</option>
-          <option value="WEEKLY">Weekly</option>
-          <option value="SPECIFIC_DATE">Date range</option>
-          <option value="HOLIDAY">Holiday</option>
-        </select>
+          onChange={(value) => setField("scheduleType", value)}
+          options={[
+            { value: "DAILY", label: "Every day" },
+            { value: "WEEKLY", label: "Weekly" },
+            { value: "SPECIFIC_DATE", label: "Date range" },
+            { value: "HOLIDAY", label: "Holiday" },
+          ]}
+        />
         {(draft.scheduleType === "DAILY" ||
           draft.scheduleType === "WEEKLY") && (
           <div className="flex items-center gap-2">
             {draft.scheduleType === "WEEKLY" && (
-              <select
+              <Select
                 aria-label="Day of week"
-                value={draft.dayOfWeek}
-                onChange={(event) =>
-                  setField("dayOfWeek", Number(event.target.value))
-                }
-                className="rounded border border-border px-2 py-1"
-              >
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day, index) => (
-                    <option key={day} value={index}>
-                      {day}
-                    </option>
-                  ),
+                value={String(draft.dayOfWeek)}
+                onChange={(value) => setField("dayOfWeek", Number(value))}
+                options={["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (day, index) => ({ value: String(index), label: day }),
                 )}
-              </select>
+                containerClassName="min-w-28"
+              />
             )}
             <input
               aria-label="Menu start time"

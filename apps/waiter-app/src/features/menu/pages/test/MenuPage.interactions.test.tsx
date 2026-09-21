@@ -83,7 +83,7 @@ vi.mock("@pos/ui", () => ({
   IconButton: ({ onClick, "aria-label": label }: any) => (
     <button aria-label={label} onClick={onClick} />
   ),
-  SelectMenu: ({ label, onChange, options = [] }: any) => (
+  Select: ({ label, onChange, options = [] }: any) => (
     <button
       onClick={() => onChange(options[1]?.value ?? options[0]?.value ?? "")}
     >
@@ -97,13 +97,13 @@ vi.mock("@/shared/lib/realtime", () => ({
   useRealtimeEvent: (_event: string, callback: () => void) =>
     mocks.realtime.push(callback),
 }));
-vi.mock("@/features/orders/hooks/useCreateOrder", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCreateOrder: () => ({ isPending: false, mutate: mocks.createMutate }),
-}));
-vi.mock("@/features/orders/hooks/useAddOrderItems", () => ({
   useAddOrderItems: () => ({ isPending: false, mutate: mocks.addMutate }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({
     isLoading: false,
     data: [
@@ -131,6 +131,9 @@ vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
       },
     ],
   }),
+  useTables: () => ({
+    data: [{ id: "t1", name: "Table 1", status: "AVAILABLE" }],
+  }),
 }));
 vi.mock("@/features/menu/hooks/useMyBranch", () => ({
   useMyBranch: () => ({
@@ -143,16 +146,13 @@ vi.mock("@/features/menu/hooks/useMyBranch", () => ({
     },
   }),
 }));
-vi.mock("@/features/menu/hooks/useTables", () => ({
-  useTables: () => ({
-    data: [{ id: "t1", name: "Table 1", status: "AVAILABLE" }],
-  }),
-}));
+// useTables is overridden in the shared partial feature mock above.
 vi.mock("@/features/menu/hooks/useCustomerSearch", () => ({
   useCustomerSearch: () => ({ data: [{ id: "cust1", name: "Ada" }] }),
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({}),
   createCustomersApi: () => ({}),
   createAuthApi: () => ({}),

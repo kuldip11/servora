@@ -1,54 +1,12 @@
 import { usePermissions } from "@/shared/auth/permissions";
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Plus, Eye, ShoppingBag } from "lucide-react";
-import {
-  Button,
-  Badge,
-  StatusBadge,
-  SearchInput,
-  SelectMenu,
-  Table,
-  FilterBar,
-  Toolbar,
-  Page,
-  Card,
-  Pagination,
-  type Column,
-  type SortState,
-  BUTTON_VARIANT_CLASSES,
-} from "@pos/ui";
-import { formatCurrency, formatTime } from "@/shared/utils/format";
-import {
-  getOrderStatusColor,
-  getOrderStatusLabel,
-} from "@/shared/utils/order-status";
-import { useOrdersPage } from "@/features/orders/hooks/useOrders";
+import { useEffect, useState } from "react";
+import { Plus, ShoppingBag } from "lucide-react";
+import { Button, Table, Page, Card, Pagination, type SortState } from "@pos/ui";
+import { useOrdersPage } from "@/features/orders";
 import { useOrdersRealtimeSync } from "@/features/orders/hooks/useOrdersRealtimeSync";
 import { CreateOrderModal } from "@/features/orders/components/CreateOrderModal";
-import type { Order } from "@pos/types";
-
-import {
-  ORDER_STATUS_OPTIONS,
-  ORDER_STATUS_TONE,
-  ORDER_TYPE_OPTIONS,
-} from "@/features/orders/constants";
-
-const KitchenStatus = ({ order }: { order: Order }) => {
-  const tickets = order.kitchenTickets;
-  if (!tickets?.length) return <span className="text-text-disabled">—</span>;
-  if (tickets.some((t) => t.status === "READY")) {
-    return <span className="text-success font-semibold text-xs">Ready</span>;
-  }
-  if (tickets.every((t) => t.status === "SERVED")) {
-    return <span className="text-xs text-text-secondary">All served</span>;
-  }
-  return (
-    <span className="text-xs text-text-secondary">
-      {tickets.length} ticket{tickets.length > 1 ? "s" : ""}
-    </span>
-  );
-};
+import { ORDER_COLUMNS } from "@/features/orders/components/page/order-columns";
+import { OrdersToolbar } from "@/features/orders/components/page/OrdersToolbar";
 
 export const OrdersPage = () => {
   const { has } = usePermissions();
@@ -91,116 +49,7 @@ export const OrdersPage = () => {
   const total = result?.pagination.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-  const columns: Column<Order>[] = useMemo(
-    () => [
-      {
-        id: "id",
-        header: "Order",
-        sortable: true,
-        sortValue: (row) => row.id,
-        width: "140px",
-        sticky: "left",
-        cell: (row) => (
-          <div>
-            <p className="font-semibold text-text-primary">
-              {row.table?.name
-                ? `Table ${row.table.name}`
-                : row.type?.replace("_", " ")}
-            </p>
-            <p className="font-mono text-[11px] text-text-disabled">
-              #{row.id.slice(-8).toUpperCase()}
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: "type",
-        header: "Type",
-        width: "110px",
-        cell: (row) => (
-          <StatusBadge
-            label={row.type?.replace("_", " ") ?? ""}
-            tone="neutral"
-            dot={false}
-          />
-        ),
-      },
-      {
-        id: "kitchen",
-        header: "Kitchen",
-        width: "100px",
-        cell: (row) => <KitchenStatus order={row} />,
-      },
-      {
-        id: "items",
-        header: "Items",
-        align: "right",
-        width: "80px",
-        cell: (row) => `${row.items?.length ?? 0} items`,
-      },
-      {
-        id: "total",
-        header: "Total",
-        align: "right",
-        sortable: true,
-        width: "110px",
-        sortValue: (row) => parseFloat(String(row.totalAmount)),
-        cell: (row) => (
-          <span className="font-semibold text-text-primary">
-            {formatCurrency(parseFloat(String(row.totalAmount)))}
-          </span>
-        ),
-      },
-      {
-        id: "status",
-        header: "Status",
-        width: "140px",
-        cell: (row) => {
-          const tone = ORDER_STATUS_TONE[row.status];
-          if (!tone) {
-            return (
-              <Badge className={getOrderStatusColor(row.status)}>
-                {getOrderStatusLabel(row.status)}
-              </Badge>
-            );
-          }
-          return (
-            <StatusBadge label={getOrderStatusLabel(row.status)} tone={tone} />
-          );
-        },
-      },
-      {
-        id: "time",
-        header: "Time",
-        sortable: true,
-        width: "90px",
-        sortValue: (row) => new Date(row.createdAt).getTime(),
-        cell: (row) => (
-          <span className="text-text-secondary text-xs">
-            {formatTime(row.createdAt)}
-          </span>
-        ),
-      },
-      {
-        id: "actions",
-        header: "",
-        width: "80px",
-        sticky: "right",
-        cell: (row) => (
-          <Link
-            to="/orders/$orderId"
-            params={{ orderId: row.id }}
-            onClick={(e) => e.stopPropagation()}
-            className={`${BUTTON_VARIANT_CLASSES.secondary} px-2 py-1.5 text-xs inline-flex items-center gap-1`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            View
-          </Link>
-        ),
-      },
-    ],
-    [],
-  );
+  const columns = ORDER_COLUMNS;
 
   return (
     <Page
@@ -211,69 +60,32 @@ export const OrdersPage = () => {
         padding="none"
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="p-md border-b border-border">
-          <Toolbar
-            title="Orders"
-            subtitle={`${total.toLocaleString()} total orders`}
-            actions={
-              has("orders:create") && (
-                <Button onClick={() => setShowCreate(true)}>
-                  <Plus className="w-4 h-4" />
-                  New Order
-                </Button>
-              )
-            }
-          />
-          <FilterBar
-            className="mt-4"
-            onClearAll={
-              [search, statusFilter, typeFilter].filter(Boolean).length > 1
-                ? () => {
-                    setSearch("");
-                    setStatusFilter("");
-                    setTypeFilter("");
-                    setPage(1);
-                  }
-                : undefined
-            }
-          >
-            <SearchInput
-              placeholder="Search order ID..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              onClear={() => {
-                setSearch("");
-                setPage(1);
-              }}
-              className="max-w-xs"
-            />
-            <SelectMenu
-              aria-label="Filter orders by status"
-              valuePrefix="Status"
-              options={ORDER_STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={(v) => {
-                setStatusFilter(v ?? "");
-                setPage(1);
-              }}
-              className="w-44"
-            />
-            <SelectMenu
-              aria-label="Filter orders by type"
-              valuePrefix="Type"
-              options={ORDER_TYPE_OPTIONS}
-              value={typeFilter}
-              onChange={(v) => {
-                setTypeFilter(v ?? "");
-                setPage(1);
-              }}
-              className="w-40"
-            />
-          </FilterBar>
-        </div>
+        <OrdersToolbar
+          total={total}
+          search={search}
+          statusFilter={statusFilter}
+          typeFilter={typeFilter}
+          canCreate={has("orders:create")}
+          onSearch={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          onStatusFilter={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+          onTypeFilter={(value) => {
+            setTypeFilter(value);
+            setPage(1);
+          }}
+          onClear={() => {
+            setSearch("");
+            setStatusFilter("");
+            setTypeFilter("");
+            setPage(1);
+          }}
+          onCreate={() => setShowCreate(true)}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-md">
           <Table

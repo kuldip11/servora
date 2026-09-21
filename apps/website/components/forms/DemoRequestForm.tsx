@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef } from "react";
+import { Select } from "@pos/ui";
 import { track } from "@/lib/analytics";
 import { LeadFieldError } from "./LeadFieldError";
 import { useLeadForm } from "./useLeadForm";
@@ -123,23 +124,17 @@ export const DemoRequestForm = ({ source = "demo" }: { source?: string }) => {
             message={form.fieldErrors.business}
           />
         </label>
-        <label className="text-sm font-medium">
-          Number of locations
-          <select
-            name="locations"
-            value={form.values.locations}
-            onChange={(event) =>
-              form.updateField("locations", event.target.value)
-            }
-            onFocus={startTracking}
-            className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3"
-          >
-            <option>1</option>
-            <option>2–5</option>
-            <option>6–20</option>
-            <option>20+</option>
-          </select>
-        </label>
+        <Select
+          label="Number of locations"
+          name="locations"
+          value={form.values.locations}
+          onChange={(value) => form.updateField("locations", value)}
+          onBlur={startTracking}
+          options={["1", "2–5", "6–20", "20+"].map((value) => ({
+            value,
+            label: value,
+          }))}
+        />
       </div>
       <label className="text-sm font-medium">
         What would you like to see?

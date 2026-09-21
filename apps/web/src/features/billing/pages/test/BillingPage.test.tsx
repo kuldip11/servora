@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   queryData: [] as unknown[],
 }));
 
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrdersPage: mocks.orders,
 }));
 vi.mock("@/features/billing/hooks/useCollectPayment", () => ({
@@ -72,7 +73,8 @@ vi.mock("@pos/validation", () => ({
           },
   },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Button: ({ children, onClick, disabled }: any) => (
     <button disabled={disabled} onClick={onClick}>
@@ -111,7 +113,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, value, onChange, children, options = [] }: any) => (
     <label>
       {label}
-      <select aria-label={label} value={value} onChange={onChange}>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
         {children ??
           options.map((option: any) => (
             <option key={option.value} value={option.value}>

@@ -241,7 +241,7 @@ export const PaymentDialog = ({
           ]}
           value={selectedBillId}
           onChange={(event) => {
-            const id = event.target.value;
+            const id = event;
             setSelectedBillId(id);
             const bill = orderBills.find((candidate) => candidate.id === id);
             if (bill) {
@@ -260,7 +260,7 @@ export const PaymentDialog = ({
           options={PAYMENT_METHODS}
           value={form.method}
           onChange={(event) =>
-            setForm((current) => ({ ...current, method: event.target.value }))
+            setForm((current) => ({ ...current, method: event }))
           }
         />
         <Input

@@ -83,7 +83,7 @@ export const MenuMembershipsEditor = ({
           <Select
             key={`${menu.id}:${currentCategoryId ?? "none"}`}
             label={menu.name}
-            defaultValue={currentCategoryId ?? ""}
+            value={currentCategoryId ?? ""}
             disabled={mutation.isPending}
             options={[
               ...(menu.isDefault ? [] : [{ value: "", label: "Not included" }]),
@@ -95,7 +95,7 @@ export const MenuMembershipsEditor = ({
             onChange={(event) =>
               mutation.mutate({
                 menuId: menu.id,
-                categoryId: event.target.value || null,
+                categoryId: event || null,
               })
             }
           />

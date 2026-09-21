@@ -68,7 +68,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     }),
   };
 });
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

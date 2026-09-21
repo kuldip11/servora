@@ -83,7 +83,20 @@ export const AddInventoryItemForm = ({
         required
         options={INVENTORY_UNIT_OPTIONS}
         error={form.formState.errors.unit?.message}
-        {...form.register("unit")}
+        value={form.watch("unit")}
+        onChange={(value) =>
+          form.setValue("unit", value as CreateInventoryItemInput["unit"], {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
+        onBlur={() =>
+          form.setValue("unit", form.getValues("unit"), {
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
       />
       <div className="grid grid-cols-2 gap-3">
         <Input
@@ -135,7 +148,20 @@ export const AddInventoryItemForm = ({
             })),
           ]}
           error={form.formState.errors.branchId?.message}
-          {...form.register("branchId")}
+          value={form.watch("branchId") ?? ""}
+          onChange={(value) =>
+            form.setValue("branchId", value || undefined, {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            })
+          }
+          onBlur={() =>
+            form.setValue("branchId", form.getValues("branchId"), {
+              shouldTouch: true,
+              shouldValidate: true,
+            })
+          }
         />
       ) : null}
       <FormErrorSummary messages={formErrorMessages} />

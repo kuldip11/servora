@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const mocks = vi.hoisted(() => ({ mergeMutate: vi.fn(), mergePending: false }));
 vi.mock("@tanstack/react-query", () => ({
@@ -18,7 +19,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div>
@@ -50,7 +52,7 @@ describe("MergeTableDialog", () => {
         onClose={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "o2" } });
+    chooseSelectOption("Merge billing into", "Table 2");
     fireEvent.click(screen.getByRole("button", { name: "Merge tables" }));
     expect(mocks.mergeMutate).toHaveBeenCalledWith({
       sourceOrderId: "o1",

@@ -2,13 +2,7 @@ import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Button,
-  FormErrorSummary,
-  FieldErrorText,
-  Input,
-  Modal,
-} from "@pos/ui";
+import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
 import type { OrganizationSummary } from "@pos/types";
 import {
   organizationBusinessFormSchema,
@@ -18,7 +12,6 @@ import { businessService } from "@/features/business/services/business.service";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import {
-  inputClass,
   organizationDefaults,
   organizationFieldPaths,
 } from "./business-form-defaults";
@@ -110,32 +103,29 @@ export const OrganizationModal = ({
             error={e.name?.message}
             {...form.register("name")}
           />
-          <label className="text-sm font-medium">
-            Business type{" "}
-            <span className="text-danger" aria-hidden="true">
-              *
-            </span>
-            <select
-              aria-required="true"
-              className={`mt-1 ${inputClass}`}
-              aria-invalid={Boolean(e.businessType)}
-              {...form.register("businessType")}
-            >
-              {[
-                "RESTAURANT_GROUP",
-                "INDEPENDENT_RESTAURANT",
-                "HOSPITALITY_GROUP",
-                "CLOUD_KITCHEN_GROUP",
-                "CAFE_GROUP",
-                "QSR_GROUP",
-                "FOOD_SERVICE_COMPANY",
-                "OTHER",
-              ].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-            <FieldErrorText message={e.businessType?.message} />
-          </label>
+          <Select
+            label="Business type"
+            required
+            value={form.watch("businessType")}
+            onChange={(value) =>
+              form.setValue(
+                "businessType",
+                value as OrganizationBusinessFormValues["businessType"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.businessType?.message}
+            options={[
+              "RESTAURANT_GROUP",
+              "INDEPENDENT_RESTAURANT",
+              "HOSPITALITY_GROUP",
+              "CLOUD_KITCHEN_GROUP",
+              "CAFE_GROUP",
+              "QSR_GROUP",
+              "FOOD_SERVICE_COMPANY",
+              "OTHER",
+            ].map((value) => ({ value, label: value }))}
+          />
           <Input
             label="Primary contact name"
             required

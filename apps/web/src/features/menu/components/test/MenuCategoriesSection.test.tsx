@@ -10,7 +10,8 @@ const h = vi.hoisted(() => ({
   del: vi.fn(),
 }));
 
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: h.categories, isLoading: h.loading }),
 }));
 vi.mock("@/features/menu/hooks/useAddCategory", () => ({
@@ -22,7 +23,8 @@ vi.mock("@/features/menu/hooks/useRenameCategory", () => ({
 vi.mock("@/features/menu/hooks/useDeleteCategory", () => ({
   useDeleteCategory: () => ({ mutate: h.del }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

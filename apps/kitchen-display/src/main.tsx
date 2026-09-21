@@ -32,14 +32,12 @@ if (!root) throw new Error("Root element not found");
 
 createRoot(root).render(
   <StrictMode>
-    {}
     <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>
         <ConnectivityBanner />
         <AppErrorBoundary appName="Servora Kitchen">
           <KitchenApp />
         </AppErrorBoundary>
-        {}
         <Toaster />
       </QueryClientProvider>
     </ThemeProvider>

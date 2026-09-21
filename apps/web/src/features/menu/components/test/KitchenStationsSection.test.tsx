@@ -26,7 +26,8 @@ vi.mock("@/features/menu/hooks/useKitchenStations", () => ({
 vi.mock("@/config/app-urls", () => ({
   appUrls: { kitchen: "https://kds.test" },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages }: any) =>
     messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (

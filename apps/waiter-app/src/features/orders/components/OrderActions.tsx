@@ -35,7 +35,6 @@ export const OrderActions = ({
 
   return (
     <div className="space-y-2 border-t border-border bg-surface px-4 py-3 safe-area-bottom">
-      {}
       {canRequestBill && (
         <button
           onClick={onRequestBill}
@@ -51,7 +50,6 @@ export const OrderActions = ({
           All rounds need to be served before requesting the bill.
         </p>
       )}
-      {}
       {canAddItems && (
         <Button
           onClick={onAddItems}
@@ -92,7 +90,6 @@ export const OrderActions = ({
           Merge Table
         </Button>
       )}
-      {}
       {canCancel && (
         <button
           onClick={() => {

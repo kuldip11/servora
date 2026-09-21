@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Modal, QueryErrorState, StaleDataBanner } from "@pos/ui";
+import { Modal, Select } from "@pos/ui";
 import { MenuPicker } from "./create-order/MenuPicker";
 import { OrderCart } from "./create-order/OrderCart";
-import { useTables } from "@/features/tables/hooks/useTables";
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
-import { useCreateOrder } from "@/features/orders/hooks/useCreateOrder";
-import { toCartItemPayload } from "@/features/orders/services/orders.service";
+import { CourseModeToggle } from "./create-order/CourseModeToggle";
+import { OrderDependencyFeedback } from "./create-order/OrderDependencyFeedback";
+import { useTables } from "@/features/tables";
+import { useMenuCategories } from "@/features/menu";
+import { useCreateOrder } from "@/features/orders";
+import { buildCreateOrderInput } from "@/features/orders/services/orders.service";
 import { ItemCustomizerModal } from "./ItemCustomizerModal";
 import { cartItemKey, type CartItem } from "@/features/orders/utils/cartTypes";
 import { scopeCategoriesForOrder } from "@/features/orders/utils/orderable-menu";
 import type { FoodType, MenuCategory, MenuItem } from "@pos/types";
 import { createOrderSchema } from "@pos/validation";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
@@ -186,12 +188,14 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
 
   const total = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   function handleSubmit() {
-    const parsed = createOrderSchema.safeParse({
-      type: orderType,
-      ...(orderType === "DINE_IN" && tableId && { tableId }),
-      ...(notes && { notes }),
-      items: items.map(toCartItemPayload),
-    });
+    const parsed = createOrderSchema.safeParse(
+      buildCreateOrderInput({
+        type: orderType,
+        tableId: orderType === "DINE_IN" ? tableId : "",
+        notes,
+        items,
+      }),
+    );
     if (!parsed.success) {
       setValidationError(
         parsed.error.issues[0]?.message ?? "Please review the order.",
@@ -199,28 +203,7 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
       return;
     }
     setValidationError("");
-
-    const payload = {
-      type: parsed.data.type,
-      ...(parsed.data.tableId !== undefined && {
-        tableId: parsed.data.tableId,
-      }),
-      ...(parsed.data.customerId !== undefined && {
-        customerId: parsed.data.customerId,
-      }),
-      ...(parsed.data.notes !== undefined && { notes: parsed.data.notes }),
-      items: (parsed.data.items ?? []).map((item) => ({
-        ...item,
-        ...(item.variantId !== undefined && { variantId: item.variantId }),
-        ...(item.chefNotes !== undefined && { chefNotes: item.chefNotes }),
-        ...(item.seatLabel && { seatLabel: item.seatLabel }),
-        selectedOptions: (item.selectedOptions ?? []).map((option) => ({
-          optionId: option.optionId,
-          quantity: option.quantity ?? 1,
-        })),
-      })),
-    };
-    createMutation.mutate(payload, { onSuccess: onClose });
+    createMutation.mutate(parsed.data, { onSuccess: onClose });
   }
 
   return (
@@ -232,74 +215,45 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
       size="full"
       bodyClassName="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden"
     >
-      {requiredDependencyFailed ? (
-        <QueryErrorState
-          title="Unable to load order-entry data"
-          description="Branch capabilities, menu data, or required table data could not be loaded. Retry before creating an order."
-          onRetry={retryDependencies}
-          isRetrying={
-            branchesQuery.isFetching ||
-            categoriesQuery.isFetching ||
-            activeMenusQuery.isFetching ||
-            tablesQuery.isFetching
-          }
-        />
-      ) : null}
-      {requiredDependencyStale ? (
-        <StaleDataBanner
-          message="Some order-entry data could not be refreshed. Showing cached data; verify availability before submitting."
-          onRetry={retryDependencies}
-          isRetrying={
-            branchesQuery.isFetching ||
-            categoriesQuery.isFetching ||
-            activeMenusQuery.isFetching ||
-            tablesQuery.isFetching
-          }
-        />
-      ) : null}
+      <OrderDependencyFeedback
+        failed={requiredDependencyFailed}
+        stale={requiredDependencyStale}
+        retrying={
+          branchesQuery.isFetching ||
+          categoriesQuery.isFetching ||
+          activeMenusQuery.isFetching ||
+          tablesQuery.isFetching
+        }
+        onRetry={retryDependencies}
+      />
       {!requiredDependencyFailed && courseSequencingAvailable && (
-        <label className="mb-4 flex items-center gap-2 rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm text-text-secondary">
-          <input
-            type="checkbox"
-            checked={courseMode}
-            onChange={(event) => {
-              const enabled = event.target.checked;
-              setCourseMode(enabled);
-              setItems((current) =>
-                current.map((item) =>
-                  enabled
-                    ? { ...item, courseNumber: item.courseNumber ?? 1 }
-                    : (({ courseNumber: _courseNumber, ...rest }) => rest)(
-                        item,
-                      ),
-                ),
-              );
-            }}
-          />
-          <span>
-            <strong className="text-text-primary">Course mode</strong> — assign
-            lines to courses; later courses are held until fired.
-          </span>
-        </label>
+        <CourseModeToggle
+          checked={courseMode}
+          onChange={(enabled) => {
+            setCourseMode(enabled);
+            setItems((current) =>
+              current.map((item) =>
+                enabled
+                  ? { ...item, courseNumber: item.courseNumber ?? 1 }
+                  : (({ courseNumber: _courseNumber, ...rest }) => rest)(item),
+              ),
+            );
+          }}
+        />
       )}
       {!requiredDependencyFailed && (
         <div className="grid min-h-0 grid-cols-1 gap-5 lg:h-full lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <div className="min-h-0 space-y-3 lg:overflow-hidden">
             {activeMenus.length > 1 && (
-              <label className="block text-sm font-medium">
-                Menu
-                <select
-                  className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
-                  value={selectedMenuId}
-                  onChange={(event) => setSelectedMenuId(event.target.value)}
-                >
-                  {activeMenus.map((menu) => (
-                    <option key={menu.id} value={menu.id}>
-                      {menu.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="Menu"
+                value={selectedMenuId}
+                onChange={setSelectedMenuId}
+                options={activeMenus.map((menu) => ({
+                  value: menu.id,
+                  label: menu.name,
+                }))}
+              />
             )}
             <MenuPicker
               orderType={orderType}

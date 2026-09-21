@@ -78,7 +78,14 @@
     "contracts:verify": "node scripts/contracts/generate-openapi-contract.mjs --check",
     "contracts:verify:file": "node scripts/contracts/generate-openapi-contract.mjs docs/openapi.json --check",
     "test:coverage:contracts": "cd packages/contracts && bun run test:coverage",
-    "audit:transport-contracts": "node scripts/audit/transport-contracts.mjs"
+    "audit:transport-contracts": "node scripts/audit/transport-contracts.mjs",
+    "verify:cleanup": "node scripts/cleanup/verify-ui-conventions.mjs",
+    "report:cleanup:sizes": "node scripts/cleanup/report-component-sizes.mjs",
+    "report:cleanup:boundaries": "node scripts/cleanup/report-boundaries.mjs",
+    "audit:cleanup": "bun run verify:cleanup && bun run verify:cleanup:boundaries && bun run report:cleanup:dead-code && bun run report:cleanup:sizes && bun run report:cleanup:mocks",
+    "report:cleanup:mocks": "node scripts/cleanup/report-broad-mocks.mjs",
+    "verify:cleanup:boundaries": "node scripts/cleanup/report-boundaries.mjs",
+    "report:cleanup:dead-code": "node scripts/cleanup/report-dead-code.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

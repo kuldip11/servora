@@ -12,7 +12,7 @@ vi.mock("@pos/api-client", async (importOriginal) => {
     createMenuApi: () => ({ listActiveMenus }),
   };
 });
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: [
       {
@@ -26,10 +26,11 @@ vi.mock("@/features/branches/hooks/useBranches", () => ({
     ],
   }),
 }));
-vi.mock("@/features/tables/hooks/useTables", () => ({
+vi.mock("@/features/tables", () => ({
   useTables: () => ({ data: [] }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({
     data: [
       {
@@ -100,7 +101,8 @@ vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
     ],
   }),
 }));
-vi.mock("@/features/orders/hooks/useCreateOrder", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCreateOrder: () => ({ mutate: createOrder, isPending: false }),
 }));
 vi.mock("@/features/orders/hooks/useCourseSequencingEnabled", () => ({

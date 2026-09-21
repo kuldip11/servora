@@ -3,6 +3,16 @@ import { createRoot, type Root } from "react-dom/client";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+if (!("ResizeObserver" in globalThis)) {
+  Object.assign(globalThis, { ResizeObserver: ResizeObserverMock });
+}
+
 type RenderedDemo = {
   container: HTMLDivElement;
   click: (element: Element) => Promise<void>;
@@ -45,20 +55,31 @@ export const findTab = (container: ParentNode, name: string) => {
 };
 
 export const findSelectByLabel = (container: ParentNode, labelText: string) => {
-  const labelledSelect = Array.from(container.querySelectorAll("select")).find(
-    (element) => element.getAttribute("aria-label") === labelText,
-  );
-  if (labelledSelect instanceof HTMLSelectElement) return labelledSelect;
+  const combobox = Array.from(
+    container.querySelectorAll<HTMLElement>('[role="combobox"]'),
+  ).find((element) => element.getAttribute("aria-label") === labelText);
+  if (combobox instanceof HTMLButtonElement) return combobox;
 
   const label = Array.from(container.querySelectorAll("label")).find(
     (element) => elementText(element) === labelText,
   );
   const htmlFor = label?.getAttribute("for");
-  const select = htmlFor
-    ? container.querySelector<HTMLSelectElement>(`#${CSS.escape(htmlFor)}`)
-    : label?.querySelector<HTMLSelectElement>("select");
-  if (!select) throw new Error(`Unable to find select labelled: ${labelText}`);
-  return select;
+  const labelledCombobox = htmlFor
+    ? container.querySelector<HTMLButtonElement>(
+        `#${CSS.escape(htmlFor)}[role="combobox"]`,
+      )
+    : undefined;
+  if (!labelledCombobox)
+    throw new Error(`Unable to find select labelled: ${labelText}`);
+  return labelledCombobox;
+};
+
+export const findOption = (name: string) => {
+  const option = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="option"]'),
+  ).find((element) => elementText(element) === name);
+  if (!option) throw new Error(`Unable to find select option: ${name}`);
+  return option;
 };
 
 export const renderDemo = async (

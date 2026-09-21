@@ -1,32 +1,15 @@
 import { usePermissions } from "@/shared/auth/permissions";
 import { useMemo } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { tableFormSchema } from "@pos/validation";
-import { Plus, Table2, Building2, QrCode } from "lucide-react";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Grid,
-  Page,
-  PageHeader,
-  SelectMenu,
-  SearchInput,
-  FilterBar,
-  QueryErrorState,
-  StaleDataBanner,
-} from "@pos/ui";
+import { Page } from "@pos/ui";
 import { useAuthStore } from "@/store/auth";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { createTablesApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import { notifyError } from "@/shared/lib/notify";
 import { extractApiError } from "@/shared/lib/api-client";
-import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
 const tablesApi = createTablesApi(apiClient);
-import { useTables } from "@/features/tables/hooks/useTables";
+import { useTables } from "@/features/tables";
 import { useTablesRealtimeSync } from "@/features/tables/hooks/useTablesRealtimeSync";
 import { useTablesPageState } from "@/features/tables/hooks/useTablesPageState";
 import { useCreateTable } from "@/features/tables/hooks/useCreateTable";
@@ -34,9 +17,7 @@ import { useUpdateTable } from "@/features/tables/hooks/useUpdateTable";
 import { useUpdateTableStatus } from "@/features/tables/hooks/useUpdateTableStatus";
 import { useDeleteTable } from "@/features/tables/hooks/useDeleteTable";
 import { useRegenerateTableQr } from "@/features/tables/hooks/useRegenerateTableQr";
-import { useOrders } from "@/features/orders/hooks/useOrders";
-import { TableFormModal } from "@/features/tables/components/TableFormModal";
-import { TableGrid } from "@/features/tables/components/TableGrid";
+import { useOrders } from "@/features/orders";
 import {
   TableQrModal,
   TakeawayQrModal,
@@ -45,13 +26,17 @@ import {
   MergeTableDialog,
   TransferTableDialog,
 } from "@/features/tables/components/TableOperationsDialogs";
-import type { TableFormValues } from "@/features/tables/table-form.types";
 import type { RestaurantTable } from "@/features/tables/types";
-
+import { TablesFilters } from "@/features/tables/components/TablesFilters";
+import { TablesContent } from "@/features/tables/components/TablesContent";
+import { TablesFormDialogs } from "@/features/tables/components/TablesFormDialogs";
+import { TablesDataWarnings } from "@/features/tables/components/TablesDataWarnings";
+import { TablesPageHeader } from "@/features/tables/components/TablesPageHeader";
 import {
-  EMPTY_TABLE_FORM,
-  TABLE_STATUS_OPTIONS,
-} from "@/features/tables/constants";
+  TABLE_FORM_FIELDS,
+  toTablePayload,
+  useTableFormController,
+} from "@/features/tables/hooks/useTableFormController";
 
 export const TablesPage = () => {
   const { has } = usePermissions();
@@ -84,21 +69,10 @@ export const TablesPage = () => {
     clearFilters,
   } = useTablesPageState();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors, isDirty, isValid },
-  } = useForm<TableFormValues>({
-    resolver: zodResolver(tableFormSchema),
-    defaultValues: EMPTY_TABLE_FORM,
-    mode: "onTouched",
-    reValidateMode: "onChange",
-  });
-
-  const { formErrorMessages, clearFormErrors, handleApiError } =
-    useFormApiErrors<TableFormValues>();
+  const { form, apiErrors, prepareAdd, prepareEdit, resetForm } =
+    useTableFormController();
+  const { setError } = form;
+  const { formErrorMessages, handleApiError } = apiErrors;
 
   const branchesQuery = useBranches({ enabled: isAggregate });
   const tablesQuery = useTables();
@@ -167,258 +141,100 @@ export const TablesPage = () => {
     }
   }
 
-  function openAdd() {
-    clearFormErrors();
-    reset(EMPTY_TABLE_FORM);
+  const openAdd = () => {
+    prepareAdd();
     setShowAdd(true);
-  }
+  };
 
-  function closeAdd() {
-    clearFormErrors();
+  const closeAdd = () => {
     setShowAdd(false);
-    reset(EMPTY_TABLE_FORM);
-  }
+    resetForm();
+  };
 
-  function openEdit(table: RestaurantTable) {
-    clearFormErrors();
+  const openEdit = (table: RestaurantTable) => {
+    prepareEdit(table);
     setEditing(table);
-    reset({
-      name: table.name,
-      capacity: String(table.capacity),
-      section: table.section ?? "",
-      branchId: "",
-    });
-  }
+  };
 
-  function closeEdit() {
-    clearFormErrors();
+  const closeEdit = () => {
     setEditing(null);
-    reset(EMPTY_TABLE_FORM);
-  }
-
-  function toPayload(values: TableFormValues) {
-    return {
-      name: values.name.trim(),
-      capacity: Number(values.capacity),
-      ...(values.section.trim() && { section: values.section.trim() }),
-      ...(values.branchId && { branchId: values.branchId }),
-    };
-  }
-
-  const tableFormFields = ["name", "capacity", "section", "branchId"] as const;
+    resetForm();
+  };
   const addDependencyBlocked =
     isAggregate && (branchesQuery.isLoading || branchesQuery.isError);
 
   return (
     <Page>
-      <PageHeader
-        title="Tables"
-        description={`${filteredTables.length} of ${tables?.length ?? 0} tables`}
-        actions={
-          <>
-            {!isAggregate && (
-              <Button
-                variant="secondary"
-                onClick={() => void openTakeawayQr()}
-                disabled={takeawayQrBusy}
-              >
-                <QrCode className="w-4 h-4" />
-                Takeaway QR
-              </Button>
-            )}
-            {has("tables:create") && (
-              <Button onClick={openAdd}>
-                <Plus className="w-4 h-4" />
-                Add Table
-              </Button>
-            )}
-          </>
-        }
+      <TablesPageHeader
+        visibleCount={filteredTables.length}
+        totalCount={tables?.length ?? 0}
+        aggregate={isAggregate}
+        takeawayQrBusy={takeawayQrBusy}
+        canCreate={has("tables:create")}
+        onOpenTakeawayQr={() => void openTakeawayQr()}
+        onAdd={openAdd}
       />
 
-      {tablesQuery.isError && tables !== undefined ? (
-        <StaleDataBanner
-          message="Tables refresh failed — showing the latest table data available."
-          isRetrying={tablesQuery.isFetching}
-          onRetry={() => void tablesQuery.refetch()}
-        />
-      ) : null}
+      <TablesDataWarnings
+        tables={{
+          isError: tablesQuery.isError,
+          isFetching: tablesQuery.isFetching,
+          hasData: tables !== undefined,
+          onRetry: () => void tablesQuery.refetch(),
+        }}
+        openOrders={{
+          isError: openOrdersQuery.isError,
+          isFetching: openOrdersQuery.isFetching,
+          onRetry: () => void openOrdersQuery.refetch(),
+        }}
+      />
 
-      {openOrdersQuery.isError ? (
-        <StaleDataBanner
-          message="Open orders are unavailable. Table transfer and merge actions are blocked until they reload."
-          isRetrying={openOrdersQuery.isFetching}
-          onRetry={() => void openOrdersQuery.refetch()}
-        />
-      ) : null}
+      <TablesFilters
+        tableSearch={tableSearch}
+        statusFilter={statusFilter}
+        sectionFilter={sectionFilter}
+        totalCount={tables?.length ?? 0}
+        statusCounts={statusCounts}
+        sections={sections}
+        onSearchChange={setTableSearch}
+        onStatusChange={setStatusFilter}
+        onSectionChange={setSectionFilter}
+        onClearFilters={clearFilters}
+      />
 
-      <Card padding="sm">
-        <FilterBar
-          onClearAll={
-            [tableSearch, statusFilter, sectionFilter].filter(Boolean).length >
-            1
-              ? clearFilters
-              : undefined
-          }
-        >
-          <SearchInput
-            value={tableSearch}
-            onChange={(event) => setTableSearch(event.target.value)}
-            onClear={() => setTableSearch("")}
-            placeholder="Search table or section"
-            aria-label="Search tables"
-            className="w-full sm:w-64"
-          />
-          <div className="flex max-w-full gap-1.5 overflow-x-auto py-0.5">
-            <button
-              type="button"
-              onClick={() => setStatusFilter("")}
-              className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold ${
-                !statusFilter
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-surface text-text-secondary"
-              }`}
-            >
-              All {tables?.length ?? 0}
-            </button>
-            {TABLE_STATUS_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setStatusFilter(option.value)}
-                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold ${
-                  statusFilter === option.value
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface text-text-secondary"
-                }`}
-              >
-                {option.label} {statusCounts[option.value] ?? 0}
-              </button>
-            ))}
-          </div>
-          {sections.length > 1 && (
-            <SelectMenu
-              aria-label="Filter tables by section"
-              valuePrefix="Section"
-              placeholder="All sections"
-              value={sectionFilter || undefined}
-              options={[{ value: "", label: "All sections" }, ...sections]}
-              onChange={(value) => setSectionFilter(value ?? "")}
-              className="w-44"
-            />
-          )}
-        </FilterBar>
-      </Card>
+      <TablesContent
+        tables={tables}
+        filteredTables={filteredTables}
+        loading={tablesQuery.isLoading}
+        error={tablesQuery.error}
+        fetching={tablesQuery.isFetching}
+        aggregate={isAggregate}
+        hasFilters={hasTableFilters}
+        canCreate={has("tables:create")}
+        canManageOrders={has("orders:update")}
+        operationsReady={openOrdersQuery.isSuccess}
+        onRetry={() => void tablesQuery.refetch()}
+        onAdd={openAdd}
+        onEdit={openEdit}
+        onDelete={(id, name) => {
+          if (confirm(`Remove table "${name}"?`)) deleteMutation.mutate(id);
+        }}
+        onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
+        onShowQr={setQrTable}
+        onTransfer={setTransferSource}
+        onMerge={setMergeSource}
+      />
 
-      {tablesQuery.isLoading ? (
-        <Grid columns={{ base: 2, sm: 3, lg: 4 }} gap="md">
-          {[0, 1, 2, 3].map((i) => (
-            <Card key={i} className="h-40 animate-pulse" />
-          ))}
-        </Grid>
-      ) : tablesQuery.isError && tables === undefined ? (
-        <QueryErrorState
-          title="Unable to load tables"
-          description={extractApiError(
-            tablesQuery.error,
-            "Tables could not be loaded. Retry before relying on table availability.",
-          )}
-          isRetrying={tablesQuery.isFetching}
-          onRetry={() => void tablesQuery.refetch()}
-        />
-      ) : !filteredTables.length ? (
-        <EmptyState
-          icon={Table2}
-          title={hasTableFilters ? "No matching tables" : "No tables yet"}
-          description={
-            hasTableFilters
-              ? "Try a different status, section, or search term."
-              : "Add the tables in your restaurant so waiters can assign dine-in orders to them."
-          }
-          action={
-            has("tables:create") && (
-              <Button onClick={openAdd}>
-                <Plus className="w-4 h-4" /> Add Table
-              </Button>
-            )
-          }
-        />
-      ) : isAggregate ? (
-        Object.entries(
-          filteredTables.reduce<Record<string, RestaurantTable[]>>(
-            (acc, table) => {
-              const key = table.branch?.name ?? "Unknown branch";
-              (acc[key] ??= []).push(table);
-              return acc;
-            },
-            {},
-          ),
-        ).map(([branchName, branchTables]) => (
-          <div key={branchName} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-3.5 h-3.5 text-text-disabled" />
-              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                {branchName}
-              </p>
-            </div>
-            <TableGrid
-              tables={branchTables}
-              onEdit={openEdit}
-              onDelete={(id, name) => {
-                if (confirm(`Remove table "${name}"?`))
-                  deleteMutation.mutate(id);
-              }}
-              onStatusChange={(id, status) =>
-                statusMutation.mutate({ id, status })
-              }
-              onShowQr={setQrTable}
-              onTransfer={
-                has("orders:update") && openOrdersQuery.isSuccess
-                  ? setTransferSource
-                  : undefined
-              }
-              onMerge={
-                has("orders:update") && openOrdersQuery.isSuccess
-                  ? setMergeSource
-                  : undefined
-              }
-            />
-          </div>
-        ))
-      ) : (
-        <TableGrid
-          tables={filteredTables}
-          onEdit={openEdit}
-          onDelete={(id, name) => {
-            if (confirm(`Remove table "${name}"?`)) deleteMutation.mutate(id);
-          }}
-          onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
-          onShowQr={setQrTable}
-          onTransfer={
-            has("orders:update") && openOrdersQuery.isSuccess
-              ? setTransferSource
-              : undefined
-          }
-          onMerge={
-            has("orders:update") && openOrdersQuery.isSuccess
-              ? setMergeSource
-              : undefined
-          }
-        />
-      )}
-
-      <TableFormModal
-        mode="add"
-        open={showAdd}
-        editing={null}
+      <TablesFormDialogs
+        addOpen={showAdd}
+        editing={editing}
         branches={branches ?? []}
         aggregate={isAggregate}
-        errors={errors}
+        form={form}
         formErrorMessages={formErrorMessages}
-        register={register}
-        handleSubmit={handleSubmit}
-        pending={addMutation.isPending}
-        submitDisabled={!isValid || addDependencyBlocked}
+        addPending={addMutation.isPending}
+        updatePending={updateMutation.isPending}
+        addDependencyBlocked={addDependencyBlocked}
         {...(isAggregate && branchesQuery.isError
           ? {
               dependencyError: extractApiError(
@@ -428,40 +244,27 @@ export const TablesPage = () => {
               onRetryDependency: () => void branchesQuery.refetch(),
             }
           : {})}
-        onClose={closeAdd}
-        onSubmit={(values) => {
+        onCloseAdd={closeAdd}
+        onCloseEdit={closeEdit}
+        onAdd={(values) => {
           if (isAggregate && !values.branchId) {
             setError("branchId", { message: "Select a branch" });
             return;
           }
-          addMutation.mutate(toPayload(values), {
+          addMutation.mutate(toTablePayload(values), {
             onSuccess: closeAdd,
             onError: (error) =>
               handleApiError(
                 error,
                 setError,
-                tableFormFields,
+                TABLE_FORM_FIELDS,
                 "Unable to add table",
               ),
           });
         }}
-      />
-      <TableFormModal
-        mode="edit"
-        open={!!editing}
-        editing={editing}
-        branches={branches ?? []}
-        aggregate={false}
-        errors={errors}
-        formErrorMessages={formErrorMessages}
-        register={register}
-        handleSubmit={handleSubmit}
-        pending={updateMutation.isPending}
-        submitDisabled={!isValid || !isDirty}
-        onClose={closeEdit}
-        onSubmit={(values) => {
+        onUpdate={(values) => {
           if (!editing) return;
-          const payload = toPayload(values);
+          const payload = toTablePayload(values);
           updateMutation.mutate(
             {
               id: editing.id,
@@ -477,14 +280,13 @@ export const TablesPage = () => {
                 handleApiError(
                   error,
                   setError,
-                  tableFormFields,
+                  TABLE_FORM_FIELDS,
                   "Unable to update table",
                 ),
             },
           );
         }}
       />
-
       <TakeawayQrModal
         data={takeawayQr}
         open={takeawayQrOpen}

@@ -5,20 +5,13 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ChevronUp,
-  ChevronDown,
-  ChevronsUpDown,
-  Columns3,
-  Inbox,
-  Search,
-} from "lucide-react";
+import { Inbox } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { EmptyState } from "../EmptyState";
-import { Button } from "../Button";
-import { Popover } from "../overlay/Popover";
 import { SkeletonTable } from "./SkeletonLoader";
 import { Pagination, type PaginationProps } from "./Pagination";
+import { DataGridToolbar } from "./DataGridToolbar";
+import { DataGridTable } from "./DataGridTable";
 import {
   ALIGN_CLASSES,
   CELL_PADDING,
@@ -86,51 +79,6 @@ export interface DataGridProps<T> {
 
   toolbarActions?: ReactNode;
 }
-
-const SortIcon = ({ direction }: { direction: "asc" | "desc" | undefined }) => {
-  if (direction === "asc")
-    return <ChevronUp aria-hidden="true" className="w-3.5 h-3.5" />;
-  if (direction === "desc")
-    return <ChevronDown aria-hidden="true" className="w-3.5 h-3.5" />;
-  return (
-    <ChevronsUpDown aria-hidden="true" className="w-3.5 h-3.5 opacity-40" />
-  );
-};
-
-const GridCheckbox = ({
-  checked,
-  indeterminate = false,
-  onChange,
-  disabled,
-  label,
-}: {
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  label: string;
-}) => {
-  return (
-    <input
-      type="checkbox"
-      aria-label={label}
-      checked={checked}
-      disabled={disabled}
-      ref={(el) => {
-        if (el) el.indeterminate = !checked && indeterminate;
-      }}
-      onChange={(e) => onChange(e.target.checked)}
-      onClick={(e) => e.stopPropagation()}
-      className={cn(
-        "w-4 h-4 rounded border-border text-primary cursor-pointer",
-        "focus:outline-none focus:ring-2 focus:ring-primary",
-        disabled && "opacity-50 cursor-not-allowed",
-      )}
-    />
-  );
-};
-
-const CHECKBOX_COL_WIDTH = 40;
 
 export function DataGrid<T>({
   columns,
@@ -274,63 +222,19 @@ export function DataGrid<T>({
 
   return (
     <div className={cn("w-full", className)}>
-      {showToolbar && (
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          {enableGlobalFilter ? (
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search
-                aria-hidden="true"
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none"
-              />
-              <input
-                type="text"
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder={globalFilterPlaceholder}
-                aria-label={globalFilterPlaceholder}
-                className={cn(
-                  "w-full pl-9 pr-3 py-2 text-sm bg-surface border border-border rounded-md text-text-primary",
-                  "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-                )}
-              />
-            </div>
-          ) : (
-            <div />
-          )}
-          <div className="flex items-center gap-2">
-            {toolbarActions}
-            {enableColumnVisibility && (
-              <Popover
-                align="end"
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <Columns3 aria-hidden="true" className="w-3.5 h-3.5" />
-                    Columns
-                  </Button>
-                }
-              >
-                <div className="flex flex-col gap-1 min-w-[160px]">
-                  {columns.map((col) => (
-                    <label
-                      key={col.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-text-primary hover:bg-surface-secondary cursor-pointer"
-                    >
-                      <GridCheckbox
-                        label={`Toggle ${String(col.header)} column`}
-                        checked={visibility[col.id] !== false}
-                        onChange={(checked) =>
-                          setVisibility({ ...visibility, [col.id]: checked })
-                        }
-                      />
-                      {col.header}
-                    </label>
-                  ))}
-                </div>
-              </Popover>
-            )}
-          </div>
-        </div>
-      )}
+      {showToolbar ? (
+        <DataGridToolbar
+          columns={columns}
+          visibility={visibility}
+          enableGlobalFilter={enableGlobalFilter}
+          globalFilter={globalFilter}
+          globalFilterPlaceholder={globalFilterPlaceholder}
+          enableColumnVisibility={enableColumnVisibility}
+          toolbarActions={toolbarActions}
+          onGlobalFilterChange={setGlobalFilter}
+          onVisibilityChange={setVisibility}
+        />
+      ) : null}
 
       {loading ? (
         <SkeletonTable
@@ -347,193 +251,31 @@ export function DataGrid<T>({
           size="sm"
         />
       ) : (
-        <div
-          ref={scrollRef}
-          className="w-full overflow-auto border border-border rounded-lg"
-          style={{ maxHeight }}
-        >
-          <table
-            className="w-full text-sm border-collapse"
-            style={{ tableLayout: "fixed" }}
-          >
-            <thead>
-              <tr className="sticky top-0 z-20 bg-surface">
-                {selectable && (
-                  <th
-                    scope="col"
-                    style={{ width: CHECKBOX_COL_WIDTH }}
-                    className={cn(
-                      CELL_PADDING[density],
-                      "border-b border-border sticky left-0 z-30 bg-surface",
-                    )}
-                  >
-                    <GridCheckbox
-                      label="Select all rows on this page"
-                      checked={allOnPageSelected}
-                      indeterminate={someOnPageSelected}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                )}
-                {visibleColumns.map((col) => {
-                  const isSorted = sort?.columnId === col.id;
-                  const sticky = stickyOffsets.get(col.id);
-                  return (
-                    <th
-                      key={col.id}
-                      scope="col"
-                      style={{
-                        width: col.width,
-                        minWidth: col.minWidth,
-                        ...(sticky?.left !== undefined
-                          ? {
-                              position: "sticky",
-                              left:
-                                sticky.left +
-                                (selectable ? CHECKBOX_COL_WIDTH : 0),
-                              zIndex: 30,
-                            }
-                          : sticky?.right !== undefined
-                            ? {
-                                position: "sticky",
-                                right: sticky.right,
-                                zIndex: 30,
-                              }
-                            : {}),
-                      }}
-                      className={cn(
-                        CELL_PADDING[density],
-                        ALIGN_CLASSES[col.align ?? "left"],
-                        "font-semibold text-xs text-text-secondary uppercase tracking-wide border-b border-border whitespace-nowrap",
-                        col.sortable &&
-                          "cursor-pointer select-none hover:text-text-primary",
-                        col.sticky && "bg-surface",
-                      )}
-                      aria-sort={
-                        isSorted
-                          ? sort!.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : undefined
-                      }
-                    >
-                      {col.sortable ? (
-                        <button
-                          type="button"
-                          onClick={() => handleHeaderClick(col)}
-                          className={cn(
-                            "inline-flex items-center gap-1",
-                            col.align === "right" && "flex-row-reverse",
-                            col.align === "center" && "justify-center w-full",
-                            SORT_BUTTON_FOCUS_CLASSES,
-                          )}
-                        >
-                          {col.header}
-                          <SortIcon
-                            direction={isSorted ? sort!.direction : undefined}
-                          />
-                        </button>
-                      ) : (
-                        col.header
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="relative divide-y divide-divider">
-              {startIndex > 0 && (
-                <tr style={{ height: offsetY }} aria-hidden="true">
-                  <td
-                    colSpan={visibleColumns.length + (selectable ? 1 : 0)}
-                    className="p-0"
-                  />
-                </tr>
-              )}
-              {visibleRows.map((row, i) => {
-                const rowIndex = startIndex + i;
-                const id = getRowId(row);
-                const disabled = disabledSelectionIds?.has(id) ?? false;
-                const selected = selectedIds.has(id);
-                return (
-                  <tr
-                    key={id}
-                    style={{ height: rowHeight }}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    onKeyDown={clickableRowKeyDown(row, onRowClick)}
-                    tabIndex={onRowClick ? 0 : undefined}
-                    className={cn(
-                      onRowClick && "cursor-pointer",
-                      "bg-surface hover:bg-surface-secondary transition-colors duration-fast ease-standard",
-                      selected && "bg-primary-surface",
-                      onRowClick && CLICKABLE_ROW_FOCUS_CLASSES,
-                    )}
-                  >
-                    {selectable && (
-                      <td
-                        className={cn(
-                          CELL_PADDING[density],
-                          "sticky left-0 z-10 bg-inherit",
-                        )}
-                      >
-                        <GridCheckbox
-                          label={`Select row ${rowIndex + 1}`}
-                          checked={selected}
-                          disabled={disabled}
-                          onChange={() => toggleRow(id)}
-                        />
-                      </td>
-                    )}
-                    {visibleColumns.map((col) => {
-                      const sticky = stickyOffsets.get(col.id);
-                      return (
-                        <td
-                          key={col.id}
-                          style={
-                            sticky?.left !== undefined
-                              ? {
-                                  position: "sticky",
-                                  left:
-                                    sticky.left +
-                                    (selectable ? CHECKBOX_COL_WIDTH : 0),
-                                  zIndex: 10,
-                                }
-                              : sticky?.right !== undefined
-                                ? {
-                                    position: "sticky",
-                                    right: sticky.right,
-                                    zIndex: 10,
-                                  }
-                                : undefined
-                          }
-                          className={cn(
-                            CELL_PADDING[density],
-                            ALIGN_CLASSES[col.align ?? "left"],
-                            "text-text-primary truncate",
-                            col.sticky && "bg-inherit",
-                          )}
-                        >
-                          {col.cell(row, rowIndex)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-              {endIndex < rows.length && (
-                <tr
-                  style={{ height: totalHeight - endIndex * rowHeight }}
-                  aria-hidden="true"
-                >
-                  <td
-                    colSpan={visibleColumns.length + (selectable ? 1 : 0)}
-                    className="p-0"
-                  />
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataGridTable
+          scrollRef={scrollRef}
+          columns={visibleColumns}
+          rows={rows}
+          visibleRows={visibleRows}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          offsetY={offsetY}
+          totalHeight={totalHeight}
+          rowHeight={rowHeight}
+          maxHeight={maxHeight}
+          density={density}
+          sort={sort}
+          stickyOffsets={stickyOffsets}
+          selectable={selectable}
+          selectedIds={selectedIds}
+          disabledSelectionIds={disabledSelectionIds}
+          allOnPageSelected={allOnPageSelected}
+          someOnPageSelected={someOnPageSelected}
+          getRowId={getRowId}
+          onHeaderClick={handleHeaderClick}
+          onToggleSelectAll={toggleSelectAll}
+          onToggleRow={toggleRow}
+          onRowClick={onRowClick}
+        />
       )}
 
       {pagination && rows.length > 0 && (

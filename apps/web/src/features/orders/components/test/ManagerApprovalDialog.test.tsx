@@ -12,10 +12,12 @@ vi.mock("@/shared/lib/api-client", () => ({
   apiClient: {},
   extractApiError: mocks.extract,
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createApprovalsApi: () => ({ requestManagerApproval: mocks.approve }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div role="dialog">

@@ -1,6 +1,6 @@
 import { usePermissions } from "@/shared/auth/permissions";
 import { useEffect, useState } from "react";
-import { Plus, AlertTriangle, Package, Building2 } from "lucide-react";
+import { Plus, AlertTriangle, Package } from "lucide-react";
 import {
   Button,
   Card,
@@ -9,19 +9,12 @@ import {
   Page,
   PageHeader,
   Grid,
-  FilterBar,
-  SearchInput,
-  SelectMenu,
-  Pagination,
   QueryErrorState,
   StaleDataBanner,
 } from "@pos/ui";
 import { useAuthStore } from "@/store/auth";
-import { useBranches } from "@/features/branches/hooks/useBranches";
-import {
-  useInventoryItems,
-  useLowStockItems,
-} from "@/features/inventory/hooks/useInventoryItems";
+import { useBranches } from "@/features/branches";
+import { useInventoryItems, useLowStockItems } from "@/features/inventory";
 import { useInventoryRealtimeSync } from "@/features/inventory/hooks/useInventoryRealtimeSync";
 import { useInventoryTransactions } from "@/features/inventory/hooks/useInventoryTransactions";
 import type { InventoryItem } from "@pos/types";
@@ -31,6 +24,8 @@ import { InventoryTable } from "@/features/inventory/components/InventoryTable";
 import { InventoryActivity } from "@/features/inventory/components/InventoryActivity";
 import { InventoryItemDialogs } from "@/features/inventory/components/InventoryItemDialogs";
 import { extractApiError } from "@/shared/lib/api-client";
+import { InventoryFilters } from "@/features/inventory/components/page/InventoryFilters";
+import { InventoryList } from "@/features/inventory/components/page/InventoryList";
 
 export const InventoryPage = () => {
   const { has } = usePermissions();
@@ -184,109 +179,44 @@ export const InventoryPage = () => {
         </Card>
       )}
 
-      <Card padding="sm">
-        <FilterBar
-          onClearAll={
-            search && stockFilter
-              ? () => {
-                  setSearch("");
-                  setStockFilter("");
-                  setPage(1);
-                }
-              : undefined
-          }
-        >
-          <SearchInput
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            onClear={() => {
-              setSearch("");
-              setPage(1);
-            }}
-            placeholder="Search item or branch"
-            aria-label="Search inventory"
-            className="w-full sm:w-72"
-          />
-          <SelectMenu
-            aria-label="Filter inventory by stock level"
-            valuePrefix="Stock"
-            value={stockFilter || undefined}
-            placeholder="All stock levels"
-            options={[
-              { value: "", label: "All stock levels" },
-              { value: "low", label: "Low stock only" },
-            ]}
-            onChange={(value) => {
-              setStockFilter(value ?? "");
-              setPage(1);
-            }}
-            className="w-48"
-          />
-        </FilterBar>
-      </Card>
+      <InventoryFilters
+        search={search}
+        stockFilter={stockFilter}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        onStockFilter={(value) => {
+          setStockFilter(value);
+          setPage(1);
+        }}
+        onClear={() => {
+          setSearch("");
+          setStockFilter("");
+          setPage(1);
+        }}
+      />
 
-      {inventoryQuery.isError &&
-      inventoryPage === undefined ? null : isAggregate && groupedByBranch ? (
-        <Card padding="none" className="overflow-hidden">
-          {groupedByBranch.map(([branchName, branchItems], idx) => (
-            <div
-              key={branchName}
-              className={idx > 0 ? "border-t border-border" : undefined}
-            >
-              <div className="px-4 py-2.5 bg-surface-secondary flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5 text-text-disabled" />
-                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                  {branchName}
-                </p>
-              </div>
-              <InventoryTable
-                items={branchItems}
-                loading={inventoryQuery.isLoading}
-                onUpdateStock={setShowUpdate}
-                onLogWaste={setShowWaste}
-                onViewImpact={setShowImpact}
-              />
-            </div>
-          ))}
-          <Pagination
-            className="border-t border-border p-4"
-            page={page}
-            pageCount={pageCount}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => {
-              setPageSize(next);
-              setPage(1);
-            }}
-          />
-        </Card>
-      ) : (
-        <Card padding="none" className="overflow-hidden">
-          <InventoryTable
-            items={items}
-            loading={inventoryQuery.isLoading}
-            onUpdateStock={setShowUpdate}
-            onLogWaste={setShowWaste}
-            onViewImpact={setShowImpact}
-            onAddItem={() => setShowAdd(true)}
-          />
-          <Pagination
-            className="border-t border-border p-4"
-            page={page}
-            pageCount={pageCount}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => {
-              setPageSize(next);
-              setPage(1);
-            }}
-          />
-        </Card>
+      {inventoryQuery.isError && inventoryPage === undefined ? null : (
+        <InventoryList
+          items={items}
+          groupedByBranch={groupedByBranch}
+          aggregate={isAggregate}
+          loading={inventoryQuery.isLoading}
+          page={page}
+          pageCount={pageCount}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(next) => {
+            setPageSize(next);
+            setPage(1);
+          }}
+          onUpdateStock={setShowUpdate}
+          onLogWaste={setShowWaste}
+          onViewImpact={setShowImpact}
+          onAddItem={() => setShowAdd(true)}
+        />
       )}
 
       {transactionsQuery.isError ? (

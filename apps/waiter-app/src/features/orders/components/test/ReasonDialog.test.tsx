@@ -19,7 +19,7 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...props} />
     </label>
   ),
-  SelectMenu: ({ label, options, onChange, ...props }: any) => (
+  Select: ({ label, options, onChange, ...props }: any) => (
     <label>
       {label}
       <select

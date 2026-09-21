@@ -1,5 +1,5 @@
 import { Plus, Minus, Trash2, Pencil } from "lucide-react";
-import { Button, TextArea } from "@pos/ui";
+import { Button, Select, TextArea } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils/format";
 import { cartItemKey, type CartItem } from "@/features/orders/utils/cartTypes";
 export const OrderCart = ({
@@ -66,22 +66,17 @@ export const OrderCart = ({
                     </span>
                   ))}
                   {courseMode && (
-                    <label className="mt-1 block text-[11px] text-text-secondary">
-                      Course{" "}
-                      <select
-                        className="ml-1 rounded border border-border bg-surface px-1 py-0.5"
-                        value={item.courseNumber ?? 1}
-                        onChange={(event) =>
-                          onCourse(key, Number(event.target.value))
-                        }
-                      >
-                        {[1, 2, 3, 4, 5].map((course) => (
-                          <option key={course} value={course}>
-                            {course}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <Select
+                      aria-label={`Course for ${item.menuItemName}`}
+                      value={String(item.courseNumber ?? 1)}
+                      onChange={(value) => onCourse(key, Number(value))}
+                      options={[1, 2, 3, 4, 5].map((course) => ({
+                        value: String(course),
+                        label: `Course ${course}`,
+                      }))}
+                      containerClassName="mt-1 w-28"
+                      className="py-0.5 text-[11px]"
+                    />
                   )}
                   {item.chefNotes && (
                     <span className="text-xs text-primary block">

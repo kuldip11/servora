@@ -140,7 +140,20 @@ export const EditStaffForm = ({
             .map((role) => ({ value: role.id, label: role.name })),
         ]}
         error={form.formState.errors.roleId?.message}
-        {...form.register("roleId")}
+        value={roleId}
+        onChange={(value) =>
+          form.setValue("roleId", value, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
+        onBlur={() =>
+          form.setValue("roleId", form.getValues("roleId"), {
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
       />
       {branchRequired && (
         <Select
@@ -155,11 +168,11 @@ export const EditStaffForm = ({
           error={form.formState.errors.branchIds?.message}
           value={branchIds[0] ?? ""}
           onChange={(event) =>
-            form.setValue(
-              "branchIds",
-              event.target.value ? [event.target.value] : [],
-              { shouldDirty: true, shouldValidate: true },
-            )
+            form.setValue("branchIds", event ? [event] : [], {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            })
           }
         />
       )}

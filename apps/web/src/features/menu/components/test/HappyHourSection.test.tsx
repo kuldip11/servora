@@ -14,7 +14,8 @@ const { invalidateQueries, api, customers } = vi.hoisted(() => ({
 }));
 let queryData: unknown[] = [];
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -24,10 +25,20 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...props} />
     </label>
   ),
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
     <label>
       {label}
-      <select aria-label={props["aria-label"] ?? label} {...props}>
+      <select
+        aria-label={props["aria-label"] ?? label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((option: any) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -37,14 +48,16 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => api,
   createCustomersApi: () => customers,
   extractApiError: (error: any) =>
     error?.response?.data?.error?.message ?? "Request failed",
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: [{ id: "cat1", name: "Food" }] }),
 }));
 vi.mock("@/features/menu/hooks/useMenus", () => ({

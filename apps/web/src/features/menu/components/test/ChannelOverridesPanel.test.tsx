@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   queryData: new Map<string, unknown>(),
@@ -30,7 +31,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -80,7 +82,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -155,15 +158,9 @@ describe("ChannelOverridesPanel", () => {
     ]);
     render(<ChannelOverridesPanel itemId="i1" />);
     expect(screen.getByText(/All fulfillment/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Ordering channel"), {
-      target: { value: "STAFF" },
-    });
-    fireEvent.change(screen.getByLabelText("Fulfillment type"), {
-      target: { value: "DINE_IN" },
-    });
-    fireEvent.change(screen.getByLabelText("Channel status"), {
-      target: { value: "ACTIVE" },
-    });
+    chooseSelectOption("Ordering channel", "Staff");
+    chooseSelectOption("Fulfillment type", "DINE_IN");
+    chooseSelectOption("Channel status", "Active");
     fireEvent.change(screen.getByLabelText("Channel override reason"), {
       target: { value: "open" },
     });

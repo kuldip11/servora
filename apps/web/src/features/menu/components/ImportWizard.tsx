@@ -142,7 +142,6 @@ export const ImportWizard = ({ onClose }: Props) => {
           <p className="text-sm text-text-secondary">Validating…</p>
         )}
 
-        {}
         <div aria-live="polite" className="sr-only">
           {validateMutation.isPending
             ? "Validating file…"

@@ -4,7 +4,10 @@ const query = vi.hoisted(() => ({
   useQuery: vi.fn((config: unknown) => config),
 }));
 
-vi.mock("@tanstack/react-query", () => query);
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  useQuery: query.useQuery,
+}));
 vi.mock("../../query-options", () => ({
   ordersListQuery: (filters: unknown) => ({
     queryKey: ["orders", filters],
@@ -12,7 +15,7 @@ vi.mock("../../query-options", () => ({
   }),
 }));
 
-import { useOrders } from "@/features/orders/hooks/useOrders";
+import { useOrders } from "@/features/orders";
 
 describe("useOrders", () => {
   beforeEach(() => {

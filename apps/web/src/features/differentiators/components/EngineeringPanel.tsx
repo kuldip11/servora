@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, QueryErrorState, StaleDataBanner } from "@pos/ui";
+import { Badge, Card, QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
 import { createAnalyticsApi } from "@pos/api-client";
-import { DIFFERENTIATORS_SELECT_CLASS } from "@/features/differentiators/constants";
 import { apiClient, extractApiError } from "@/shared/lib/api-client";
 
 type EngineeringQuadrant = "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG";
@@ -53,52 +52,42 @@ export const EngineeringPanel = () => {
     <div className="space-y-4">
       <Card>
         <div className="grid gap-3 md:grid-cols-3">
-          <label className="text-sm font-medium text-text-primary">
-            Analysis window
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={windowDays}
-              onChange={(event) => setWindowDays(event.target.value)}
-            >
-              <option value="30">Last 30 days</option>
-              <option value="60">Last 60 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="180">Last 180 days</option>
-              <option value="365">Last 365 days</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Quadrant
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={quadrantFilter}
-              onChange={(event) =>
-                setQuadrantFilter(
-                  event.target.value as "ALL" | EngineeringQuadrant,
-                )
-              }
-            >
-              <option value="ALL">All quadrants</option>
-              <option value="STAR">Stars</option>
-              <option value="PUZZLE">Puzzles</option>
-              <option value="PLOWHORSE">Plowhorses</option>
-              <option value="DOG">Dogs</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Sort by
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={sort}
-              onChange={(event) =>
-                setSort(event.target.value as EngineeringSort)
-              }
-            >
-              <option value="volume">Sales volume</option>
-              <option value="margin">Margin</option>
-              <option value="name">Name</option>
-            </select>
-          </label>
+          <Select
+            label="Analysis window"
+            value={windowDays}
+            onChange={setWindowDays}
+            options={[
+              { value: "30", label: "Last 30 days" },
+              { value: "60", label: "Last 60 days" },
+              { value: "90", label: "Last 90 days" },
+              { value: "180", label: "Last 180 days" },
+              { value: "365", label: "Last 365 days" },
+            ]}
+          />
+          <Select
+            label="Quadrant"
+            value={quadrantFilter}
+            onChange={(value) =>
+              setQuadrantFilter(value as "ALL" | EngineeringQuadrant)
+            }
+            options={[
+              { value: "ALL", label: "All quadrants" },
+              { value: "STAR", label: "Stars" },
+              { value: "PUZZLE", label: "Puzzles" },
+              { value: "PLOWHORSE", label: "Plowhorses" },
+              { value: "DOG", label: "Dogs" },
+            ]}
+          />
+          <Select
+            label="Sort by"
+            value={sort}
+            onChange={(value) => setSort(value as EngineeringSort)}
+            options={[
+              { value: "volume", label: "Sales volume" },
+              { value: "margin", label: "Margin" },
+              { value: "name", label: "Name" },
+            ]}
+          />
         </div>
       </Card>
       {engineeringQuery.isError && engineeringQuery.data !== undefined ? (

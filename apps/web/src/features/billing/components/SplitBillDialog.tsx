@@ -159,7 +159,7 @@ export const SplitBillDialog = ({
         <Select
           label="Split mode"
           value={mode}
-          onChange={(event) => setMode(event.target.value as SplitMode)}
+          onChange={(event) => setMode(event as SplitMode)}
           options={[
             { value: "EVEN", label: "Even split" },
             { value: "ITEM", label: "Assign items" },
@@ -192,9 +192,7 @@ export const SplitBillDialog = ({
           <Select
             label="Shared items"
             value={sharedStrategy}
-            onChange={(event) =>
-              setSharedStrategy(event.target.value as SharedStrategy)
-            }
+            onChange={(event) => setSharedStrategy(event as SharedStrategy)}
             options={[
               { value: "EVEN_SPLIT", label: "Balance across seats" },
               { value: "MANUAL", label: "Assign manually" },
@@ -219,7 +217,7 @@ export const SplitBillDialog = ({
                         current,
                         order.items ?? [],
                         item.id,
-                        Number(event.target.value),
+                        Number(event),
                       ),
                     )
                   }

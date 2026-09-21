@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   deleteMutate: vi.fn(),
@@ -17,7 +18,8 @@ const h = vi.hoisted(() => ({
 let templates: any[] | undefined = [];
 let loading = false;
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (
@@ -71,7 +73,7 @@ vi.mock("@/features/menu/hooks/useSaveTemplateFromCategory", () => ({
     isPending: false,
   }),
 }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: [{ id: "b1", name: "Central" }],
     isError: false,
@@ -130,9 +132,7 @@ describe("TemplatesSection coverage", () => {
     fireEvent.change(screen.getByLabelText("New category name"), {
       target: { value: "Brunch" },
     });
-    fireEvent.change(screen.getByLabelText("Branch"), {
-      target: { value: "b1" },
-    });
+    chooseSelectOption("Branch", "Central");
     fireEvent.submit(
       screen.getAllByRole("button", { name: "Apply" }).at(-1)!.closest("form")!,
     );

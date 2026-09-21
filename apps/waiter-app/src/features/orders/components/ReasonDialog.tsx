@@ -5,7 +5,7 @@ import {
   Input,
   Modal,
   QueryErrorState,
-  SelectMenu,
+  Select,
   StaleDataBanner,
 } from "@pos/ui";
 
@@ -55,7 +55,7 @@ export const ReasonDialog = ({
             onRetry={onRetryReasons}
           />
         ) : null}
-        <SelectMenu
+        <Select
           label="Reason"
           value={reasonId}
           onChange={setReasonId}

@@ -1,5 +1,5 @@
 import { Send, Layers, Minus, Pencil, Plus } from "lucide-react";
-import { BottomSheet, Button, SelectMenu, TextInput } from "@pos/ui";
+import { BottomSheet, Button, Select, TextInput } from "@pos/ui";
 import type { CartItem } from "@/features/menu/types";
 import { COURSE_LABELS } from "@/features/menu/constants";
 import { cartItemKey } from "@/features/menu/utils/cart";
@@ -168,7 +168,7 @@ export const CartSummary = ({
             </label>
             {courseMode && isAddingToExisting && (
               <div className="mt-3">
-                <SelectMenu
+                <Select
                   label="This round"
                   value={String(roundCourseNumber)}
                   onChange={(value) => onRoundCourseNumberChange(Number(value))}
@@ -226,7 +226,7 @@ export const CartSummary = ({
                       selections · estimated
                     </p>
                     {courseMode && !isAddingToExisting && (
-                      <SelectMenu
+                      <Select
                         aria-label={`Course for ${line.combo.name}`}
                         className="mt-1 min-h-9 rounded-lg py-1 text-xs"
                         value={String(line.courseNumber ?? 1)}
@@ -330,7 +330,7 @@ export const CartSummary = ({
                       </button>
                     )}
                     {courseMode && !isAddingToExisting && (
-                      <SelectMenu
+                      <Select
                         aria-label={`Course for ${item.name}`}
                         className="mt-1 min-h-9 rounded-lg py-1 text-xs"
                         value={String(item.course ?? 1)}

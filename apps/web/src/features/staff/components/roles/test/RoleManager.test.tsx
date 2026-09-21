@@ -32,7 +32,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   KeyRound: () => null,
   Plus: () => null,
   Shield: () => null,
@@ -86,7 +87,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (
@@ -119,7 +121,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, value, onChange, options }: any) => (
     <label>
       {label}
-      <select aria-label={label} value={value} onChange={onChange}>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}

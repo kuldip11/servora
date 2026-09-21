@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption, chooseSelectOptionAt } from "@/test/select";
 
 const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
   () => ({
@@ -11,12 +12,14 @@ const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
   }),
 );
 
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({ listCombos, updateCombo, createCombo, removeCombo }),
   extractApiFieldErrors: (error: unknown) =>
     (error as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {},
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({
     isError: false,
     isFetching: false,
@@ -167,26 +170,19 @@ describe("CombosSection", () => {
     fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "  Deal  " },
     });
-    fireEvent.change(screen.getByLabelText(/Pricing/), {
-      target: { value: "PERCENT_OFF_SUM" },
-    });
+    chooseSelectOption("Pricing", "Percent off components");
     fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "20" },
     });
-    fireEvent.change(screen.getByLabelText(/Choice 1/), {
-      target: { value: "item-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Variant"), {
-      target: { value: "variant-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
+    chooseSelectOption("Variant", "Half");
     fireEvent.change(screen.getByLabelText("Upcharge"), {
       target: { value: "5" },
     });
     fireEvent.click(screen.getByLabelText("Refill"));
 
     fireEvent.click(screen.getByRole("button", { name: "+ Add choice" }));
-    const choices = screen.getAllByLabelText(/Choice/);
-    fireEvent.change(choices[1]!, { target: { value: "item-1" } });
+    chooseSelectOptionAt("Choice 2", "Chicken Tikka · Mains", 0);
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]!);
 
     fireEvent.click(screen.getByRole("button", { name: "+ Add slot" }));
@@ -233,15 +229,11 @@ describe("CombosSection", () => {
     fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "Bad" },
     });
-    fireEvent.change(screen.getByLabelText(/Pricing/), {
-      target: { value: "PERCENT_OFF_SUM" },
-    });
+    chooseSelectOption("Pricing", "Percent off components");
     fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "101" },
     });
-    fireEvent.change(screen.getByLabelText(/Choice 1/), {
-      target: { value: "item-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
     expect(
       (
         screen.getByRole("button", {
@@ -308,9 +300,7 @@ describe("CombosSection", () => {
     fireEvent.change(screen.getByLabelText(/Maximum/), {
       target: { value: "2" },
     });
-    fireEvent.change(screen.getByLabelText(/Choice 1/), {
-      target: { value: "item-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
     fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
     await waitFor(() => expect(createCombo).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -332,9 +322,8 @@ describe("CombosSection", () => {
     fireEvent.change(minimums[0]!, { target: { value: "1" } });
     fireEvent.change(maximums[0]!, { target: { value: "2" } });
 
-    const choices = screen.getAllByLabelText(/Choice \d/);
-    fireEvent.change(choices[0]!, { target: { value: "item-1" } });
-    fireEvent.change(choices[1]!, { target: { value: "item-1" } });
+    chooseSelectOptionAt("Choice 1", "Chicken Tikka · Mains", 0);
+    chooseSelectOptionAt("Choice 2", "Chicken Tikka · Mains", 0);
     const variants = screen.getAllByLabelText("Variant");
     fireEvent.change(variants[0]!, { target: { value: "variant-1" } });
     const upcharges = screen.getAllByLabelText("Upcharge");

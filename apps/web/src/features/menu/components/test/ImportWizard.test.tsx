@@ -34,7 +34,8 @@ vi.mock("@/features/menu/services/menu-import.service", async () => {
   };
 });
 vi.mock("@/shared/lib/notify", () => ({ notifyError: h.notifyError }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

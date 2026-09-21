@@ -165,9 +165,7 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
           error={formErrors.fieldErrors.roundingPolicy}
           onChange={(event) => {
             formErrors.clearFieldError("roundingPolicy");
-            setRoundingPolicy(
-              event.target.value as TenantSettings["roundingPolicy"],
-            );
+            setRoundingPolicy(event as TenantSettings["roundingPolicy"]);
           }}
           options={[
             { value: "NONE", label: "No rounding" },
@@ -182,9 +180,7 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
           error={formErrors.fieldErrors.defaultTaxMode}
           onChange={(event) => {
             formErrors.clearFieldError("defaultTaxMode");
-            setDefaultTaxMode(
-              event.target.value as TenantSettings["defaultTaxMode"],
-            );
+            setDefaultTaxMode(event as TenantSettings["defaultTaxMode"]);
           }}
           options={[
             { value: "EXCLUSIVE", label: "Tax exclusive" },

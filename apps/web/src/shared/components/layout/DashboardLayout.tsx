@@ -143,9 +143,7 @@ export const DashboardLayout = () => {
       <SkipLink />
       <RealtimeNotifications />
 
-      {}
       <aside className="hidden md:flex w-64 flex-shrink-0 bg-surface border-r border-divider flex-col shadow-sm">
-        {}
         <div className="px-6 py-5 border-b border-divider">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
@@ -163,7 +161,6 @@ export const DashboardLayout = () => {
           </div>
         </div>
 
-        {}
         <nav
           aria-label="Main"
           className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto"
@@ -191,7 +188,6 @@ export const DashboardLayout = () => {
             })}
         </nav>
 
-        {}
         <div className="p-3 border-t border-divider">
           <div className="flex items-center gap-3 px-3 py-2 rounded-md mb-1">
             <div className="w-8 h-8 bg-primary-surface rounded-full flex items-center justify-center">
@@ -250,9 +246,7 @@ export const DashboardLayout = () => {
         </Dialog>
       )}
 
-      {}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {}
         <header className="h-20 bg-surface border-b border-divider flex items-center justify-between gap-4 px-3 md:px-6 flex-shrink-0 min-w-0 shadow-sm">
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -284,7 +278,6 @@ export const DashboardLayout = () => {
           </div>
         </header>
 
-        {}
         <main
           id="main-content"
           tabIndex={-1}

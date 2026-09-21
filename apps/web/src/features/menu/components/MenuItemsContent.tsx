@@ -3,7 +3,7 @@ import {
   EmptyState,
   FilterBar,
   SearchInput,
-  SelectMenu,
+  Select,
   Spinner,
 } from "@pos/ui";
 import type {
@@ -175,21 +175,21 @@ export const MenuItemsContent = ({
           onClear={() => setItemSearch("")}
           className="w-full sm:w-64"
         />
-        <SelectMenu
+        <Select
           aria-label="Food type"
           options={FOOD_TYPE_FILTERS}
           value={foodTypeFilter}
           onChange={(value) => setFoodTypeFilter(value as FoodType | "ALL")}
           className="w-36"
         />
-        <SelectMenu
+        <Select
           aria-label="Status"
           options={STATUS_FILTERS}
           value={statusFilter}
           onChange={(value) => setStatusFilter(value as MenuItemStatus | "ALL")}
           className="w-40"
         />
-        <SelectMenu
+        <Select
           aria-label="Publication"
           options={[
             { value: "ALL", label: "All publication" },

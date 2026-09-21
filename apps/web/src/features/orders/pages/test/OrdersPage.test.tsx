@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrdersPage: mocks.useOrdersPage,
 }));
 vi.mock("@/features/orders/hooks/useOrdersRealtimeSync", () => ({
@@ -32,7 +33,8 @@ vi.mock("@tanstack/react-router", () => ({
     <a {...props}>{children}</a>
   ),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   BUTTON_VARIANT_CLASSES: { secondary: "secondary" },
   Button: ({
     children,
@@ -59,7 +61,7 @@ vi.mock("@pos/ui", () => ({
       <button onClick={onClear}>clear search</button>
     </div>
   ),
-  SelectMenu: ({
+  Select: ({
     "aria-label": label,
     value,
     onChange,

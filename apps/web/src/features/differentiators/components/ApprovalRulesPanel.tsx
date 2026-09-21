@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Button, Card, toast } from "@pos/ui";
+import { Button, Card, Select, toast } from "@pos/ui";
 import { createApprovalsApi } from "@pos/api-client";
-import {
-  DIFFERENTIATORS_INPUT_CLASS,
-  DIFFERENTIATORS_SELECT_CLASS,
-} from "@/features/differentiators/constants";
+import { DIFFERENTIATORS_INPUT_CLASS } from "@/features/differentiators/constants";
 import { apiClient, extractApiError } from "@/shared/lib/api-client";
 
 const approvalsApi = createApprovalsApi(apiClient);
@@ -39,19 +36,15 @@ export const ApprovalRulesPanel = () => {
         single-use approval from the selected role.
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-4 md:items-end">
-        <label className="text-sm font-medium text-text-primary">
-          Action
-          <select
-            className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-            value={action}
-            onChange={(event) =>
-              setAction(event.target.value as ApprovalAction)
-            }
-          >
-            <option value="COMP">Comp</option>
-            <option value="VOID">Void</option>
-          </select>
-        </label>
+        <Select
+          label="Action"
+          value={action}
+          onChange={(value) => setAction(value as ApprovalAction)}
+          options={[
+            { value: "COMP", label: "Comp" },
+            { value: "VOID", label: "Void" },
+          ]}
+        />
         <label className="text-sm font-medium text-text-primary">
           Threshold amount
           <input

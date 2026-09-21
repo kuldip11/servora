@@ -58,7 +58,6 @@ export const TicketHeader = ({
         </p>
       </div>
       <div className="text-right">
-        {}
         <StatusBadge
           label={statusLabel}
           tone={statusTone}

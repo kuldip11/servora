@@ -82,7 +82,8 @@ vi.mock("@pos/validation", () => ({
   franchiseBusinessFormSchema: {},
   organizationBusinessFormSchema: {},
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Building2: () => null,
   CheckCircle2: () => null,
   ChevronRight: () => null,
@@ -92,7 +93,8 @@ vi.mock("lucide-react", () => ({
   Plus: () => null,
   Store: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

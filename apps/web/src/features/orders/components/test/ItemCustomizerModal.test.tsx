@@ -1,8 +1,10 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 const mocks = vi.hoisted(() => ({ schema: vi.fn() }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Minus: () => null,
   Plus: () => null,
   Check: () => null,
@@ -13,7 +15,8 @@ vi.mock("@/shared/utils/format", () => ({
 vi.mock("@pos/validation", () => ({
   itemCustomizationSchema: { safeParse: mocks.schema },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Dialog: ({ open, title, children, footer }: any) =>
     open ? (
       <div role="dialog">
@@ -153,7 +156,7 @@ describe("ItemCustomizerModal coverage", () => {
         .disabled,
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /Large/ }));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "3" } });
+    chooseSelectOption("Course", "Course 3");
     fireEvent.click(screen.getByText("Red").closest("button")!);
     expect(screen.getByText("Dependent")).toBeTruthy();
     fireEvent.click(screen.getByText("Olive").closest("button")!);
@@ -255,7 +258,9 @@ describe("ItemCustomizerModal coverage", () => {
       (screen.getByLabelText("Seat / diner (optional)") as HTMLInputElement)
         .value,
     ).toBe("Seat 1");
-    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("2");
+    expect(
+      screen.getByRole("combobox", { name: "Course" }).textContent,
+    ).toContain("Course 2");
     fireEvent.click(screen.getByRole("button", { name: /Update Item/ }));
     expect(screen.getByText("Invalid customisation")).toBeTruthy();
     expect(confirm).not.toHaveBeenCalled();

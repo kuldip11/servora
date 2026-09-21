@@ -5,6 +5,7 @@ import { WebDemo } from "./WebDemo";
 import {
   findButton,
   findByText,
+  findOption,
   findSelectByLabel,
   renderDemo,
 } from "./testUtils";
@@ -18,8 +19,9 @@ describe("WebDemo", () => {
     expect(findByText(demo.container, "Business structure")).toBeTruthy();
 
     const branch = findSelectByLabel(demo.container, "Branch");
-    await demo.change(branch, "Connaught Place");
-    expect(branch.value).toBe("Connaught Place");
+    await demo.click(branch);
+    await demo.click(findOption("Connaught Place"));
+    expect(branch.textContent).toContain("Connaught Place");
 
     await demo.unmount();
   });

@@ -99,21 +99,6 @@ vi.mock("./features/orders/hooks/useAddOrderItems", () => ({
 vi.mock("./features/branches/hooks/useBranches", () => ({
   useBranches: () => ({ data: [], isLoading: false }),
 }));
-vi.mock("./features/branches/hooks/useCreateBranch", () => ({
-  useCreateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/hooks/useUpdateBranch", () => ({
-  useUpdateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/hooks/useDeactivateBranch", () => ({
-  useDeactivateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/components/BranchCard", () => ({
-  BranchCard: () => <div>BranchCard</div>,
-}));
-vi.mock("./features/branches/components/BranchFormModal", () => ({
-  BranchFormModal: () => <div>BranchFormModal</div>,
-}));
 
 vi.mock("./features/inventory/hooks/useInventoryItems", () => ({
   useInventoryItems: () => ({ data: undefined, isLoading: false }),
@@ -260,7 +245,6 @@ describe("page rendering coverage", () => {
   it("renders dashboard and operational pages with empty states", async () => {
     const modules = await Promise.all([
       import("./features/analytics/pages/DashboardPage"),
-      import("./features/branches/pages/BranchesPage"),
       import("./features/inventory/pages/InventoryPage"),
       import("./features/staff/pages/StaffPage"),
       import("./features/billing/pages/BillingPage"),
@@ -271,6 +255,6 @@ describe("page rendering coverage", () => {
       const cleanup = renderPage(Object.values(m)[0] as React.ComponentType);
       cleanup();
     }
-    expect(modules).toHaveLength(7);
+    expect(modules).toHaveLength(6);
   });
 });

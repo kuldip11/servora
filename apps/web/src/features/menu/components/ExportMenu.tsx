@@ -41,7 +41,6 @@ export const ExportMenu = () => {
         </button>
       }
     >
-      {}
       <div className="w-64 -m-4 p-2">
         {ENTITIES.map((e) => (
           <div

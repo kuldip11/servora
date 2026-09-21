@@ -197,7 +197,7 @@ export const PriceRulesPanel = ({
         <Select
           aria-label="Rule channel"
           value={channel}
-          onChange={(event) => setField("channel", event.target.value)}
+          onChange={(event) => setField("channel", event)}
           options={[
             { value: "", label: "Any channel" },
             { value: "STAFF", label: "Staff" },
@@ -207,7 +207,7 @@ export const PriceRulesPanel = ({
         <Select
           aria-label="Rule fulfillment type"
           value={fulfillmentType}
-          onChange={(event) => setField("fulfillmentType", event.target.value)}
+          onChange={(event) => setField("fulfillmentType", event)}
           options={[
             { value: "", label: "Any fulfillment" },
             ...FULFILLMENT_TYPES.map((type) => ({ value: type, label: type })),
@@ -279,7 +279,7 @@ export const PriceRulesPanel = ({
           error={fieldErrors.customerGroupId}
           onChange={(event) => {
             clearFieldError("customerGroupId");
-            setField("customerGroupId", event.target.value);
+            setField("customerGroupId", event);
           }}
           options={[
             { value: "", label: "Any customer group" },

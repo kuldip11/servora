@@ -39,3 +39,10 @@ After completing a UI error-handling task, update `UI_ERROR_HANDLING_STATUS.md` 
 ## UI error-handling implementation checkpoint
 
 `UI_ERROR_HANDLING_STATUS.md` is the source of truth for implementation progress. The 2026-09-18 checkpoint records completed P0 safety work, false-empty query remediation, shared error primitives, and the forms already converted to the unified client-validation + inline backend-field-error contract. Items with implementation present but focused verification still pending remain `IN_PROGRESS`.
+
+## Active engineering programs
+
+- [`CODEBASE_CLEANUP_REFACTOR_PLAN.md`](./CODEBASE_CLEANUP_REFACTOR_PLAN.md) — codebase cleanup, Select consolidation, component decomposition, hygiene, guardrails, and embedded status tracker.
+- [`E2E_TESTING_STRATEGY_PLAN.md`](./E2E_TESTING_STRATEGY_PLAN.md) — layered E2E/system testing strategy, critical cross-app journeys, CI rollout, and embedded status tracker.
+- [`DIFFERENTIATORS_UI_INTEGRATION_PLAN.md`](./DIFFERENTIATORS_UI_INTEGRATION_PLAN.md) — retained Differentiators capability and the required API, authorization, tenancy, UI, and E2E work before production exposure.
+- [`DIFFERENTIATORS_UI_INTEGRATION_PLAN.md`](./DIFFERENTIATORS_UI_INTEGRATION_PLAN.md) — retained Differentiators feature and future production UI/route integration tracker.

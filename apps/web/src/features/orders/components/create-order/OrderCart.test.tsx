@@ -1,8 +1,10 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -93,9 +95,7 @@ describe("OrderCart coverage", () => {
     expect(screen.getByText("📝 Extra hot")).toBeTruthy();
     expect(screen.getByText("₹200.00")).toBeTruthy();
     expect(screen.getByText("₹250.00")).toBeTruthy();
-    fireEvent.change(screen.getAllByRole("combobox")[0]!, {
-      target: { value: "4" },
-    });
+    chooseSelectOption("Course for Burger", "Course 4");
     expect(p.onCourse).toHaveBeenCalledWith("key-i1-v1", 4);
     fireEvent.click(screen.getByLabelText("Edit Burger"));
     expect(p.onEdit).toHaveBeenCalledWith(first);
@@ -118,6 +118,8 @@ describe("OrderCart coverage", () => {
     expect(screen.queryByText("Course")).toBeNull();
     p.courseMode = true;
     rerender(<OrderCart {...p} />);
-    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("1");
+    expect(
+      screen.getByRole("combobox", { name: "Course for Burger" }).textContent,
+    ).toContain("Course 1");
   });
 });

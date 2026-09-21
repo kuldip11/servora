@@ -61,7 +61,7 @@ export const MenuPicker = ({
         {availableOrderTypes.length > 1 ? (
           <Select
             value={orderType}
-            onChange={(e) => onOrderTypeChange(e.target.value)}
+            onChange={(e) => onOrderTypeChange(e)}
             options={availableOrderTypes}
             className="flex-1"
           />
@@ -76,7 +76,7 @@ export const MenuPicker = ({
           <Select
             label="Table (required)"
             value={tableId}
-            onChange={(e) => onTableChange(e.target.value)}
+            onChange={(e) => onTableChange(e)}
             options={[
               { value: "", label: "Select a table…" },
               ...(tables

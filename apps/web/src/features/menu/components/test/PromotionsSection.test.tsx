@@ -11,10 +11,12 @@ const mocks = vi.hoisted(() => ({
   categories: [] as any[],
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories }),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listPromotionsFor: vi.fn(),
     promotionStats: vi.fn(),
@@ -23,49 +25,69 @@ vi.mock("@pos/api-client", () => ({
     removePromotion: mocks.remove,
   }),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
-  useQuery: ({ queryKey }: any) => ({
-    data:
-      queryKey?.at(-1) === "stats"
-        ? undefined
-        : queryKey?.includes("stats")
-          ? mocks.stats[queryKey[2]]
-          : mocks.promos,
-  }),
-  useMutation: (opts: any) => ({
-    isPending: false,
-    mutate: async (arg?: any) => {
-      const out = await opts.mutationFn(arg);
-      opts.onSuccess?.(out);
-    },
-  }),
-}));
-vi.mock("@pos/ui", () => ({
-  FormErrorSummary: ({ messages = [] }: any) =>
-    messages.length ? <div>{messages.join(" ")}</div> : null,
-  Button: ({ children, loading: _l, ...p }: any) => (
-    <button {...p}>{children}</button>
-  ),
-  Input: ({ label, ...p }: any) => (
-    <label>
-      {label}
-      <input aria-label={label} {...p} />
-    </label>
-  ),
-  Select: ({ label, options = [], ...p }: any) => (
-    <label>
-      {label}
-      <select aria-label={label} {...p}>
-        {options.map((o: any) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  ),
-}));
+vi.mock("@tanstack/react-query", async () => {
+  const actual = await vi.importActual<typeof import("@tanstack/react-query")>(
+    "@tanstack/react-query",
+  );
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+    useQuery: ({ queryKey }: any) => ({
+      data:
+        queryKey?.at(-1) === "stats"
+          ? undefined
+          : queryKey?.includes("stats")
+            ? mocks.stats[queryKey[2]]
+            : mocks.promos,
+    }),
+    useMutation: (opts: any) => ({
+      isPending: false,
+      mutate: async (arg?: any) => {
+        const out = await opts.mutationFn(arg);
+        opts.onSuccess?.(out);
+      },
+    }),
+  };
+});
+vi.mock("@pos/ui", async () => {
+  const actual = await vi.importActual<typeof import("@pos/ui")>("@pos/ui");
+  return {
+    ...actual,
+    FormErrorSummary: ({ messages = [] }: any) =>
+      messages.length ? <div>{messages.join(" ")}</div> : null,
+    Button: ({ children, loading: _l, ...p }: any) => (
+      <button {...p}>{children}</button>
+    ),
+    Input: ({ label, ...p }: any) => (
+      <label>
+        {label}
+        <input aria-label={label} {...p} />
+      </label>
+    ),
+    Select: ({
+      label,
+      options = [],
+      onChange,
+      containerClassName: _containerClassName,
+      ...p
+    }: any) => (
+      <label>
+        {label}
+        <select
+          aria-label={label}
+          {...p}
+          onChange={(event) => onChange?.(event.target.value)}
+        >
+          {options.map((o: any) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    ),
+  };
+});
 import { PromotionsSection } from "../PromotionsSection";
 const promo: any = {
   id: "p1",

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 const mocks = vi.hoisted(() => ({
   schedules: [
     { id: "s1", scheduleType: "DAILY", startTime: "07:00", endTime: "11:00" },
@@ -18,7 +19,8 @@ vi.mock("@tanstack/react-query", () => ({
       : { mutate: mocks.remove, isPending: false };
   },
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listMenuSchedules: vi.fn(),
     createMenuSchedule: vi.fn(),
@@ -29,7 +31,8 @@ vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: mocks.invalidate },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -58,23 +61,15 @@ describe("MenuScheduleEditor", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Add window" }));
     expect(mocks.add).toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Menu schedule type"), {
-      target: { value: "WEEKLY" },
-    });
-    fireEvent.change(screen.getByLabelText("Day of week"), {
-      target: { value: "5" },
-    });
+    chooseSelectOption("Menu schedule type", "Weekly");
+    chooseSelectOption("Day of week", "Fri");
     fireEvent.click(screen.getByRole("button", { name: "Add window" }));
-    fireEvent.change(screen.getByLabelText("Menu schedule type"), {
-      target: { value: "SPECIFIC_DATE" },
-    });
+    chooseSelectOption("Menu schedule type", "Date range");
     fireEvent.change(screen.getByLabelText("Menu start date"), {
       target: { value: "2026-09-10" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add window" }));
-    fireEvent.change(screen.getByLabelText("Menu schedule type"), {
-      target: { value: "HOLIDAY" },
-    });
+    chooseSelectOption("Menu schedule type", "Holiday");
     fireEvent.change(screen.getByLabelText("Holiday name"), {
       target: { value: "Diwali" },
     });

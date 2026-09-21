@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { BottomSheet, Button, TextInput } from "@pos/ui";
+import { BottomSheet, Button } from "@pos/ui";
 import type { SelectedModifier, CartItem } from "@/features/menu/types";
 import type {
   OrderableMenuItem,
   OrderableModifierGroup,
   OrderableModifierOption,
 } from "@pos/types";
-import { COURSE_LABELS } from "@/features/menu/constants";
 import { itemCustomizationSchema } from "@pos/validation";
 import { useItemCustomiserState } from "@/features/menu/hooks/useItemCustomiserState";
 import { ItemCustomiserControls } from "@/features/menu/components/ItemCustomiserControls";
 import { ModifierGroupList } from "@/features/menu/components/ModifierGroupList";
+import { ItemCustomiserMetaFields } from "@/features/menu/components/ItemCustomiserMetaFields";
+import {
+  buildSimpleCartItem,
+  calculateItemUnitPrice,
+  getModifierGroups,
+  getModifierPrice,
+  getUnmetModifierGroup,
+  getVisibleModifierGroups,
+  isPricingInputValid,
+} from "@/features/menu/components/item-customiser-utils";
 
 interface Props {
   item: OrderableMenuItem;
@@ -33,9 +42,7 @@ export const ItemCustomiser = ({
   const [pricingValidationVisible, setPricingValidationVisible] =
     useState(false);
   const hasVariants = item.variants?.length > 0;
-  const groups: OrderableModifierGroup[] = (item.modifierGroupLinks ?? []).map(
-    (link) => link.group,
-  );
+  const groups: OrderableModifierGroup[] = getModifierGroups(item);
   const hasModifierGroups = groups.length > 0;
   const zoned = item.supportsZones === true;
   const requiresPricingInput =
@@ -77,55 +84,21 @@ export const ItemCustomiser = ({
       ),
     [groups],
   );
-  const modifierPrice = (option: OrderableModifierOption | undefined) => {
-    const scoped = variantId
-      ? option?.variantPrices?.find((price) => price.variantId === variantId)
-      : undefined;
-    return Number(scoped?.additionalPrice ?? option?.additionalPrice ?? 0);
-  };
+  const modifierPrice = (option: OrderableModifierOption | undefined) =>
+    getModifierPrice(option, variantId);
   const allSelectedModifiers: SelectedModifier[] = (
     Object.values(selections) as SelectedModifier[][]
   ).flat();
-  const baseRate = Number(selectedVariant?.price ?? item.basePrice ?? 0);
-  const corePrice =
-    item.pricingMode === "WEIGHT_BASED"
-      ? baseRate * Number(weightQuantity || 0)
-      : item.pricingMode === "OPEN"
-        ? Number(manualPrice || 0)
-        : baseRate;
-  const modifierTotalFor = (mods: SelectedModifier[]) =>
-    mods.reduce((sum, modifier) => {
-      const option = optionById.get(modifier.optionId);
-      return sum + modifierPrice(option) * modifier.quantity;
-    }, 0);
-  const modifierTotal = (() => {
-    if (!zoned) return modifierTotalFor(allSelectedModifiers);
-    const whole = modifierTotalFor(
-      allSelectedModifiers.filter((modifier) => modifier.zoneLabel === "WHOLE"),
-    );
-    const zoneLabels = [
-      ...new Set(
-        allSelectedModifiers
-          .map((modifier) => modifier.zoneLabel)
-          .filter((label): label is string => !!label && label !== "WHOLE"),
-      ),
-    ];
-    const totals = zoneLabels.map((label) =>
-      modifierTotalFor(
-        allSelectedModifiers.filter((modifier) => modifier.zoneLabel === label),
-      ),
-    );
-    const rule = item.zonePricingRule ?? "HIGHER";
-    const zonedTotal =
-      rule === "HIGHER"
-        ? Math.max(0, ...totals)
-        : rule === "AVERAGE"
-          ? totals.reduce((sum, value) => sum + value, 0) /
-            Math.max(1, totals.length)
-          : totals.reduce((sum, value) => sum + value * 0.5, 0);
-    return whole + zonedTotal;
-  })();
-  const unitPrice = corePrice + modifierTotal;
+  const unitPrice = calculateItemUnitPrice({
+    item,
+    selectedVariantPrice: selectedVariant?.price,
+    selectedModifiers: allSelectedModifiers,
+    modifierOptions: optionById,
+    variantId,
+    weightQuantity,
+    manualPrice,
+    zoned,
+  });
 
   useEffect(() => {
     if (
@@ -134,17 +107,7 @@ export const ItemCustomiser = ({
       !existingCartItem &&
       !requiresPricingInput
     ) {
-      onConfirm({
-        menuItemId: item.id,
-        name: item.name,
-        basePrice: Number(item.basePrice),
-        modifiers: [],
-        chefNotes: "",
-        seatLabel: "",
-        ...(courseMode ? { course: 1 } : {}),
-        quantity: 1,
-        unitPrice: Number(item.basePrice),
-      });
+      onConfirm(buildSimpleCartItem(item, courseMode));
       onClose();
     }
   }, []);
@@ -195,13 +158,7 @@ export const ItemCustomiser = ({
     );
   }
 
-  const visibleGroups = groups.filter(
-    (group) =>
-      !group.dependsOnOptionId ||
-      allSelectedModifiers.some(
-        (option) => option.optionId === group.dependsOnOptionId,
-      ),
-  );
+  const visibleGroups = getVisibleModifierGroups(groups, allSelectedModifiers);
   const boundedGuidedStep = Math.min(
     guidedStep,
     Math.max(visibleGroups.length - 1, 0),
@@ -217,27 +174,17 @@ export const ItemCustomiser = ({
     !activeGuidedGroup ||
     (selections[activeGuidedBucket ?? activeGuidedGroup.id]?.length ?? 0) >=
       activeGuidedGroup.minSelections;
-  const unmetGroup = zoned
-    ? (["LEFT", "RIGHT"] as const)
-        .flatMap((zone) => visibleGroups.map((group) => ({ ...group, zone })))
-        .find(
-          (group) =>
-            (selections[bucketFor(group.id, group.zone)]?.length ?? 0) <
-            group.minSelections,
-        )
-    : visibleGroups.find(
-        (group) => (selections[group.id]?.length ?? 0) < group.minSelections,
-      );
-  const pricingInputValid =
-    item.pricingMode === "WEIGHT_BASED"
-      ? !!item.weightUnit && Number(weightQuantity) > 0
-      : item.pricingMode === "OPEN"
-        ? Number.isFinite(Number(manualPrice)) &&
-          manualPrice !== "" &&
-          Number(manualPrice) >= Number(item.openPriceMin ?? 0) &&
-          (item.openPriceMax == null ||
-            Number(manualPrice) <= Number(item.openPriceMax))
-        : true;
+  const unmetGroup = getUnmetModifierGroup({
+    visibleGroups,
+    selections,
+    zoned,
+    bucketFor,
+  });
+  const pricingInputValid = isPricingInputValid(
+    item,
+    weightQuantity,
+    manualPrice,
+  );
 
   function handleConfirm() {
     if (unmetGroup || !pricingInputValid) return;
@@ -376,37 +323,14 @@ export const ItemCustomiser = ({
           </div>
         )}
 
-        {courseMode && (
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Course
-            </p>
-            <div className="flex gap-2">
-              {([1, 2, 3] as const).map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => changeCourse(value)}
-                  className={`flex-1 rounded-xl border-2 py-2.5 text-xs font-semibold ${course === value ? "border-primary bg-primary-surface text-primary" : "border-border text-text-secondary"}`}
-                >
-                  {COURSE_LABELS[value]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <TextInput
-          label="Seat / diner (optional)"
-          placeholder="e.g. Seat 1 or Priya"
-          value={seatLabel}
-          onChange={(event) => changeSeatLabel(event.target.value)}
-        />
-        <TextInput
-          label="Note for Chef"
-          placeholder="e.g. no onion, extra spicy…"
-          value={chefNotes}
-          onChange={(event) => changeChefNotes(event.target.value)}
-          className="rounded-xl bg-surface-secondary"
+        <ItemCustomiserMetaFields
+          courseMode={courseMode}
+          course={course}
+          seatLabel={seatLabel}
+          chefNotes={chefNotes}
+          onCourse={changeCourse}
+          onSeatLabel={changeSeatLabel}
+          onChefNotes={changeChefNotes}
         />
         {choiceValidationVisible && unmetGroup && (
           <p className="text-center text-xs text-warning">

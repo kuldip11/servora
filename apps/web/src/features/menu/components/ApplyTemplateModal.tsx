@@ -3,14 +3,14 @@ import { applyTemplateSchema, type ApplyTemplateInput } from "@pos/validation";
 import type { MenuTemplate } from "@pos/types";
 import {
   Button,
-  FieldErrorText,
   FormErrorSummary,
   Modal,
   Input,
   QueryErrorState,
+  Select,
 } from "@pos/ui";
 import { useForm } from "react-hook-form";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { useApplyTemplate } from "@/features/menu/hooks/useApplyTemplate";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import { notifySuccess } from "@/shared/lib/notify";
@@ -28,6 +28,8 @@ export const ApplyTemplateModal = ({
     register,
     handleSubmit,
     setError,
+    setValue,
+    watch,
     formState: { errors, isValid },
   } = useForm<ApplyTemplateInput>({
     resolver: zodResolver(applyTemplateSchema),
@@ -84,34 +86,27 @@ export const ApplyTemplateModal = ({
             className="py-5"
           />
         ) : (
-          <div>
-            <label
-              htmlFor="template-branch"
-              className="text-sm font-medium text-text-primary mb-1.5 block"
-            >
-              Branch
-            </label>
-            <select
-              id="template-branch"
-              {...register("branchId", { onChange: clearFormErrors })}
-              aria-invalid={errors.branchId ? "true" : "false"}
-              aria-describedby={
-                errors.branchId ? "template-branch-error" : undefined
-              }
-              className="w-full px-3 py-2 text-sm border border-border rounded-md"
-            >
-              <option value="">Tenant-wide (all branches)</option>
-              {branchesQuery.data?.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-            <FieldErrorText
-              id="template-branch-error"
-              message={errors.branchId?.message}
-            />
-          </div>
+          <Select
+            id="template-branch"
+            label="Branch"
+            value={watch("branchId")}
+            onChange={(value) => {
+              clearFormErrors();
+              setValue("branchId", value, {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              });
+            }}
+            error={errors.branchId?.message}
+            options={[
+              { value: "", label: "Tenant-wide (all branches)" },
+              ...(branchesQuery.data ?? []).map((branch) => ({
+                value: branch.id,
+                label: branch.name,
+              })),
+            ]}
+          />
         )}
         <p className="text-xs text-text-disabled">
           Creates {template.items.length} item(s) as drafts in a new category —

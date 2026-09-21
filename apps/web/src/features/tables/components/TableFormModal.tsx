@@ -27,6 +27,9 @@ export const TableFormModal = ({
   handleSubmit,
   pending,
   submitDisabled,
+  branchId = "",
+  onBranchIdChange,
+  onBranchIdBlur,
   dependencyError,
   onRetryDependency,
   onClose,
@@ -43,6 +46,9 @@ export const TableFormModal = ({
   handleSubmit: UseFormHandleSubmit<TableFormValues>;
   pending: boolean;
   submitDisabled: boolean;
+  branchId?: string;
+  onBranchIdChange?: (value: string) => void;
+  onBranchIdBlur?: () => void;
   dependencyError?: string;
   onRetryDependency?: () => void;
   onClose: () => void;
@@ -97,7 +103,9 @@ export const TableFormModal = ({
             {...(errors.branchId?.message
               ? { error: errors.branchId.message }
               : {})}
-            {...register("branchId")}
+            value={branchId}
+            onChange={(value) => onBranchIdChange?.(value)}
+            onBlur={onBranchIdBlur}
           />
         )}
         <div className="flex gap-2 justify-end">

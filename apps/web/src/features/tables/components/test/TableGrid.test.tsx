@@ -1,7 +1,8 @@
 import React, { act } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children }: any) => <div>{children}</div>,
   Card: ({ children }: any) => <section>{children}</section>,
   Button: ({ children, ...p }: any) => <button {...p}>{children}</button>,
@@ -14,7 +15,7 @@ vi.mock("@pos/ui", () => ({
     <select
       aria-label="status"
       value={value}
-      onChange={onChange}
+      onChange={(event) => onChange?.(event.target.value)}
       disabled={disabled}
     >
       <option value="AVAILABLE">AVAILABLE</option>

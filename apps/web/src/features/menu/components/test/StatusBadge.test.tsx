@@ -1,10 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@pos/ui", () => ({
-  StatusBadge: ({ label, tone }: any) => <span data-tone={tone}>{label}</span>,
-}));
+import { describe, expect, it } from "vitest";
 
 import { StatusBadge } from "../StatusBadge";
 

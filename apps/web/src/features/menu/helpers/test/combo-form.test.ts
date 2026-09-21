@@ -7,7 +7,8 @@ import {
   type ComboDraft,
 } from "../combo-form";
 
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiFieldErrors: (error: unknown) =>
     (error as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {},
 }));

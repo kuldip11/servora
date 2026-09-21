@@ -30,7 +30,6 @@ export * from "./components/form/PasswordInput";
 export * from "./components/form/FieldErrorText";
 
 export type { SelectOption } from "./components/selection/shared";
-export * from "./components/selection/SelectMenu";
 
 export type {
   MenuEntry,

@@ -13,7 +13,7 @@ vi.mock("@pos/ui", () => ({
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
-  SelectMenu: ({ label, options, onChange, ...props }: any) => (
+  Select: ({ label, options, onChange, ...props }: any) => (
     <label>
       {label}
       <select

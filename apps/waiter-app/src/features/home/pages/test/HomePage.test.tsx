@@ -15,7 +15,8 @@ vi.mock("@/features/home/hooks/useCustomerRequests", () => ({
   useCustomerRequests: mocks.useCustomerRequests,
   useResolveCustomerRequest: mocks.useResolveCustomerRequest,
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
 vi.mock("@pos/ui", () => ({

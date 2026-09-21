@@ -21,7 +21,7 @@ import { usePermissions } from "@/shared/auth/permissions";
 import {
   useCancellationReasons,
   cancellationReasonKeys,
-} from "@/features/orders/hooks/useCancellationReasons";
+} from "@/features/orders";
 import { cancellationReasonsService } from "@/features/orders/services/cancellation-reasons.service";
 import { PricingSettingsCard } from "@/features/settings/components/PricingSettingsCard";
 import { KitchenOperationsSettingsCard } from "@/features/settings/components/KitchenOperationsSettingsCard";

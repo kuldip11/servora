@@ -1,13 +1,6 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  IconButton,
-  QueryErrorState,
-  Spinner,
-  StaleDataBanner,
-  toast,
-} from "@pos/ui";
-import { X } from "lucide-react";
+import { StaleDataBanner, toast } from "@pos/ui";
 import { useOrder } from "@/features/orders/hooks/useOrder";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
 import { useUpdateTicketStatus } from "@/features/orders/hooks/useUpdateTicketStatus";
@@ -17,23 +10,22 @@ import { TicketGroup } from "@/features/orders/components/TicketGroup";
 import { OrderTotals } from "@/features/orders/components/OrderTotals";
 import { OrderTimeline } from "@/features/orders/components/OrderTimeline";
 import { OrderActions } from "@/features/orders/components/OrderActions";
-import { MergeOrderDialog } from "@/features/orders/components/MergeOrderDialog";
-import { SplitBillDialog } from "@/features/orders/components/SplitBillDialog";
-import { TransferTableDialog } from "@/features/orders/components/TransferTableDialog";
-import { SeatShareDialog } from "@/features/orders/components/SeatShareDialog";
-import { RefireItemDialog } from "@/features/orders/components/RefireItemDialog";
 import { useLineAdjustments } from "@/features/orders/hooks/useLineAdjustments";
 import { hasPermission } from "@/features/auth/storage";
 import {
   fetchCancellationReasons,
   refillOrderItem,
 } from "@/features/orders/api/orders";
-import { ReasonDialog } from "@/features/orders/components/ReasonDialog";
+import type { ManagerApprovalRequest } from "@/features/orders/components/ManagerApprovalDialog";
 import {
-  ManagerApprovalDialog,
-  type ManagerApprovalRequest,
-} from "@/features/orders/components/ManagerApprovalDialog";
+  OrderDetailDialogs,
+  type OrderReasonAction,
+} from "@/features/orders/components/OrderDetailDialogs";
 import { extractApiError, toApiClientError } from "@pos/api-client";
+import {
+  OrderDetailError,
+  OrderDetailLoading,
+} from "@/features/orders/components/OrderDetailFeedback";
 
 interface Props {
   orderId: string;
@@ -62,9 +54,7 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
     shares: Array<{ seatLabel: string; shareRatio: number }>;
   } | null>(null);
   const [refireItemId, setRefireItemId] = useState<string | null>(null);
-  const [reasonAction, setReasonAction] = useState<
-    { type: "cancel" } | { type: "void" | "comp"; itemId: string } | null
-  >(null);
+  const [reasonAction, setReasonAction] = useState<OrderReasonAction>(null);
   const [pendingApproval, setPendingApproval] =
     useState<ManagerApprovalRequest | null>(null);
   const cancellationReasonsQuery = useQuery({
@@ -114,71 +104,16 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
     [updateTicketStatus],
   );
 
-  if (isLoading)
-    return (
-      <div className="flex flex-col h-screen bg-background">
-        <div className="bg-surface border-b border-border px-4 py-3 flex items-center gap-3">
-          {}
-          <IconButton
-            icon={X}
-            aria-label="Back to Orders"
-            size="lg"
-            className="w-9 h-9 rounded-xl bg-surface-secondary hover:bg-surface-secondary"
-            onClick={onBack}
-          />
-          <h2 className="font-bold text-text-primary">Order Detail</h2>
-        </div>
-        <div className="flex justify-center py-12">
-          <Spinner className="w-6 h-6" />
-        </div>
-      </div>
-    );
+  if (isLoading) return <OrderDetailLoading onBack={onBack} />;
 
   if (orderQuery.isError && !order) {
-    const apiError = toApiClientError(orderQuery.error);
-    const notFound = apiError.status === 404;
-    const forbidden = apiError.status === 403;
     return (
-      <div className="flex h-screen flex-col bg-background">
-        <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
-          <IconButton
-            icon={X}
-            aria-label="Back to Orders"
-            size="lg"
-            className="h-9 w-9 rounded-xl bg-surface-secondary hover:bg-surface-secondary"
-            onClick={onBack}
-          />
-          <h2 className="font-bold text-text-primary">Order Detail</h2>
-        </div>
-        <div className="flex flex-1 items-center justify-center p-4">
-          <QueryErrorState
-            className="w-full max-w-lg"
-            title={
-              notFound
-                ? "Order not found"
-                : forbidden
-                  ? "You do not have access to this order"
-                  : "Unable to load order"
-            }
-            description={
-              notFound
-                ? "This order no longer exists or the link is invalid."
-                : extractApiError(
-                    orderQuery.error,
-                    forbidden
-                      ? "Your current role does not allow access to this order."
-                      : "The order could not be loaded. Please retry before acting on it.",
-                  )
-            }
-            isRetrying={orderQuery.isFetching}
-            onRetry={
-              notFound || forbidden
-                ? undefined
-                : () => void orderQuery.refetch()
-            }
-          />
-        </div>
-      </div>
+      <OrderDetailError
+        error={orderQuery.error}
+        fetching={orderQuery.isFetching}
+        onBack={onBack}
+        onRetry={() => void orderQuery.refetch()}
+      />
     );
   }
 
@@ -308,57 +243,18 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
             : undefined
         }
       />
-      <SplitBillDialog
-        open={showSplit}
+      <OrderDetailDialogs
+        order={order}
         orderId={orderId}
-        items={order.items ?? []}
-        onClose={() => setShowSplit(false)}
-      />
-      <MergeOrderDialog
-        open={showMerge}
-        orderId={orderId}
-        onClose={() => setShowMerge(false)}
-      />
-      <SeatShareDialog
-        open={seatShareDialog !== null}
-        orderId={orderId}
-        itemId={seatShareDialog?.itemId ?? null}
-        initialShares={seatShareDialog?.shares ?? []}
-        onClose={() => setSeatShareDialog(null)}
-      />
-      <RefireItemDialog
-        open={refireItemId !== null}
-        orderId={orderId}
-        itemId={refireItemId}
-        onClose={() => setRefireItemId(null)}
-      />
-      <TransferTableDialog
-        open={showTransfer}
-        orderId={orderId}
-        currentTableId={order.tableId}
-        onClose={() => setShowTransfer(false)}
-      />
-      <ManagerApprovalDialog
-        open={pendingApproval !== null}
-        orderId={orderId}
-        request={pendingApproval}
-        onClose={() => setPendingApproval(null)}
-        onApproved={(approvalToken) =>
-          pendingApproval &&
-          submitLineAdjustment(pendingApproval, approvalToken)
-        }
-      />
-      <ReasonDialog
-        open={reasonAction !== null}
-        title={
-          reasonAction?.type === "cancel"
-            ? "Cancel order"
-            : reasonAction?.type === "comp"
-              ? "Comp item"
-              : "Void item"
-        }
-        reasons={cancellationReasons}
-        loading={updateStatus.isPending || lineAdjustments.isPending}
+        showTransfer={showTransfer}
+        showSplit={showSplit}
+        showMerge={showMerge}
+        seatShareDialog={seatShareDialog}
+        refireItemId={refireItemId}
+        pendingApproval={pendingApproval}
+        reasonAction={reasonAction}
+        cancellationReasons={cancellationReasons}
+        reasonsLoading={updateStatus.isPending || lineAdjustments.isPending}
         {...(cancellationReasonsQuery.isError
           ? {
               reasonsError: extractApiError(
@@ -373,8 +269,18 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
         }
         reasonsRetrying={cancellationReasonsQuery.isFetching}
         onRetryReasons={() => void cancellationReasonsQuery.refetch()}
-        onClose={() => setReasonAction(null)}
-        onSubmit={(reason) => {
+        onCloseTransfer={() => setShowTransfer(false)}
+        onCloseSplit={() => setShowSplit(false)}
+        onCloseMerge={() => setShowMerge(false)}
+        onCloseSeatShare={() => setSeatShareDialog(null)}
+        onCloseRefire={() => setRefireItemId(null)}
+        onCloseApproval={() => setPendingApproval(null)}
+        onApproved={(approvalToken) =>
+          pendingApproval &&
+          submitLineAdjustment(pendingApproval, approvalToken)
+        }
+        onCloseReason={() => setReasonAction(null)}
+        onSubmitReason={(reason) => {
           if (!reasonAction) return;
           if (reasonAction.type === "cancel") {
             updateStatus.mutate(

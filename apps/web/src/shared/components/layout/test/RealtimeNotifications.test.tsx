@@ -6,7 +6,10 @@ const h = vi.hoisted(() => ({
   toast: vi.fn(),
   invalidate: vi.fn(),
 }));
-vi.mock("@pos/ui", () => ({ toast: h.toast }));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  toast: h.toast,
+}));
 vi.mock("@/shared/lib/realtime", () => ({
   useRealtimeEvent: (name: string, cb: (e: any) => void) => {
     h.handlers.set(name, cb);

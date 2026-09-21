@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   has: vi.fn(),
@@ -25,7 +26,8 @@ const h = vi.hoisted(() => ({
   },
 }));
 let data: any = {};
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -47,7 +49,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: h.success,
   notifyError: h.error,
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createOrganizationsApi: () => h.org,
   createMenuApi: () => h.menu,
 }));
@@ -163,10 +166,7 @@ describe("OrganizationManagementSection coverage", () => {
       target: { value: " Tier " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create tier" }));
-    fireEvent.change(
-      screen.getByText("Discount type").querySelector("select")!,
-      { target: { value: "FIXED" } },
-    );
+    chooseSelectOption("Discount type", "Fixed amount");
     fireEvent.change(screen.getByLabelText("Amount"), {
       target: { value: "15" },
     });
@@ -188,9 +188,7 @@ describe("OrganizationManagementSection coverage", () => {
     await waitFor(() =>
       expect(h.org.createLoyaltyTier).toHaveBeenCalledTimes(2),
     );
-    fireEvent.change(screen.getAllByRole("combobox")[0]!, {
-      target: { value: "o2" },
-    });
+    chooseSelectOption("Organization", "Org Two");
     expect(screen.getByText(/Org Two · 0 member/)).toBeTruthy();
   });
   it("covers mutation errors", async () => {

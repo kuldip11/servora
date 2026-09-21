@@ -10,7 +10,7 @@ let branches: any[] | undefined;
 let overrides: any[] | undefined;
 let loading = false;
 
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: branches }),
 }));
 vi.mock("@/features/menu/hooks/useMenuItemBranchOverrides", () => ({

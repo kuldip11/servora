@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
@@ -89,37 +95,39 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         </div>
       ))}
       <div className="grid grid-cols-2 gap-2 rounded border border-border p-2">
-        <select
+        <Select
           aria-label="Ordering channel"
           value={channel}
-          onChange={(event) => setChannel(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="STAFF">Staff</option>
-          <option value="CUSTOMER_QR">Customer QR</option>
-        </select>
-        <select
+          onChange={setChannel}
+          className="text-sm"
+          options={[
+            { value: "STAFF", label: "Staff" },
+            { value: "CUSTOMER_QR", label: "Customer QR" },
+          ]}
+        />
+        <Select
           aria-label="Fulfillment type"
           value={fulfillmentType}
-          onChange={(event) => setFulfillmentType(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          {FULFILLMENT_TYPES.map((type) => (
-            <option key={type}>{type}</option>
-          ))}
-        </select>
-        <select
+          onChange={setFulfillmentType}
+          className="text-sm"
+          options={FULFILLMENT_TYPES.map((type) => ({
+            value: type,
+            label: type,
+          }))}
+        />
+        <Select
           aria-label="Channel status"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="ACTIVE">Active</option>
-          <option value="OUT_OF_STOCK">Out of stock</option>
-          <option value="HIDDEN">Hidden status</option>
-          <option value="SEASONAL">Seasonal</option>
-          <option value="DISCONTINUED">Discontinued</option>
-        </select>
+          onChange={setStatus}
+          className="text-sm"
+          options={[
+            { value: "ACTIVE", label: "Active" },
+            { value: "OUT_OF_STOCK", label: "Out of stock" },
+            { value: "HIDDEN", label: "Hidden status" },
+            { value: "SEASONAL", label: "Seasonal" },
+            { value: "DISCONTINUED", label: "Discontinued" },
+          ]}
+        />
         <Input
           aria-label="Channel override reason"
           value={reason}

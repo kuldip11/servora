@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   queryData: new Map<string, unknown>(),
@@ -30,7 +31,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -80,7 +82,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -150,9 +153,7 @@ describe("BuffetPricingSection", () => {
     ]);
     const { rerender } = render(<BuffetPricingSection />);
     expect(screen.getByText(/ADULT · ₹499.00/)).toBeTruthy();
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "CHILD" },
-    });
+    chooseSelectOption("Cover tier", "Child");
     fireEvent.change(screen.getByLabelText("Rate per cover"), {
       target: { value: "299" },
     });

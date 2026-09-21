@@ -9,7 +9,8 @@ vi.mock("@/features/analytics/hooks/useDashboardStats", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: any) => <a href={String(to)}>{children}</a>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children }: any) => <div>{children}</div>,
   Card: ({ children }: any) => <section>{children}</section>,
   StatCard: ({ title, value }: any) => (

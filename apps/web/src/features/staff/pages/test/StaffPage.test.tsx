@@ -24,7 +24,7 @@ vi.mock("@/features/staff/hooks/useStaff", () => ({
 vi.mock("@/features/staff/hooks/useRoles", () => ({
   useRoles: () => mocks.roles.current,
 }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: mocks.branches.current }),
 }));
 vi.mock("@/features/staff/hooks/useAddStaff", () => ({
@@ -115,7 +115,8 @@ vi.mock("@/features/staff/components/roles/RoleManager", () => ({
     </div>
   ),
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Plus: () => null,
   Users: () => null,
   Trash2: () => null,
@@ -123,7 +124,8 @@ vi.mock("lucide-react", () => ({
   UserX: () => null,
   Pencil: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -165,7 +167,7 @@ vi.mock("@pos/ui", () => ({
       <button onClick={onClear}>clear-search</button>
     </div>
   ),
-  SelectMenu: ({ value, onChange, ...props }: any) => (
+  Select: ({ value, onChange, ...props }: any) => (
     <select
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}

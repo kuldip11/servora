@@ -21,7 +21,7 @@ import type { useItemFormWorkflow } from "@/features/menu/hooks/useItemFormWorkf
 import type { useModifierGroups } from "@/features/menu/hooks/useModifierGroups";
 import type { useMenuTags } from "@/features/menu/hooks/useMenuTags";
 import type { useMenuAllergens } from "@/features/menu/hooks/useMenuAllergens";
-import type { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import type { useMenuCategories } from "@/features/menu";
 
 type Workflow = ReturnType<typeof useItemFormWorkflow>;
 type Groups = NonNullable<ReturnType<typeof useModifierGroups>["data"]>;
@@ -112,36 +112,28 @@ export const ItemAdvancedOptions = ({
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <label className="text-sm font-medium text-text-primary">
-            Pricing mode
-            <select
-              className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-              value={pricingMode}
-              onChange={(event) =>
-                setPricingMode(event.target.value as typeof pricingMode)
-              }
-            >
-              <option value="FIXED">Fixed price</option>
-              <option value="WEIGHT_BASED">Weight based</option>
-              <option value="OPEN">Open / manual price</option>
-            </select>
-          </label>
+          <Select
+            label="Pricing mode"
+            value={pricingMode}
+            onChange={(value) => setPricingMode(value as typeof pricingMode)}
+            options={[
+              { value: "FIXED", label: "Fixed price" },
+              { value: "WEIGHT_BASED", label: "Weight based" },
+              { value: "OPEN", label: "Open / manual price" },
+            ]}
+          />
           {pricingMode === "WEIGHT_BASED" && (
-            <label className="text-sm font-medium text-text-primary">
-              Rate unit
-              <select
-                className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                value={weightUnit}
-                onChange={(event) =>
-                  setWeightUnit(event.target.value as typeof weightUnit)
-                }
-              >
-                <option value="G">gram (g)</option>
-                <option value="KG">kilogram (kg)</option>
-                <option value="LB">pound (lb)</option>
-                <option value="OZ">ounce (oz)</option>
-              </select>
-            </label>
+            <Select
+              label="Rate unit"
+              value={weightUnit}
+              onChange={(value) => setWeightUnit(value as typeof weightUnit)}
+              options={[
+                { value: "G", label: "gram (g)" },
+                { value: "KG", label: "kilogram (kg)" },
+                { value: "LB", label: "pound (lb)" },
+                { value: "OZ", label: "ounce (oz)" },
+              ]}
+            />
           )}
           {pricingMode === "OPEN" && (
             <>
@@ -182,22 +174,18 @@ export const ItemAdvancedOptions = ({
             Supports split zones / half-and-half
           </label>
           {supportsZones && (
-            <label className="text-sm font-medium text-text-primary">
-              Zone pricing rule
-              <select
-                className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                value={zonePricingRule}
-                onChange={(event) =>
-                  setZonePricingRule(
-                    event.target.value as typeof zonePricingRule,
-                  )
-                }
-              >
-                <option value="HIGHER">Charge higher-priced zone</option>
-                <option value="AVERAGE">Average zone modifier totals</option>
-                <option value="SUM_HALF">Sum half of each zone</option>
-              </select>
-            </label>
+            <Select
+              label="Zone pricing rule"
+              value={zonePricingRule}
+              onChange={(value) =>
+                setZonePricingRule(value as typeof zonePricingRule)
+              }
+              options={[
+                { value: "HIGHER", label: "Charge higher-priced zone" },
+                { value: "AVERAGE", label: "Average zone modifier totals" },
+                { value: "SUM_HALF", label: "Sum half of each zone" },
+              ]}
+            />
           )}
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -287,7 +275,7 @@ export const ItemAdvancedOptions = ({
             { value: "GUIDED_BUILDER", label: "Guided build-your-own" },
           ]}
           onChange={(event) =>
-            setDisplayMode(event.target.value as "STANDARD" | "GUIDED_BUILDER")
+            setDisplayMode(event as "STANDARD" | "GUIDED_BUILDER")
           }
         />
         <Button

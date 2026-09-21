@@ -6,6 +6,7 @@ import {
   Page,
   PageHeader,
   SearchInput,
+  Select,
   Spinner,
 } from "@pos/ui";
 import { createAvailabilityApi } from "@pos/api-client";
@@ -32,10 +33,7 @@ type DashboardResponse = {
   rows: AvailabilityRow[];
 };
 
-import {
-  AVAILABILITY_CAUSES,
-  AVAILABILITY_SELECT_CLASS,
-} from "@/features/availability/constants";
+import { AVAILABILITY_CAUSES } from "@/features/availability/constants";
 
 export const AvailabilityDashboardPage = () => {
   const [channel, setChannel] = useState("UNSCOPED");
@@ -113,47 +111,40 @@ export const AvailabilityDashboardPage = () => {
             placeholder="Search item or branch"
             aria-label="Search availability exceptions"
           />
-          <label className="text-sm font-medium text-text-primary">
-            Channel
-            <select
-              className={`mt-1 w-full ${AVAILABILITY_SELECT_CLASS}`}
-              value={channel}
-              onChange={(event) => setChannel(event.target.value)}
-            >
-              <option value="UNSCOPED">All channels</option>
-              <option value="STAFF">Staff</option>
-              <option value="CUSTOMER_QR">Customer QR</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Fulfillment
-            <select
-              className={`mt-1 w-full ${AVAILABILITY_SELECT_CLASS}`}
-              value={fulfillmentType}
-              onChange={(event) => setFulfillmentType(event.target.value)}
-            >
-              <option value="UNSCOPED">All fulfillment types</option>
-              <option value="DINE_IN">Dine in</option>
-              <option value="TAKEAWAY">Takeaway</option>
-              <option value="DELIVERY">Delivery</option>
-              <option value="ONLINE">Online</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Cause
-            <select
-              className={`mt-1 w-full ${AVAILABILITY_SELECT_CLASS}`}
-              value={cause}
-              onChange={(event) => setCause(event.target.value)}
-            >
-              <option value="">All causes</option>
-              {AVAILABILITY_CAUSES.map((value) => (
-                <option key={value} value={value}>
-                  {value.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Channel"
+            value={channel}
+            onChange={setChannel}
+            options={[
+              { value: "UNSCOPED", label: "All channels" },
+              { value: "STAFF", label: "Staff" },
+              { value: "CUSTOMER_QR", label: "Customer QR" },
+            ]}
+          />
+          <Select
+            label="Fulfillment"
+            value={fulfillmentType}
+            onChange={setFulfillmentType}
+            options={[
+              { value: "UNSCOPED", label: "All fulfillment types" },
+              { value: "DINE_IN", label: "Dine in" },
+              { value: "TAKEAWAY", label: "Takeaway" },
+              { value: "DELIVERY", label: "Delivery" },
+              { value: "ONLINE", label: "Online" },
+            ]}
+          />
+          <Select
+            label="Cause"
+            value={cause}
+            onChange={setCause}
+            options={[
+              { value: "", label: "All causes" },
+              ...AVAILABILITY_CAUSES.map((value) => ({
+                value,
+                label: value.replace(/_/g, " "),
+              })),
+            ]}
+          />
           <Button
             variant="secondary"
             onClick={() => void load()}

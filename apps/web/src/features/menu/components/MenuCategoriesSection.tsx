@@ -12,7 +12,7 @@ import {
   Spinner,
   StaleDataBanner,
 } from "@pos/ui";
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useMenuCategories } from "@/features/menu";
 import { useAddCategory } from "@/features/menu/hooks/useAddCategory";
 import { useRenameCategory } from "@/features/menu/hooks/useRenameCategory";
 import { useDeleteCategory } from "@/features/menu/hooks/useDeleteCategory";

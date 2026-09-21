@@ -19,7 +19,7 @@ vi.mock("@pos/ui", () => ({
   TextInput: ({ placeholder, value, onChange }: any) => (
     <input aria-label={placeholder} value={value} onChange={onChange} />
   ),
-  SelectMenu: ({ label, onChange, options = [], "aria-label": aria }: any) => (
+  Select: ({ label, onChange, options = [], "aria-label": aria }: any) => (
     <label>
       {label}
       <select

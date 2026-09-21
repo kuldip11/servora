@@ -16,7 +16,8 @@ vi.mock("@/store/auth", () => ({ useAuthStore: mocks.auth }));
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/orders/hooks/useCancellationReasons", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCancellationReasons: mocks.reasons,
   cancellationReasonKeys: { all: ["reasons"], active: ["reasons", "active"] },
 }));
@@ -34,7 +35,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: (options: any) => ({
     isPending: false,
@@ -61,12 +63,14 @@ vi.mock("@/features/settings/components/KitchenOperationsSettingsCard", () => ({
 vi.mock("@/features/settings/components/ApprovalThresholdSettingsCard", () => ({
   ApprovalThresholdSettingsCard: () => <div>approval-card</div>,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Building2: () => null,
   Shield: () => null,
   Palette: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (

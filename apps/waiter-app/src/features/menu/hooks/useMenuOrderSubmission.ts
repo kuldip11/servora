@@ -9,8 +9,8 @@ import type {
 } from "@/features/menu/hooks/useOrderDraft";
 import type { AddOrderItemInput } from "@/features/orders/api/orders";
 import type { CreateOrderInput } from "@/features/orders/api/createOrder";
-import { useAddOrderItems } from "@/features/orders/hooks/useAddOrderItems";
-import { useCreateOrder } from "@/features/orders/hooks/useCreateOrder";
+import { useAddOrderItems } from "@/features/orders";
+import { useCreateOrder } from "@/features/orders";
 
 type Params = {
   cart: CartItem[];

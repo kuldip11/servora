@@ -172,9 +172,7 @@ export const LoyaltySection = () => {
           label="Discount"
           required
           value={discountType}
-          onChange={(event) =>
-            setDiscountType(event.target.value as "PERCENT" | "FIXED")
-          }
+          onChange={(event) => setDiscountType(event as "PERCENT" | "FIXED")}
           options={[
             { value: "PERCENT", label: "Percentage" },
             { value: "FIXED", label: "Fixed amount" },
@@ -305,7 +303,7 @@ export const LoyaltySection = () => {
             error={customerErrors.fieldErrors.loyaltyTierId}
             onChange={(event) => {
               customerErrors.clearFieldError("loyaltyTierId");
-              setCustomerTierId(event.target.value);
+              setCustomerTierId(event);
             }}
             options={[
               { value: "", label: "No tier" },
@@ -356,7 +354,7 @@ export const LoyaltySection = () => {
               onChange={(event) =>
                 assign.mutate({
                   id: customer.id,
-                  loyaltyTierId: event.target.value || null,
+                  loyaltyTierId: event || null,
                 })
               }
               options={[

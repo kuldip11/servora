@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, GitBranch } from "lucide-react";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { userHasPermission } from "@/shared/auth/permissions";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/shared/utils";

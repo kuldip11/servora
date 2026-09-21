@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
 import type { PriceRule } from "@pos/types";
 import { createMenuApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
@@ -65,18 +71,16 @@ export const BuffetPricingSection = () => {
         />
       ) : null}
       <div className="grid max-w-xl grid-cols-2 gap-2">
-        <label className="text-sm font-medium text-text-primary">
-          Cover tier
-          <select
-            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            value={tier}
-            onChange={(event) => setTier(event.target.value as typeof tier)}
-          >
-            <option value="">Any cover</option>
-            <option value="ADULT">Adult</option>
-            <option value="CHILD">Child</option>
-          </select>
-        </label>
+        <Select
+          label="Cover tier"
+          value={tier}
+          onChange={(value) => setTier(value as typeof tier)}
+          options={[
+            { value: "", label: "Any cover" },
+            { value: "ADULT", label: "Adult" },
+            { value: "CHILD", label: "Child" },
+          ]}
+        />
         <Input
           label="Rate per cover"
           required

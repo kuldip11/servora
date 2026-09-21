@@ -7,10 +7,9 @@ const mocks = vi.hoisted(() => ({
   fetchNextPage: vi.fn(),
   observer: null as any,
 }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useInfiniteOrders: mocks.useInfiniteOrders,
-}));
-vi.mock("@/features/orders/components/OrderCard", () => ({
   OrderCard: ({ order, onSelect }: any) => (
     <button onClick={() => onSelect(order.id)}>Order {order.id}</button>
   ),

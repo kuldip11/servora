@@ -1,8 +1,10 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div role="dialog">
@@ -55,7 +57,7 @@ describe("ReasonDialog", () => {
         onSubmit={submit}
       />,
     );
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "r1" } });
+    chooseSelectOption("Reason", "Mistake");
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect(submit).toHaveBeenLastCalledWith({
       cancellationReasonId: "r1",

@@ -64,7 +64,20 @@ export const UpdateInventoryStockForm = ({
         required
         options={INVENTORY_TRANSACTION_OPTIONS}
         error={form.formState.errors.transactionType?.message}
-        {...form.register("transactionType")}
+        value={form.watch("transactionType")}
+        onChange={(value) =>
+          form.setValue(
+            "transactionType",
+            value as UpdateInventoryStockInput["transactionType"],
+            { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+          )
+        }
+        onBlur={() =>
+          form.setValue("transactionType", form.getValues("transactionType"), {
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
       />
       <Input
         label="Quantity"

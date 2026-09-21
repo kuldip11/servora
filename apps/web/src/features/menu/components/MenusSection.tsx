@@ -13,7 +13,7 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import { createMenuApi } from "@pos/api-client";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { apiClient } from "@/shared/lib/api-client";
 import {
   useCreateMenu,

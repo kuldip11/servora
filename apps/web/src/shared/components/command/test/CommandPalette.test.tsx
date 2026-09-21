@@ -18,7 +18,8 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Dialog: ({ open, onClose, title, children }: any) =>
     open ? (
       <div role="dialog" aria-label={title}>

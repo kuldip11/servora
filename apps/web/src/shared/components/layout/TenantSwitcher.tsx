@@ -42,7 +42,7 @@ export const TenantSwitcher = () => {
   }
 
   return (
-    <div ref={containerRef} className="relative min-w-0">
+    <div ref={containerRef} className="relative min-w-0 flex-1 lg:flex-none">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -50,15 +50,15 @@ export const TenantSwitcher = () => {
         aria-haspopup="menu"
         disabled={switching}
         className={cn(
-          "flex h-12 items-center gap-3 min-w-0 max-w-[280px] rounded-xl border border-border bg-surface px-3.5 text-left",
+          "flex h-10 w-full min-w-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-2 text-left sm:h-11 sm:gap-2 sm:px-2.5 lg:h-12 lg:w-[220px] lg:gap-3 lg:rounded-xl lg:px-3.5 xl:w-[260px]",
           "shadow-sm transition-all hover:bg-surface-secondary hover:border-primary/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60",
         )}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-surface">
+        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-surface xl:flex">
           <Building2 className="h-[18px] w-[18px] text-primary" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-text-secondary">
+          <span className="hidden text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-text-secondary sm:block">
             Franchise
           </span>
           <span className="block truncate text-sm font-semibold leading-5 text-text-primary">
@@ -78,7 +78,7 @@ export const TenantSwitcher = () => {
         <div
           role="menu"
           aria-label="Franchise selection"
-          className="absolute left-0 top-full z-40 mt-2 w-[320px] rounded-xl border border-border bg-surface p-2 shadow-elevated"
+          className="absolute left-0 top-full z-40 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-xl border border-border bg-surface p-2 shadow-elevated"
         >
           <div className="px-3 py-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">

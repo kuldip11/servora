@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense, type ComponentType } from "react";
 import { Spinner } from "@pos/ui";
+import { RouteErrorPage } from "@/shared/components/RouteErrorPage";
 import { RootLayout } from "@/shared/components/layout/RootLayout";
 import { DashboardLayout } from "@/shared/components/layout/DashboardLayout";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
@@ -320,7 +321,10 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteErrorPage,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

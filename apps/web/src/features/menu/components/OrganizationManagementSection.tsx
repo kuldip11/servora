@@ -16,33 +16,25 @@ import { OrganizationMenuPanel } from "@/features/menu/components/organization-m
 import { OrganizationPriceRulesPanel } from "@/features/menu/components/organization-management/OrganizationPriceRulesPanel";
 import { OrganizationLoyaltyPanel } from "@/features/menu/components/organization-management/OrganizationLoyaltyPanel";
 import type {
-  OrgMembership,
   OrgMenu,
+  OrganizationSummary,
   OrganizationTenantSummary,
 } from "@/features/menu/components/organization-management/types";
 
 export const OrganizationManagementSection = () => {
   const { has } = usePermissions();
   const canManage = has("organization:manage");
-  const membershipsQuery = useQuery<OrgMembership[]>({
+  const organizationsQuery = useQuery<OrganizationSummary[]>({
     queryKey: ["organizations"],
-    queryFn: () => organizationsApi.list<OrgMembership>(),
+    queryFn: () => organizationsApi.list<OrganizationSummary>(),
     enabled: canManage,
   });
-  const memberships = membershipsQuery.data ?? [];
+  const organizations = organizationsQuery.data ?? [];
   const [selectedOrgId, setSelectedOrgId] = useState("");
-  const organizationId =
-    selectedOrgId ||
-    memberships[0]?.organizationId ||
-    memberships[0]?.organization?.id ||
-    "";
+  const organizationId = selectedOrgId || organizations[0]?.id || "";
   const organization = useMemo(
-    () =>
-      memberships.find(
-        (entry) =>
-          (entry.organizationId || entry.organization.id) === organizationId,
-      )?.organization,
-    [memberships, organizationId],
+    () => organizations.find((entry) => entry.id === organizationId),
+    [organizations, organizationId],
   );
   const menusKey = ["organizations", organizationId, "menus"];
   const rulesKey = ["organizations", organizationId, "price-rules"];
@@ -205,16 +197,16 @@ export const OrganizationManagementSection = () => {
         </p>
       </section>
     );
-  if (membershipsQuery.isError && !membershipsQuery.data)
+  if (organizationsQuery.isError && !organizationsQuery.data)
     return (
       <QueryErrorState
         title="Unable to load organizations"
-        description="Organization memberships could not be loaded. Retry before managing organization defaults."
-        onRetry={() => void membershipsQuery.refetch()}
-        isRetrying={membershipsQuery.isFetching}
+        description="Organizations could not be loaded. Retry before managing organization defaults."
+        onRetry={() => void organizationsQuery.refetch()}
+        isRetrying={organizationsQuery.isFetching}
       />
     );
-  if (!memberships.length)
+  if (!organizations.length)
     return (
       <section>
         <h2 className="font-semibold text-text-primary">
@@ -228,11 +220,11 @@ export const OrganizationManagementSection = () => {
 
   return (
     <section className="space-y-5">
-      {membershipsQuery.isError && membershipsQuery.data ? (
+      {organizationsQuery.isError && organizationsQuery.data ? (
         <StaleDataBanner
-          message="Organization memberships could not be refreshed. Showing cached memberships."
-          onRetry={() => void membershipsQuery.refetch()}
-          isRetrying={membershipsQuery.isFetching}
+          message="Organizations could not be refreshed. Showing cached organizations."
+          onRetry={() => void organizationsQuery.refetch()}
+          isRetrying={organizationsQuery.isFetching}
         />
       ) : null}
       {organizationDataFailed ? (
@@ -263,15 +255,15 @@ export const OrganizationManagementSection = () => {
         disabled={organizationDataFailed || organizationDataStale}
         className="contents"
       >
-        {memberships.length > 1 && (
+        {organizations.length > 1 && (
           <Select
             label="Organization"
             value={organizationId}
             onChange={setSelectedOrgId}
             containerClassName="max-w-sm"
-            options={memberships.map((entry) => ({
-              value: entry.organizationId || entry.organization.id,
-              label: entry.organization.name,
+            options={organizations.map((entry) => ({
+              value: entry.id,
+              label: entry.name,
             }))}
           />
         )}

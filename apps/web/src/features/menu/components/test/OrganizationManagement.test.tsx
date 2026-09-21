@@ -68,12 +68,12 @@ vi.mock("@tanstack/react-query", () => ({
 import { OrganizationManagementSection } from "../OrganizationManagementSection";
 
 const seed = () => {
-  const ms = [
-    { organizationId: "o1", organization: { id: "o1", name: "Org One" } },
-    { organizationId: "", organization: { id: "o2", name: "Org Two" } },
+  const organizations = [
+    { id: "o1", name: "Org One" },
+    { id: "o2", name: "Org Two" },
   ];
   data = {
-    '["organizations"]': ms,
+    '["organizations"]': organizations,
     '["organizations","o1","tenants"]': [{ id: "t1", name: "Tenant" }],
     '["organizations","o1","menus"]': [
       {

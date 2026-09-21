@@ -1,6 +1,6 @@
-export interface OrgMembership {
-  organizationId: string;
-  organization: { id: string; name: string };
+export interface OrganizationSummary {
+  id: string;
+  name: string;
 }
 
 export interface OrgMenu {

@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card } from "@pos/ui";
-import {
-  rolesService,
-  type Role,
-} from "@/features/staff/services/roles.service";
-import {
-  permissionsService,
-  type Permission,
-} from "@/features/staff/services/permissions.service";
-import { queryClient } from "@/shared/lib/query-client";
-import { roleKeys } from "@/features/staff/query-keys";
+import type { Role } from "@/features/staff/services/roles.service";
+import type { Permission } from "@/features/staff/services/permissions.service";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import {
+  useArchiveRole,
+  useCreateRole,
+  useRolePermissions,
+  useSaveRolePermissions,
+} from "@/features/staff/hooks/useRoleManagement";
 import { CreateRoleModal, type CreateRolePayload } from "./CreateRoleModal";
 import { RoleList } from "./RoleList";
 import { RolePermissionsModal } from "./RolePermissionsModal";
@@ -34,49 +31,10 @@ export const RoleManager = ({
     [],
   );
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: roleKeys.list() });
-  const createRole = useMutation({
-    mutationFn: rolesService.create,
-    onSuccess: () => {
-      void refresh();
-      notifySuccess("Role created");
-      setCreateOpen(false);
-    },
-  });
-  const archiveRole = useMutation({
-    mutationFn: rolesService.archive,
-    onSuccess: () => {
-      void refresh();
-      notifySuccess("Role archived");
-    },
-    onError: (error) => notifyError(error, "Failed to archive role"),
-  });
-  const savePermissions = useMutation({
-    mutationFn: ({
-      roleId,
-      permissionIds,
-    }: {
-      roleId: string;
-      permissionIds: string[];
-    }) => permissionsService.setForRole(roleId, permissionIds),
-    onSuccess: () => {
-      notifySuccess("Role permissions updated");
-      setPermissionRole(null);
-    },
-  });
-
-  const permissionsQuery = useQuery({
-    queryKey: ["staff", "roles", permissionRole?.id, "permissions"],
-    enabled: Boolean(permissionRole),
-    queryFn: async () => {
-      const [catalog, assigned] = await Promise.all([
-        permissionsService.list(),
-        permissionsService.forRole(permissionRole!.id),
-      ]);
-      return { catalog, assigned };
-    },
-  });
+  const createRole = useCreateRole();
+  const archiveRole = useArchiveRole();
+  const savePermissions = useSaveRolePermissions();
+  const permissionsQuery = useRolePermissions(permissionRole?.id ?? null);
 
   useEffect(() => {
     if (!permissionRole || !permissionsQuery.data) return;
@@ -108,7 +66,14 @@ export const RoleManager = ({
   const handleCreateRole = (
     payload: CreateRolePayload,
     onError: (error: unknown) => void,
-  ) => createRole.mutate(payload, { onError });
+  ) =>
+    createRole.mutate(payload, {
+      onSuccess: () => {
+        notifySuccess("Role created");
+        setCreateOpen(false);
+      },
+      onError,
+    });
 
   return (
     <Card className="mt-6">
@@ -120,7 +85,10 @@ export const RoleManager = ({
         onManagePermissions={setPermissionRole}
         onArchive={(role) => {
           if (confirm(`Archive role ${role.name}?`))
-            archiveRole.mutate(role.id);
+            archiveRole.mutate(role.id, {
+              onSuccess: () => notifySuccess("Role archived"),
+              onError: (error) => notifyError(error, "Failed to archive role"),
+            });
         }}
       />
 
@@ -154,7 +122,13 @@ export const RoleManager = ({
           if (!permissionRole) return;
           savePermissions.mutate(
             { roleId: permissionRole.id, permissionIds: selectedPermissionIds },
-            { onError },
+            {
+              onSuccess: () => {
+                notifySuccess("Role permissions updated");
+                setPermissionRole(null);
+              },
+              onError,
+            },
           );
         }}
       />

@@ -6,8 +6,9 @@ const customersApi = createCustomersApi(apiClient);
 
 export const searchCustomers = async (
   query: string,
+  signal?: AbortSignal,
 ): Promise<LoyaltyCustomer[]> => {
-  const customers = await customersApi.search();
+  const customers = await customersApi.search(signal);
   const needle = query.trim().toLowerCase();
   return customers
     .filter((customer) =>

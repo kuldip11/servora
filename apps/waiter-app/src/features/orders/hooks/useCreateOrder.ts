@@ -6,18 +6,21 @@ import {
   type CreateOrderInput,
 } from "@/features/orders/api/createOrder";
 import { orderKeys } from "@/features/orders/constants";
+import { menuKeys } from "@/features/menu/query/menu.keys";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
 const mutationErrorMessage = (error: unknown, fallback: string): string =>
   extractApiError(error, fallback);
 
 export const useCreateOrder = () => {
   const qc = useQueryClient();
+  const scope = getWaiterQueryScope();
 
   return useMutation({
     mutationFn: (input: CreateOrderInput) => createOrder(input),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: orderKeys.all });
-      qc.invalidateQueries({ queryKey: ["tables"] });
+      qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      qc.invalidateQueries({ queryKey: menuKeys.tables(scope) });
       toast({ title: "Order placed!", tone: "success" });
     },
     onError: (err: unknown) =>

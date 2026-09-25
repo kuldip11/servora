@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
 import { Button, Modal, QueryErrorState, Spinner, StatusBadge } from "@pos/ui";
 import type { Bill, Order } from "@pos/types";
-import { billingService } from "@/features/billing/services/billing.service";
 import { printBills } from "@/features/billing/utils/print-bills";
+import { useOrderBills } from "@/features/billing/hooks/useOrderBills";
 import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 
@@ -41,11 +40,7 @@ export const PrintBillsDialog = ({
   onClose: () => void;
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const billsQuery = useQuery<Bill[]>({
-    queryKey: ["billing", "order", order?.id],
-    queryFn: () => billingService.getOrderBills(order!.id),
-    enabled: !!order,
-  });
+  const billsQuery = useOrderBills(order?.id, { enabled: !!order });
 
   if (!order) return null;
 

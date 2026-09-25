@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   mutationIndex: 0,
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: () => ({ data: mocks.schedules }),
   useMutation: () => {
     const idx = mocks.mutationIndex++;

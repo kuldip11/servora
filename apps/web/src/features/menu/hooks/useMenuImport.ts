@@ -1,5 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { menuImportService } from "@/features/menu/services/menu-import.service";
 import { menuKeys } from "@/features/menu/query-keys";
@@ -12,6 +11,7 @@ export const useValidateMenuImport = () => {
 };
 
 export const useCommitMenuImport = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => menuImportService.commit(file),
     onSuccess: (data) => {

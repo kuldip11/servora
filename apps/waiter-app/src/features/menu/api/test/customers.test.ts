@@ -21,4 +21,13 @@ describe("searchCustomers", () => {
     ]);
     expect(apiClient.get).toHaveBeenCalledWith("/loyalty/customers");
   });
+
+  it("forwards a cancellation signal", async () => {
+    const signal = new AbortController().signal;
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: [] } } as never);
+    await searchCustomers("guest", signal);
+    expect(apiClient.get).toHaveBeenCalledWith("/loyalty/customers", {
+      signal,
+    });
+  });
 });

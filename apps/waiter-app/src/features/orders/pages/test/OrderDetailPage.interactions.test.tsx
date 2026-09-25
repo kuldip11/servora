@@ -31,12 +31,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  useQueryClient: () => ({
+    invalidateQueries: mocks.invalidate,
+    setQueryData: vi.fn(),
+  }),
   useQuery: ({ queryKey }: any) => {
     const key = JSON.stringify(queryKey);
     if (key.includes("cancellation-reasons"))
       return { data: [{ id: "r1", label: "Mistake" }] };
-    if (key.includes("merge-candidates"))
+    if (key.includes('"ACTIVE"'))
       return {
         data: [
           { id: "o1", status: "OPEN", type: "DINE_IN" },

@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Button, Input, Modal, Select } from "@pos/ui";
 import type { Order } from "@pos/types";
-import { billingService } from "@/features/billing/services/billing.service";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useSplitBill } from "@/features/billing/hooks/useSplitBill";
+import { useSplitBillBySeat } from "@/features/billing/hooks/useSplitBillBySeat";
 
 type SplitMode = "EVEN" | "ITEM" | "SEAT";
 type SharedStrategy = "EVEN_SPLIT" | "MANUAL";
@@ -74,67 +72,44 @@ export const SplitBillDialog = ({
     order ? buildItemBillMapping(order.items ?? [], 2) : {},
   );
 
-  const splitMutation = useMutation({
-    mutationFn: ({
-      orderId,
-      splitWays,
-      allocations,
-    }: {
-      orderId: string;
-      splitWays: number;
-      allocations?: Array<{ label: string; orderItemIds: string[] }>;
-    }) =>
-      allocations
-        ? billingService.splitOrderByItems(orderId, allocations)
-        : billingService.splitOrder(orderId, splitWays),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["billing"] });
-      notifySuccess("Bill split successfully");
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Unable to split bill"),
-  });
-
-  const seatSplitMutation = useMutation({
-    mutationFn: ({
-      orderId,
-      strategy,
-    }: {
-      orderId: string;
-      strategy: SharedStrategy;
-    }) => billingService.splitOrderBySeat(orderId, strategy),
-    onSuccess: (result) => {
-      if (result.status === "MANUAL_REQUIRED") {
-        const mapping: Record<string, number> = {};
-        result.allocations.forEach((allocation, index) =>
-          allocation.orderItemIds.forEach((id) => {
-            mapping[id] = index;
-          }),
-        );
-        const sharedIds = new Set(result.sharedItemIds);
-        const sharedItems = (order?.items ?? []).filter((item) =>
-          sharedIds.has(item.id),
-        );
-        setItemBills(
-          buildItemBillMapping(sharedItems, result.allocations.length, mapping),
-        );
-        setWays(String(result.allocations.length));
-        setMode("ITEM");
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["billing"] });
-      notifySuccess("Bill split by seat");
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Unable to split by seat"),
-  });
+  const splitMutation = useSplitBill();
+  const seatSplitMutation = useSplitBillBySeat();
 
   if (!order) return null;
   const splitWays = Number(ways);
 
   const submit = () => {
     if (mode === "SEAT") {
-      seatSplitMutation.mutate({ orderId: order.id, strategy: sharedStrategy });
+      seatSplitMutation.mutate(
+        { orderId: order.id, strategy: sharedStrategy },
+        {
+          onSuccess: (result) => {
+            if (result.status === "MANUAL_REQUIRED") {
+              const mapping: Record<string, number> = {};
+              result.allocations.forEach((allocation, index) =>
+                allocation.orderItemIds.forEach((id) => {
+                  mapping[id] = index;
+                }),
+              );
+              const sharedIds = new Set(result.sharedItemIds);
+              const sharedItems = (order.items ?? []).filter((item) =>
+                sharedIds.has(item.id),
+              );
+              setItemBills(
+                buildItemBillMapping(
+                  sharedItems,
+                  result.allocations.length,
+                  mapping,
+                ),
+              );
+              setWays(String(result.allocations.length));
+              setMode("ITEM");
+              return;
+            }
+            onClose();
+          },
+        },
+      );
       return;
     }
     const allocations =
@@ -146,11 +121,14 @@ export const SplitBillDialog = ({
               .map((item) => item.id),
           }))
         : undefined;
-    splitMutation.mutate({
-      orderId: order.id,
-      splitWays,
-      ...(allocations ? { allocations } : {}),
-    });
+    splitMutation.mutate(
+      {
+        orderId: order.id,
+        splitWays,
+        ...(allocations ? { allocations } : {}),
+      },
+      { onSuccess: onClose },
+    );
   };
 
   return (

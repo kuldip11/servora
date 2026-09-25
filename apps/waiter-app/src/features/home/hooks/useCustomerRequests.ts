@@ -3,6 +3,7 @@ import { createCustomersApi, extractApiError } from "@pos/api-client";
 import { toast } from "@pos/ui";
 import { apiClient } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
 export interface WaiterCustomerRequest {
   id: string;
@@ -12,21 +13,29 @@ export interface WaiterCustomerRequest {
   status: string;
 }
 
-export const CUSTOMER_REQUESTS_QUERY_KEY = ["customer-requests"] as const;
+export const customerRequestKeys = {
+  all: (scope: ReturnType<typeof getWaiterQueryScope>) =>
+    ["waiter-customer-requests", ...scope] as const,
+};
 const customersApi = createCustomersApi(apiClient);
 
 export const useCustomerRequests = () => {
   const queryClient = useQueryClient();
+  const scope = getWaiterQueryScope();
+  const queryKey = customerRequestKeys.all(scope);
   const query = useQuery({
-    queryKey: CUSTOMER_REQUESTS_QUERY_KEY,
-    queryFn: () => customersApi.listRequests<WaiterCustomerRequest>(),
+    queryKey,
+    queryFn: (context) =>
+      context?.signal
+        ? customersApi.listRequests<WaiterCustomerRequest>(context.signal)
+        : customersApi.listRequests<WaiterCustomerRequest>(),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
 
   useRealtimeEvent("customer.request.created", (event) => {
     queryClient.setQueryData<WaiterCustomerRequest[]>(
-      CUSTOMER_REQUESTS_QUERY_KEY,
+      queryKey,
       (current = []) =>
         current.some((request) => request.id === event.payload.id)
           ? current
@@ -46,7 +55,7 @@ export const useCustomerRequests = () => {
   useRealtimeEvent("customer.request.updated", (event) => {
     if (!["RESOLVED", "CANCELLED"].includes(event.payload.status)) return;
     queryClient.setQueryData<WaiterCustomerRequest[]>(
-      CUSTOMER_REQUESTS_QUERY_KEY,
+      queryKey,
       (current = []) =>
         current.filter((request) => request.id !== event.payload.id),
     );
@@ -57,12 +66,13 @@ export const useCustomerRequests = () => {
 
 export const useResolveCustomerRequest = () => {
   const queryClient = useQueryClient();
+  const queryKey = customerRequestKeys.all(getWaiterQueryScope());
 
   return useMutation({
     mutationFn: (id: string) => customersApi.resolveRequest(id),
     onSuccess: (_, id) => {
       queryClient.setQueryData<WaiterCustomerRequest[]>(
-        CUSTOMER_REQUESTS_QUERY_KEY,
+        queryKey,
         (current = []) => current.filter((request) => request.id !== id),
       );
     },

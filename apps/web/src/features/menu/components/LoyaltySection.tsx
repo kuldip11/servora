@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   FormErrorSummary,
@@ -8,21 +7,21 @@ import {
   Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { createCustomersApi, createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { notifyError } from "@/shared/lib/notify";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 import {
   validateLoyaltyCustomerDraft,
   validateLoyaltyTierDraft,
 } from "@/features/menu/helpers/loyalty-form";
-import type { CustomerLoyaltyTier, LoyaltyCustomer } from "@pos/types";
-
-const menuApi = createMenuApi(apiClient);
-const customersApi = createCustomersApi(apiClient);
+import {
+  useAssignLoyaltyTier,
+  useCreateLoyaltyCustomer,
+  useCreateLoyaltyTier,
+  useLoyaltyCustomers,
+  useLoyaltyTiers,
+  useRemoveLoyaltyTier,
+} from "@/features/menu/hooks/useLoyalty";
 
 export const LoyaltySection = () => {
-  const qc = useQueryClient();
   const [tierName, setTierName] = useState("");
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">(
     "PERCENT",
@@ -33,14 +32,8 @@ export const LoyaltySection = () => {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerTierId, setCustomerTierId] = useState("");
 
-  const tiersQuery = useQuery<CustomerLoyaltyTier[]>({
-    queryKey: ["loyalty", "tiers"],
-    queryFn: () => menuApi.listLoyaltyTiers<CustomerLoyaltyTier>(),
-  });
-  const customersQuery = useQuery<LoyaltyCustomer[]>({
-    queryKey: ["loyalty", "customers"],
-    queryFn: customersApi.list,
-  });
+  const tiersQuery = useLoyaltyTiers();
+  const customersQuery = useLoyaltyCustomers();
 
   const tierErrors = useLocalFormApiErrors();
   const customerErrors = useLocalFormApiErrors();
@@ -63,55 +56,10 @@ export const LoyaltySection = () => {
     [customerEmail, customerName, customerPhone],
   );
 
-  const createTier = useMutation({
-    mutationFn: () =>
-      menuApi.createLoyaltyTier<CustomerLoyaltyTier>({
-        name: tierName.trim(),
-        ...(discountType === "PERCENT"
-          ? { discountPercent: Number(discountValue) }
-          : { discountFixed: Number(discountValue) }),
-      }),
-    onSuccess: () => {
-      tierErrors.resetValidation();
-      qc.invalidateQueries({ queryKey: ["loyalty"] });
-      setTierName("");
-    },
-  });
-  const createCustomer = useMutation({
-    mutationFn: () =>
-      customersApi.create({
-        name: customerName.trim(),
-        ...(customerPhone.trim() ? { phone: customerPhone.trim() } : {}),
-        ...(customerEmail.trim() ? { email: customerEmail.trim() } : {}),
-        ...(customerTierId ? { loyaltyTierId: customerTierId } : {}),
-      }),
-    onSuccess: () => {
-      customerErrors.resetValidation();
-      qc.invalidateQueries({ queryKey: ["loyalty", "customers"] });
-      setCustomerName("");
-      setCustomerPhone("");
-      setCustomerEmail("");
-      setCustomerTierId("");
-    },
-  });
-  const assign = useMutation({
-    mutationFn: ({
-      id,
-      loyaltyTierId,
-    }: {
-      id: string;
-      loyaltyTierId: string | null;
-    }) => customersApi.assignTier(id, loyaltyTierId),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["loyalty", "customers"] }),
-    onError: (error) =>
-      notifyError(error, "Failed to update customer loyalty tier"),
-  });
-  const removeTier = useMutation({
-    mutationFn: (id: string) => menuApi.removeLoyaltyTier(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["loyalty"] }),
-    onError: (error) => notifyError(error, "Failed to delete loyalty tier"),
-  });
+  const createTier = useCreateLoyaltyTier();
+  const createCustomer = useCreateLoyaltyCustomer();
+  const assign = useAssignLoyaltyTier();
+  const removeTier = useRemoveLoyaltyTier();
 
   const dependencyFailed =
     (tiersQuery.isError && !tiersQuery.data) ||
@@ -211,14 +159,26 @@ export const LoyaltySection = () => {
               tierErrors.markSubmitted();
               tierErrors.clearErrors();
               if (Object.keys(tierClientErrors).length) return;
-              createTier.mutate(undefined, {
-                onError: (error) =>
-                  tierErrors.handleApiError(
-                    error,
-                    ["name", "discountPercent", "discountFixed"],
-                    "Failed to create loyalty tier",
-                  ),
-              });
+              createTier.mutate(
+                {
+                  name: tierName.trim(),
+                  ...(discountType === "PERCENT"
+                    ? { discountPercent: Number(discountValue) }
+                    : { discountFixed: Number(discountValue) }),
+                },
+                {
+                  onSuccess: () => {
+                    tierErrors.resetValidation();
+                    setTierName("");
+                  },
+                  onError: (error) =>
+                    tierErrors.handleApiError(
+                      error,
+                      ["name", "discountPercent", "discountFixed"],
+                      "Failed to create loyalty tier",
+                    ),
+                },
+              );
             }}
           >
             Add tier
@@ -320,14 +280,26 @@ export const LoyaltySection = () => {
               customerErrors.markSubmitted();
               customerErrors.clearErrors();
               if (Object.keys(customerClientErrors).length) return;
-              createCustomer.mutate(undefined, {
-                onError: (error) =>
-                  customerErrors.handleApiError(
-                    error,
-                    ["name", "phone", "email", "loyaltyTierId"],
-                    "Failed to create customer",
-                  ),
-              });
+              createCustomer.mutate(
+                {
+                  name: customerName.trim(),
+                  ...(customerPhone.trim()
+                    ? { phone: customerPhone.trim() }
+                    : {}),
+                  ...(customerEmail.trim()
+                    ? { email: customerEmail.trim() }
+                    : {}),
+                  ...(customerTierId ? { loyaltyTierId: customerTierId } : {}),
+                },
+                {
+                  onError: (error) =>
+                    customerErrors.handleApiError(
+                      error,
+                      ["name", "phone", "email", "loyaltyTierId"],
+                      "Failed to create customer",
+                    ),
+                },
+              );
             }}
           >
             Add customer

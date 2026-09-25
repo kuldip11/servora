@@ -30,11 +30,12 @@ const inventoryApi = createInventoryApi(apiClient);
 export const inventoryService = {
   list(
     filters: InventoryListFilters = {},
+    signal?: AbortSignal,
   ): Promise<PaginatedResult<InventoryItem>> {
-    return inventoryApi.list(filters);
+    return inventoryApi.list(filters, signal);
   },
-  lowStock(): Promise<InventoryItem[]> {
-    return inventoryApi.lowStock();
+  lowStock(signal?: AbortSignal): Promise<InventoryItem[]> {
+    return inventoryApi.lowStock(signal);
   },
   async add(input: InventoryItemFormInput): Promise<void> {
     await inventoryApi.create({
@@ -48,11 +49,14 @@ export const inventoryService = {
       ...(input.branchId ? { branchId: input.branchId } : {}),
     });
   },
-  recipeImpact(itemId: string): Promise<InventoryRecipeImpact> {
-    return inventoryApi.recipeImpact(itemId);
+  recipeImpact(
+    itemId: string,
+    signal?: AbortSignal,
+  ): Promise<InventoryRecipeImpact> {
+    return inventoryApi.recipeImpact(itemId, signal);
   },
-  transactions(): Promise<InventoryTransaction[]> {
-    return inventoryApi.transactions();
+  transactions(signal?: AbortSignal): Promise<InventoryTransaction[]> {
+    return inventoryApi.transactions(signal);
   },
   async updateStock(itemId: string, input: StockUpdateInput): Promise<void> {
     await inventoryApi.updateStock(itemId, {
@@ -63,8 +67,8 @@ export const inventoryService = {
       ...(input.wasteReasonId ? { wasteReasonId: input.wasteReasonId } : {}),
     });
   },
-  wasteReasons(): Promise<WasteReason[]> {
-    return inventoryApi.wasteReasons();
+  wasteReasons(signal?: AbortSignal): Promise<WasteReason[]> {
+    return inventoryApi.wasteReasons(signal);
   },
   createWasteReason(label: string): Promise<WasteReason> {
     return inventoryApi.createWasteReason(label);

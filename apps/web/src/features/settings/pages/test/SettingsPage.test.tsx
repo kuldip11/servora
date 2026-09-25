@@ -19,7 +19,10 @@ vi.mock("@/shared/auth/permissions", () => ({
 vi.mock("@/features/orders", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/orders")>()),
   useCancellationReasons: mocks.reasons,
-  cancellationReasonKeys: { all: ["reasons"], active: ["reasons", "active"] },
+  cancellationReasonKeys: {
+    all: () => ["reasons"],
+    active: () => ["reasons", "active"],
+  },
 }));
 vi.mock("@/features/orders/services/cancellation-reasons.service", () => ({
   cancellationReasonsService: { create: mocks.create, update: mocks.update },

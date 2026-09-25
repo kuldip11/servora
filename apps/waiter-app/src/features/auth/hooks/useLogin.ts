@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import { extractApiError } from "@pos/api-client";
 import { login, fetchMemberships, fetchMe } from "@/features/auth/api/login";
+import { saveTokens, saveProfile, clearTokens } from "@/features/auth/storage";
 import {
-  saveTokens,
-  saveProfile,
-  saveContext,
-  clearTokens,
-} from "@/features/auth/storage";
+  clearWaiterQueries,
+  replaceWaiterContext,
+} from "@/shared/lib/query-lifecycle";
 import type {
   AvailableMembership,
   CredentialsForm,
@@ -26,6 +25,7 @@ interface UseLoginResult {
 }
 
 export const useLogin = (onLogin: () => void): UseLoginResult => {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<"credentials" | "membership" | "branch">(
     "credentials",
   );
@@ -43,13 +43,17 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
       throw new Error("No active branch is assigned to this waiter account.");
     }
     if (activeBranches.length === 1) {
-      saveContext(membership.tenant.id, activeBranches[0]!.id);
+      await replaceWaiterContext(
+        queryClient,
+        membership.tenant.id,
+        activeBranches[0]!.id,
+      );
       const activeUser = await fetchMe();
       saveProfile(activeUser);
       onLogin();
       return;
     }
-    saveContext(membership.tenant.id, null);
+    await replaceWaiterContext(queryClient, membership.tenant.id, null);
     setBranches(activeBranches);
     setStep("branch");
   };
@@ -67,8 +71,9 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
       else setStep("membership");
     },
     onError: (err: unknown) => {
-      clearTokens();
+      const clearPromise = clearWaiterQueries(queryClient).then(clearTokens);
       toast({ title: extractApiError(err), tone: "danger" });
+      return clearPromise;
     },
   });
 
@@ -86,8 +91,8 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
     },
     selectBranchForMembership: (id) => {
       if (!activeMembership) return;
-      saveContext(activeMembership.tenant.id, id);
-      void fetchMe()
+      void replaceWaiterContext(queryClient, activeMembership.tenant.id, id)
+        .then(() => fetchMe())
         .then((activeUser) => {
           saveProfile(activeUser);
           onLogin();
@@ -101,7 +106,7 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
       setStep("credentials");
       setActiveMembership(null);
       setBranches([]);
-      clearTokens();
+      void clearWaiterQueries(queryClient).then(clearTokens);
     },
   };
 };

@@ -9,4 +9,6 @@ export const orderKeys = {
   details: () =>
     [...orderKeys.all, "detail", ...branchQueryContextKey()] as const,
   detail: (orderId: string) => [...orderKeys.details(), orderId] as const,
+  explanation: (orderId: string) =>
+    [...orderKeys.detail(orderId), "explanation"] as const,
 };

@@ -39,6 +39,16 @@ export const menuItemsService = {
     );
   },
 
+  async updateVariantAvailability(
+    id: string,
+    unavailable: boolean,
+  ): Promise<void> {
+    await menuApi.updateVariantAvailability(id, {
+      status: unavailable ? "OUT_OF_STOCK" : null,
+      reason: unavailable ? "Manually 86'd" : null,
+    });
+  },
+
   async setManualStockCount(
     id: string,
     count: number | null,

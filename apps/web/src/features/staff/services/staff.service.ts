@@ -19,7 +19,8 @@ export interface StaffFormInput {
 }
 
 export const staffService = {
-  list: (filters: StaffListFilters = {}) => staffApi.listStaff(filters),
+  list: (filters: StaffListFilters = {}, signal?: AbortSignal) =>
+    staffApi.listStaff(filters, signal),
   async add(input: StaffFormInput): Promise<void> {
     await staffApi.addStaff({
       firstName: input.firstName,

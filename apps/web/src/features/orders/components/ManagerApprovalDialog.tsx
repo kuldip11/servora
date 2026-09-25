@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Button, Input, Modal, toast } from "@pos/ui";
-import { createApprovalsApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
-
-const approvalsApi = createApprovalsApi(apiClient);
+import { extractApiError } from "@/shared/lib/api-client";
+import { useRequestManagerApproval } from "@/features/orders/hooks/useRequestManagerApproval";
 
 export interface ManagerApprovalRequest {
   action: "void" | "comp";
@@ -26,13 +24,12 @@ export const ManagerApprovalDialog = ({
 }) => {
   const [managerEmail, setManagerEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const approvalMutation = useRequestManagerApproval();
 
   async function approve() {
     if (!request) return;
-    setLoading(true);
     try {
-      const response = await approvalsApi.requestManagerApproval({
+      const response = await approvalMutation.mutateAsync({
         actionType: request.action === "void" ? "VOID" : "COMP",
         orderId,
         orderItemId: request.itemId,
@@ -43,8 +40,6 @@ export const ManagerApprovalDialog = ({
       setPassword("");
     } catch (error) {
       toast({ title: extractApiError(error), tone: "danger" });
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -74,7 +69,7 @@ export const ManagerApprovalDialog = ({
             Cancel
           </Button>
           <Button
-            loading={loading}
+            loading={approvalMutation.isPending}
             disabled={!managerEmail.trim() || !password}
             onClick={approve}
           >

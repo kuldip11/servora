@@ -66,8 +66,10 @@ vi.mock("@/shared/lib/query-client", () => ({
 }));
 vi.mock("@/shared/lib/errors", () => ({ getErrorMessage: h.getError }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: (cfg: any) => ({
-    data: cfg.queryKey[0] === "customer-groups" ? groups : rules,
+    data: cfg.queryKey.includes("customer-groups") ? groups : rules,
   }),
   useMutation: (cfg: any) => ({
     isPending: false,
@@ -135,7 +137,7 @@ describe("PriceRulesPanel coverage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
     await waitFor(() => expect(h.remove).toHaveBeenCalledWith("r1"));
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
 
     fireEvent.change(screen.getByLabelText("Rule channel"), {
@@ -182,7 +184,7 @@ describe("PriceRulesPanel coverage", () => {
       priority: 4,
     });
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
   });
 

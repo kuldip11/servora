@@ -1,6 +1,8 @@
 import { createApiClient, type TokenStorageAdapter } from "@pos/api-client";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { clearTokens, getToken, saveTokens } from "@/features/auth/storage";
+import { queryClient } from "@/shared/lib/query-client";
+import { clearKitchenQueries } from "@/shared/lib/query-lifecycle";
 
 const kdsStorageAdapter: TokenStorageAdapter = {
   getAccessToken: getToken,
@@ -16,7 +18,9 @@ export const apiClient = createApiClient({
   timeout: 15_000,
   storage: kdsStorageAdapter,
   onRefreshFailure: () => {
-    kdsStorageAdapter.clear();
-    window.location.reload();
+    void clearKitchenQueries(queryClient).finally(() => {
+      kdsStorageAdapter.clear();
+      window.location.reload();
+    });
   },
 });

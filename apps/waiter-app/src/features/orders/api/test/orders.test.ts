@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "@/shared/lib/api-client";
 import {
   addOrderItems,
@@ -23,6 +23,10 @@ vi.mock("../../../../shared/lib/api-client", () => ({
   apiClient: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn() },
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe("orders API", () => {
   it("fetches list and detail endpoints", async () => {
     vi.mocked(apiClient.get)
@@ -42,6 +46,26 @@ describe("orders API", () => {
       params: { page: "1", limit: "25" },
     });
     expect(apiClient.get).toHaveBeenNthCalledWith(2, "/orders/o1");
+  });
+
+  it("forwards cancellation signals through order reads", async () => {
+    const signal = new AbortController().signal;
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: [] } } as any);
+
+    await fetchOrders({}, signal);
+    await fetchOrder("o1", signal);
+    await fetchCancellationReasons(signal);
+
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "/orders", {
+      params: { page: "1", limit: "25" },
+      signal,
+    });
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/orders/o1", { signal });
+    expect(apiClient.get).toHaveBeenNthCalledWith(
+      3,
+      "/orders/cancellation-reasons",
+      { params: { activeOnly: "true" }, signal },
+    );
   });
 
   it("validates mutation payloads before calling the API", async () => {

@@ -65,4 +65,3 @@ export const BOARD_COLUMNS: Array<{
 
 export const KDS_STATION_STORAGE_KEY = "servora.kds.station-id";
 export const KDS_VOID_ALERT_STORAGE_KEY = "servora.kds.void-alerts";
-export const KITCHEN_STATIONS_QUERY_KEY = ["kitchen-stations"] as const;

@@ -11,6 +11,8 @@
 - [`JOB_IMPACT_IMPLEMENTATION_STATUS.md`](./JOB_IMPACT_IMPLEMENTATION_STATUS.md) — status of the senior-frontend/job-impact improvement work.
 - [`UI_ERROR_HANDLING_PLAN.md`](./UI_ERROR_HANDLING_PLAN.md) — repository-wide UI error handling, form validation, query/mutation failure UX, stale-data, accessibility, and recovery plan.
 - [`UI_ERROR_HANDLING_STATUS.md`](./UI_ERROR_HANDLING_STATUS.md) — master status tracker, form matrix, critical query matrix, mutation checklist, and release gates for UI error handling.
+- [`TANSTACK_QUERY_REMEDIATION_PLAN.md`](./TANSTACK_QUERY_REMEDIATION_PLAN.md) — production-hardening plan for TanStack Query architecture, cache identity, tenant/branch isolation, feature structure, invalidation, polling, retries, cancellation, and cross-app rollout.
+- [`TANSTACK_QUERY_REMEDIATION_STATUS.md`](./TANSTACK_QUERY_REMEDIATION_STATUS.md) — master TanStack Query implementation tracker, domain matrix, acceptance tests, and quality gates.
 
 ## Agent workflow
 
@@ -35,6 +37,16 @@ For UI error-handling/form-validation work, read these files in order:
 For every UI remediation task, agents must also apply the clean-component architecture section in `UI_ERROR_HANDLING_PLAN.md` and satisfy the architecture acceptance checklist in `UI_ERROR_HANDLING_STATUS.md`. Error handling must not be implemented by moving raw API/error logic into page/form JSX.
 
 After completing a UI error-handling task, update `UI_ERROR_HANDLING_STATUS.md` before finishing.
+
+For TanStack Query remediation work, read these files in order:
+
+1. `ARCHITECTURE.md`
+2. `FRONTEND_ENGINEERING.md`
+3. `TANSTACK_QUERY_REMEDIATION_PLAN.md`
+4. `TANSTACK_QUERY_REMEDIATION_STATUS.md`
+5. the relevant feature source/tests
+
+Use the required `api/`, `query/`, `hooks/`, `components/`, `pages/` feature structure. Treat WebSocket/realtime as unverified until separately tested. Update `TANSTACK_QUERY_REMEDIATION_STATUS.md` after every completed implementation slice.
 
 ## UI error-handling implementation checkpoint
 

@@ -1,22 +1,10 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
-import { createAnalyticsApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useDifferentiatorEngineering } from "@/features/differentiators/hooks/useDifferentiators";
+import type { EngineeringQuadrant } from "@/features/differentiators/services/differentiators.service";
 
-type EngineeringQuadrant = "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG";
 type EngineeringSort = "margin" | "volume" | "name";
-type EngineeringRow = {
-  menuItemId: string;
-  menuItemName: string;
-  variantName: string | null;
-  margin: number;
-  salesVolume: number;
-  quadrant: EngineeringQuadrant;
-  recommendation: string;
-};
-
-const analyticsApi = createAnalyticsApi(apiClient);
 
 export const EngineeringPanel = () => {
   const [windowDays, setWindowDays] = useState("90");
@@ -24,12 +12,7 @@ export const EngineeringPanel = () => {
     "ALL" | EngineeringQuadrant
   >("ALL");
   const [sort, setSort] = useState<EngineeringSort>("volume");
-  const engineeringQuery = useQuery({
-    queryKey: ["differentiators", "engineering", windowDays],
-    queryFn: () =>
-      analyticsApi.menuEngineering<EngineeringRow[]>(Number(windowDays)),
-    retry: false,
-  });
+  const engineeringQuery = useDifferentiatorEngineering(windowDays);
 
   const visibleRows = useMemo(() => {
     const rows =

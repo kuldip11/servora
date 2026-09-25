@@ -8,6 +8,14 @@ import { menuKeys } from "@/features/menu/query-keys";
 
 describe("menuKeys", () => {
   it("separates branch-scoped and franchise-scoped resources", () => {
+    expect(menuKeys.activeMenus("DINE_IN")).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "active-menus",
+      "DINE_IN",
+    ]);
     expect(menuKeys.categories()).toEqual([
       "menu",
       "branch-context",
@@ -28,6 +36,60 @@ describe("menuKeys", () => {
       "fr-1",
       "br-1",
       "modifier-groups",
+    ]);
+    expect(menuKeys.combos()).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "combos",
+    ]);
+    expect(menuKeys.kitchenStations()).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "kitchen-stations",
+    ]);
+    expect(menuKeys.promotions()).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "promotions",
+    ]);
+    expect(menuKeys.perCoverPriceRules()).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "per-cover-price-rules",
+    ]);
+    expect(menuKeys.subRecipes()).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "sub-recipes",
+    ]);
+    expect(menuKeys.organizations()).toEqual(["menu", "organizations"]);
+    expect(menuKeys.organizationMenus("org-1")).toEqual([
+      "menu",
+      "organizations",
+      "org-1",
+      "menus",
+    ]);
+    expect(menuKeys.organizationPriceRules("org-1")).toEqual([
+      "menu",
+      "organizations",
+      "org-1",
+      "price-rules",
+    ]);
+    expect(menuKeys.organizationLoyaltyTiers("org-1")).toEqual([
+      "menu",
+      "organizations",
+      "org-1",
+      "loyalty-tiers",
     ]);
   });
 
@@ -54,6 +116,32 @@ describe("menuKeys", () => {
       "fr-1",
       "br-1",
       "branch-overrides",
+      "item-1",
+    ]);
+    expect(menuKeys.stationRoutes("item-1")).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "kitchen-stations",
+      "routes",
+      "item-1",
+    ]);
+    expect(menuKeys.promotionStats("promo-1")).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "promotions",
+      "promo-1",
+      "stats",
+    ]);
+    expect(menuKeys.channelOverrides("item-1")).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "channel-overrides",
       "item-1",
     ]);
   });

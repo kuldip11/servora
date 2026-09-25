@@ -27,8 +27,15 @@ export const createBillingApi = (client: DomainHttpClient) => {
     collectPayment(input: CollectPaymentInput): Promise<void> {
       return voidDomainRequest(client.post("/payments", input));
     },
-    getOrderBills<T = unknown[]>(orderId: string): Promise<T> {
-      return getDomainData<T>(client, `/orders/${orderId}/bills`);
+    getOrderBills<T = unknown[]>(
+      orderId: string,
+      signal?: AbortSignal,
+    ): Promise<T> {
+      return getDomainData<T>(
+        client,
+        `/orders/${orderId}/bills`,
+        signal ? { signal } : undefined,
+      );
     },
     splitOrder<T = unknown>(orderId: string, ways: number): Promise<T> {
       return postDomainData<T>(client, `/orders/${orderId}/bills/split`, {

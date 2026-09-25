@@ -6,8 +6,12 @@ import {
 
 export const createSettingsApi = (client: DomainHttpClient) => {
   return {
-    tenants<T>(): Promise<Array<{ tenant: T }>> {
-      return getDomainData<Array<{ tenant: T }>>(client, "/tenants");
+    tenants<T>(signal?: AbortSignal): Promise<Array<{ tenant: T }>> {
+      return getDomainData<Array<{ tenant: T }>>(
+        client,
+        "/tenants",
+        signal ? { signal } : undefined,
+      );
     },
     updateTenant<T>(
       tenantId: string,

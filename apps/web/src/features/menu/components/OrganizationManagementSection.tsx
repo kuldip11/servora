@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
-import type { CustomerLoyaltyTier, PriceRule } from "@pos/types";
-import { createMenuApi, createOrganizationsApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const organizationsApi = createOrganizationsApi(apiClient);
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { usePermissions } from "@/shared/auth/permissions";
 import { useOrganizationDefaultsFormState } from "@/features/menu/hooks/useOrganizationDefaultsFormState";
+import {
+  useCreateOrganizationLoyaltyTier,
+  useCreateOrganizationMenu,
+  useCreateOrganizationPriceRule,
+  useDeleteOrganizationLoyaltyTier,
+  useDeleteOrganizationMenu,
+  useDeleteOrganizationPriceRule,
+  useManagedOrganizations,
+  useOrganizationLoyaltyTiers,
+  useOrganizationMenus,
+  useOrganizationPriceRules,
+  useOrganizationTenants,
+  useUpdateOrganizationMenu,
+} from "@/features/menu/hooks/useOrganizationManagement";
 
 import { OrganizationMenuPanel } from "@/features/menu/components/organization-management/OrganizationMenuPanel";
 import { OrganizationPriceRulesPanel } from "@/features/menu/components/organization-management/OrganizationPriceRulesPanel";
@@ -18,17 +23,12 @@ import { OrganizationLoyaltyPanel } from "@/features/menu/components/organizatio
 import type {
   OrgMenu,
   OrganizationSummary,
-  OrganizationTenantSummary,
 } from "@/features/menu/components/organization-management/types";
 
 export const OrganizationManagementSection = () => {
   const { has } = usePermissions();
   const canManage = has("organization:manage");
-  const organizationsQuery = useQuery<OrganizationSummary[]>({
-    queryKey: ["organizations"],
-    queryFn: () => organizationsApi.list<OrganizationSummary>(),
-    enabled: canManage,
-  });
+  const organizationsQuery = useManagedOrganizations(canManage);
   const organizations = organizationsQuery.data ?? [];
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const organizationId = selectedOrgId || organizations[0]?.id || "";
@@ -36,31 +36,13 @@ export const OrganizationManagementSection = () => {
     () => organizations.find((entry) => entry.id === organizationId),
     [organizations, organizationId],
   );
-  const menusKey = ["organizations", organizationId, "menus"];
-  const rulesKey = ["organizations", organizationId, "price-rules"];
-  const loyaltyKey = ["organizations", organizationId, "loyalty-tiers"];
-  const tenantsQuery = useQuery<OrganizationTenantSummary[]>({
-    queryKey: ["organizations", organizationId, "tenants"],
-    queryFn: () =>
-      organizationsApi.tenants<OrganizationTenantSummary>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
-  const menusQuery = useQuery<OrgMenu[]>({
-    queryKey: menusKey,
-    queryFn: () => organizationsApi.menus<OrgMenu>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
-  const rulesQuery = useQuery<PriceRule[]>({
-    queryKey: rulesKey,
-    queryFn: () => menuApi.listPriceRulesFor<PriceRule>({ organizationId }),
-    enabled: !!organizationId && canManage,
-  });
-  const loyaltyTiersQuery = useQuery<CustomerLoyaltyTier[]>({
-    queryKey: loyaltyKey,
-    queryFn: () =>
-      organizationsApi.loyaltyTiers<CustomerLoyaltyTier>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
+  const tenantsQuery = useOrganizationTenants(organizationId, canManage);
+  const menusQuery = useOrganizationMenus(organizationId, canManage);
+  const rulesQuery = useOrganizationPriceRules(organizationId, canManage);
+  const loyaltyTiersQuery = useOrganizationLoyaltyTiers(
+    organizationId,
+    canManage,
+  );
   const tenants = tenantsQuery.data ?? [];
   const menus = menusQuery.data ?? [];
   const rules = rulesQuery.data ?? [];
@@ -99,91 +81,13 @@ export const OrganizationManagementSection = () => {
     resetLoyalty,
   } = useOrganizationDefaultsFormState();
 
-  const createMenu = useMutation({
-    mutationFn: () =>
-      organizationsApi.createMenu<OrgMenu>(organizationId, {
-        name: menuName.trim(),
-        status: menuPublished ? "PUBLISHED" : "DRAFT",
-        isDefault: menuDefault,
-        items: menuSkus
-          .split(/[,\n]/)
-          .map((value) => value.trim())
-          .filter(Boolean)
-          .map((itemSku, index) => ({ itemSku, sortOrder: index })),
-      }),
-    onSuccess: async () => {
-      resetMenu();
-      await queryClient.invalidateQueries({ queryKey: menusKey });
-      notifySuccess("Organization menu created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization menu"),
-  });
-  const toggleMenu = useMutation({
-    mutationFn: ({
-      menuId,
-      status,
-    }: {
-      menuId: string;
-      status: "DRAFT" | "PUBLISHED";
-    }) =>
-      organizationsApi.updateMenu<OrgMenu>(organizationId, menuId, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to update organization menu"),
-  });
-  const deleteMenu = useMutation({
-    mutationFn: (menuId: string) =>
-      organizationsApi.removeMenu(organizationId, menuId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to delete organization menu"),
-  });
-  const createRule = useMutation({
-    mutationFn: () =>
-      menuApi.createPriceRule<PriceRule>({
-        organizationId,
-        menuItemSku: ruleSku.trim(),
-        price: Number(rulePrice),
-        priority: 0,
-      }),
-    onSuccess: async () => {
-      resetRule();
-      await queryClient.invalidateQueries({ queryKey: rulesKey });
-      notifySuccess("Organization price rule created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization price rule"),
-  });
-  const deleteRule = useMutation({
-    mutationFn: (id: string) => menuApi.removePriceRule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rulesKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to remove organization price rule"),
-  });
-  const createLoyaltyTier = useMutation({
-    mutationFn: () =>
-      organizationsApi.createLoyaltyTier<CustomerLoyaltyTier>(organizationId, {
-        name: loyaltyName.trim(),
-        ...(loyaltyMode === "PERCENT"
-          ? { discountPercent: Number(loyaltyValue) }
-          : { discountFixed: Number(loyaltyValue) }),
-      }),
-    onSuccess: async () => {
-      resetLoyalty();
-      await queryClient.invalidateQueries({ queryKey: loyaltyKey });
-      notifySuccess("Organization loyalty tier created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization loyalty tier"),
-  });
-  const deleteLoyaltyTier = useMutation({
-    mutationFn: (id: string) =>
-      organizationsApi.removeLoyaltyTier(organizationId, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: loyaltyKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to remove organization loyalty tier"),
-  });
+  const createMenu = useCreateOrganizationMenu(organizationId);
+  const toggleMenu = useUpdateOrganizationMenu(organizationId);
+  const deleteMenu = useDeleteOrganizationMenu(organizationId);
+  const createRule = useCreateOrganizationPriceRule(organizationId);
+  const deleteRule = useDeleteOrganizationPriceRule(organizationId);
+  const createLoyaltyTier = useCreateOrganizationLoyaltyTier(organizationId);
+  const deleteLoyaltyTier = useDeleteOrganizationLoyaltyTier(organizationId);
 
   if (!canManage)
     return (
@@ -280,7 +184,21 @@ export const OrganizationManagementSection = () => {
             menus={menus}
             creating={createMenu.isPending}
             onFieldChange={(field, value) => setField(field, value)}
-            onCreate={() => createMenu.mutate()}
+            onCreate={() =>
+              createMenu.mutate(
+                {
+                  name: menuName.trim(),
+                  status: menuPublished ? "PUBLISHED" : "DRAFT",
+                  isDefault: menuDefault,
+                  items: menuSkus
+                    .split(/[,\n]/)
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+                    .map((itemSku, index) => ({ itemSku, sortOrder: index })),
+                },
+                { onSuccess: resetMenu },
+              )
+            }
             onToggle={(menu) =>
               toggleMenu.mutate({
                 menuId: menu.id,
@@ -296,7 +214,12 @@ export const OrganizationManagementSection = () => {
             creating={createRule.isPending}
             onSkuChange={(value) => setField("ruleSku", value)}
             onPriceChange={(value) => setField("rulePrice", value)}
-            onCreate={() => createRule.mutate()}
+            onCreate={() =>
+              createRule.mutate(
+                { menuItemSku: ruleSku.trim(), price: Number(rulePrice) },
+                { onSuccess: resetRule },
+              )
+            }
             onDelete={(id) => deleteRule.mutate(id)}
           />
           <OrganizationLoyaltyPanel
@@ -308,7 +231,17 @@ export const OrganizationManagementSection = () => {
             onNameChange={(value) => setField("loyaltyName", value)}
             onModeChange={(value) => setField("loyaltyMode", value)}
             onValueChange={(value) => setField("loyaltyValue", value)}
-            onCreate={() => createLoyaltyTier.mutate()}
+            onCreate={() =>
+              createLoyaltyTier.mutate(
+                {
+                  name: loyaltyName.trim(),
+                  ...(loyaltyMode === "PERCENT"
+                    ? { discountPercent: Number(loyaltyValue) }
+                    : { discountFixed: Number(loyaltyValue) }),
+                },
+                { onSuccess: resetLoyalty },
+              )
+            }
             onDelete={(id) => deleteLoyaltyTier.mutate(id)}
           />
         </div>

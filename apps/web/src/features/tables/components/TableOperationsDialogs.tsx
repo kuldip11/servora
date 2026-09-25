@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Button, Input, Modal, Select } from "@pos/ui";
 import type { Order } from "@pos/types";
-import { useTransferTable } from "@/features/orders";
-import { ordersService } from "@/features/orders/services/orders.service";
+import { useMergeOrders, useTransferTable } from "@/features/orders";
 import type { RestaurantTable } from "@/features/tables/types";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 
 export const TransferTableDialog = ({
   source,
@@ -98,22 +94,7 @@ export const MergeTableDialog = ({
   onClose: () => void;
 }) => {
   const [targetOrderId, setTargetOrderId] = useState("");
-  const mergeMutation = useMutation({
-    mutationFn: ({
-      sourceOrderId,
-      targetOrderId,
-    }: {
-      sourceOrderId: string;
-      targetOrderId: string;
-    }) => ordersService.mergeOrders(sourceOrderId, targetOrderId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      notifySuccess("Tables merged for billing");
-      setTargetOrderId("");
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Unable to merge tables"),
-  });
+  const mergeMutation = useMergeOrders();
   if (!source) return null;
   const sourceOrder = openOrders.find((order) => order.tableId === source.id);
 
@@ -155,10 +136,18 @@ export const MergeTableDialog = ({
             loading={mergeMutation.isPending}
             onClick={() => {
               if (sourceOrder) {
-                mergeMutation.mutate({
-                  sourceOrderId: sourceOrder.id,
-                  targetOrderId,
-                });
+                mergeMutation.mutate(
+                  {
+                    sourceOrderId: sourceOrder.id,
+                    targetOrderId,
+                  },
+                  {
+                    onSuccess: () => {
+                      setTargetOrderId("");
+                      onClose();
+                    },
+                  },
+                );
               }
             }}
           >

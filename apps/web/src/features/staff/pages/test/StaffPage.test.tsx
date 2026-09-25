@@ -41,6 +41,7 @@ vi.mock("@/features/staff/hooks/useUpdateStaffStatus", () => ({
   useUpdateStaffStatus: () => ({ mutate: mocks.status }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: (options: any) => ({
     isPending: false,
     mutateAsync: async (value: any) => {
@@ -48,12 +49,14 @@ vi.mock("@tanstack/react-query", () => ({
       options.onSuccess?.(result);
       return result;
     },
-    mutate: async (value: any) => {
+    mutate: async (value: any, callbacks?: any) => {
       try {
         const result = await options.mutationFn(value);
-        options.onSuccess?.(result);
+        options.onSuccess?.(result, value);
+        callbacks?.onSuccess?.(result, value);
       } catch (e) {
-        options.onError?.(e);
+        options.onError?.(e, value);
+        callbacks?.onError?.(e, value);
       }
     },
   }),

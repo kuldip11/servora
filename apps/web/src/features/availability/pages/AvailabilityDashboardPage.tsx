@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -9,64 +9,27 @@ import {
   Select,
   Spinner,
 } from "@pos/ui";
-import { createAvailabilityApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
-
-const availabilityApi = createAvailabilityApi(apiClient);
+import { extractApiError } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 
-type AvailabilityRow = {
-  entityType: "ITEM" | "VARIANT" | "MODIFIER_OPTION";
-  entityId: string;
-  menuItemId: string;
-  name: string;
-  status: string;
-  reason: string;
-  cause: string;
-  branchId: string;
-  branchName?: string;
-  channel: string;
-  fulfillmentType: string;
-};
-
-type DashboardResponse = {
-  rows: AvailabilityRow[];
-};
-
 import { AVAILABILITY_CAUSES } from "@/features/availability/constants";
+import { useAvailabilityDashboard } from "@/features/availability/hooks/useAvailabilityDashboard";
+import type { AvailabilityRow } from "@/features/availability/services/availability.service";
 
 export const AvailabilityDashboardPage = () => {
   const [channel, setChannel] = useState("UNSCOPED");
   const [fulfillmentType, setFulfillmentType] = useState("UNSCOPED");
   const [cause, setCause] = useState("");
   const [search, setSearch] = useState("");
-  const [rows, setRows] = useState<AvailabilityRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await availabilityApi.dashboard<DashboardResponse>({
-        channel,
-        fulfillmentType,
-        ...(cause ? { cause } : {}),
-      });
-      setRows(response.rows);
-    } catch (reason) {
-      setError(extractApiError(reason));
-    } finally {
-      setLoading(false);
-    }
-  }, [cause, channel, fulfillmentType]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const availabilityQuery = useAvailabilityDashboard({
+    channel,
+    fulfillmentType,
+    ...(cause ? { cause } : {}),
+  });
+  const rows = availabilityQuery.data ?? [];
 
   useRealtimeEvent("menu.availability.updated", () => {
-    void load();
+    void availabilityQuery.refetch();
   });
 
   const grouped = useMemo(() => {
@@ -147,22 +110,24 @@ export const AvailabilityDashboardPage = () => {
           />
           <Button
             variant="secondary"
-            onClick={() => void load()}
-            loading={loading}
+            onClick={() => void availabilityQuery.refetch()}
+            loading={availabilityQuery.isFetching}
           >
             Refresh
           </Button>
         </div>
       </Card>
 
-      {error ? (
+      {availabilityQuery.error ? (
         <Card className="border-danger/30 bg-danger-surface">
           <p className="text-sm font-semibold text-danger">
             Availability dashboard unavailable
           </p>
-          <p className="mt-1 text-sm text-text-secondary">{error}</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {extractApiError(availabilityQuery.error)}
+          </p>
         </Card>
-      ) : loading && rows.length === 0 ? (
+      ) : availabilityQuery.isLoading && rows.length === 0 ? (
         <div className="flex min-h-40 items-center justify-center">
           <Spinner className="h-6 w-6" />
         </div>

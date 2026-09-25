@@ -1,12 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import type { MenuCategory, MenuItem } from "@pos/types";
 import { Select } from "@pos/ui";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError } from "@/shared/lib/notify";
-import { useMenus } from "@/features/menu/hooks/useMenus";
-import { menuKeys } from "@/features/menu/query-keys";
-import { menusService } from "@/features/menu/services/menus.service";
+import {
+  useMenus,
+  useUpdateMenuMembership,
+} from "@/features/menu/hooks/useMenus";
 
 export const MenuMembershipsEditor = ({
   item,
@@ -25,31 +23,7 @@ export const MenuMembershipsEditor = ({
         ]),
       ),
   );
-  const mutation = useMutation({
-    mutationFn: async (change: {
-      menuId: string;
-      categoryId: string | null;
-    }) => {
-      if (change.categoryId) {
-        await menusService.assignItem(item.id, {
-          menuId: change.menuId,
-          categoryId: change.categoryId,
-        });
-      } else {
-        await menusService.removeItem(item.id, change.menuId);
-      }
-    },
-    onSuccess: (_result, change) => {
-      setCategoryByMenu((current) => {
-        const next = new Map(current);
-        if (change.categoryId) next.set(change.menuId, change.categoryId);
-        else next.delete(change.menuId);
-        return next;
-      });
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
-    },
-    onError: (error) => notifyError(error, "Failed to update menu assignment"),
-  });
+  const mutation = useUpdateMenuMembership(item.id);
 
   return (
     <section className="space-y-2 rounded-lg border border-border p-3">
@@ -93,10 +67,23 @@ export const MenuMembershipsEditor = ({
               })),
             ]}
             onChange={(event) =>
-              mutation.mutate({
-                menuId: menu.id,
-                categoryId: event || null,
-              })
+              mutation.mutate(
+                {
+                  menuId: menu.id,
+                  categoryId: event || null,
+                },
+                {
+                  onSuccess: (_result, change) => {
+                    setCategoryByMenu((current) => {
+                      const next = new Map(current);
+                      if (change.categoryId)
+                        next.set(change.menuId, change.categoryId);
+                      else next.delete(change.menuId);
+                      return next;
+                    });
+                  },
+                },
+              )
             }
           />
         );

@@ -1,13 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
-import { createOrdersApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const ordersApi = createOrdersApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { orderKeys } from "@/features/orders/query-keys";
+import { ordersService } from "@/features/orders/services/orders.service";
 
 export const useSetOrderItemSeatShares = (orderId: string) => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       itemId,
@@ -15,7 +12,7 @@ export const useSetOrderItemSeatShares = (orderId: string) => {
     }: {
       itemId: string;
       shares: Array<{ seatLabel: string; shareRatio: number }>;
-    }) => ordersApi.setItemSeatShares(orderId, itemId, shares),
+    }) => ordersService.setItemSeatShares(orderId, itemId, shares),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: orderKeys.detail(orderId),

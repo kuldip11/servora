@@ -107,12 +107,21 @@ const navItems = [
 ];
 
 export const DashboardLayout = () => {
-  const { user, branchId, memberships, membershipId } = useAuthStore();
+  const {
+    user,
+    branchId,
+    memberships,
+    membershipId,
+    franchiseId,
+    contextVersion,
+    contextPending,
+  } = useAuthStore();
   const { has } = usePermissions();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const previousPathname = useRef(pathname);
+  const queryContextKey = `${user?.id ?? "none"}:${franchiseId ?? "none"}:${membershipId ?? "none"}:${branchId ?? "all"}:${contextVersion}`;
   const mobileNavTriggerRef = useRef<HTMLButtonElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -247,32 +256,35 @@ export const DashboardLayout = () => {
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 sm:h-20 bg-surface border-b border-divider flex items-center justify-between gap-2 sm:gap-3 px-2 sm:px-3 md:px-4 xl:px-6 flex-shrink-0 min-w-0 shadow-sm">
-          <div className="flex flex-1 items-center gap-1.5 sm:gap-2 min-w-0">
-            <button
-              type="button"
-              aria-label="Open navigation"
-              aria-haspopup="dialog"
-              aria-expanded={mobileNavOpen}
-              onClick={() => setMobileNavOpen(true)}
-              ref={mobileNavTriggerRef}
-              className="md:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <MenuIcon aria-hidden="true" className="w-5 h-5" />
-            </button>
-            <div className="grid min-w-0 flex-1 grid-cols-2 items-center gap-1.5 sm:gap-2 lg:flex lg:flex-none lg:gap-3">
-              <TenantSwitcher />
-              <BranchSwitcher />
-            </div>
+        <header className="grid flex-shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-2 border-b border-divider bg-surface px-2 py-2 shadow-sm sm:px-3 md:px-4 lg:flex lg:h-20 lg:gap-3 lg:py-0 xl:px-6">
+          <button
+            type="button"
+            aria-label="Open navigation"
+            aria-haspopup="dialog"
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen(true)}
+            ref={mobileNavTriggerRef}
+            className="col-start-1 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+          >
+            <MenuIcon aria-hidden="true" className="h-5 w-5" />
+          </button>
+
+          <div
+            aria-label="Active business context"
+            className="col-span-3 row-start-2 grid min-w-0 grid-cols-1 gap-2 min-[390px]:grid-cols-2 lg:order-first lg:col-auto lg:row-auto lg:flex lg:items-center lg:gap-3"
+          >
+            <TenantSwitcher />
+            <BranchSwitcher />
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
+
+          <div className="col-start-3 row-start-1 flex shrink-0 items-center gap-1.5 justify-self-end sm:gap-2 lg:ml-auto lg:gap-3">
             <CommandPalette />
             <button
               type="button"
               aria-label="Notifications"
-              className="relative w-9 h-9 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary transition-colors"
+              className="relative flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-secondary"
             >
-              <Bell aria-hidden="true" className="w-5 h-5" />
+              <Bell aria-hidden="true" className="h-5 w-5" />
             </button>
             <UserMenu />
           </div>
@@ -283,7 +295,7 @@ export const DashboardLayout = () => {
           tabIndex={-1}
           className="flex-1 overflow-y-auto outline-none"
         >
-          <Outlet />
+          {!contextPending && <Outlet key={queryContextKey} />}
         </main>
       </div>
     </div>

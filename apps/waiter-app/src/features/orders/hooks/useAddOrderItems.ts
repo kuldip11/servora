@@ -7,6 +7,7 @@ import {
   type AddOrderItemInput,
 } from "@/features/orders/api/orders";
 import { orderKeys } from "@/features/orders/constants";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
 interface Params {
   orderId: string;
@@ -19,6 +20,7 @@ interface Params {
 
 export const useAddOrderItems = () => {
   const qc = useQueryClient();
+  const scope = getWaiterQueryScope();
 
   return useMutation({
     mutationFn: ({
@@ -34,8 +36,10 @@ export const useAddOrderItems = () => {
         ...(promotionIds?.length ? { promotionIds } : {}),
       }),
     onSuccess: (data, variables) => {
-      qc.invalidateQueries({ queryKey: orderKeys.all });
-      qc.invalidateQueries({ queryKey: orderKeys.detail(variables.orderId) });
+      qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      qc.invalidateQueries({
+        queryKey: orderKeys.detail(scope, variables.orderId),
+      });
       toast({ title: "Sent to kitchen!", tone: "success" });
     },
     onError: (err: unknown) => {

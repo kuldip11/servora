@@ -1,6 +1,5 @@
 import { useAuthStore } from "@/store/auth";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import {
   Button,
@@ -18,21 +17,17 @@ import {
 } from "@pos/ui";
 import { Building2, Shield, Palette } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissions";
-import {
-  useCancellationReasons,
-  cancellationReasonKeys,
-} from "@/features/orders";
-import { cancellationReasonsService } from "@/features/orders/services/cancellation-reasons.service";
+import { useCancellationReasons } from "@/features/orders";
 import { PricingSettingsCard } from "@/features/settings/components/PricingSettingsCard";
 import { KitchenOperationsSettingsCard } from "@/features/settings/components/KitchenOperationsSettingsCard";
 import { ApprovalThresholdSettingsCard } from "@/features/settings/components/ApprovalThresholdSettingsCard";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 import { validateCancellationReason } from "@/features/settings/helpers/settings-validation";
+import { useCancellationReasonMutation } from "@/features/settings/hooks/useCancellationReasonMutation";
 
 export const SettingsPage = () => {
   const { user, franchiseId } = useAuthStore();
   const { has } = usePermissions();
-  const queryClient = useQueryClient();
   const cancellationReasonsQuery = useCancellationReasons(
     false,
     has("settings:update") && has("orders:read"),
@@ -43,29 +38,8 @@ export const SettingsPage = () => {
   const cancellationReasonError = validateCancellationReason(
     newCancellationReason,
   );
-  const reasonMutation = useMutation({
-    mutationFn: (
-      action:
-        | { type: "create"; label: string }
-        | { type: "toggle"; id: string; isActive: boolean },
-    ) =>
-      action.type === "create"
-        ? cancellationReasonsService.create(action.label)
-        : cancellationReasonsService.update(action.id, {
-            isActive: action.isActive,
-          }),
-    onSuccess: (_data, action) => {
-      queryClient.invalidateQueries({ queryKey: cancellationReasonKeys.all });
-      queryClient.invalidateQueries({
-        queryKey: cancellationReasonKeys.active,
-      });
-      if (action.type === "create") {
-        setNewCancellationReason("");
-        cancellationFormErrors.resetValidation();
-      }
-      notifySuccess("Cancellation reasons updated");
-    },
-  });
+  const reasonMutation = useCancellationReasonMutation();
+
   return (
     <Page>
       <PageHeader
@@ -144,6 +118,8 @@ export const SettingsPage = () => {
                               isActive: !reason.isActive,
                             },
                             {
+                              onSuccess: () =>
+                                notifySuccess("Cancellation reasons updated"),
                               onError: (error) =>
                                 notifyError(
                                   error,
@@ -194,6 +170,11 @@ export const SettingsPage = () => {
                           label: newCancellationReason.trim(),
                         },
                         {
+                          onSuccess: () => {
+                            setNewCancellationReason("");
+                            cancellationFormErrors.resetValidation();
+                            notifySuccess("Cancellation reasons updated");
+                          },
                           onError: (error) =>
                             cancellationFormErrors.handleApiError(
                               error,

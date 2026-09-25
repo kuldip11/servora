@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import {
   Button,
   Input,
@@ -7,13 +6,11 @@ import {
   Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
 import { getErrorMessage } from "@/shared/lib/errors";
 
-const menuApi = createMenuApi(apiClient);
 import { useMenuCategories } from "@/features/menu";
 import { useMenus } from "@/features/menu/hooks/useMenus";
+import { useCreateHappyHourRule } from "@/features/menu/hooks/useCreateHappyHourRule";
 
 export const HappyHourSection = () => {
   const categoriesQuery = useMenuCategories();
@@ -38,9 +35,11 @@ export const HappyHourSection = () => {
         }))
       : menus.map((menu) => ({ value: menu.id, label: menu.name }));
 
-  const create = useMutation({
-    mutationFn: async () =>
-      await menuApi.createHappyHourRule<unknown[]>({
+  const create = useCreateHappyHourRule();
+
+  const createHappyHour = () => {
+    create.mutate(
+      {
         ...(scopeType === "CATEGORY"
           ? { categoryId: scopeId }
           : { menuId: scopeId }),
@@ -49,16 +48,19 @@ export const HappyHourSection = () => {
         endTime,
         ...(startDate ? { startDate } : {}),
         ...(endDate ? { endDate } : {}),
-      }),
-    onSuccess: (rows) => {
-      setError(null);
-      setCreatedCount(rows.length);
-    },
-    onError: (err: unknown) => {
-      setCreatedCount(null);
-      setError(getErrorMessage(err, "Could not create happy-hour rules"));
-    },
-  });
+      },
+      {
+        onSuccess: (rows) => {
+          setError(null);
+          setCreatedCount(rows.length);
+        },
+        onError: (err) => {
+          setCreatedCount(null);
+          setError(getErrorMessage(err, "Could not create happy-hour rules"));
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -177,7 +179,7 @@ export const HappyHourSection = () => {
                 ? categoriesQuery.isError && !categoriesQuery.data
                 : menusQuery.isError && !menusQuery.data)
             }
-            onClick={() => create.mutate()}
+            onClick={createHappyHour}
           >
             Create happy hour
           </Button>

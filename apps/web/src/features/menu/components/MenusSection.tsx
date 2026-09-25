@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import type { Menu } from "@pos/types";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -12,9 +11,8 @@ import {
   QueryErrorState,
   StaleDataBanner,
 } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
 import { useBranches } from "@/features/branches";
-import { apiClient } from "@/shared/lib/api-client";
+import { useActiveMenus } from "@/features/menu";
 import {
   useCreateMenu,
   useDeleteMenu,
@@ -24,7 +22,6 @@ import {
 import { MenuAvailabilityDialog } from "@/features/menu/components/MenuAvailabilityDialog";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 
-const menuApi = createMenuApi(apiClient);
 const createMenuFormSchema = z.object({
   name: z.string().trim().min(1, "Menu name is required").max(120),
 });
@@ -33,10 +30,7 @@ type CreateMenuFormValues = z.infer<typeof createMenuFormSchema>;
 export const MenusSection = () => {
   const [editing, setEditing] = useState<Menu | null>(null);
   const menusQuery = useMenus();
-  const resolvedMenusQuery = useQuery<Menu[]>({
-    queryKey: ["menus", "active", "origin-preview"],
-    queryFn: () => menuApi.listActiveMenus<Menu>("DINE_IN"),
-  });
+  const resolvedMenusQuery = useActiveMenus("DINE_IN");
   const branchesQuery = useBranches();
   const createMenu = useCreateMenu();
   const setPublished = useSetMenuPublished();

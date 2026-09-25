@@ -12,8 +12,7 @@ export interface AppErrorFallbackProps {
 export const AppErrorFallback = ({
   appName = "Servora",
   title = "Something went wrong",
-  description =
-    "This screen could not be rendered safely. Try again. If the issue continues, reload the application.",
+  description = "This screen could not be rendered safely. Try again. If the issue continues, reload the application.",
   onReset,
   resetLabel = "Try again",
   showReload = true,

@@ -8,9 +8,13 @@ export interface AvailabilityDashboardParams {
 
 export const createAvailabilityApi = (client: DomainHttpClient) => {
   return {
-    dashboard<T>(params: AvailabilityDashboardParams): Promise<T> {
+    dashboard<T>(
+      params: AvailabilityDashboardParams,
+      signal?: AbortSignal,
+    ): Promise<T> {
       return getDomainData<T>(client, "/menu/availability/dashboard", {
         params,
+        ...(signal ? { signal } : {}),
       });
     },
   };

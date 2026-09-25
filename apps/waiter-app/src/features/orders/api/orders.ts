@@ -39,12 +39,16 @@ export interface AddOrderComboInput {
 
 export const fetchOrders = async (
   filters: OrdersListFilters = {},
+  signal?: AbortSignal,
 ): Promise<PaginatedResult<Order>> => {
-  return ordersApi.list(filters);
+  return ordersApi.list(filters, signal);
 };
 
-export const fetchOrder = async (orderId: string): Promise<Order> => {
-  return ordersApi.get(orderId);
+export const fetchOrder = async (
+  orderId: string,
+  signal?: AbortSignal,
+): Promise<Order> => {
+  return ordersApi.get(orderId, signal);
 };
 
 export const updateOrderStatus = async (
@@ -56,10 +60,10 @@ export const updateOrderStatus = async (
   await ordersApi.updateStatus(id, { ...validated, ...reason });
 };
 
-export const fetchCancellationReasons = async (): Promise<
-  CancellationReason[]
-> => {
-  return ordersApi.listCancellationReasons();
+export const fetchCancellationReasons = async (
+  signal?: AbortSignal,
+): Promise<CancellationReason[]> => {
+  return ordersApi.listCancellationReasons(signal);
 };
 
 export const addOrderItems = async (

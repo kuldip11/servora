@@ -35,8 +35,12 @@ export interface TableInput {
 
 export const createTablesApi = (client: DomainHttpClient) => {
   return {
-    list(): Promise<RestaurantTableDto[]> {
-      return getDomainData<RestaurantTableDto[]>(client, "/tables");
+    list(signal?: AbortSignal): Promise<RestaurantTableDto[]> {
+      return getDomainData<RestaurantTableDto[]>(
+        client,
+        "/tables",
+        signal ? { signal } : undefined,
+      );
     },
     create(input: TableInput): Promise<RestaurantTableDto> {
       return postDomainData<RestaurantTableDto>(client, "/tables", input);
@@ -67,10 +71,14 @@ export const createTablesApi = (client: DomainHttpClient) => {
         `/tables/${id}/qr/regenerate`,
       );
     },
-    getTakeawayQr(branchId: string): Promise<TakeawayQrDto> {
+    getTakeawayQr(
+      branchId: string,
+      signal?: AbortSignal,
+    ): Promise<TakeawayQrDto> {
       return getDomainData<TakeawayQrDto>(
         client,
         `/branches/${branchId}/takeaway-qr`,
+        signal ? { signal } : undefined,
       );
     },
     regenerateTakeawayQr(branchId: string): Promise<TakeawayQrDto> {

@@ -15,14 +15,9 @@ import { useRoles } from "@/features/staff/hooks/useRoles";
 import { useAddStaff } from "@/features/staff/hooks/useAddStaff";
 import { useDeleteStaff } from "@/features/staff/hooks/useDeleteStaff";
 import { useUpdateStaffStatus } from "@/features/staff/hooks/useUpdateStaffStatus";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
-import {
-  staffService,
-  type StaffRow,
-} from "@/features/staff/services/staff.service";
-import { staffKeys } from "@/features/staff/query-keys";
+import type { StaffRow } from "@/features/staff/services/staff.service";
+import { useUpdateStaff } from "@/features/staff/hooks/useUpdateStaff";
 import { AddStaffForm } from "@/features/staff/components/forms/AddStaffForm";
 import { EditStaffForm } from "@/features/staff/components/forms/EditStaffForm";
 import { RoleManager } from "@/features/staff/components/roles/RoleManager";
@@ -78,25 +73,7 @@ export const StaffPage = () => {
   const addMutation = useAddStaff();
   const deleteMutation = useDeleteStaff();
   const updateStatusMutation = useUpdateStaffStatus();
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      input,
-    }: {
-      id: string;
-      input: {
-        firstName: string;
-        lastName: string;
-        roleId: string;
-        branchIds: string[];
-      };
-    }) => staffService.update(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list() });
-      notifySuccess("Staff member updated");
-      setEditing(null);
-    },
-  });
+  const updateMutation = useUpdateStaff();
 
   const columns = buildStaffColumns({
     canUpdate: has("staff:update"),
@@ -231,6 +208,8 @@ export const StaffPage = () => {
             onCancel={() => setEditing(null)}
             onSubmit={async (input) => {
               await updateMutation.mutateAsync({ id: editing.id, input });
+              notifySuccess("Staff member updated");
+              setEditing(null);
             }}
             loading={updateMutation.isPending}
           />

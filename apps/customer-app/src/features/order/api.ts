@@ -87,10 +87,14 @@ export const createCustomerOrder = (
   );
 };
 
-export const getCustomerOrder = (sessionToken: string, orderId: string) => {
+export const getCustomerOrder = (
+  sessionToken: string,
+  orderId: string,
+  signal?: AbortSignal,
+) => {
   return request<CustomerOrder>(
     `/api/customer/orders/${orderId}`,
-    undefined,
+    signal ? { signal } : undefined,
     sessionToken,
   );
 };

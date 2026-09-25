@@ -13,15 +13,6 @@ const mocks = vi.hoisted(() => ({
   validationFails: false,
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQuery: () => ({ data: mocks.activeMenus }),
-}));
-vi.mock("@pos/api-client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@pos/api-client")>()),
-  createMenuApi: () => ({ listActiveMenus: vi.fn() }),
-}));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: mocks.branches }),
 }));
@@ -31,6 +22,12 @@ vi.mock("@/features/tables", () => ({
 vi.mock("@/features/menu", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories }),
+  useActiveMenus: () => ({
+    data: mocks.activeMenus,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/orders", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/orders")>()),

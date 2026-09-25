@@ -14,7 +14,10 @@ vi.mock("../../../../shared/lib/realtime", () => ({
     handlers.set(type, handler),
   ),
 }));
-vi.mock("../../../../shared/lib/query-client", () => ({ queryClient }));
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...(await original<typeof import("@tanstack/react-query")>()),
+  useQueryClient: () => queryClient,
+}));
 vi.mock("../../query-keys", () => ({
   orderKeys: {
     lists: () => ["orders", "list"],

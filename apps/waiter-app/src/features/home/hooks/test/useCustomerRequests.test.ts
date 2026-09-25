@@ -41,7 +41,7 @@ vi.mock("@/shared/lib/realtime", () => ({
 }));
 
 import {
-  CUSTOMER_REQUESTS_QUERY_KEY,
+  customerRequestKeys,
   useCustomerRequests,
   useResolveCustomerRequest,
 } from "../useCustomerRequests";
@@ -58,7 +58,7 @@ describe("useCustomerRequests", () => {
     useCustomerRequests();
     const config = queryConfigs.at(-1)!;
     await config.queryFn();
-    expect(config.queryKey).toEqual(CUSTOMER_REQUESTS_QUERY_KEY);
+    expect(config.queryKey).toEqual(customerRequestKeys.all([null, null]));
     expect(config.refetchInterval).toBe(10_000);
 
     realtimeHandlers.get("customer.request.created")!({

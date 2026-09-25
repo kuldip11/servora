@@ -10,8 +10,19 @@ const serviceFns = vi.hoisted(() => ({
   listSchedules: vi.fn(),
   getRecipe: vi.fn(),
   listOverrides: vi.fn(),
+  listActive: vi.fn(),
+  listCombos: vi.fn(),
+  listStations: vi.fn(),
+  listRoutes: vi.fn(),
+  listPromotions: vi.fn(),
+  promotionStats: vi.fn(),
+  listPriceRules: vi.fn(),
+  listChannelOverrides: vi.fn(),
 }));
 
+vi.mock("../services/menus.service", () => ({
+  menusService: { listActive: serviceFns.listActive },
+}));
 vi.mock("../services/menu-items.service", () => ({
   menuItemsService: { listCategories: serviceFns.listCategories },
 }));
@@ -39,11 +50,33 @@ vi.mock("../services/menu-recipes.service", () => ({
 vi.mock("../services/menu-branch-overrides.service", () => ({
   menuBranchOverridesService: { list: serviceFns.listOverrides },
 }));
+vi.mock("../services/menu-combos.service", () => ({
+  menuCombosService: { list: serviceFns.listCombos },
+}));
+vi.mock("../services/kitchen-stations.service", () => ({
+  kitchenStationsService: {
+    list: serviceFns.listStations,
+    routes: serviceFns.listRoutes,
+  },
+}));
+vi.mock("../services/menu-promotions.service", () => ({
+  menuPromotionsService: {
+    list: serviceFns.listPromotions,
+    stats: serviceFns.promotionStats,
+  },
+}));
+vi.mock("../services/menu-pricing.service", () => ({
+  menuPricingService: { list: serviceFns.listPriceRules },
+}));
+vi.mock("../services/menu-channel-overrides.service", () => ({
+  menuChannelOverridesService: { list: serviceFns.listChannelOverrides },
+}));
 vi.mock("../../../store/auth", () => ({
   useAuthStore: { getState: () => ({ franchiseId: "fr-1", branchId: "br-1" }) },
 }));
 
 import {
+  activeMenusQuery,
   menuCategoriesQuery,
   menuTagsQuery,
   modifierGroupsQuery,
@@ -53,6 +86,13 @@ import {
   menuItemSchedulesQuery,
   menuItemRecipeQuery,
   menuItemBranchOverridesQuery,
+  menuCombosQuery,
+  kitchenStationsQuery,
+  itemStationRoutesQuery,
+  promotionsQuery,
+  promotionStatsQuery,
+  perCoverPriceRulesQuery,
+  channelOverridesQuery,
 } from "@/features/menu/query-options";
 
 describe("menu query definitions", () => {
@@ -106,5 +146,82 @@ describe("menu query definitions", () => {
     expect(menuItemBranchOverridesQuery("item-1").queryFn).toEqual(
       expect.any(Function),
     );
+  });
+
+  it("binds combos and kitchen routing to branch-scoped keys", () => {
+    expect(menuCombosQuery().queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "combos",
+    ]);
+    expect(kitchenStationsQuery().queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "kitchen-stations",
+    ]);
+    expect(itemStationRoutesQuery("item-1").queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "kitchen-stations",
+      "routes",
+      "item-1",
+    ]);
+  });
+
+  it("binds promotions and promotion stats to scoped keys", () => {
+    expect(promotionsQuery().queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "promotions",
+    ]);
+    expect(promotionStatsQuery("promo-1").queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "promotions",
+      "promo-1",
+      "stats",
+    ]);
+  });
+
+  it("binds buffet pricing and channel overrides to branch-scoped keys", () => {
+    expect(perCoverPriceRulesQuery().queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "per-cover-price-rules",
+    ]);
+    expect(channelOverridesQuery("item-1").queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "channel-overrides",
+      "item-1",
+    ]);
+  });
+
+  it("binds active menus to the scoped menu service", () => {
+    const query = activeMenusQuery("DINE_IN");
+    expect(query.queryKey).toEqual([
+      "menu",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "active-menus",
+      "DINE_IN",
+    ]);
+    expect(query.queryFn).toEqual(expect.any(Function));
+    expect(query.staleTime).toBe(60_000);
   });
 });

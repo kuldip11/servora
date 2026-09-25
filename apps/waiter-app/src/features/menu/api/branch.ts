@@ -4,6 +4,8 @@ import { apiClient } from "@/shared/lib/api-client";
 
 const branchesApi = createBranchesApi(apiClient);
 
-export const fetchMyBranch = async (): Promise<Branch | undefined> => {
-  return (await branchesApi.list())[0];
+export const fetchMyBranch = async (
+  signal?: AbortSignal,
+): Promise<Branch | undefined> => {
+  return (await branchesApi.list(signal))[0];
 };

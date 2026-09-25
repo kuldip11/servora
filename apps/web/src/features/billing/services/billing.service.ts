@@ -4,6 +4,7 @@ import {
   type SeatSplitResult,
 } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
+import type { Bill } from "@pos/types";
 
 const billingApi = createBillingApi(apiClient);
 
@@ -27,7 +28,9 @@ export const billingService = {
       ...(input.reference !== undefined && { reference: input.reference }),
     });
   },
-  getOrderBills: billingApi.getOrderBills,
+  getOrderBills(orderId: string, signal?: AbortSignal): Promise<Bill[]> {
+    return billingApi.getOrderBills(orderId, signal) as Promise<Bill[]>;
+  },
   splitOrder: billingApi.splitOrder,
   splitOrderByItems(orderId: string, allocations: BillItemAllocation[]) {
     return billingApi.splitOrderByItems(orderId, allocations);

@@ -107,8 +107,14 @@ export const createMenuApi = (client: DomainHttpClient) => {
     listCategories(): Promise<MenuCategory[]> {
       return getDomainData<MenuCategory[]>(client, "/menu/categories");
     },
-    listOrderableCategories(): Promise<OrderableMenuCategory[]> {
-      return getDomainData<OrderableMenuCategory[]>(client, "/menu/categories");
+    listOrderableCategories(
+      signal?: AbortSignal,
+    ): Promise<OrderableMenuCategory[]> {
+      return getDomainData<OrderableMenuCategory[]>(
+        client,
+        "/menu/categories",
+        signal ? { signal } : undefined,
+      );
     },
     createCategory(name: string): Promise<MenuCategory> {
       return postDomainData<MenuCategory>(client, "/menu/categories", { name });
@@ -433,19 +439,35 @@ export const createMenuApi = (client: DomainHttpClient) => {
         client.delete(`/menu/items/${itemId}/branch/${branchId}`),
       );
     },
-    listActiveMenus<T>(fulfillmentType: string): Promise<T[]> {
+    listActiveMenus<T>(
+      fulfillmentType: string,
+      signal?: AbortSignal,
+    ): Promise<T[]> {
       return getDomainData<T[]>(client, "/menu/menus/active", {
         params: { channel: "STAFF", fulfillmentType },
+        ...(signal ? { signal } : {}),
       });
     },
-    listCombos<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/combos");
+    listCombos<T>(signal?: AbortSignal): Promise<T[]> {
+      return getDomainData<T[]>(
+        client,
+        "/menu/combos",
+        signal ? { signal } : undefined,
+      );
     },
-    listPromotions<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/promotions");
+    listPromotions<T>(signal?: AbortSignal): Promise<T[]> {
+      return getDomainData<T[]>(
+        client,
+        "/menu/promotions",
+        signal ? { signal } : undefined,
+      );
     },
-    listPriceRules<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/price-rules");
+    listPriceRules<T>(signal?: AbortSignal): Promise<T[]> {
+      return getDomainData<T[]>(
+        client,
+        "/menu/price-rules",
+        signal ? { signal } : undefined,
+      );
     },
     listAllergens<T>(): Promise<T[]> {
       return getDomainData<T[]>(client, "/menu/allergens");

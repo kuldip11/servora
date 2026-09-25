@@ -44,8 +44,12 @@ export interface BranchInput {
 
 export const createBranchesApi = (client: DomainHttpClient) => {
   return {
-    list(): Promise<Branch[]> {
-      return getDomainData<Branch[]>(client, "/branches");
+    list(signal?: AbortSignal): Promise<Branch[]> {
+      return getDomainData<Branch[]>(
+        client,
+        "/branches",
+        signal ? { signal } : undefined,
+      );
     },
     create(input: BranchInput): Promise<Branch> {
       return postDomainData<Branch>(client, "/branches", input);

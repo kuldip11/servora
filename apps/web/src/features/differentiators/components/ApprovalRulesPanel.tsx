@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Button, Card, Select, toast } from "@pos/ui";
-import { createApprovalsApi } from "@pos/api-client";
 import { DIFFERENTIATORS_INPUT_CLASS } from "@/features/differentiators/constants";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
-
-const approvalsApi = createApprovalsApi(apiClient);
+import { extractApiError } from "@/shared/lib/api-client";
+import { useSaveDifferentiatorApprovalThreshold } from "@/features/differentiators/hooks/useDifferentiators";
 
 type ApprovalAction = "VOID" | "COMP";
 
@@ -13,20 +10,7 @@ export const ApprovalRulesPanel = () => {
   const [action, setAction] = useState<ApprovalAction>("COMP");
   const [threshold, setThreshold] = useState("500");
   const [requiresRole, setRequiresRole] = useState("Manager");
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      approvalsApi.setThreshold(action, {
-        thresholdAmount: Number(threshold),
-        requiresRole: requiresRole.trim(),
-      }),
-    onSuccess: () =>
-      toast({
-        title: `${action === "COMP" ? "Comp" : "Void"} threshold saved`,
-        tone: "success",
-      }),
-    onError: (error) =>
-      toast({ title: extractApiError(error), tone: "danger" }),
-  });
+  const saveMutation = useSaveDifferentiatorApprovalThreshold();
 
   return (
     <Card>
@@ -68,7 +52,24 @@ export const ApprovalRulesPanel = () => {
         <Button
           loading={saveMutation.isPending}
           disabled={!requiresRole.trim() || Number(threshold) < 0}
-          onClick={() => saveMutation.mutate()}
+          onClick={() =>
+            saveMutation.mutate(
+              {
+                action,
+                thresholdAmount: Number(threshold),
+                requiresRole: requiresRole.trim(),
+              },
+              {
+                onSuccess: () =>
+                  toast({
+                    title: `${action === "COMP" ? "Comp" : "Void"} threshold saved`,
+                    tone: "success",
+                  }),
+                onError: (error) =>
+                  toast({ title: extractApiError(error), tone: "danger" }),
+              },
+            )
+          }
         >
           Save threshold
         </Button>

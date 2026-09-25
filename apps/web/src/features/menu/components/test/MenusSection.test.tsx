@@ -15,10 +15,17 @@ vi.mock("lucide-react", async (importOriginal) => ({
   Plus: () => null,
   Trash2: () => null,
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: mocks.branches,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+}));
+vi.mock("@/features/menu", () => ({
+  useActiveMenus: () => ({
+    data: mocks.resolved,
     isError: false,
     isFetching: false,
     refetch: vi.fn(),
@@ -39,18 +46,6 @@ vi.mock("@/features/menu/hooks/useMenus", () => ({
   }),
   useSetMenuPublished: () => ({ mutate: mocks.publish, isPending: false }),
   useDeleteMenu: () => ({ mutate: mocks.del, isPending: false }),
-}));
-vi.mock("@pos/api-client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@pos/api-client")>()),
-  createMenuApi: () => ({ listActiveMenus: vi.fn() }),
-}));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({
-    data: mocks.resolved,
-    isError: false,
-    isFetching: false,
-    refetch: vi.fn(),
-  }),
 }));
 vi.mock("../MenuAvailabilityDialog", () => ({
   MenuAvailabilityDialog: ({ menu, onClose }: any) =>

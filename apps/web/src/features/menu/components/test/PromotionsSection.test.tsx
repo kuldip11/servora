@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   categories: [] as any[],
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/query-client", () => ({
+  queryClient: { invalidateQueries: mocks.invalidate },
+}));
 vi.mock("@/features/menu", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories }),

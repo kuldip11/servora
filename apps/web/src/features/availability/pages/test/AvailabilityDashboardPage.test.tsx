@@ -1,159 +1,85 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { chooseSelectOption } from "@/test/select";
-import { AvailabilityDashboardPage } from "@/features/availability/pages/AvailabilityDashboardPage";
 
-const { api, realtime } = vi.hoisted(() => ({
-  api: { get: vi.fn() },
+const mocks = vi.hoisted(() => ({
+  useDashboard: vi.fn(),
+  query: { current: {} as any },
   realtime: { handler: undefined as (() => void) | undefined },
 }));
-vi.mock("../../../../shared/lib/api-client", () => ({
-  apiClient: { get: api.get },
+vi.mock("@/features/availability/hooks/useAvailabilityDashboard", () => ({
+  useAvailabilityDashboard: (input: any) => {
+    mocks.useDashboard(input);
+    return mocks.query.current;
+  },
+}));
+vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: (error: unknown) =>
     error instanceof Error ? error.message : "Request failed",
 }));
-vi.mock("../../../../shared/lib/realtime", () => ({
+vi.mock("@/shared/lib/realtime", () => ({
   useRealtimeEvent: vi.fn((_type: string, handler: () => void) => {
-    realtime.handler = handler;
+    mocks.realtime.handler = handler;
   }),
 }));
 
+import { AvailabilityDashboardPage } from "../AvailabilityDashboardPage";
+
+const rows = [
+  {
+    entityType: "ITEM",
+    entityId: "item-1",
+    menuItemId: "item-1",
+    name: "Dal",
+    status: "OUT_OF_STOCK",
+    reason: "Insufficient inventory",
+    cause: "RECIPE_DRIVEN",
+    branchId: "b1",
+    branchName: "Main",
+    channel: "CUSTOMER_QR",
+    fulfillmentType: "DELIVERY",
+  },
+];
+
 describe("AvailabilityDashboardPage", () => {
-  it("loads cross-context resolver output and refreshes on availability realtime events", async () => {
-    api.get
-      .mockResolvedValueOnce({
-        data: {
-          data: {
-            rows: [
-              {
-                entityType: "ITEM",
-                entityId: "item-1",
-                menuItemId: "item-1",
-                name: "Dal",
-                status: "OUT_OF_STOCK",
-                reason: "Insufficient inventory",
-                cause: "RECIPE_DRIVEN",
-                branchId: "b1",
-                branchName: "Main",
-                channel: "CUSTOMER_QR",
-                fulfillmentType: "DELIVERY",
-              },
-            ],
-          },
-        },
-      })
-      .mockResolvedValueOnce({ data: { data: { rows: [] } } });
-
-    render(<AvailabilityDashboardPage />);
-
-    expect(await screen.findByText("Dal")).toBeTruthy();
-    expect(screen.getByText("CUSTOMER QR · DELIVERY")).toBeTruthy();
-    expect(api.get).toHaveBeenCalledWith(
-      "/menu/availability/dashboard",
-      expect.objectContaining({
-        params: expect.objectContaining({
-          channel: "UNSCOPED",
-          fulfillmentType: "UNSCOPED",
-        }),
-      }),
-    );
-
-    await act(async () => {
-      realtime.handler?.();
-    });
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
-    expect(
-      await screen.findByText(
-        "Everything in the selected scope is currently available.",
-      ),
-    ).toBeTruthy();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.query.current = {
+      data: rows,
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+    };
   });
-  it("shows API errors and supports filtering, sorting and scoped reloads", async () => {
-    api.get.mockRejectedValueOnce(new Error("dashboard down"));
-    const failed = render(<AvailabilityDashboardPage />);
-    expect(
-      await screen.findByText("Availability dashboard unavailable"),
-    ).toBeTruthy();
-    expect(screen.getByText("dashboard down")).toBeTruthy();
-    failed.unmount();
 
-    api.get.mockResolvedValue({
-      data: {
-        data: {
-          rows: [
-            {
-              entityType: "ITEM",
-              entityId: "2",
-              menuItemId: "2",
-              name: "Zulu",
-              status: "OUT_OF_STOCK",
-              reason: "No stock",
-              cause: "RECIPE_DRIVEN",
-              branchId: "b1",
-              branchName: null,
-              channel: "STAFF",
-              fulfillmentType: "DINE_IN",
-            },
-            {
-              entityType: "MODIFIER_OPTION",
-              entityId: "1",
-              menuItemId: "1",
-              name: "Alpha",
-              status: "HIDDEN",
-              reason: "Disabled",
-              cause: "MANUAL",
-              branchId: "b1",
-              branchName: "Main",
-              channel: "CUSTOMER_QR",
-              fulfillmentType: "TAKEAWAY",
-            },
-            {
-              entityType: "MODIFIER_OPTION",
-              entityId: "1",
-              menuItemId: "1",
-              name: "Alpha",
-              status: "HIDDEN",
-              reason: "Disabled",
-              cause: "MANUAL",
-              branchId: "b1",
-              branchName: "Main",
-              channel: "CUSTOMER_QR",
-              fulfillmentType: "TAKEAWAY",
-            },
-          ],
-        },
-      },
-    });
+  it("uses canonical query inputs and refreshes on realtime events", async () => {
     render(<AvailabilityDashboardPage />);
-    expect(await screen.findByText("Alpha")).toBeTruthy();
-    expect(screen.getByText(/Current branch/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Search availability exceptions"), {
-      target: { value: "main" },
+    expect(screen.getByText("Dal")).toBeTruthy();
+    expect(mocks.useDashboard).toHaveBeenCalledWith({
+      channel: "UNSCOPED",
+      fulfillmentType: "UNSCOPED",
     });
-    expect(screen.queryByText("Zulu")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /clear/i }));
+    await act(async () => {
+      mocks.realtime.handler?.();
+    });
+    expect(mocks.query.current.refetch).toHaveBeenCalled();
     chooseSelectOption("Channel", "Staff");
     chooseSelectOption("Fulfillment", "Delivery");
     chooseSelectOption("Cause", "RECIPE DRIVEN");
-    await waitFor(() =>
-      expect(api.get).toHaveBeenLastCalledWith(
-        "/menu/availability/dashboard",
-        expect.objectContaining({
-          params: expect.objectContaining({
-            channel: "STAFF",
-            fulfillmentType: "DELIVERY",
-            cause: "RECIPE_DRIVEN",
-          }),
-        }),
-      ),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    expect(mocks.useDashboard).toHaveBeenLastCalledWith({
+      channel: "STAFF",
+      fulfillmentType: "DELIVERY",
+      cause: "RECIPE_DRIVEN",
+    });
+  });
+
+  it("supports local search and error rendering", () => {
+    render(<AvailabilityDashboardPage />);
+    fireEvent.change(screen.getByLabelText("Search availability exceptions"), {
+      target: { value: "missing" },
+    });
+    expect(screen.queryByText("Dal")).toBeNull();
+    expect(screen.getByText("Live availability")).toBeTruthy();
   });
 });

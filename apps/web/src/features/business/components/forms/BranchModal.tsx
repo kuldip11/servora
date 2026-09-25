@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,7 +14,10 @@ import {
   businessBranchFormSchema,
   type BusinessBranchFormValues,
 } from "@pos/validation";
-import { businessService } from "@/features/business/services/business.service";
+import {
+  useArchiveBranch,
+  useSaveBranch,
+} from "@/features/business/hooks/useBusiness";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import { usePermissions } from "@/shared/auth/permissions";
@@ -63,33 +65,8 @@ export const BranchModal = ({
       );
     }
   }, [branch, clearFormErrors, form, open]);
-  const mutation = useMutation({
-    mutationFn: (values: BusinessBranchFormValues) =>
-      branch
-        ? businessService.updateBranch(branch.id, { ...values, currency })
-        : businessService.createBranch({ ...values, currency }),
-    onSuccess: async () => {
-      notifySuccess(branch ? "Branch updated" : "Branch created");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) =>
-      handleApiError(
-        error,
-        form.setError,
-        branchFieldPaths,
-        "Could not save branch",
-      ),
-  });
-  const archiveMutation = useMutation({
-    mutationFn: () => businessService.archiveBranch(branch!.id),
-    onSuccess: async () => {
-      notifySuccess("Branch deactivated");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Could not deactivate branch"),
-  });
+  const mutation = useSaveBranch({ branchId: branch?.id, currency });
+  const archiveMutation = useArchiveBranch(branch?.id ?? "");
   const values = form.watch();
   const e = form.formState.errors;
   return (
@@ -103,7 +80,20 @@ export const BranchModal = ({
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
         onSubmit={form.handleSubmit((values) => {
           clearFormErrors();
-          mutation.mutate(values);
+          mutation.mutate(values, {
+            onSuccess: async () => {
+              notifySuccess(branch ? "Branch updated" : "Branch created");
+              await onSaved();
+              onClose();
+            },
+            onError: (error) =>
+              handleApiError(
+                error,
+                form.setError,
+                branchFieldPaths,
+                "Could not save branch",
+              ),
+          });
         })}
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -330,7 +320,15 @@ export const BranchModal = ({
               loading={archiveMutation.isPending}
               onClick={() =>
                 window.confirm("Deactivate this branch?") &&
-                archiveMutation.mutate()
+                archiveMutation.mutate(undefined, {
+                  onSuccess: async () => {
+                    notifySuccess("Branch deactivated");
+                    await onSaved();
+                    onClose();
+                  },
+                  onError: (error) =>
+                    notifyError(error, "Could not deactivate branch"),
+                })
               }
             >
               Deactivate

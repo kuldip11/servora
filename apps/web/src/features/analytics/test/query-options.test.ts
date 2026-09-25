@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const dashboard = vi.hoisted(() => vi.fn());
@@ -22,7 +24,8 @@ describe("dashboardStatsQuery", () => {
       "br-1",
       "dashboard",
     ]);
-    expect(query.queryFn).toBe(dashboard);
+    query.queryFn?.({ signal } as never);
+    expect(dashboard).toHaveBeenCalledWith(signal);
     expect(query.refetchInterval).toBe(30_000);
   });
 

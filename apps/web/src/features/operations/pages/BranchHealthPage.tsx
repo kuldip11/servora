@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
   Card,
@@ -9,14 +8,11 @@ import {
   Spinner,
   StaleDataBanner,
 } from "@pos/ui";
-import { operationsService } from "@/features/operations/services/operations.service";
 import { extractApiError } from "@/shared/lib/api-client";
+import { useOperationsSnapshot } from "@/features/operations/hooks/useOperationsSnapshot";
+import type { Branch } from "@pos/types";
 
-const capabilityScore = (
-  branch: Awaited<
-    ReturnType<typeof operationsService.snapshot>
-  >["branches"][number],
-) => {
+const capabilityScore = (branch: Branch) => {
   const enabled = [
     branch.dineInEnabled,
     branch.takeawayEnabled,
@@ -27,11 +23,7 @@ const capabilityScore = (
 };
 
 export const BranchHealthPage = () => {
-  const snapshot = useQuery({
-    queryKey: ["operations", "branch-health"],
-    queryFn: operationsService.snapshot,
-    refetchInterval: 60_000,
-  });
+  const snapshot = useOperationsSnapshot();
 
   const exceptionsByBranch = useMemo(() => {
     const map = new Map<string, number>();

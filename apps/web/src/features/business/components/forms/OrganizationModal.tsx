@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
@@ -8,7 +7,10 @@ import {
   organizationBusinessFormSchema,
   type OrganizationBusinessFormValues,
 } from "@pos/validation";
-import { businessService } from "@/features/business/services/business.service";
+import {
+  useArchiveOrganization,
+  useSaveOrganization,
+} from "@/features/business/hooks/useBusiness";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import {
@@ -48,38 +50,8 @@ export const OrganizationModal = ({
       );
     }
   }, [clearFormErrors, form, open, organization]);
-  const mutation = useMutation({
-    mutationFn: async (
-      values: OrganizationBusinessFormValues,
-    ): Promise<void> => {
-      if (organization)
-        await businessService.updateOrganization(organization.id, values);
-      else await businessService.createOrganization(values);
-    },
-    onSuccess: async () => {
-      notifySuccess(
-        organization ? "Organization updated" : "Organization created",
-      );
-      await onSaved();
-      onClose();
-    },
-    onError: (error) =>
-      handleApiError(
-        error,
-        form.setError,
-        organizationFieldPaths,
-        "Could not save organization",
-      ),
-  });
-  const archiveMutation = useMutation({
-    mutationFn: () => businessService.archiveOrganization(organization!.id),
-    onSuccess: async () => {
-      notifySuccess("Organization archived");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Could not archive organization"),
-  });
+  const mutation = useSaveOrganization(organization?.id);
+  const archiveMutation = useArchiveOrganization(organization?.id ?? "");
   const e = form.formState.errors;
   return (
     <Modal
@@ -92,7 +64,22 @@ export const OrganizationModal = ({
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
         onSubmit={form.handleSubmit((values) => {
           clearFormErrors();
-          mutation.mutate(values);
+          mutation.mutate(values, {
+            onSuccess: async () => {
+              notifySuccess(
+                organization ? "Organization updated" : "Organization created",
+              );
+              await onSaved();
+              onClose();
+            },
+            onError: (error) =>
+              handleApiError(
+                error,
+                form.setError,
+                organizationFieldPaths,
+                "Could not save organization",
+              ),
+          });
         })}
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -255,7 +242,15 @@ export const OrganizationModal = ({
               loading={archiveMutation.isPending}
               onClick={() =>
                 window.confirm("Archive this organization?") &&
-                archiveMutation.mutate()
+                archiveMutation.mutate(undefined, {
+                  onSuccess: async () => {
+                    notifySuccess("Organization archived");
+                    await onSaved();
+                    onClose();
+                  },
+                  onError: (error) =>
+                    notifyError(error, "Could not archive organization"),
+                })
               }
             >
               Archive

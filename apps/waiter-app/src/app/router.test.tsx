@@ -38,6 +38,13 @@ vi.mock("@tanstack/react-router", () => {
   };
 });
 
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    cancelQueries: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(),
+  }),
+}));
+
 vi.mock("lucide-react", () => ({
   Home: () => <span>HomeIcon</span>,
   ClipboardList: () => <span>OrdersIcon</span>,

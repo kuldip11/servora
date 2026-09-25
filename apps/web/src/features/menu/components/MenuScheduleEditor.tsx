@@ -6,13 +6,11 @@ import {
   Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError } from "@/shared/lib/notify";
-
-const menuApi = createMenuApi(apiClient);
+import {
+  useCreateMenuSchedule,
+  useMenuSchedules,
+  useRemoveMenuSchedule,
+} from "@/features/menu/hooks/useMenuSchedules";
 
 interface MenuScheduleRow {
   id: string;
@@ -60,40 +58,10 @@ const reducer = (
 
 export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
   const [draft, dispatch] = useReducer(reducer, initialDraft);
-  const key = ["menus", menuId, "schedules"];
-  const schedulesQuery = useQuery<MenuScheduleRow[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listMenuSchedules<MenuScheduleRow>(menuId),
-  });
-  const schedules = schedulesQuery.data ?? [];
-  const add = useMutation({
-    mutationFn: () =>
-      menuApi.createMenuSchedule<MenuScheduleRow>(menuId, {
-        scheduleType: draft.scheduleType,
-        ...(draft.scheduleType === "DAILY" || draft.scheduleType === "WEEKLY"
-          ? { startTime: draft.startTime, endTime: draft.endTime }
-          : {}),
-        ...(draft.scheduleType === "WEEKLY"
-          ? { dayOfWeek: draft.dayOfWeek }
-          : {}),
-        ...(draft.scheduleType === "SPECIFIC_DATE"
-          ? {
-              startDate: draft.startDate,
-              endDate: draft.endDate || draft.startDate,
-            }
-          : {}),
-        ...(draft.scheduleType === "HOLIDAY"
-          ? { holidayName: draft.holidayName }
-          : {}),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to add menu schedule"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removeMenuSchedule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to remove menu schedule"),
-  });
+  const schedulesQuery = useMenuSchedules(menuId);
+  const schedules = (schedulesQuery.data ?? []) as MenuScheduleRow[];
+  const add = useCreateMenuSchedule(menuId);
+  const remove = useRemoveMenuSchedule(menuId);
 
   const setField = <K extends keyof ScheduleDraft>(
     field: K,
@@ -225,7 +193,27 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
           variant="secondary"
           loading={add.isPending}
           disabled={add.isPending || invalidDraft || schedulesQuery.isError}
-          onClick={() => add.mutate()}
+          onClick={() =>
+            add.mutate({
+              scheduleType: draft.scheduleType,
+              ...(draft.scheduleType === "DAILY" ||
+              draft.scheduleType === "WEEKLY"
+                ? { startTime: draft.startTime, endTime: draft.endTime }
+                : {}),
+              ...(draft.scheduleType === "WEEKLY"
+                ? { dayOfWeek: draft.dayOfWeek }
+                : {}),
+              ...(draft.scheduleType === "SPECIFIC_DATE"
+                ? {
+                    startDate: draft.startDate,
+                    endDate: draft.endDate || draft.startDate,
+                  }
+                : {}),
+              ...(draft.scheduleType === "HOLIDAY"
+                ? { holidayName: draft.holidayName }
+                : {}),
+            })
+          }
         >
           Add window
         </Button>

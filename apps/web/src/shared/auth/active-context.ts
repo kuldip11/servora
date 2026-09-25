@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import type { AvailableMembership } from "@pos/types";
 import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
@@ -63,6 +64,7 @@ export const activateMembershipContext = async (
   const branchId = defaultBranchForMembership(membership);
   const store = useAuthStore.getState();
 
+  store.setContextPending(true);
   store.setContext({
     membershipId: membership.membershipId,
     ...(organizationId !== undefined ? { organizationId } : {}),
@@ -76,8 +78,10 @@ export const activateMembershipContext = async (
     branchId: branchId ?? "all",
   });
 
+  const version = useAuthStore.getState().contextVersion;
   try {
     const user = await authService.me();
+    if (useAuthStore.getState().contextVersion !== version) return;
     useAuthStore.getState().setContext({
       membershipId: membership.membershipId,
       ...(organizationId !== undefined ? { organizationId } : {}),
@@ -87,11 +91,24 @@ export const activateMembershipContext = async (
       user,
     });
   } catch (error) {
+    if (useAuthStore.getState().contextVersion !== version) return;
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    if (status === 401 || status === 403) {
+      useAuthStore.getState().logout();
+      throw error;
+    }
+    clearPersistedContext();
     useAuthStore.getState().setContext({
       membershipId: null,
+      organizationId: null,
       franchiseId: null,
       branchId: null,
     });
     throw error;
+  } finally {
+    const current = useAuthStore.getState();
+    if (current.contextVersion === version || current.membershipId === null) {
+      current.setContextPending(false);
+    }
   }
 };

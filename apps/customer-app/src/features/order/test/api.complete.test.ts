@@ -27,6 +27,13 @@ it("covers all order API wrappers", () => {
     "s",
   );
   getCustomerOrder("s", "o");
+  const signal = new AbortController().signal;
+  getCustomerOrder("s", "o", signal);
+  expect(request).toHaveBeenLastCalledWith(
+    "/api/customer/orders/o",
+    { signal },
+    "s",
+  );
   checkoutCustomerOrder("s", "o");
   initiateTakeawayPayment("s", "o");
   verifyTakeawayPayment("s", {
@@ -35,5 +42,5 @@ it("covers all order API wrappers", () => {
     razorpayPaymentId: "r2",
     razorpaySignature: "r3",
   });
-  expect(request).toHaveBeenCalledTimes(5);
+  expect(request).toHaveBeenCalledTimes(6);
 });

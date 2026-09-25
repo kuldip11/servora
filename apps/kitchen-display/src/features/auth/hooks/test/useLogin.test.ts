@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => ({
   saveTokens: vi.fn(),
   saveContext: vi.fn(),
   clearTokens: vi.fn(),
+  cancelQueries: vi.fn(() => Promise.resolve()),
+  clearQueries: vi.fn(),
+  replaceKitchenContext: vi.fn(() => Promise.resolve()),
+  clearKitchenQueries: vi.fn(() => Promise.resolve()),
   toast: vi.fn(),
   extractApiError: vi.fn((error: unknown) =>
     error instanceof Error ? error.message : "error",
@@ -42,6 +46,10 @@ vi.mock("react", async () => {
 });
 
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    cancelQueries: mocks.cancelQueries,
+    clear: mocks.clearQueries,
+  }),
   useMutation: (options: typeof mocks.mutationOptions) => {
     mocks.mutationOptions = options;
     return { mutate: vi.fn(), isPending: mocks.pending };
@@ -55,8 +63,11 @@ vi.mock("@/features/auth/api/login", () => ({
 }));
 vi.mock("@/features/auth/storage", () => ({
   saveTokens: mocks.saveTokens,
-  saveContext: mocks.saveContext,
   clearTokens: mocks.clearTokens,
+}));
+vi.mock("@/shared/lib/query-lifecycle", () => ({
+  replaceKitchenContext: mocks.replaceKitchenContext,
+  clearKitchenQueries: mocks.clearKitchenQueries,
 }));
 
 import { useLogin } from "../useLogin";
@@ -65,7 +76,7 @@ const tenantMembership = {
   membershipId: "m-tenant",
   tenant: { id: "tenant-1", name: "Tenant" },
   roles: [{ name: "Owner", scope: "TENANT" }],
-  branches: [],
+  branches: [{ id: "branch-owner", name: "Owner Branch" }],
 } as never;
 const branchMembership = {
   membershipId: "m-branch",
@@ -77,7 +88,10 @@ const branchChoiceMembership = {
   membershipId: "m-choice",
   tenant: { id: "tenant-3", name: "Tenant 3" },
   roles: [{ name: "Chef", scope: "BRANCH" }],
-  branches: [],
+  branches: [
+    { id: "branch-1", name: "Main" },
+    { id: "branch-2", name: "Second" },
+  ],
 } as never;
 
 const prepareStates = (...values: unknown[]) => {
@@ -104,7 +118,7 @@ describe("useLogin", () => {
       mocks.mutationOptions?.mutationFn({ email: "a@b.com", password: "pw" }),
     ).rejects.toThrow("No business membership");
     expect(mocks.saveTokens).toHaveBeenCalledWith("token");
-    mocks.mutationOptions?.onError(new Error("Denied"));
+    await mocks.mutationOptions?.onError(new Error("Denied"));
     expect(mocks.clearTokens).toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith({
       title: "Denied",
@@ -112,7 +126,7 @@ describe("useLogin", () => {
     });
   });
 
-  it("activates a sole tenant-scoped membership without a branch", async () => {
+  it("activates a sole tenant-scoped membership with its kitchen branch", async () => {
     const onLogin = vi.fn();
     prepareStates("credentials", [], [], null);
     mocks.login.mockResolvedValue({ accessToken: "token" });
@@ -122,7 +136,11 @@ describe("useLogin", () => {
       email: "a@b.com",
       password: "pw",
     });
-    expect(mocks.saveContext).toHaveBeenCalledWith("tenant-1", null);
+    expect(mocks.replaceKitchenContext).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-1",
+      "branch-owner",
+    );
     expect(onLogin).toHaveBeenCalledOnce();
   });
 
@@ -136,11 +154,15 @@ describe("useLogin", () => {
       email: "a@b.com",
       password: "pw",
     });
-    expect(mocks.saveContext).toHaveBeenCalledWith("tenant-2", "branch-1");
+    expect(mocks.replaceKitchenContext).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-2",
+      "branch-1",
+    );
     expect(onLogin).toHaveBeenCalledOnce();
   });
 
-  it("moves a branch-scoped membership without a default branch to branch selection", async () => {
+  it("moves a membership with multiple active branches to branch selection", async () => {
     const onLogin = vi.fn();
     prepareStates("credentials", [], [], null);
     mocks.login.mockResolvedValue({ accessToken: "token" });
@@ -151,7 +173,17 @@ describe("useLogin", () => {
       password: "pw",
     });
     expect(onLogin).not.toHaveBeenCalled();
-    expect(mocks.setters[2]).toHaveBeenCalledWith([]);
+    expect(mocks.replaceKitchenContext).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-3",
+      null,
+    );
+    expect(mocks.setters[2]).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "branch-1" }),
+        expect.objectContaining({ id: "branch-2" }),
+      ]),
+    );
     expect(mocks.setters[0]).toHaveBeenCalledWith("branch");
   });
 
@@ -181,19 +213,19 @@ describe("useLogin", () => {
     result.selectMembership("missing");
     expect(onLogin).not.toHaveBeenCalled();
 
-    mocks.saveContext.mockImplementationOnce(() => {
-      throw new Error("context failed");
-    });
+    mocks.replaceKitchenContext.mockRejectedValueOnce(
+      new Error("context failed"),
+    );
     result.selectMembership("m-tenant");
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(mocks.toast).toHaveBeenCalledWith({
-      title: "context failed",
-      tone: "danger",
-    });
+    await vi.waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: "context failed",
+        tone: "danger",
+      }),
+    );
   });
 
-  it("selects a branch only with an active membership and resets credentials", () => {
+  it("selects a branch only with an active membership and resets credentials", async () => {
     const onLogin = vi.fn();
     prepareStates("branch", [], [], null);
     const withoutActive = useLogin(onLogin);
@@ -203,11 +235,18 @@ describe("useLogin", () => {
     prepareStates("branch", [], [], branchMembership);
     const active = useLogin(onLogin);
     active.selectBranchForMembership("branch-2");
-    expect(mocks.saveContext).toHaveBeenCalledWith("tenant-2", "branch-2");
-    expect(onLogin).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
+    expect(mocks.replaceKitchenContext).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-2",
+      "branch-2",
+    );
     active.resetToCredentials();
     expect(mocks.setters.at(-4)).toHaveBeenCalledWith("credentials");
     expect(mocks.setters.at(-2)).toHaveBeenCalledWith([]);
-    expect(mocks.clearTokens).toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(mocks.clearKitchenQueries).toHaveBeenCalled();
+      expect(mocks.clearTokens).toHaveBeenCalled();
+    });
   });
 });

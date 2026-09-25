@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import {
   Button,
@@ -11,12 +10,14 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import type { OrganizationSummary, Tenant, Branch } from "@pos/types";
-import { businessService } from "@/features/business/services/business.service";
 import { OrganizationModal } from "@/features/business/components/forms/OrganizationModal";
 import { FranchiseModal } from "@/features/business/components/forms/FranchiseModal";
 import { BranchModal } from "@/features/business/components/forms/BranchModal";
-import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
+import {
+  useBusinessHierarchy,
+  useRefreshBusiness,
+} from "@/features/business/hooks/useBusiness";
 import { usePermissions } from "@/shared/auth/permissions";
 import { BusinessOnboardingCard } from "@/features/business/components/BusinessOnboardingCard";
 import { extractApiError } from "@/shared/lib/api-client";
@@ -29,14 +30,7 @@ import {
   type SelectedBusinessEntity,
 } from "@/features/business/components/page/BusinessStructureTree";
 
-const businessKeys = { all: ["business"] as const };
-type BusinessData = {
-  organizations: OrganizationSummary[];
-  franchises: Tenant[];
-};
-
 export const BusinessPage = () => {
-  const queryClient = useQueryClient();
   const { has } = usePermissions();
   const { memberships, membershipId, user } = useAuthStore();
   const [organizationModal, setOrganizationModal] = useState(false);
@@ -50,18 +44,8 @@ export const BusinessPage = () => {
   const [editingFranchise, setEditingFranchise] = useState<Tenant | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
-  const query = useQuery({
-    queryKey: businessKeys.all,
-    queryFn: async (): Promise<BusinessData> => {
-      const organizations = await businessService.organizations();
-      const franchiseGroups = await Promise.all(
-        organizations.map((organization) =>
-          businessService.franchises(organization.id),
-        ),
-      );
-      return { organizations, franchises: franchiseGroups.flat() };
-    },
-  });
+  const query = useBusinessHierarchy();
+  const refresh = useRefreshBusiness();
 
   const activeMembership = memberships.find(
     (item) => item.membershipId === membershipId,
@@ -126,17 +110,6 @@ export const BusinessPage = () => {
     selectedEntity?.type === "branch"
       ? branches.find((item) => item.id === selectedEntity.id)
       : undefined;
-
-  const refresh = async () => {
-    const nextMemberships = await authService.memberships();
-    useAuthStore.getState().setContext({
-      membershipId: useAuthStore.getState().membershipId,
-      franchiseId: useAuthStore.getState().franchiseId,
-      branchId: useAuthStore.getState().branchId,
-      memberships: nextMemberships,
-    });
-    await queryClient.invalidateQueries({ queryKey: businessKeys.all });
-  };
 
   if (query.isLoading)
     return (

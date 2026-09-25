@@ -1,13 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
-import { queryClient } from "@/shared/lib/query-client";
 import { clearPersistedContext } from "@/shared/auth/active-context";
 import { toast } from "@pos/ui";
 
 export const UserMenu = () => {
+  const queryClient = useQueryClient();
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -22,11 +23,13 @@ export const UserMenu = () => {
   }, [open]);
   const signOut = async () => {
     try {
+      await queryClient.cancelQueries();
       await authService.logout();
     } finally {
+      await queryClient.cancelQueries();
+      queryClient.clear();
       clearPersistedContext();
       logout();
-      queryClient.clear();
       toast({ title: "Logged out successfully", tone: "success" });
       router.navigate({ to: "/login" });
     }

@@ -57,12 +57,14 @@ vi.mock("@pos/ui", async (importOriginal) => ({
     </label>
   ),
 }));
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: ({ queryFn }: any) => {
     const [data, setData] = React.useState<any>();
     React.useEffect(() => {
-      void queryFn()
+      void queryFn({ signal: new AbortController().signal })
         .then(setData)
         .catch(() => {});
     }, []);
@@ -70,12 +72,14 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async () => {
+    mutate: async (value?: any, callbacks?: any) => {
       try {
-        const output = await options.mutationFn();
-        options.onSuccess?.(output);
+        const output = await options.mutationFn(value);
+        options.onSuccess?.(output, value);
+        callbacks?.onSuccess?.(output, value);
       } catch (error) {
-        options.onError?.(error);
+        options.onError?.(error, value);
+        callbacks?.onError?.(error, value);
       }
     },
   }),

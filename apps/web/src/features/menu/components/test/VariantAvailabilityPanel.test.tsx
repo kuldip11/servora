@@ -51,6 +51,7 @@ vi.mock("@pos/api-client", async (importOriginal) => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
   useQuery: ({ queryKey, queryFn }: any) => {
     const key = JSON.stringify(queryKey);
     const value = h.queryData.get(key);

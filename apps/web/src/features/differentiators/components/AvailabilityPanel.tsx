@@ -1,41 +1,18 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Badge, Button, Card, Select, toast } from "@pos/ui";
-import { createAvailabilityApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useDifferentiatorAvailability } from "@/features/differentiators/hooks/useDifferentiators";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
-
-type AvailabilityRow = {
-  entityType: "ITEM" | "VARIANT" | "MODIFIER_OPTION";
-  entityId: string;
-  menuItemId: string;
-  name: string;
-  status: string;
-  reason: string;
-  cause: string;
-  branchId: string;
-  branchName?: string;
-  channel: string;
-  fulfillmentType: string;
-};
-
-const availabilityApi = createAvailabilityApi(apiClient);
 
 export const AvailabilityPanel = () => {
   const [channel, setChannel] = useState("UNSCOPED");
   const [fulfillment, setFulfillment] = useState("UNSCOPED");
   const [cause, setCause] = useState("");
-  const availabilityQuery = useQuery({
-    queryKey: ["differentiators", "availability"],
-    queryFn: () =>
-      availabilityApi.dashboard<{ rows: AvailabilityRow[] }>({
-        channel,
-        fulfillmentType: fulfillment,
-        ...(cause.trim() ? { cause: cause.trim() } : {}),
-      }),
-    retry: false,
-    refetchOnMount: false,
-  });
+  const availabilityQuery = useDifferentiatorAvailability(
+    channel,
+    fulfillment,
+    cause,
+  );
 
   useRealtimeEvent("menu.availability.updated", () => {
     void availabilityQuery.refetch();

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -9,23 +8,18 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import { ShieldCheck } from "lucide-react";
-import { createApprovalsApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
 import { notifySuccess } from "@/shared/lib/notify";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 import { validateApprovalThreshold } from "@/features/settings/helpers/settings-validation";
 
-const approvalsApi = createApprovalsApi(apiClient);
-
-type ApprovalAction = "VOID" | "COMP";
-type ThresholdRow = {
-  id: string;
-  actionType: ApprovalAction;
-  thresholdAmount: string | number;
-  requiresRole: string;
-};
-
-type ThresholdDraft = { thresholdAmount: string; requiresRole: string };
+import {
+  useApprovalThresholds,
+  useSaveApprovalThreshold,
+} from "@/features/settings/hooks/useApprovalThresholds";
+import type {
+  ApprovalAction,
+  ThresholdDraft,
+} from "@/features/settings/services/approval-thresholds.service";
 
 const DEFAULTS: Record<ApprovalAction, ThresholdDraft> = {
   VOID: { thresholdAmount: "500", requiresRole: "Manager" },
@@ -33,8 +27,6 @@ const DEFAULTS: Record<ApprovalAction, ThresholdDraft> = {
 };
 
 export const ApprovalThresholdSettingsCard = () => {
-  const queryClient = useQueryClient();
-  const queryKey = useMemo(() => ["approval-thresholds"] as const, []);
   const [drafts, setDrafts] =
     useState<Record<ApprovalAction, ThresholdDraft>>(DEFAULTS);
   const formErrors = useLocalFormApiErrors();
@@ -43,10 +35,8 @@ export const ApprovalThresholdSettingsCard = () => {
     COMP: false,
   });
 
-  const thresholdsQuery = useQuery<ThresholdRow[]>({
-    queryKey,
-    queryFn: () => approvalsApi.listThresholds<ThresholdRow>(),
-  });
+  const thresholdsQuery = useApprovalThresholds();
+  const save = useSaveApprovalThreshold();
 
   useEffect(() => {
     if (!thresholdsQuery.data) return;
@@ -62,28 +52,6 @@ export const ApprovalThresholdSettingsCard = () => {
       return next;
     });
   }, [thresholdsQuery.data]);
-
-  const save = useMutation({
-    mutationFn: async ({
-      actionType,
-      draft,
-    }: {
-      actionType: ApprovalAction;
-      draft: ThresholdDraft;
-    }) =>
-      approvalsApi.setThreshold<ThresholdRow>(actionType, {
-        thresholdAmount: Number(draft.thresholdAmount),
-        requiresRole: draft.requiresRole.trim(),
-      }),
-    onSuccess: (_response, variables) => {
-      formErrors.resetValidation();
-      touchedRef.current[variables.actionType] = false;
-      void queryClient.invalidateQueries({ queryKey });
-      notifySuccess(
-        `${variables.actionType === "VOID" ? "Void" : "Comp"} approval threshold updated`,
-      );
-    },
-  });
 
   const update = (
     actionType: ApprovalAction,
@@ -212,6 +180,13 @@ export const ApprovalThresholdSettingsCard = () => {
                     save.mutate(
                       { actionType, draft },
                       {
+                        onSuccess: () => {
+                          formErrors.resetValidation();
+                          touchedRef.current[actionType] = false;
+                          notifySuccess(
+                            `${actionType === "VOID" ? "Void" : "Comp"} approval threshold updated`,
+                          );
+                        },
                         onError: (error) =>
                           formErrors.handleApiError(
                             error,

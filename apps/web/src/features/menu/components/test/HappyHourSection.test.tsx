@@ -14,6 +14,11 @@ const { invalidateQueries, api, customers } = vi.hoisted(() => ({
 }));
 let queryData: unknown[] = [];
 
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
+  extractApiError: (error: any) =>
+    error?.response?.data?.error?.message ?? "Request failed",
+}));
 vi.mock("@pos/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
@@ -48,14 +53,6 @@ vi.mock("@pos/ui", async (importOriginal) => ({
     </label>
   ),
 }));
-vi.mock("@pos/api-client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@pos/api-client")>()),
-  createMenuApi: () => api,
-  createCustomersApi: () => customers,
-  extractApiError: (error: any) =>
-    error?.response?.data?.error?.message ?? "Request failed",
-}));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 vi.mock("@/features/menu", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: [{ id: "cat1", name: "Food" }] }),
@@ -63,18 +60,19 @@ vi.mock("@/features/menu", async (importOriginal) => ({
 vi.mock("@/features/menu/hooks/useMenus", () => ({
   useMenus: () => ({ data: [{ id: "menu1", name: "Dinner" }] }),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries }),
-  useQuery: ({ queryKey }: any) => ({
-    data: queryKey[1] === "tiers" ? queryData[0] : queryData[1],
-  }),
-  useMutation: (config: any) => ({
+vi.mock("@/features/menu/hooks/useCreateHappyHourRule", () => ({
+  useCreateHappyHourRule: () => ({
     isPending: false,
-    mutate: (arg?: any) => {
-      Promise.resolve()
-        .then(() => config.mutationFn(arg))
-        .then((value) => config.onSuccess?.(value))
-        .catch((error) => config.onError?.(error));
+    mutate: (
+      input: Record<string, unknown>,
+      options?: {
+        onSuccess?: (rows: unknown[]) => void;
+        onError?: (error: unknown) => void;
+      },
+    ) => {
+      Promise.resolve(api.createHappyHourRule(input))
+        .then((rows) => options?.onSuccess?.(rows))
+        .catch((error) => options?.onError?.(error));
     },
   }),
 }));

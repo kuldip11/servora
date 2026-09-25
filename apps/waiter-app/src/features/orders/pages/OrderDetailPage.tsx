@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { StaleDataBanner, toast } from "@pos/ui";
+import { StaleDataBanner } from "@pos/ui";
 import { useOrder } from "@/features/orders/hooks/useOrder";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
 import { useUpdateTicketStatus } from "@/features/orders/hooks/useUpdateTicketStatus";
@@ -12,10 +11,6 @@ import { OrderTimeline } from "@/features/orders/components/OrderTimeline";
 import { OrderActions } from "@/features/orders/components/OrderActions";
 import { useLineAdjustments } from "@/features/orders/hooks/useLineAdjustments";
 import { hasPermission } from "@/features/auth/storage";
-import {
-  fetchCancellationReasons,
-  refillOrderItem,
-} from "@/features/orders/api/orders";
 import type { ManagerApprovalRequest } from "@/features/orders/components/ManagerApprovalDialog";
 import {
   OrderDetailDialogs,
@@ -26,6 +21,10 @@ import {
   OrderDetailError,
   OrderDetailLoading,
 } from "@/features/orders/components/OrderDetailFeedback";
+import {
+  useCancellationReasons,
+  useRefillOrderItem,
+} from "@/features/orders/hooks/useOrderActions";
 
 interface Props {
   orderId: string;
@@ -34,21 +33,12 @@ interface Props {
 }
 
 export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
-  const qc = useQueryClient();
   const orderQuery = useOrder(orderId);
   const { data: order, isLoading } = orderQuery;
   const updateStatus = useUpdateOrderStatus();
   const updateTicketStatus = useUpdateTicketStatus();
   const lineAdjustments = useLineAdjustments(orderId);
-  const refill = useMutation({
-    mutationFn: (itemId: string) => refillOrderItem(orderId, itemId),
-    onSuccess: () => qc.invalidateQueries(),
-    onError: (error) =>
-      toast({
-        title: extractApiError(error, "Failed to refill item"),
-        tone: "danger",
-      }),
-  });
+  const refill = useRefillOrderItem(orderId);
   const [seatShareDialog, setSeatShareDialog] = useState<{
     itemId: string;
     shares: Array<{ seatLabel: string; shareRatio: number }>;
@@ -57,10 +47,7 @@ export const OrderDetailPage = ({ orderId, onBack, onAddItems }: Props) => {
   const [reasonAction, setReasonAction] = useState<OrderReasonAction>(null);
   const [pendingApproval, setPendingApproval] =
     useState<ManagerApprovalRequest | null>(null);
-  const cancellationReasonsQuery = useQuery({
-    queryKey: ["cancellation-reasons", "active"],
-    queryFn: fetchCancellationReasons,
-  });
+  const cancellationReasonsQuery = useCancellationReasons();
   const cancellationReasons = cancellationReasonsQuery.data ?? [];
   const [showTransfer, setShowTransfer] = useState(false);
   const [showSplit, setShowSplit] = useState(false);

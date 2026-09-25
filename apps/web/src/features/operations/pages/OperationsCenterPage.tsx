@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Badge,
@@ -12,19 +11,15 @@ import {
   StatCard,
 } from "@pos/ui";
 import { Activity, AlertTriangle, GitBranch, Package } from "lucide-react";
-import { operationsService } from "@/features/operations/services/operations.service";
 import {
   OperationalAlertCard,
   type OperationalAlert,
 } from "@/features/operations/components/OperationalAlertCard";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
+import { useOperationsSnapshot } from "@/features/operations/hooks/useOperationsSnapshot";
 
 export const OperationsCenterPage = () => {
-  const snapshot = useQuery({
-    queryKey: ["operations", "snapshot"],
-    queryFn: operationsService.snapshot,
-    refetchInterval: 60_000,
-  });
+  const snapshot = useOperationsSnapshot();
 
   useRealtimeEvent("order.updated", () => void snapshot.refetch());
   useRealtimeEvent("menu.availability.updated", () => void snapshot.refetch());

@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import { extractApiError } from "@pos/api-client";
 import { login, fetchMemberships } from "@/features/auth/api/login";
-import { saveTokens, saveContext, clearTokens } from "@/features/auth/storage";
+import { saveTokens, clearTokens } from "@/features/auth/storage";
+import {
+  clearKitchenQueries,
+  replaceKitchenContext,
+} from "@/shared/lib/query-lifecycle";
 import type {
   AvailableMembership,
   CredentialsForm,
@@ -19,6 +23,7 @@ interface UseLoginResult {
   resetToCredentials: () => void;
 }
 export const useLogin = (onLogin: () => void): UseLoginResult => {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<"credentials" | "membership" | "branch">(
     "credentials",
   );
@@ -27,16 +32,24 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
   const [activeMembership, setActiveMembership] =
     useState<AvailableMembership | null>(null);
   const activate = async (m: AvailableMembership) => {
-    const branchId = m.roles.some((role) => role.scope === "TENANT")
-      ? null
-      : (m.branches[0]?.id ?? null);
-    saveContext(m.tenant.id, branchId);
     setActiveMembership(m);
-    if (branchId || m.roles.some((role) => role.scope === "TENANT")) {
+    const activeBranches = m.branches.filter(
+      (branch) => branch.isActive !== false,
+    );
+    if (!activeBranches.length) {
+      throw new Error("No active branch is assigned to this kitchen account.");
+    }
+    if (activeBranches.length === 1) {
+      await replaceKitchenContext(
+        queryClient,
+        m.tenant.id,
+        activeBranches[0]!.id,
+      );
       onLogin();
       return;
     }
-    setBranches(m.branches);
+    await replaceKitchenContext(queryClient, m.tenant.id, null);
+    setBranches(activeBranches);
     setStep("branch");
   };
   const mutation = useMutation({
@@ -51,8 +64,9 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
       else setStep("membership");
     },
     onError: (err: unknown) => {
-      clearTokens();
+      const clearPromise = clearKitchenQueries(queryClient).then(clearTokens);
       toast({ title: extractApiError(err), tone: "danger" });
+      return clearPromise;
     },
   });
   return {
@@ -69,14 +83,18 @@ export const useLogin = (onLogin: () => void): UseLoginResult => {
     },
     selectBranchForMembership: (id) => {
       if (!activeMembership) return;
-      saveContext(activeMembership.tenant.id, id);
-      onLogin();
+      void replaceKitchenContext(queryClient, activeMembership.tenant.id, id)
+        .then(onLogin)
+        .catch((err: unknown) =>
+          toast({ title: extractApiError(err), tone: "danger" }),
+        );
     },
     isLoading: mutation.isPending,
     resetToCredentials: () => {
       setStep("credentials");
+      setActiveMembership(null);
       setBranches([]);
-      clearTokens();
+      void clearKitchenQueries(queryClient).then(clearTokens);
     },
   };
 };

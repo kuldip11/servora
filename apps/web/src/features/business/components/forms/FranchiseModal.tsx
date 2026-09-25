@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,9 +14,10 @@ import {
   franchiseBusinessFormSchema,
   type FranchiseBusinessFormValues,
 } from "@pos/validation";
-import { businessService } from "@/features/business/services/business.service";
-import { authService } from "@/features/auth/services/auth.service";
-import { activateMembershipContext } from "@/shared/auth/active-context";
+import {
+  useArchiveFranchise,
+  useSaveFranchise,
+} from "@/features/business/hooks/useBusiness";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import { usePermissions } from "@/shared/auth/permissions";
@@ -68,48 +68,11 @@ export const FranchiseModal = ({
       );
     }
   }, [clearFormErrors, form, franchise, open]);
-  const mutation = useMutation({
-    mutationFn: async (values: FranchiseBusinessFormValues) => {
-      if (franchise)
-        return businessService.updateFranchise(franchise.id, values);
-      const created = await businessService.createFranchise(
-        organizationId,
-        values,
-      );
-      const memberships = await authService.memberships();
-      const membership = memberships.find(
-        (item) => item.membershipId === created.membershipId,
-      );
-      if (membership)
-        await activateMembershipContext(
-          membership,
-          memberships,
-          organizationId,
-        );
-      return created.tenant;
-    },
-    onSuccess: async () => {
-      notifySuccess(franchise ? "Franchise updated" : "Franchise created");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) =>
-      handleApiError(
-        error,
-        form.setError,
-        franchiseFieldPaths,
-        "Could not save franchise",
-      ),
+  const mutation = useSaveFranchise({
+    franchiseId: franchise?.id,
+    organizationId,
   });
-  const archiveMutation = useMutation({
-    mutationFn: () => businessService.archiveFranchise(franchise!.id),
-    onSuccess: async () => {
-      notifySuccess("Franchise archived");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Could not archive franchise"),
-  });
+  const archiveMutation = useArchiveFranchise(franchise?.id ?? "");
   const values = form.watch();
   const e = form.formState.errors;
   return (
@@ -123,7 +86,22 @@ export const FranchiseModal = ({
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
         onSubmit={form.handleSubmit((values) => {
           clearFormErrors();
-          mutation.mutate(values);
+          mutation.mutate(values, {
+            onSuccess: async () => {
+              notifySuccess(
+                franchise ? "Franchise updated" : "Franchise created",
+              );
+              await onSaved();
+              onClose();
+            },
+            onError: (error) =>
+              handleApiError(
+                error,
+                form.setError,
+                franchiseFieldPaths,
+                "Could not save franchise",
+              ),
+          });
         })}
       >
         {!franchise && (
@@ -327,7 +305,15 @@ export const FranchiseModal = ({
               loading={archiveMutation.isPending}
               onClick={() =>
                 window.confirm("Archive this franchise?") &&
-                archiveMutation.mutate()
+                archiveMutation.mutate(undefined, {
+                  onSuccess: async () => {
+                    notifySuccess("Franchise archived");
+                    await onSaved();
+                    onClose();
+                  },
+                  onError: (error) =>
+                    notifyError(error, "Could not archive franchise"),
+                })
               }
             >
               Archive

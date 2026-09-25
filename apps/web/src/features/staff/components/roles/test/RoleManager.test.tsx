@@ -26,7 +26,10 @@ vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: mocks.invalidate },
 }));
 vi.mock("@/features/staff/query-keys", () => ({
-  roleKeys: { list: () => ["roles"] },
+  roleKeys: {
+    list: () => ["roles"],
+    permissions: (roleId: string | null) => ["roles", "permissions", roleId],
+  },
 }));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
@@ -40,6 +43,8 @@ vi.mock("lucide-react", async (importOriginal) => ({
   Trash2: () => null,
 }));
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: any) => options,
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: (options: any) => {
     const [state, setState] = React.useState<any>({
       data: undefined,
@@ -57,7 +62,9 @@ vi.mock("@tanstack/react-query", () => ({
         isError: false,
       }));
       try {
-        const data = await options.queryFn();
+        const data = await options.queryFn({
+          signal: new AbortController().signal,
+        });
         setState({ data, isLoading: false, isError: false, isFetching: false });
       } catch {
         setState((current: any) => ({

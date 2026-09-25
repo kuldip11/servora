@@ -5,13 +5,16 @@ import { apiClient } from "@/shared/lib/api-client";
 const ordersApi = createOrdersApi(apiClient);
 
 export const cancellationReasonsService = {
-  async list(activeOnly = true): Promise<CancellationReason[]> {
+  async list(
+    activeOnly = true,
+    signal?: AbortSignal,
+  ): Promise<CancellationReason[]> {
     return activeOnly
-      ? ordersApi.listCancellationReasons()
-      : ordersApi.listAllCancellationReasons();
+      ? ordersApi.listCancellationReasons(signal)
+      : ordersApi.listAllCancellationReasons(signal);
   },
-  async listAll(): Promise<CancellationReason[]> {
-    return ordersApi.listAllCancellationReasons();
+  async listAll(signal?: AbortSignal): Promise<CancellationReason[]> {
+    return ordersApi.listAllCancellationReasons(signal);
   },
   async create(label: string): Promise<CancellationReason> {
     return ordersApi.createCancellationReason(label);

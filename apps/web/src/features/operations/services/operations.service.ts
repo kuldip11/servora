@@ -27,14 +27,17 @@ export type OperationsSnapshot = {
 };
 
 export const operationsService = {
-  async snapshot(): Promise<OperationsSnapshot> {
+  async snapshot(signal?: AbortSignal): Promise<OperationsSnapshot> {
     const [dashboard, branches, availability] = await Promise.all([
-      analyticsApi.dashboard<DashboardStats>(),
-      branchesApi.list(),
-      availabilityApi.dashboard<{ rows: AvailabilityException[] }>({
-        channel: "UNSCOPED",
-        fulfillmentType: "UNSCOPED",
-      }),
+      analyticsApi.dashboard<DashboardStats>(signal),
+      branchesApi.list(signal),
+      availabilityApi.dashboard<{ rows: AvailabilityException[] }>(
+        {
+          channel: "UNSCOPED",
+          fulfillmentType: "UNSCOPED",
+        },
+        signal,
+      ),
     ]);
 
     return { dashboard, branches, availability: availability.rows };

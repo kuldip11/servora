@@ -19,6 +19,8 @@ import type { WaiterMenuCategory } from "@/features/menu/api/menu";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { apiClient } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
+import { menuKeys } from "@/features/menu/query/menu.keys";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
 type ActiveMenu = {
   id: string;
@@ -56,11 +58,13 @@ export const useMenuPageData = ({
   onCategoryChange,
 }: Params) => {
   const queryClient = useQueryClient();
+  const scope = getWaiterQueryScope();
   const categoriesQuery = useMenuCategories();
   const { data: categories, isLoading: menuLoading } = categoriesQuery;
   const activeMenusQuery = useQuery<ActiveMenu[]>({
-    queryKey: ["menus", "active", orderType],
-    queryFn: () => menuApi.listActiveMenus<ActiveMenu>(orderType),
+    queryKey: menuKeys.activeMenus(scope, orderType),
+    queryFn: ({ signal }) =>
+      menuApi.listActiveMenus<ActiveMenu>(orderType, signal),
   });
   const activeMenus = activeMenusQuery.data ?? [];
 
@@ -99,7 +103,7 @@ export const useMenuPageData = ({
 
   const tenantId = localStorage.getItem(STORAGE_KEYS.tenant);
   const tenantSettingsQuery = useQuery<Tenant | null>({
-    queryKey: ["tenant-settings", tenantId],
+    queryKey: menuKeys.tenantSettings(scope),
     enabled: !!tenantId,
     queryFn: async () => {
       const memberships = await authApi.listTenants();
@@ -111,8 +115,8 @@ export const useMenuPageData = ({
   });
 
   const combosQuery = useQuery<WaiterCombo[]>({
-    queryKey: ["menu-combos"],
-    queryFn: () => menuApi.listCombos<WaiterCombo>(),
+    queryKey: menuKeys.combos(scope),
+    queryFn: ({ signal }) => menuApi.listCombos<WaiterCombo>(signal),
     enabled: !isAddingToExisting,
   });
   const promotionsQuery = useQuery<
@@ -123,18 +127,18 @@ export const useMenuPageData = ({
       isActive: boolean;
     }>
   >({
-    queryKey: ["menu-promotions"],
-    queryFn: () =>
+    queryKey: menuKeys.promotions(scope),
+    queryFn: ({ signal }) =>
       menuApi.listPromotions<{
         id: string;
         name: string;
         couponCode: string | null;
         isActive: boolean;
-      }>(),
+      }>(signal),
   });
   const customerGroupsQuery = useQuery<Array<{ id: string; name: string }>>({
-    queryKey: ["customer-groups"],
-    queryFn: () => customersApi.listGroups(),
+    queryKey: menuKeys.customerGroups(scope),
+    queryFn: ({ signal }) => customersApi.listGroups(signal),
     enabled: !isAddingToExisting,
   });
   const priceRulesQuery = useQuery<
@@ -145,14 +149,14 @@ export const useMenuPageData = ({
       price: string | number | null;
     }>
   >({
-    queryKey: ["menu-price-rules", "per-cover"],
-    queryFn: () =>
+    queryKey: menuKeys.priceRules(scope),
+    queryFn: ({ signal }) =>
       menuApi.listPriceRules<{
         id: string;
         isPerCover?: boolean;
         coverTier?: "ADULT" | "CHILD" | null;
         price: string | number | null;
-      }>(),
+      }>(signal),
     enabled: !isAddingToExisting,
   });
 
@@ -189,12 +193,14 @@ export const useMenuPageData = ({
   const customerSearchQuery = useCustomerSearch(customerSearch);
 
   useRealtimeEvent("table.updated", () => {
-    queryClient.invalidateQueries({ queryKey: ["tables"] });
+    queryClient.invalidateQueries({ queryKey: menuKeys.tables(scope) });
   });
   useRealtimeEvent("menu.availability.updated", () => {
-    queryClient.invalidateQueries({ queryKey: ["menu-categories"] });
-    queryClient.invalidateQueries({ queryKey: ["menus", "active"] });
-    queryClient.invalidateQueries({ queryKey: ["menu-combos"] });
+    queryClient.invalidateQueries({ queryKey: menuKeys.categories(scope) });
+    queryClient.invalidateQueries({
+      queryKey: [...menuKeys.all(scope), "active"],
+    });
+    queryClient.invalidateQueries({ queryKey: menuKeys.combos(scope) });
   });
 
   useEffect(() => {

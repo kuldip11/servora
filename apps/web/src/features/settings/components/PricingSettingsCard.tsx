@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -10,28 +9,16 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import { ReceiptText } from "lucide-react";
-import { createSettingsApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
 import { notifySuccess } from "@/shared/lib/notify";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 import { validateServiceChargePercent } from "@/features/settings/helpers/settings-validation";
-import type { Tenant } from "@pos/types";
-
-const settingsApi = createSettingsApi(apiClient);
-
-type TenantSettings = Required<
-  Pick<
-    Tenant,
-    | "id"
-    | "serviceChargePercent"
-    | "serviceChargeTaxable"
-    | "roundingPolicy"
-    | "defaultTaxMode"
-  >
->;
+import type { TenantSettings } from "@/features/settings/services/settings.service";
+import {
+  useTenantSettings,
+  useUpdateTenantSettings,
+} from "@/features/settings/hooks/useTenantSettings";
 
 export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
-  const qc = useQueryClient();
   const [serviceChargePercent, setServiceChargePercent] = useState("");
   const [serviceChargeTaxable, setServiceChargeTaxable] = useState(false);
   const [roundingPolicy, setRoundingPolicy] =
@@ -39,18 +26,8 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
   const [defaultTaxMode, setDefaultTaxMode] =
     useState<TenantSettings["defaultTaxMode"]>("EXCLUSIVE");
   const formErrors = useLocalFormApiErrors();
-  const key = ["tenant-settings", tenantId];
-  const settingsQuery = useQuery<TenantSettings>({
-    queryKey: key,
-    queryFn: async () => {
-      const memberships = await settingsApi.tenants<TenantSettings>();
-      const tenant = memberships.find(
-        (entry) => entry.tenant.id === tenantId,
-      )?.tenant;
-      if (!tenant) throw new Error("Active tenant settings are unavailable");
-      return tenant;
-    },
-  });
+  const settingsQuery = useTenantSettings(tenantId);
+  const save = useUpdateTenantSettings(tenantId);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -78,24 +55,6 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
       roundingPolicy !== settingsQuery.data.roundingPolicy ||
       defaultTaxMode !== settingsQuery.data.defaultTaxMode),
   );
-
-  const save = useMutation({
-    mutationFn: () =>
-      settingsApi.updateTenant<TenantSettings>(tenantId, {
-        serviceChargePercent:
-          serviceChargePercent.trim() === ""
-            ? null
-            : Number(serviceChargePercent),
-        serviceChargeTaxable,
-        roundingPolicy,
-        defaultTaxMode,
-      }),
-    onSuccess: () => {
-      formErrors.resetValidation();
-      qc.invalidateQueries({ queryKey: key });
-      notifySuccess("Pricing settings updated");
-    },
-  });
 
   if (settingsQuery.isError && !settingsQuery.data) {
     return (
@@ -196,19 +155,34 @@ export const PricingSettingsCard = ({ tenantId }: { tenantId: string }) => {
             formErrors.markSubmitted();
             formErrors.clearErrors();
             if (clientError || !isDirty) return;
-            save.mutate(undefined, {
-              onError: (error) =>
-                formErrors.handleApiError(
-                  error,
-                  [
-                    "serviceChargePercent",
-                    "serviceChargeTaxable",
-                    "roundingPolicy",
-                    "defaultTaxMode",
-                  ],
-                  "Failed to update pricing settings",
-                ),
-            });
+            save.mutate(
+              {
+                serviceChargePercent:
+                  serviceChargePercent.trim() === ""
+                    ? null
+                    : Number(serviceChargePercent),
+                serviceChargeTaxable,
+                roundingPolicy,
+                defaultTaxMode,
+              },
+              {
+                onSuccess: () => {
+                  formErrors.resetValidation();
+                  notifySuccess("Pricing settings updated");
+                },
+                onError: (error) =>
+                  formErrors.handleApiError(
+                    error,
+                    [
+                      "serviceChargePercent",
+                      "serviceChargeTaxable",
+                      "roundingPolicy",
+                      "defaultTaxMode",
+                    ],
+                    "Failed to update pricing settings",
+                  ),
+              },
+            );
           }}
         >
           Save pricing settings

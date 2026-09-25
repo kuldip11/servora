@@ -25,8 +25,12 @@ export const createCustomersApi = (client: DomainHttpClient) => {
     list(): Promise<LoyaltyCustomer[]> {
       return getDomainData<LoyaltyCustomer[]>(client, "/loyalty/customers");
     },
-    search(): Promise<LoyaltyCustomer[]> {
-      return getDomainData<LoyaltyCustomer[]>(client, "/loyalty/customers");
+    search(signal?: AbortSignal): Promise<LoyaltyCustomer[]> {
+      return getDomainData<LoyaltyCustomer[]>(
+        client,
+        "/loyalty/customers",
+        signal ? { signal } : undefined,
+      );
     },
     create(input: CreateLoyaltyCustomerInput): Promise<LoyaltyCustomer> {
       return postDomainData<LoyaltyCustomer>(
@@ -45,8 +49,12 @@ export const createCustomersApi = (client: DomainHttpClient) => {
         { loyaltyTierId },
       );
     },
-    listGroups(): Promise<CustomerGroup[]> {
-      return getDomainData<CustomerGroup[]>(client, "/customer-groups");
+    listGroups(signal?: AbortSignal): Promise<CustomerGroup[]> {
+      return getDomainData<CustomerGroup[]>(
+        client,
+        "/customer-groups",
+        signal ? { signal } : undefined,
+      );
     },
     createGroup(input: CustomerGroupInput): Promise<CustomerGroup> {
       return postDomainData<CustomerGroup>(client, "/customer-groups", input);
@@ -66,8 +74,12 @@ export const createCustomersApi = (client: DomainHttpClient) => {
         client.patch(`/customer/requests/${id}`, { status: "RESOLVED" }),
       );
     },
-    listRequests<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/customer/requests");
+    listRequests<T>(signal?: AbortSignal): Promise<T[]> {
+      return getDomainData<T[]>(
+        client,
+        "/customer/requests",
+        signal ? { signal } : undefined,
+      );
     },
   };
 };

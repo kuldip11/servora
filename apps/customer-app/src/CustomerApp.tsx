@@ -12,7 +12,13 @@ import { useCustomerSession } from "./features/session/useCustomerSession";
 
 export type View = "menu" | "cart" | "order";
 
-export const CustomerApp = () => {
+type CustomerSessionResult = ReturnType<typeof useCustomerSession>;
+
+const CustomerExperience = ({
+  customerSession,
+}: {
+  customerSession: CustomerSessionResult;
+}) => {
   const {
     session,
     menu,
@@ -35,7 +41,7 @@ export const CustomerApp = () => {
     live,
     requestHelp,
     retryBootstrap,
-  } = useCustomerSession();
+  } = customerSession;
   const [view, setView] = useState<View>("menu");
   const [category, setCategory] = useState("Popular");
   const [search, setSearch] = useState("");
@@ -237,5 +243,14 @@ export const CustomerApp = () => {
         />
       )}
     </>
+  );
+};
+
+export const CustomerApp = () => {
+  const customerSession = useCustomerSession();
+  const contextKey = `${customerSession.storageScope ?? "no-scope"}:${customerSession.session?.token ?? "pending"}`;
+
+  return (
+    <CustomerExperience key={contextKey} customerSession={customerSession} />
   );
 };

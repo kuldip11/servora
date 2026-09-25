@@ -1,9 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "@pos/ui";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
-import { queryClient } from "@/shared/lib/query-client";
+import { menuKeys } from "@/features/menu/query-keys";
+import { analyticsKeys } from "@/features/analytics/query-keys";
+import { inventoryKeys } from "@/features/inventory/query-keys";
 
 export const RealtimeNotifications = () => {
+  const queryClient = useQueryClient();
   const seen = useRef(new Set<string>());
 
   useEffect(() => () => seen.current.clear(), []);
@@ -20,9 +24,9 @@ export const RealtimeNotifications = () => {
   });
 
   useRealtimeEvent("menu.availability.updated", () => {
-    void queryClient.invalidateQueries({ queryKey: ["menu"] });
-    void queryClient.invalidateQueries({ queryKey: ["analytics"] });
-    void queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.dashboard() });
+    void queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
   });
 
   useRealtimeEvent("customer.request.created", (event) => {

@@ -8,4 +8,6 @@ export const modifierGroupsService = {
   list: menuApi.listModifierGroups,
   save: menuApi.saveModifierGroup,
   remove: menuApi.removeModifierGroup,
+  update: (groupId: string, patch: Record<string, unknown>) =>
+    menuApi.updateModifierGroup(groupId, patch),
 };

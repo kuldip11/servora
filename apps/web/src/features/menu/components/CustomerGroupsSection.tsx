@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Button,
@@ -12,13 +11,12 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import type { CustomerGroup } from "@pos/types";
-import { createCustomersApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
-
-const customersApi = createCustomersApi(apiClient);
+import {
+  useCustomerGroups,
+  useDeleteCustomerGroup,
+  useSaveCustomerGroup,
+} from "@/features/menu/hooks/useLoyalty";
 
 const customerGroupFormSchema = z
   .object({
@@ -53,11 +51,7 @@ const defaultValues: CustomerGroupFormValues = {
 };
 
 export const CustomerGroupsSection = () => {
-  const key = ["customer-groups"];
-  const groupsQuery = useQuery<CustomerGroup[]>({
-    queryKey: key,
-    queryFn: customersApi.listGroups,
-  });
+  const groupsQuery = useCustomerGroups();
   const groups = groupsQuery.data;
 
   const form = useForm<CustomerGroupFormValues>({
@@ -79,40 +73,8 @@ export const CustomerGroupsSection = () => {
   const { formErrorMessages, clearFormErrors, handleApiError } =
     useFormApiErrors<CustomerGroupFormValues>();
 
-  const save = useMutation({
-    mutationFn: async ({
-      values,
-      editingId,
-    }: {
-      values: CustomerGroupFormValues;
-      editingId: string | null;
-    }) => {
-      const payload = {
-        name: values.name.trim(),
-        discountPercent:
-          values.discountType === "PERCENT" && values.discount !== ""
-            ? Number(values.discount)
-            : null,
-        discountFixed:
-          values.discountType === "FIXED" && values.discount !== ""
-            ? Number(values.discount)
-            : null,
-      };
-      return editingId
-        ? customersApi.updateGroup(editingId, payload)
-        : customersApi.createGroup(payload);
-    },
-    onSuccess: async () => {
-      reset(defaultValues);
-      await queryClient.invalidateQueries({ queryKey: key });
-      notifySuccess("Customer group saved");
-    },
-  });
-  const remove = useMutation({
-    mutationFn: customersApi.deleteGroup,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to delete customer group"),
-  });
+  const save = useSaveCustomerGroup();
+  const remove = useDeleteCustomerGroup();
 
   const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
 
@@ -144,7 +106,21 @@ export const CustomerGroupsSection = () => {
   const submit = handleSubmit(async (values) => {
     clearFormErrors();
     try {
-      await save.mutateAsync({ values, editingId: editingGroup?.id ?? null });
+      await save.mutateAsync({
+        input: {
+          name: values.name.trim(),
+          discountPercent:
+            values.discountType === "PERCENT" && values.discount !== ""
+              ? Number(values.discount)
+              : null,
+          discountFixed:
+            values.discountType === "FIXED" && values.discount !== ""
+              ? Number(values.discount)
+              : null,
+        },
+        editingId: editingGroup?.id ?? null,
+      });
+      reset(defaultValues);
       setEditingGroup(null);
     } catch (error) {
       handleApiError(

@@ -3,12 +3,8 @@ import { useMemo } from "react";
 import { Page } from "@pos/ui";
 import { useAuthStore } from "@/store/auth";
 import { useBranches } from "@/features/branches";
-import { createTablesApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { notifyError } from "@/shared/lib/notify";
 import { extractApiError } from "@/shared/lib/api-client";
 
-const tablesApi = createTablesApi(apiClient);
 import { useTables } from "@/features/tables";
 import { useTablesRealtimeSync } from "@/features/tables/hooks/useTablesRealtimeSync";
 import { useTablesPageState } from "@/features/tables/hooks/useTablesPageState";
@@ -17,6 +13,8 @@ import { useUpdateTable } from "@/features/tables/hooks/useUpdateTable";
 import { useUpdateTableStatus } from "@/features/tables/hooks/useUpdateTableStatus";
 import { useDeleteTable } from "@/features/tables/hooks/useDeleteTable";
 import { useRegenerateTableQr } from "@/features/tables/hooks/useRegenerateTableQr";
+import { useRegenerateTakeawayQr } from "@/features/tables/hooks/useRegenerateTakeawayQr";
+import { useTakeawayQr } from "@/features/tables/hooks/useTakeawayQr";
 import { useOrders } from "@/features/orders";
 import {
   TableQrModal,
@@ -48,8 +46,6 @@ export const TablesPage = () => {
     editing,
     qrTable,
     takeawayQrOpen,
-    takeawayQr,
-    takeawayQrBusy,
     transferSource,
     mergeSource,
     tableSearch,
@@ -59,8 +55,6 @@ export const TablesPage = () => {
     setEditing,
     setQrTable,
     setTakeawayQrOpen,
-    setTakeawayQr,
-    setTakeawayQrBusy,
     setTransferSource,
     setMergeSource,
     setTableSearch,
@@ -77,6 +71,7 @@ export const TablesPage = () => {
   const branchesQuery = useBranches({ enabled: isAggregate });
   const tablesQuery = useTables();
   const openOrdersQuery = useOrders({ status: "OPEN", limit: 100 });
+  const takeawayQrQuery = useTakeawayQr(branchId, { enabled: false });
   const branches = branchesQuery.data;
   const tables = tablesQuery.data;
   const openOrders = openOrdersQuery.data ?? [];
@@ -87,6 +82,7 @@ export const TablesPage = () => {
   const statusMutation = useUpdateTableStatus();
   const deleteMutation = useDeleteTable();
   const regenerateQrMutation = useRegenerateTableQr();
+  const regenerateTakeawayQrMutation = useRegenerateTakeawayQr(branchId);
   const statusCounts = useMemo(
     () =>
       (tables ?? []).reduce<Record<string, number>>((counts, table) => {
@@ -116,30 +112,11 @@ export const TablesPage = () => {
   }, [sectionFilter, statusFilter, tableSearch, tables]);
   const hasTableFilters = Boolean(tableSearch || statusFilter || sectionFilter);
 
-  async function openTakeawayQr() {
+  const openTakeawayQr = async () => {
     if (!branchId || branchId === "all") return;
-    try {
-      setTakeawayQrBusy(true);
-      setTakeawayQr(await tablesApi.getTakeawayQr(branchId));
-      setTakeawayQrOpen(true);
-    } catch (error) {
-      notifyError(error, "Unable to load takeaway QR");
-    } finally {
-      setTakeawayQrBusy(false);
-    }
-  }
-
-  async function regenerateTakeawayQr() {
-    if (!branchId || branchId === "all") return;
-    try {
-      setTakeawayQrBusy(true);
-      setTakeawayQr(await tablesApi.regenerateTakeawayQr(branchId));
-    } catch (error) {
-      notifyError(error, "Unable to regenerate takeaway QR");
-    } finally {
-      setTakeawayQrBusy(false);
-    }
-  }
+    const result = await takeawayQrQuery.refetch();
+    if (result.data) setTakeawayQrOpen(true);
+  };
 
   const openAdd = () => {
     prepareAdd();
@@ -169,7 +146,9 @@ export const TablesPage = () => {
         visibleCount={filteredTables.length}
         totalCount={tables?.length ?? 0}
         aggregate={isAggregate}
-        takeawayQrBusy={takeawayQrBusy}
+        takeawayQrBusy={
+          takeawayQrQuery.isFetching || regenerateTakeawayQrMutation.isPending
+        }
         canCreate={has("tables:create")}
         onOpenTakeawayQr={() => void openTakeawayQr()}
         onAdd={openAdd}
@@ -288,11 +267,11 @@ export const TablesPage = () => {
         }}
       />
       <TakeawayQrModal
-        data={takeawayQr}
+        data={takeawayQrQuery.data ?? null}
         open={takeawayQrOpen}
         onClose={() => setTakeawayQrOpen(false)}
-        onRegenerate={() => void regenerateTakeawayQr()}
-        busy={takeawayQrBusy}
+        onRegenerate={() => regenerateTakeawayQrMutation.mutate()}
+        busy={regenerateTakeawayQrMutation.isPending}
       />
 
       <TableQrModal

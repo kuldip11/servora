@@ -17,6 +17,10 @@ const { toast, mutate, api, storage, extractApiError, holder } = vi.hoisted(
   }),
 );
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    cancelQueries: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(),
+  }),
   useMutation: (c: any) => {
     holder.mutationConfig = c;
     return { mutate, isPending: false };
@@ -45,7 +49,8 @@ describe("useLogin", () => {
         holder.mutationConfig.mutationFn({ email: "a", password: "b" }),
       ).rejects.toThrow("No business membership");
     });
-    holder.mutationConfig.onError(new Error("bad"));
+    await holder.mutationConfig.onError(new Error("bad"));
+    await Promise.resolve();
     expect(storage.clearTokens).toHaveBeenCalled();
   });
   it("covers one membership with one branch", async () => {

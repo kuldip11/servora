@@ -1,19 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import type {
-  Promotion,
-  PromotionStats as PromotionStatsData,
-} from "@pos/types";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
+import type { Promotion } from "@pos/types";
+import { usePromotionStats } from "@/features/menu/hooks/usePromotions";
 
 const PromotionStats = ({ id }: { id: string }) => {
-  const statsQuery = useQuery<PromotionStatsData>({
-    queryKey: ["menu", "promotions", id, "stats"],
-    queryFn: () => menuApi.promotionStats<PromotionStatsData>(id),
-  });
+  const statsQuery = usePromotionStats(id);
   return (
     <span>
       {statsQuery.data

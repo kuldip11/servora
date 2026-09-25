@@ -10,15 +10,21 @@ const notify = vi.hoisted(() => ({
 }));
 const ordersService = vi.hoisted(() => ({ updateStatus: vi.fn() }));
 
-vi.mock("@tanstack/react-query", () => query);
+vi.mock("@tanstack/react-query", () => ({
+  ...query,
+  useQueryClient: () => queryClient,
+}));
 vi.mock("../../../../shared/lib/query-client", () => ({ queryClient }));
 vi.mock("../../../../shared/lib/notify", () => notify);
 vi.mock("../../services/orders.service", () => ({ ordersService }));
 vi.mock("../../query-keys", () => ({
-  orderKeys: { all: ["orders"], detail: (id: string) => ["orders", id] },
+  orderKeys: {
+    detail: (id: string) => ["orders", "detail", "branch", id],
+    lists: () => ["orders", "list", "branch"],
+  },
 }));
 vi.mock("../../../tables/query-keys", () => ({
-  tableKeys: { all: ["tables"] },
+  tableKeys: { list: () => ["tables", "branch", "list"] },
 }));
 
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
@@ -35,13 +41,13 @@ describe("useUpdateOrderStatus", () => {
 
     expect(ordersService.updateStatus).toHaveBeenCalledWith("o1", "READY");
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["orders", "o1"],
+      queryKey: ["orders", "detail", "branch", "o1"],
     });
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["orders"],
+      queryKey: ["orders", "list", "branch"],
     });
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["tables"],
+      queryKey: ["tables", "branch", "list"],
     });
     expect(notify.notifySuccess).toHaveBeenCalledWith("Order status updated");
   });

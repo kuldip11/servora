@@ -244,6 +244,17 @@ describe("CustomerApp", () => {
     expect(screen.getByTestId("order")).toBeTruthy();
     expect(screen.getByTestId("order").textContent).toContain("Takeaway");
   });
+  it("remounts local UI state when the customer session identity changes", () => {
+    const { rerender } = render(<CustomerApp />);
+    fireEvent.click(screen.getByText("cart"));
+    expect(screen.getByTestId("cart")).toBeTruthy();
+
+    h.sessionState.session = { ...session, token: "replacement-session" };
+    rerender(<CustomerApp />);
+
+    expect(screen.getByTestId("menu")).toBeTruthy();
+    expect(screen.queryByTestId("cart")).toBeNull();
+  });
 });
 it("covers selected item without a variant", () => {
   h.cartState.selectedItem = { id: "i" };

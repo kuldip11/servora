@@ -15,8 +15,18 @@ vi.mock("@/shared/lib/realtime", () => ({
     h.handlers.set(name, cb);
   },
 }));
-vi.mock("@/shared/lib/query-client", () => ({
-  queryClient: { invalidateQueries: h.invalidate },
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+}));
+
+vi.mock("@/features/menu/query-keys", () => ({
+  menuKeys: { categories: () => ["menu", "current", "categories"] },
+}));
+vi.mock("@/features/analytics/query-keys", () => ({
+  analyticsKeys: { dashboard: () => ["analytics", "current", "dashboard"] },
+}));
+vi.mock("@/features/inventory/query-keys", () => ({
+  inventoryKeys: { items: () => ["inventory", "current", "items"] },
 }));
 import { RealtimeNotifications } from "../RealtimeNotifications";
 describe("RealtimeNotifications", () => {
@@ -46,6 +56,15 @@ describe("RealtimeNotifications", () => {
     });
     expect(h.toast).toHaveBeenCalledTimes(3);
     expect(h.invalidate).toHaveBeenCalledTimes(3);
+    expect(h.invalidate).toHaveBeenNthCalledWith(1, {
+      queryKey: ["menu", "current", "categories"],
+    });
+    expect(h.invalidate).toHaveBeenNthCalledWith(2, {
+      queryKey: ["analytics", "current", "dashboard"],
+    });
+    expect(h.invalidate).toHaveBeenNthCalledWith(3, {
+      queryKey: ["inventory", "current", "items"],
+    });
     unmount();
   });
 });

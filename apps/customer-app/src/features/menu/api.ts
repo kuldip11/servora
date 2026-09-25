@@ -49,6 +49,10 @@ export type CustomerMenu = {
   items: CustomerMenuItem[];
 };
 
-export const getCustomerMenu = (sessionToken: string) => {
-  return request<CustomerMenu>("/api/customer/menu", undefined, sessionToken);
+export const getCustomerMenu = (sessionToken: string, signal?: AbortSignal) => {
+  return request<CustomerMenu>(
+    "/api/customer/menu",
+    signal ? { signal } : undefined,
+    sessionToken,
+  );
 };

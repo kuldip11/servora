@@ -1,8 +1,11 @@
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LoginPage, getToken, logout, restoreSession } from "@/features/auth";
+import { clearWaiterQueries } from "@/shared/lib/query-lifecycle";
 
 export const AuthBoundary = () => {
+  const queryClient = useQueryClient();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(() =>
     getToken() ? true : null,
   );
@@ -16,7 +19,8 @@ export const AuthBoundary = () => {
       .then(() => {
         if (isActive) setIsLoggedIn(true);
       })
-      .catch(() => {
+      .catch(async () => {
+        await clearWaiterQueries(queryClient);
         logout();
         if (isActive) setIsLoggedIn(false);
       });
@@ -24,7 +28,7 @@ export const AuthBoundary = () => {
     return () => {
       isActive = false;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, queryClient]);
 
   if (isLoggedIn === null) {
     return (

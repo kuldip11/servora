@@ -7,7 +7,7 @@ import {
   savePersistedOrderId,
 } from "@/features/cart/persistence";
 import type { CustomerBootstrapData } from "@/features/session/useCustomerBootstrap";
-import { orderQueryKey } from "@/features/session/useCustomerBootstrap";
+import { customerKeys } from "@/features/session/query/customer.keys";
 
 type UseCustomerPersistenceArgs = {
   bootstrapData: CustomerBootstrapData | undefined;
@@ -34,7 +34,8 @@ export const useCustomerPersistence = ({
     setPlacedOrderId(bootstrapData.restoredOrder?.id ?? null);
     if (bootstrapData.restoredOrder) {
       queryClient.setQueryData<CustomerOrder>(
-        orderQueryKey(
+        customerKeys.order(
+          storageScope,
           bootstrapData.session.token,
           bootstrapData.restoredOrder.id,
         ),
@@ -43,7 +44,7 @@ export const useCustomerPersistence = ({
     }
     setLocalError(bootstrapData.cartWarning);
     setHydratedSessionToken(bootstrapData.session.token);
-  }, [bootstrapData, hydratedSessionToken, queryClient]);
+  }, [bootstrapData, hydratedSessionToken, queryClient, storageScope]);
 
   useEffect(() => {
     if (!storageScope || !hydratedSessionToken) return;

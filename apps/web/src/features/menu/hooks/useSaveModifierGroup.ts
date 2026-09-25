@@ -1,5 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifySuccess } from "@/shared/lib/notify";
 import {
   modifierGroupsService,
@@ -8,6 +7,7 @@ import {
 import { menuKeys } from "@/features/menu/query-keys";
 
 export const useSaveModifierGroup = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       existingId,

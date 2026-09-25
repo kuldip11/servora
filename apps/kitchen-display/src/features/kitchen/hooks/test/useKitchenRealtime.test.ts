@@ -15,6 +15,9 @@ vi.mock("../../../../shared/lib/realtime", () => ({
   useRealtimeEvent: (type: string, handler: (event: any) => void) =>
     mocks.handlers.push([type, handler]),
 }));
+vi.mock("../../../../shared/lib/query-scope", () => ({
+  getKitchenQueryScope: () => ["tenant-1", "branch-1"],
+}));
 
 import { createRealtimeClient } from "@pos/realtime";
 import type { RealtimeEvent, KitchenTicket } from "@pos/types";
@@ -22,10 +25,9 @@ import {
   useKitchenRealtime,
   mergeKitchenTicketIntoQueue,
 } from "@/features/kitchen/hooks/useKitchenRealtime";
-import {
-  KITCHEN_TICKETS_QUERY_KEY,
-  kitchenTicketsQueryKey,
-} from "@/features/kitchen/hooks/useKitchenTickets";
+import { kitchenKeys } from "@/features/kitchen/query/kitchen.keys";
+
+const scope = ["tenant-1", "branch-1"] as const;
 
 beforeEach(() => {
   mocks.handlers.length = 0;
@@ -48,7 +50,7 @@ describe("useKitchenRealtime", () => {
     };
     mocks.handlers[0]![1]({ type: "kitchen.ticket.created", payload: ticket });
     expect(mocks.setQueryData).toHaveBeenCalledWith(
-      KITCHEN_TICKETS_QUERY_KEY,
+      kitchenKeys.ticketList(scope),
       expect.any(Function),
     );
     const updater = mocks.setQueryData.mock.calls[0]![1];
@@ -135,7 +137,7 @@ describe("useKitchenRealtime", () => {
     const elapsed = performance.now() - started;
     expect(elapsed).toBeLessThan(50);
     expect(mocks.setQueryData).toHaveBeenCalledWith(
-      kitchenTicketsQueryKey("grill"),
+      kitchenKeys.ticketList(scope, "grill"),
       expect.any(Function),
     );
     const updater = mocks.setQueryData.mock.calls.at(-1)?.[1];

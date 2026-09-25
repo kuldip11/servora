@@ -27,7 +27,9 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: (options: any) => {
     mocks.capturedQueryFn = options.queryFn;
@@ -35,12 +37,14 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async (value?: any) => {
+    mutate: async (value?: any, mutateOptions?: any) => {
       try {
         const result = await options.mutationFn(value);
         await options.onSuccess?.(result);
+        await mutateOptions?.onSuccess?.(result);
       } catch (error) {
         options.onError?.(error);
+        mutateOptions?.onError?.(error);
       }
     },
   }),

@@ -1,6 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { extractApiFieldErrors } from "@pos/api-client";
-import { queryClient } from "@/shared/lib/query-client";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import {
   menuItemsService,
@@ -10,6 +9,7 @@ import { menuKeys } from "@/features/menu/query-keys";
 import type { MenuItem } from "@pos/types";
 
 export const useSaveMenuItem = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       item,

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Input,
@@ -12,7 +11,7 @@ import type { Bill, Order } from "@pos/types";
 import { createPaymentSchema } from "@pos/validation";
 import { PAYMENT_METHODS } from "@/features/billing/constants";
 import { useCollectPayment } from "@/features/billing/hooks/useCollectPayment";
-import { billingService } from "@/features/billing/services/billing.service";
+import { useOrderBills } from "@/features/billing/hooks/useOrderBills";
 import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 import { BillItemSummary } from "./BillItemSummary";
@@ -52,11 +51,7 @@ export const PaymentDialog = ({
   const [selectedBillId, setSelectedBillId] = useState("");
   const [validationError, setValidationError] = useState("");
   const payMutation = useCollectPayment();
-  const billsQuery = useQuery<Bill[]>({
-    queryKey: ["billing", "order", order?.id],
-    queryFn: () => billingService.getOrderBills(order!.id),
-    enabled: !!order,
-  });
+  const billsQuery = useOrderBills(order?.id, { enabled: !!order });
 
   if (!order) return null;
 

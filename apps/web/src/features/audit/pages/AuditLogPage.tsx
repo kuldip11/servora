@@ -1,7 +1,9 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { Badge, Button, Card, Page, PageHeader, Select } from "@pos/ui";
 import { ShieldCheck } from "lucide-react";
-import { auditService } from "@/features/audit/services/audit.service";
+import {
+  useAuditLog,
+  useMenuAuditHistory,
+} from "@/features/audit/hooks/useAudit";
 import { useState } from "react";
 
 const formatAction = (action: string) => {
@@ -27,7 +29,6 @@ const formatMetadata = (metadata: string | null) => {
 export const AuditLogPage = () => {
   const [entityType, setEntityType] = useState("");
   const [changeType, setChangeType] = useState("");
-  const pageSize = 50;
   const {
     data: auditPages,
     isLoading,
@@ -35,36 +36,14 @@ export const AuditLogPage = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["audit", "list"],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => auditService.list(pageSize, pageParam),
-    getNextPageParam: (lastPage) =>
-      lastPage.length === pageSize
-        ? lastPage[lastPage.length - 1]?.createdAt
-        : undefined,
-  });
+  } = useAuditLog();
   const {
     data: menuPages,
     isLoading: menuHistoryLoading,
     hasNextPage: hasMoreMenuHistory,
     fetchNextPage: fetchMoreMenuHistory,
     isFetchingNextPage: isFetchingMoreMenuHistory,
-  } = useInfiniteQuery({
-    queryKey: ["audit", "menu-history", entityType, changeType],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      auditService.menuHistory({
-        ...(entityType ? { entityType } : {}),
-        ...(changeType ? { changeType } : {}),
-        ...(pageParam ? { before: pageParam } : {}),
-        limit: pageSize,
-      }),
-    getNextPageParam: (lastPage) =>
-      lastPage.length === pageSize
-        ? lastPage[lastPage.length - 1]?.changedAt
-        : undefined,
-  });
+  } = useMenuAuditHistory(entityType, changeType);
   const data = auditPages?.pages.flat() ?? [];
   const menuHistory = menuPages?.pages.flat() ?? [];
 

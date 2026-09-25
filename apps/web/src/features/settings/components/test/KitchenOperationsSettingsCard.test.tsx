@@ -44,12 +44,14 @@ vi.mock("@pos/ui", async (importOriginal) => ({
     <button {...props}>{children}</button>
   ),
 }));
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: ({ queryFn }: any) => {
     const [data, setData] = React.useState<any>();
     React.useEffect(() => {
-      void queryFn()
+      void queryFn({ signal: new AbortController().signal })
         .then(setData)
         .catch(() => {});
     }, []);

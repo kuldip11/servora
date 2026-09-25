@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -8,52 +8,21 @@ import {
   Select,
   Spinner,
 } from "@pos/ui";
-import { createAnalyticsApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
-
-const analyticsApi = createAnalyticsApi(apiClient);
+import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
+import { useMenuEngineering } from "@/features/analytics/hooks/useMenuEngineering";
 
 type EngineeringQuadrant =
   "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG" | "COST_MISSING";
 type EngineeringSort = "margin" | "volume" | "name";
 
-type EngineeringRow = {
-  menuItemId: string;
-  menuItemName: string;
-  variantName: string | null;
-  margin: number | null;
-  marginPercent: number | null;
-  salesVolume: number;
-  quadrant: EngineeringQuadrant;
-  recommendation: string;
-};
-
 export const MenuEngineeringPage = () => {
   const [windowDays, setWindowDays] = useState("90");
+  const [appliedWindowDays, setAppliedWindowDays] = useState("90");
   const [quadrant, setQuadrant] = useState<"ALL" | EngineeringQuadrant>("ALL");
   const [sort, setSort] = useState<EngineeringSort>("volume");
-  const [rows, setRows] = useState<EngineeringRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load(days = windowDays) {
-    setLoading(true);
-    setError(null);
-    try {
-      setRows(
-        await analyticsApi.menuEngineering<EngineeringRow[]>(Number(days)),
-      );
-    } catch (reason) {
-      setError(extractApiError(reason));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load("90");
-  }, []);
+  const engineeringQuery = useMenuEngineering(Number(appliedWindowDays));
+  const rows = engineeringQuery.data ?? [];
 
   const visibleRows = useMemo(() => {
     const filtered =
@@ -123,22 +92,24 @@ export const MenuEngineeringPage = () => {
           />
           <Button
             variant="secondary"
-            loading={loading}
-            onClick={() => void load()}
+            loading={engineeringQuery.isFetching}
+            onClick={() => setAppliedWindowDays(windowDays)}
           >
             Apply
           </Button>
         </div>
       </Card>
 
-      {error ? (
+      {engineeringQuery.error ? (
         <Card className="border-danger/30 bg-danger-surface">
           <p className="text-sm font-semibold text-danger">
             Menu engineering unavailable
           </p>
-          <p className="mt-1 text-sm text-text-secondary">{error}</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {extractApiError(engineeringQuery.error)}
+          </p>
         </Card>
-      ) : loading && rows.length === 0 ? (
+      ) : engineeringQuery.isLoading && rows.length === 0 ? (
         <div className="flex min-h-40 items-center justify-center">
           <Spinner className="h-6 w-6" />
         </div>

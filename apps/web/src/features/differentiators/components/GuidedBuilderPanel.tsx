@@ -1,10 +1,8 @@
 import { useMemo } from "react";
-import { createMenuApi } from "@pos/api-client";
 import { Button, Card, toast } from "@pos/ui";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { extractApiError } from "@/shared/lib/api-client";
+import { differentiatorsService } from "@/features/differentiators/services/differentiators.service";
 import { useGuidedBuilderState } from "@/features/differentiators/hooks/useGuidedBuilderState";
-
-const menuApi = createMenuApi(apiClient);
 
 import type {
   ComboPolicy,
@@ -93,9 +91,9 @@ export const GuidedBuilderPanel = ({
 
   const getComboPreview = async () => {
     const { name: _name, ...previewInput } = comboPayload;
-    const response = await menuApi.previewCombo<{ resolvedTotal: number }>(
-      previewInput,
-    );
+    const response = await differentiatorsService.previewCombo<{
+      resolvedTotal: number;
+    }>(previewInput);
     return Number(response.resolvedTotal);
   };
 
@@ -117,7 +115,7 @@ export const GuidedBuilderPanel = ({
     setBusy(true);
     try {
       const authoritativePreview = await getComboPreview();
-      await menuApi.createCombo(comboPayload);
+      await differentiatorsService.createCombo(comboPayload);
       setPreview(authoritativePreview);
       toast({
         title: `Combo created at previewed price ₹${authoritativePreview.toFixed(2)}`,
@@ -153,7 +151,7 @@ export const GuidedBuilderPanel = ({
 
   const getPromotionPreview = async () => {
     if (!promotionReady) return null;
-    const result = await menuApi.previewPromotion<{
+    const result = await differentiatorsService.previewPromotion<{
       subtotal: number;
       discountAmount: number;
       totalAmount: number;
@@ -184,7 +182,7 @@ export const GuidedBuilderPanel = ({
     try {
       const authoritativePreview = await getPromotionPreview();
       if (!authoritativePreview) return;
-      await menuApi.createPromotion(promotionPayload);
+      await differentiatorsService.createPromotion(promotionPayload);
       toast({
         title: `Promotion created · sample discount ₹${authoritativePreview.discountAmount.toFixed(2)}`,
         tone: "success",

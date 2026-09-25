@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const list = vi.hoisted(() => vi.fn());
@@ -15,7 +17,8 @@ describe("branchesQuery", () => {
   it("binds the branch-list query key and service", () => {
     const query = branchesQuery();
     expect(query.queryKey).toEqual(["branches", "franchise", "fr-1", "list"]);
-    expect(query.queryFn).toBe(list);
+    query.queryFn?.({ signal } as never);
+    expect(list).toHaveBeenCalledWith(signal);
     expect(query.staleTime).toBe(300_000);
   });
 });

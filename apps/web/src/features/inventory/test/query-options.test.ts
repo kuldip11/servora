@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const list = vi.hoisted(() => vi.fn());
@@ -21,7 +23,7 @@ describe("inventoryItemsQuery", () => {
       "br-1",
       "items",
     ]);
-    query.queryFn?.({} as never);
-    expect(list).toHaveBeenCalledWith({});
+    query.queryFn?.({ signal } as never);
+    expect(list).toHaveBeenCalledWith({}, signal);
   });
 });

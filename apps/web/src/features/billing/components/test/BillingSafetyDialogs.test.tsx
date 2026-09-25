@@ -3,14 +3,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  useQuery: vi.fn(),
+  orderBills: vi.fn(),
   printBills: vi.fn(),
   collectMutate: vi.fn(),
   collectPending: false,
   refetch: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.useQuery }));
+vi.mock("@/features/billing/hooks/useOrderBills", () => ({
+  useOrderBills: () => mocks.orderBills(),
+}));
 vi.mock("@/features/billing/utils/print-bills", () => ({
   printBills: mocks.printBills,
 }));
@@ -96,12 +98,12 @@ const queryState = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.useQuery.mockReturnValue(queryState());
+  mocks.orderBills.mockReturnValue(queryState());
 });
 
 describe("billing safety dialogs", () => {
   it("does not expose fallback printing while bills are still loading", () => {
-    mocks.useQuery.mockReturnValue(
+    mocks.orderBills.mockReturnValue(
       queryState({ data: undefined, isLoading: true, isSuccess: false }),
     );
     render(<PrintBillsDialog order={order} onClose={vi.fn()} />);
@@ -111,7 +113,7 @@ describe("billing safety dialogs", () => {
   });
 
   it("blocks fallback printing when bill retrieval fails and allows retry", () => {
-    mocks.useQuery.mockReturnValue(
+    mocks.orderBills.mockReturnValue(
       queryState({
         data: undefined,
         isSuccess: false,
@@ -134,7 +136,7 @@ describe("billing safety dialogs", () => {
   });
 
   it("blocks payment controls while billing state is loading", () => {
-    mocks.useQuery.mockReturnValue(
+    mocks.orderBills.mockReturnValue(
       queryState({ data: undefined, isLoading: true, isSuccess: false }),
     );
     render(<PaymentDialog order={order} onClose={vi.fn()} />);
@@ -143,7 +145,7 @@ describe("billing safety dialogs", () => {
   });
 
   it("blocks payment on bill-query failure and exposes retry", () => {
-    mocks.useQuery.mockReturnValue(
+    mocks.orderBills.mockReturnValue(
       queryState({
         data: undefined,
         isSuccess: false,

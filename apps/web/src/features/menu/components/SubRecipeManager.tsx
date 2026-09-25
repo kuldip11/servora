@@ -1,42 +1,23 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, Card, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { useInventoryItems } from "@/features/inventory";
 import {
+  useCreateSubRecipe,
+  useDeleteSubRecipe,
   useSubRecipes,
-  subRecipeQueryKey,
 } from "@/features/menu/hooks/useSubRecipes";
-import { menuSubRecipesService } from "@/features/menu/services/menu-sub-recipes.service";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { SubRecipeEditor } from "./SubRecipeEditor";
 
 export const SubRecipeManager = () => {
-  const queryClient = useQueryClient();
   const subRecipesQuery = useSubRecipes();
   const inventoryQuery = useInventoryItems({ limit: 100 });
   const subRecipes = subRecipesQuery.data;
   const inventory = inventoryQuery.data?.items;
   const [open, setOpen] = useState(false);
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: subRecipeQueryKey() });
-  const create = useMutation({
-    mutationFn: menuSubRecipesService.create,
-    onSuccess: async () => {
-      await refresh();
-      setOpen(false);
-      notifySuccess("Sub-recipe created");
-    },
-  });
-  const remove = useMutation({
-    mutationFn: menuSubRecipesService.remove,
-    onSuccess: async () => {
-      await refresh();
-      notifySuccess("Sub-recipe deleted");
-    },
-    onError: (error) => notifyError(error, "Could not delete sub-recipe"),
-  });
+  const create = useCreateSubRecipe();
+  const remove = useDeleteSubRecipe();
 
   const dependencyFailed =
     (subRecipesQuery.isError && !subRecipesQuery.data) ||
@@ -129,7 +110,10 @@ export const SubRecipeManager = () => {
         onCreate={(payload, onError, onSuccessReset) =>
           create.mutate(payload, {
             onError,
-            onSuccess: () => onSuccessReset(),
+            onSuccess: () => {
+              setOpen(false);
+              onSuccessReset();
+            },
           })
         }
       />

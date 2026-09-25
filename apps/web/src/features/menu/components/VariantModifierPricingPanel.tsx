@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Button, Input } from "@pos/ui";
 import type { MenuItemVariant, ModifierGroup } from "@pos/types";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useSaveVariantModifierPricing } from "@/features/menu/hooks/useSaveVariantModifierPricing";
 
 interface Props {
   variants: MenuItemVariant[];
@@ -42,9 +36,12 @@ export const VariantModifierPricingPanel = ({ variants, groups }: Props) => {
     () => new Set(variants.map((variant) => variant.id)),
     [variants],
   );
-  const save = useMutation({
-    mutationFn: async (group: ModifierGroup) => {
-      await menuApi.updateModifierGroup(group.id, {
+  const save = useSaveVariantModifierPricing();
+
+  const saveGroup = (group: ModifierGroup) => {
+    save.mutate({
+      groupId: group.id,
+      patch: {
         options: group.options.map((option) => ({
           id: option.id,
           name: option.name,
@@ -72,17 +69,9 @@ export const VariantModifierPricingPanel = ({ variants, groups }: Props) => {
             }),
           ],
         })),
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["menu", "modifier-groups"],
-      });
-      notifySuccess("Variant modifier prices saved");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to save variant modifier prices"),
-  });
+      },
+    });
+  };
 
   if (!variants.length || !groups.length) return null;
 
@@ -110,7 +99,7 @@ export const VariantModifierPricingPanel = ({ variants, groups }: Props) => {
               size="sm"
               variant="secondary"
               loading={save.isPending}
-              onClick={() => save.mutate(group)}
+              onClick={() => saveGroup(group)}
             >
               Save variant prices
             </Button>

@@ -56,38 +56,44 @@ vi.mock("@/features/inventory", () => ({
     data: inventory === undefined ? undefined : { items: inventory },
   }),
 }));
-vi.mock("@/features/menu/hooks/useSubRecipes", () => ({
-  useSubRecipes: () => ({ data: subs }),
-  subRecipeQueryKey: () => ["subrecipes"],
-}));
-vi.mock("@/features/menu/services/menu-sub-recipes.service", () => ({
-  menuSubRecipesService: { create: h.create, remove: h.remove },
-}));
 vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
   notifySuccess: h.success,
 }));
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return {
-    ...actual,
-    useQueryClient: () => ({ invalidateQueries: h.invalidate }),
-    useMutation: (cfg: any) => ({
-      isPending: pending,
-      mutate: (arg?: any, callbacks?: any) =>
-        Promise.resolve()
-          .then(() => cfg.mutationFn(arg))
-          .then((v) => {
-            cfg.onSuccess?.(v);
-            callbacks?.onSuccess?.(v);
-          })
-          .catch((e) => {
-            cfg.onError?.(e);
-            callbacks?.onError?.(e);
-          }),
-    }),
-  };
-});
+vi.mock("@/features/menu/hooks/useSubRecipes", () => ({
+  useSubRecipes: () => ({
+    data: subs,
+    isError: false,
+    isLoading: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  useCreateSubRecipe: () => ({
+    isPending: pending,
+    mutate: (
+      arg?: unknown,
+      callbacks?: {
+        onError?: (error: unknown) => void;
+        onSuccess?: () => void;
+      },
+    ) =>
+      Promise.resolve()
+        .then(() => h.create(arg))
+        .then(() => {
+          h.success("Sub-recipe created");
+          callbacks?.onSuccess?.();
+        })
+        .catch((error) => callbacks?.onError?.(error)),
+  }),
+  useDeleteSubRecipe: () => ({
+    isPending: pending,
+    mutate: (arg?: unknown) =>
+      Promise.resolve()
+        .then(() => h.remove(arg))
+        .then(() => h.success("Sub-recipe deleted"))
+        .catch((error) => h.error(error, "Could not delete sub-recipe")),
+  }),
+}));
 import { SubRecipeManager } from "../SubRecipeManager";
 
 describe("SubRecipeManager coverage", () => {

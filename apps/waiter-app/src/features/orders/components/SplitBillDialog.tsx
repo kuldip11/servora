@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { extractApiError } from "@pos/api-client";
 import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
 import type { Order } from "@pos/types";
-import {
-  splitOrderBill,
-  splitOrderBillByItems,
-  splitOrderBillBySeat,
-} from "@/features/orders/api/orders";
+import { useSplitOrderBill } from "@/features/orders/hooks/useOrderActions";
 
 type SplitMode = "EVEN" | "ITEM" | "SEAT";
 type SharedStrategy = "EVEN_SPLIT" | "MANUAL";
@@ -43,41 +38,7 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
     );
   }, [items, open]);
 
-  const splitBill = useMutation({
-    mutationFn: ({
-      billCount,
-      allocations,
-    }: {
-      billCount: number;
-      allocations?: Array<{ label: string; orderItemIds: string[] }>;
-    }) =>
-      allocations
-        ? splitOrderBillByItems(orderId, allocations)
-        : splitOrderBill(orderId, billCount),
-    onSuccess: onClose,
-  });
-  const splitBySeat = useMutation({
-    mutationFn: (strategy: SharedStrategy) =>
-      splitOrderBillBySeat(orderId, strategy),
-    onSuccess: (result) => {
-      if (result.status !== "MANUAL_REQUIRED") {
-        onClose();
-        return;
-      }
-      const mapping: Record<string, number> = {};
-      result.allocations.forEach((allocation, index) =>
-        allocation.orderItemIds.forEach((id) => {
-          mapping[id] = index;
-        }),
-      );
-      result.sharedItemIds.forEach((id, index) => {
-        mapping[id] = index % result.allocations.length;
-      });
-      setItemBills(mapping);
-      setWays(String(result.allocations.length));
-      setMode("ITEM");
-    },
-  });
+  const { splitBill, splitBySeat } = useSplitOrderBill(orderId, onClose);
 
   const clearErrors = () => {
     splitBill.reset();
@@ -86,7 +47,26 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
 
   const submit = () => {
     if (mode === "SEAT") {
-      splitBySeat.mutate(sharedStrategy);
+      splitBySeat.mutate(sharedStrategy, {
+        onSuccess: (result) => {
+          if (result.status !== "MANUAL_REQUIRED") {
+            onClose();
+            return;
+          }
+          const mapping: Record<string, number> = {};
+          result.allocations.forEach((allocation, index) =>
+            allocation.orderItemIds.forEach((id) => {
+              mapping[id] = index;
+            }),
+          );
+          result.sharedItemIds.forEach((id, index) => {
+            mapping[id] = index % result.allocations.length;
+          });
+          setItemBills(mapping);
+          setWays(String(result.allocations.length));
+          setMode("ITEM");
+        },
+      });
       return;
     }
     const billCount = Number(ways);

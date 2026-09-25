@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { extractApiError } from "@pos/api-client";
 import { Button, FormErrorSummary, Input, Modal } from "@pos/ui";
-import { refireOrderItem } from "@/features/orders/api/orders";
+import { useRefireOrderItem } from "@/features/orders/hooks/useOrderActions";
 
 interface Props {
   open: boolean;
@@ -12,7 +11,6 @@ interface Props {
 }
 
 export const RefireItemDialog = ({ open, orderId, itemId, onClose }: Props) => {
-  const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
   const [alsoCompOriginal, setAlsoCompOriginal] = useState(true);
 
@@ -22,22 +20,7 @@ export const RefireItemDialog = ({ open, orderId, itemId, onClose }: Props) => {
     setAlsoCompOriginal(true);
   }, [open]);
 
-  const refire = useMutation({
-    mutationFn: ({
-      selectedItemId,
-      selectedReason,
-      compOriginal,
-    }: {
-      selectedItemId: string;
-      selectedReason: string;
-      compOriginal: boolean;
-    }) =>
-      refireOrderItem(orderId, selectedItemId, selectedReason, compOriginal),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["order", orderId] });
-      onClose();
-    },
-  });
+  const refire = useRefireOrderItem(orderId, onClose);
 
   return (
     <Modal open={open} onClose={onClose} title="Refire item">

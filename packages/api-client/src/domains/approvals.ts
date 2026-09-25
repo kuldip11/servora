@@ -28,8 +28,12 @@ export const createApprovalsApi = (client: DomainHttpClient) => {
         input,
       );
     },
-    listThresholds<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/approvals/thresholds");
+    listThresholds<T>(signal?: AbortSignal): Promise<T[]> {
+      return getDomainData<T[]>(
+        client,
+        "/approvals/thresholds",
+        signal ? { signal } : undefined,
+      );
     },
     setThreshold<T>(
       actionType: string,

@@ -35,6 +35,7 @@ export const createInventoryApi = (client: DomainHttpClient) => {
   return {
     list(
       filters: InventoryListFilters = {},
+      signal?: AbortSignal,
     ): Promise<PaginatedResult<InventoryItem>> {
       const params: Record<string, string> = {
         page: String(filters.page ?? 1),
@@ -44,12 +45,14 @@ export const createInventoryApi = (client: DomainHttpClient) => {
       if (filters.lowStockOnly) params["lowStockOnly"] = "true";
       return getPaginatedDomainData<InventoryItem>(client, "/inventory/items", {
         params,
+        ...(signal ? { signal } : {}),
       });
     },
-    lowStock(): Promise<InventoryItem[]> {
+    lowStock(signal?: AbortSignal): Promise<InventoryItem[]> {
       return getDomainData<InventoryItem[]>(
         client,
         "/inventory/alerts/low-stock",
+        signal ? { signal } : undefined,
       );
     },
     create(
@@ -57,16 +60,21 @@ export const createInventoryApi = (client: DomainHttpClient) => {
     ): Promise<InventoryItem> {
       return postDomainData<InventoryItem>(client, "/inventory/items", input);
     },
-    recipeImpact(itemId: string): Promise<InventoryRecipeImpact> {
+    recipeImpact(
+      itemId: string,
+      signal?: AbortSignal,
+    ): Promise<InventoryRecipeImpact> {
       return getDomainData<InventoryRecipeImpact>(
         client,
         `/inventory/items/${itemId}/recipe-impact`,
+        signal ? { signal } : undefined,
       );
     },
-    transactions(): Promise<InventoryTransaction[]> {
+    transactions(signal?: AbortSignal): Promise<InventoryTransaction[]> {
       return getDomainData<InventoryTransaction[]>(
         client,
         "/inventory/transactions",
+        signal ? { signal } : undefined,
       );
     },
     updateStock(
@@ -77,8 +85,12 @@ export const createInventoryApi = (client: DomainHttpClient) => {
         client.patch(`/inventory/items/${itemId}/stock`, input),
       );
     },
-    wasteReasons(): Promise<WasteReason[]> {
-      return getDomainData<WasteReason[]>(client, "/inventory/waste-reasons");
+    wasteReasons(signal?: AbortSignal): Promise<WasteReason[]> {
+      return getDomainData<WasteReason[]>(
+        client,
+        "/inventory/waste-reasons",
+        signal ? { signal } : undefined,
+      );
     },
     createWasteReason(label: string): Promise<WasteReason> {
       return postDomainData<WasteReason>(client, "/inventory/waste-reasons", {

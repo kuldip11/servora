@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { createMenuApi } from "@pos/api-client";
 import {
   Button,
   Page,
@@ -14,9 +12,7 @@ import { EngineeringPanel } from "@/features/differentiators/components/Engineer
 import { GuidedBuilderPanel } from "@/features/differentiators/components/GuidedBuilderPanel";
 import type { MenuChoice } from "@/features/differentiators/components/guided-builder/types";
 import { OrderExplainPanel } from "@/features/differentiators/components/OrderExplainPanel";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
+import { useDifferentiatorMenuChoices } from "@/features/differentiators/hooks/useDifferentiators";
 
 type Tab = "availability" | "engineering" | "explain" | "builder" | "approvals";
 
@@ -30,22 +26,7 @@ const tabs: Array<[Tab, string]> = [
 
 export const DifferentiatorsPage = () => {
   const [tab, setTab] = useState<Tab>("availability");
-  const menuChoicesQuery = useQuery<MenuChoice[]>({
-    queryKey: ["differentiators", "menu-choices"],
-    queryFn: async () => {
-      const categories = await menuApi.listCategories();
-      return categories.flatMap((category) =>
-        (category.menuItems ?? [])
-          .filter((item) => item.isPublished && item.status !== "DISCONTINUED")
-          .map((item) => ({
-            id: item.id,
-            name: item.name,
-            categoryName: category.name,
-          })),
-      );
-    },
-    retry: false,
-  });
+  const menuChoicesQuery = useDifferentiatorMenuChoices();
 
   const menuChoices = menuChoicesQuery.data ?? [];
 

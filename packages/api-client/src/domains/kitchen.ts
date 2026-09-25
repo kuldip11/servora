@@ -8,17 +8,26 @@ import { getDomainData, type DomainHttpClient } from "./shared";
 
 export const createKitchenApi = (client: DomainHttpClient) => {
   return {
-    tickets(stationId?: string): Promise<KitchenTicket[]> {
+    tickets(
+      stationId?: string,
+      signal?: AbortSignal,
+    ): Promise<KitchenTicket[]> {
       return getDomainData<KitchenTicket[]>(
         client,
         "/kitchen-tickets",
-        stationId ? { params: { stationId } } : undefined,
+        stationId || signal
+          ? {
+              ...(stationId ? { params: { stationId } } : {}),
+              ...(signal ? { signal } : {}),
+            }
+          : undefined,
       );
     },
-    stations(): Promise<KitchenStation[]> {
+    stations(signal?: AbortSignal): Promise<KitchenStation[]> {
       return getDomainData<KitchenStation[]>(
         client,
         "/kitchen-tickets/stations",
+        signal ? { signal } : undefined,
       );
     },
     updateTicketStatus(id: string, status: KitchenTicketStatus): Promise<void> {

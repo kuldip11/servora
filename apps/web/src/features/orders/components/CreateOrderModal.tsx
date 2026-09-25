@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Modal, Select } from "@pos/ui";
 import { MenuPicker } from "./create-order/MenuPicker";
 import { OrderCart } from "./create-order/OrderCart";
 import { CourseModeToggle } from "./create-order/CourseModeToggle";
 import { OrderDependencyFeedback } from "./create-order/OrderDependencyFeedback";
 import { useTables } from "@/features/tables";
-import { useMenuCategories } from "@/features/menu";
+import { useActiveMenus, useMenuCategories } from "@/features/menu";
 import { useCreateOrder } from "@/features/orders";
 import { buildCreateOrderInput } from "@/features/orders/services/orders.service";
 import { ItemCustomizerModal } from "./ItemCustomizerModal";
@@ -15,17 +14,7 @@ import { scopeCategoriesForOrder } from "@/features/orders/utils/orderable-menu"
 import type { FoodType, MenuCategory, MenuItem } from "@pos/types";
 import { createOrderSchema } from "@pos/validation";
 import { useBranches } from "@/features/branches";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
 import { useCourseSequencingEnabled } from "@/features/orders/hooks/useCourseSequencingEnabled";
-
-interface ActiveMenuSummary {
-  id: string;
-  name: string;
-  memberships: Array<{ menuItemId: string }>;
-}
 
 import { ALL_ORDER_TYPES } from "@/features/orders/constants";
 
@@ -67,10 +56,7 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
 
   const categoriesQuery = useMenuCategories();
   const categories = categoriesQuery.data;
-  const activeMenusQuery = useQuery<ActiveMenuSummary[]>({
-    queryKey: ["menus", "active", orderType],
-    queryFn: () => menuApi.listActiveMenus(orderType),
-  });
+  const activeMenusQuery = useActiveMenus(orderType);
   const activeMenus = activeMenusQuery.data ?? [];
   useEffect(() => {
     if (!activeMenus.some((menu) => menu.id === selectedMenuId))

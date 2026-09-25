@@ -22,7 +22,9 @@ describe("useTables", () => {
   it("supports disabled and polling query states", async () => {
     useTables(false);
     expect(configs.at(-1).enabled).toBe(false);
-    await configs.at(-1).queryFn();
+    const signal = new AbortController().signal;
+    await configs.at(-1).queryFn({ signal });
+    expect(fetchTables).toHaveBeenCalledWith(signal);
 
     useTables(true);
     expect(configs.at(-1).refetchInterval).toBe(20000);

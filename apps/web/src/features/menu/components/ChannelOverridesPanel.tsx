@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Button,
   Input,
@@ -7,20 +6,11 @@ import {
   Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError } from "@/shared/lib/notify";
-
-interface ChannelOverrideRow {
-  id: string;
-  channel: string;
-  fulfillmentType?: string | null;
-  status?: string | null;
-  isHidden: boolean;
-}
+import {
+  useChannelOverrides,
+  useDeleteChannelOverride,
+  useSaveChannelOverride,
+} from "@/features/menu/hooks/useChannelOverrides";
 
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
 
@@ -30,29 +20,10 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
   const [status, setStatus] = useState("OUT_OF_STOCK");
   const [isHidden, setIsHidden] = useState(false);
   const [reason, setReason] = useState("");
-  const key = ["menu-items", itemId, "channel-overrides"];
-  const overridesQuery = useQuery<ChannelOverrideRow[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listChannelOverrides<ChannelOverrideRow>(itemId),
-  });
+  const overridesQuery = useChannelOverrides(itemId);
   const overrides = overridesQuery.data ?? [];
-  const save = useMutation({
-    mutationFn: () =>
-      menuApi.saveChannelOverride<ChannelOverrideRow>(itemId, {
-        channel,
-        fulfillmentType,
-        status,
-        isHidden,
-        availabilityReason: reason || null,
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to save channel override"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removeChannelOverride(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to remove channel override"),
-  });
+  const save = useSaveChannelOverride(itemId);
+  const remove = useDeleteChannelOverride(itemId);
   return (
     <div className="space-y-2">
       <span className="text-sm font-medium text-text-primary">
@@ -147,7 +118,15 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
           size="sm"
           loading={save.isPending}
           disabled={save.isPending || overridesQuery.isError}
-          onClick={() => save.mutate()}
+          onClick={() =>
+            save.mutate({
+              channel,
+              fulfillmentType,
+              status,
+              isHidden,
+              availabilityReason: reason || null,
+            })
+          }
         >
           Save override
         </Button>

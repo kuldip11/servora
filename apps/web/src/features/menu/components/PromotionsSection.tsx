@@ -1,18 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QueryErrorState, StaleDataBanner } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import type { Promotion } from "@pos/types";
-import { apiClient } from "@/shared/lib/api-client";
 import { useMenuCategories } from "@/features/menu";
 import { usePromotionFormState } from "@/features/menu/hooks/usePromotionFormState";
-import { notifyError } from "@/shared/lib/notify";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 import { validatePromotionForm } from "@/features/menu/helpers/promotion-form";
 import { buildPromotionPayload } from "@/features/menu/helpers/promotion-payload";
 import { PromotionForm } from "./PromotionForm";
 import { PromotionList } from "./PromotionList";
-
-const menuApi = createMenuApi(apiClient);
+import {
+  useDeletePromotion,
+  usePromotions,
+  useSavePromotion,
+  useTogglePromotion,
+} from "@/features/menu/hooks/usePromotions";
 const promotionFields = [
   "name",
   "value",
@@ -32,7 +31,6 @@ const promotionFields = [
 ] as const;
 
 export const PromotionsSection = () => {
-  const queryClient = useQueryClient();
   const categoriesQuery = useMenuCategories();
   const categories = categoriesQuery.data ?? [];
   const categoryOptions = categories.map((category) => ({
@@ -46,11 +44,7 @@ export const PromotionsSection = () => {
     })),
   );
   const form = usePromotionFormState();
-  const key = ["menu", "promotions"];
-  const promotionsQuery = useQuery<Promotion[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listPromotionsFor<Promotion>(),
-  });
+  const promotionsQuery = usePromotions();
   const promotions = promotionsQuery.data;
   const {
     fieldErrors,
@@ -64,31 +58,9 @@ export const PromotionsSection = () => {
     handleApiError,
   } = useLocalFormApiErrors();
 
-  const create = useMutation({
-    mutationFn: () =>
-      form.editingId
-        ? menuApi.updatePromotion<Promotion>(
-            form.editingId,
-            buildPromotionPayload(form),
-          )
-        : menuApi.createPromotion<Promotion>(buildPromotionPayload(form)),
-    onSuccess: () => {
-      resetValidation();
-      void queryClient.invalidateQueries({ queryKey: key });
-      form.resetAfterSave();
-    },
-  });
-  const update = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      menuApi.updatePromotion<Promotion>(id, { isActive }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to update promotion"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removePromotion(id),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to delete promotion"),
-  });
+  const create = useSavePromotion();
+  const update = useTogglePromotion();
+  const remove = useDeletePromotion();
 
   const clientErrors = validatePromotionForm(form);
   const formInvalid = Object.keys(clientErrors).length > 0;
@@ -105,22 +77,32 @@ export const PromotionsSection = () => {
     markSubmitted();
     clearErrors();
     if (formInvalid || categoryDependencyFailed || !form.isDirty) return;
-    create.mutate(undefined, {
-      onError: (error) =>
-        handleApiError(
-          error,
-          [...promotionFields],
-          "Failed to save promotion",
-          {
-            scopeCategoryId: "targetId",
-            scopeMenuItemId: "targetId",
-            triggerMenuItemId: "triggerId",
-            triggerCategoryId: "triggerId",
-            rewardMenuItemId: "rewardId",
-            rewardCategoryId: "rewardId",
-          },
-        ),
-    });
+    create.mutate(
+      {
+        ...(form.editingId ? { id: form.editingId } : {}),
+        input: buildPromotionPayload(form),
+      },
+      {
+        onSuccess: () => {
+          resetValidation();
+          form.resetAfterSave();
+        },
+        onError: (error) =>
+          handleApiError(
+            error,
+            [...promotionFields],
+            "Failed to save promotion",
+            {
+              scopeCategoryId: "targetId",
+              scopeMenuItemId: "targetId",
+              triggerMenuItemId: "triggerId",
+              triggerCategoryId: "triggerId",
+              rewardMenuItemId: "rewardId",
+              rewardCategoryId: "rewardId",
+            },
+          ),
+      },
+    );
   };
 
   return (

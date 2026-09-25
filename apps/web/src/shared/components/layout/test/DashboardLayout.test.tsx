@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   pathname: "/dashboard",
+  outletMounts: 0,
   has: vi.fn((_permission?: string) => true),
   state: {
     user: {
@@ -20,7 +21,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Outlet: () => <div>outlet</div>,
+  Outlet: () => {
+    const mountId = React.useRef(++mocks.outletMounts);
+    return <div>outlet-{mountId.current}</div>;
+  },
   Link: ({ children, onClick, to }: any) => (
     <a href={to} onClick={onClick}>
       {children}
@@ -63,6 +67,7 @@ import { DashboardLayout } from "../DashboardLayout";
 describe("DashboardLayout coverage", () => {
   beforeEach(() => {
     mocks.pathname = "/dashboard";
+    mocks.outletMounts = 0;
     mocks.has.mockReturnValue(true);
     mocks.state = {
       user: {
@@ -88,7 +93,7 @@ describe("DashboardLayout coverage", () => {
     expect(screen.queryByText("Tables")).toBeNull();
     expect(screen.getAllByText("Ada Lovelace").length).toBeGreaterThan(0);
     expect(screen.getByText("OWNER")).toBeTruthy();
-    expect(screen.getByText("outlet")).toBeTruthy();
+    expect(screen.getByText("outlet-1")).toBeTruthy();
   });
 
   it("opens/closes mobile navigation and filters permission-protected items", () => {
@@ -114,6 +119,53 @@ describe("DashboardLayout coverage", () => {
     render(<DashboardLayout />);
     expect(screen.getAllByText("Tables").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Staff").length).toBeGreaterThan(0);
+  });
+
+  it("uses a dedicated responsive context row for franchise and branch selectors", () => {
+    render(<DashboardLayout />);
+    const context = screen.getByLabelText("Active business context");
+    expect(context.className).toContain("grid-cols-1");
+    expect(context.className).toContain("min-[390px]:grid-cols-2");
+    expect(context.className).toContain("lg:flex");
+    expect(screen.getAllByText("tenant-switcher")).toHaveLength(1);
+    expect(screen.getAllByText("branch-switcher")).toHaveLength(1);
+  });
+
+  it("remounts routed content when the business query context changes", () => {
+    const { rerender } = render(<DashboardLayout />);
+    expect(screen.getByText("outlet-1")).toBeTruthy();
+
+    mocks.state = {
+      ...mocks.state,
+      branchId: "b2",
+      memberships: [
+        {
+          membershipId: "m1",
+          branches: [
+            { id: "b1", tablesEnabled: true },
+            { id: "b2", tablesEnabled: true },
+          ],
+        },
+      ],
+    };
+    rerender(<DashboardLayout />);
+
+    expect(screen.getByText("outlet-2")).toBeTruthy();
+  });
+
+  it("waits for resolved context and remounts even within the same membership", () => {
+    const { rerender } = render(<DashboardLayout />);
+    expect(screen.getByText("outlet-1")).toBeTruthy();
+    mocks.state.contextPending = true;
+    rerender(<DashboardLayout />);
+    expect(screen.queryByText(/outlet-/)).toBeNull();
+    mocks.state.contextPending = false;
+    mocks.state.contextVersion = 1;
+    rerender(<DashboardLayout />);
+    expect(screen.getByText("outlet-2")).toBeTruthy();
+    mocks.state.contextVersion = 2;
+    rerender(<DashboardLayout />);
+    expect(screen.getByText("outlet-3")).toBeTruthy();
   });
 
   it("focuses main content after route changes", () => {

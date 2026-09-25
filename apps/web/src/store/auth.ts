@@ -1,3 +1,4 @@
+import { queryClient } from "@/shared/lib/query-client";
 import { create } from "zustand";
 import type { AvailableMembership, User } from "@pos/types";
 
@@ -11,6 +12,9 @@ interface AuthState {
   franchiseId: string | null;
   branchId: string | null;
   isAuthenticated: boolean;
+  contextPending: boolean;
+  contextVersion: number;
+  setContextPending: (pending: boolean) => void;
 
   setAuth: (data: {
     user: User;
@@ -31,7 +35,13 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+// Query cancellation aborts synchronously; clear before publishing new request headers.
+const resetServerState = () => {
+  void queryClient.cancelQueries();
+  queryClient.clear();
+};
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
   membershipId: null,
@@ -40,9 +50,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   franchiseId: null,
   branchId: null,
   isAuthenticated: false,
+  contextPending: false,
+  contextVersion: 0,
+  setContextPending: (contextPending) => set({ contextPending }),
 
   setAuth: ({ user, accessToken, membershipId = null, memberships = [] }) => {
+    resetServerState();
     set({
+      contextVersion: get().contextVersion + 1,
+      contextPending: false,
       user,
       accessToken,
       membershipId,
@@ -61,8 +77,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     memberships,
     branchId,
     user,
-  }) =>
+  }) => {
+    const previous = get();
+    const changed =
+      previous.membershipId !== membershipId ||
+      previous.franchiseId !== franchiseId ||
+      previous.branchId !== (branchId ?? null);
+    if (changed) resetServerState();
     set((state) => ({
+      contextVersion: state.contextVersion + (changed ? 1 : 0),
       membershipId,
       ...(organizationId !== undefined ? { organizationId } : {}),
       franchiseId,
@@ -70,16 +93,25 @@ export const useAuthStore = create<AuthState>((set) => ({
       branchId: branchId ?? null,
       ...(user !== undefined ? { user } : {}),
       isAuthenticated: state.isAuthenticated || Boolean(state.accessToken),
-    })),
+    }));
+  },
 
   setAccessToken: (accessToken) => {
     set({ accessToken, isAuthenticated: true });
   },
 
-  setBranchId: (branchId) => set({ branchId }),
+  setBranchId: (branchId) => {
+    if (get().branchId === branchId) return;
+    resetServerState();
+    set({ branchId, contextVersion: get().contextVersion + 1 });
+  },
 
   logout: () => {
+    resetServerState();
+    localStorage.removeItem("servora.active-context.v1");
     set({
+      contextPending: false,
+      contextVersion: get().contextVersion + 1,
       user: null,
       accessToken: null,
       membershipId: null,

@@ -1,9 +1,9 @@
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
-import { queryClient } from "@/shared/lib/query-client";
 import { orderKeys } from "@/features/orders/query-keys";
 import type { Order } from "@pos/types";
 
-const upsertOrder = (order: Order) => {
+const upsertOrder = (queryClient: QueryClient, order: Order) => {
   const currentDetail = queryClient.getQueryData<Order>(
     orderKeys.detail(order.id),
   );
@@ -20,8 +20,13 @@ const upsertOrder = (order: Order) => {
 };
 
 export const useOrdersRealtimeSync = () => {
-  useRealtimeEvent("order.created", (event) => upsertOrder(event.payload));
-  useRealtimeEvent("order.updated", (event) => upsertOrder(event.payload));
+  const queryClient = useQueryClient();
+  useRealtimeEvent("order.created", (event) =>
+    upsertOrder(queryClient, event.payload),
+  );
+  useRealtimeEvent("order.updated", (event) =>
+    upsertOrder(queryClient, event.payload),
+  );
 
   useRealtimeEvent("kitchen.ticket.updated", (event) => {
     void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });

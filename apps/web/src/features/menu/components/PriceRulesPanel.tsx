@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Button,
   FormErrorSummary,
@@ -8,19 +7,18 @@ import {
   Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { createCustomersApi, createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { queryClient } from "@/shared/lib/query-client";
-import type { CustomerGroup, PriceRule } from "@pos/types";
-import { notifyError } from "@/shared/lib/notify";
+import type { PriceRule } from "@pos/types";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
 import { usePriceRuleDraft } from "@/features/menu/hooks/usePriceRuleDraft";
 import { validatePriceRuleForm } from "@/features/menu/helpers/price-rule-form";
-
-const menuApi = createMenuApi(apiClient);
-const customersApi = createCustomersApi(apiClient);
+import { useCustomerGroups } from "@/features/menu/hooks/useLoyalty";
+import {
+  useCreateItemPriceRule,
+  useItemPriceRules,
+  useRemoveItemPriceRule,
+} from "@/features/menu/hooks/usePriceRules";
 
 const describeRule = (rule: PriceRule) => {
   const scope = [
@@ -74,15 +72,8 @@ export const PriceRulesPanel = ({
     handleApiError,
   } = useLocalFormApiErrors();
 
-  const key = ["menu-items", itemId, "price-rules"];
-  const customerGroupsQuery = useQuery<CustomerGroup[]>({
-    queryKey: ["customer-groups"],
-    queryFn: () => customersApi.listGroups(),
-  });
-  const rulesQuery = useQuery<PriceRule[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listPriceRulesFor<PriceRule>({ menuItemId: itemId }),
-  });
+  const customerGroupsQuery = useCustomerGroups();
+  const rulesQuery = useItemPriceRules(itemId);
 
   const clientErrors = useMemo(
     () =>
@@ -102,33 +93,8 @@ export const PriceRulesPanel = ({
   const dependencyLoading =
     rulesQuery.isLoading || customerGroupsQuery.isLoading;
 
-  const save = useMutation({
-    mutationFn: () =>
-      menuApi.createPriceRule<PriceRule>({
-        menuItemId: itemId,
-        branchId: scopeToBranch && branchId ? branchId : undefined,
-        channel: channel || undefined,
-        fulfillmentType: fulfillmentType || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        startTime: startTime || undefined,
-        endTime: endTime || undefined,
-        customerGroupId: customerGroupId || undefined,
-        price: Number(price),
-        priority: Number(priority) || 0,
-      }),
-    onSuccess: () => {
-      resetValidation();
-      markSaved();
-      queryClient.invalidateQueries({ queryKey: key });
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removePriceRule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Could not remove price rule"),
-  });
+  const save = useCreateItemPriceRule(itemId);
+  const remove = useRemoveItemPriceRule(itemId);
 
   if (dependencyFailed) {
     return (
@@ -329,24 +295,43 @@ export const PriceRulesPanel = ({
             markSubmitted();
             clearErrors();
             if (Object.keys(clientErrors).length) return;
-            save.mutate(undefined, {
-              onError: (error) =>
-                handleApiError(
-                  error,
-                  [
-                    "channel",
-                    "fulfillmentType",
-                    "startDate",
-                    "endDate",
-                    "startTime",
-                    "endTime",
-                    "customerGroupId",
-                    "price",
-                    "priority",
-                  ],
-                  "Could not save price rule",
-                ),
-            });
+            save.mutate(
+              {
+                menuItemId: itemId,
+                branchId: scopeToBranch && branchId ? branchId : undefined,
+                channel: channel || undefined,
+                fulfillmentType: fulfillmentType || undefined,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                startTime: startTime || undefined,
+                endTime: endTime || undefined,
+                customerGroupId: customerGroupId || undefined,
+                price: Number(price),
+                priority: Number(priority) || 0,
+              },
+              {
+                onSuccess: () => {
+                  resetValidation();
+                  markSaved();
+                },
+                onError: (error) =>
+                  handleApiError(
+                    error,
+                    [
+                      "channel",
+                      "fulfillmentType",
+                      "startDate",
+                      "endDate",
+                      "startTime",
+                      "endTime",
+                      "customerGroupId",
+                      "price",
+                      "priority",
+                    ],
+                    "Could not save price rule",
+                  ),
+              },
+            );
           }}
         >
           Save price rule

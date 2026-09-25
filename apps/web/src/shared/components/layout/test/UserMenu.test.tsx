@@ -42,6 +42,12 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/features/auth/services/auth.service", () => ({
   authService: { logout: mocks.logoutApi },
 }));
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    clear: mocks.clearQuery,
+    cancelQueries: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { clear: mocks.clearQuery },
 }));

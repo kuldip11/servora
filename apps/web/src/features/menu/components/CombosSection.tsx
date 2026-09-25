@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { QueryErrorState, StaleDataBanner, toast } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { extractApiError } from "@/shared/lib/api-client";
 import {
   buildComboPayload,
   mapComboApiFieldErrors,
@@ -11,14 +9,16 @@ import {
   type DraftOption,
   type DraftSlot,
 } from "@/features/menu/helpers/combo-form";
-import { queryClient } from "@/shared/lib/query-client";
 import { useMenuCategories } from "@/features/menu";
 import { useFormValidationVisibility } from "@/shared/hooks/useFormValidationVisibility";
 import { ComboEditor } from "./ComboEditor";
 import { ComboList } from "./ComboList";
 import type { ComboSummary } from "./combo-types";
-
-const menuApi = createMenuApi(apiClient);
+import {
+  useCombos,
+  useDeleteCombo,
+  useSaveCombo,
+} from "@/features/menu/hooks/useCombos";
 const newKey = () => crypto.randomUUID();
 const newOption = (): DraftOption => ({
   key: newKey(),
@@ -65,10 +65,7 @@ export const CombosSection = () => {
     [categories],
   );
 
-  const combosQuery = useQuery<ComboSummary[]>({
-    queryKey: ["menu", "combos"],
-    queryFn: () => menuApi.listCombos<ComboSummary>(),
-  });
+  const combosQuery = useCombos();
   const combos = combosQuery.data;
 
   const reset = () => {
@@ -108,42 +105,8 @@ export const CombosSection = () => {
     });
   };
 
-  const save = useMutation({
-    mutationFn: () =>
-      editingId
-        ? menuApi.updateCombo<ComboSummary>(editingId, payload)
-        : menuApi.createCombo<ComboSummary>(payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["menu", "combos"] });
-      toast({
-        title: editingId ? "Combo updated" : "Combo created",
-        tone: "success",
-      });
-      reset();
-    },
-    onError: (error) => {
-      const mapped = mapComboApiFieldErrors(error, slots);
-      setFieldErrors(mapped.fieldErrors);
-      setFormErrorMessages(
-        mapped.formMessages.length
-          ? mapped.formMessages
-          : Object.keys(mapped.fieldErrors).length
-            ? []
-            : [extractApiError(error, "Failed to save combo")],
-      );
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removeCombo(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["menu", "combos"] });
-      toast({ title: "Combo deleted", tone: "success" });
-      if (editingId) reset();
-    },
-    onError: (error) =>
-      toast({ title: extractApiError(error), tone: "danger" }),
-  });
+  const save = useSaveCombo();
+  const remove = useDeleteCombo();
 
   const beginEdit = (combo: ComboSummary) => {
     const editAmount = String(
@@ -263,7 +226,31 @@ export const CombosSection = () => {
           validationVisibility.markSubmitted();
           setFieldErrors({});
           setFormErrorMessages([]);
-          if (valid) save.mutate();
+          if (valid) {
+            save.mutate(
+              { ...(editingId ? { id: editingId } : {}), input: payload },
+              {
+                onSuccess: () => {
+                  toast({
+                    title: editingId ? "Combo updated" : "Combo created",
+                    tone: "success",
+                  });
+                  reset();
+                },
+                onError: (error) => {
+                  const mapped = mapComboApiFieldErrors(error, slots);
+                  setFieldErrors(mapped.fieldErrors);
+                  setFormErrorMessages(
+                    mapped.formMessages.length
+                      ? mapped.formMessages
+                      : Object.keys(mapped.fieldErrors).length
+                        ? []
+                        : [extractApiError(error, "Failed to save combo")],
+                  );
+                },
+              },
+            );
+          }
         }}
         onCancel={reset}
       />
@@ -273,7 +260,16 @@ export const CombosSection = () => {
         deletingId={remove.isPending ? remove.variables : undefined}
         onEdit={beginEdit}
         onDelete={(combo) => {
-          if (confirm(`Delete combo "${combo.name}"?`)) remove.mutate(combo.id);
+          if (confirm(`Delete combo "${combo.name}"?`)) {
+            remove.mutate(combo.id, {
+              onSuccess: () => {
+                toast({ title: "Combo deleted", tone: "success" });
+                if (editingId === combo.id) reset();
+              },
+              onError: (error) =>
+                toast({ title: extractApiError(error), tone: "danger" }),
+            });
+          }
         }}
       />
     </div>

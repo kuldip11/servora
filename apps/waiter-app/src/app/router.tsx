@@ -6,6 +6,8 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense, type ReactNode } from "react";
 import { getWaiterName, logout, logoutSession } from "@/features/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearWaiterQueries } from "@/shared/lib/query-lifecycle";
 import { AppLayout } from "./AppLayout";
 import { AuthBoundary } from "./AuthBoundary";
 import { RouteFallback } from "./RouteFallback";
@@ -151,6 +153,7 @@ const profileRoute = createRoute({
   path: "/profile",
   component: () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     return withSuspense(
       <ProfilePage
         waiterName={getWaiterName()}
@@ -159,6 +162,7 @@ const profileRoute = createRoute({
           try {
             await logoutSession();
           } finally {
+            await clearWaiterQueries(queryClient);
             logout();
             navigate({ to: "/" });
             window.location.reload();

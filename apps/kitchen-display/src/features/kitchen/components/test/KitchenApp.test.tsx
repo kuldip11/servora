@@ -11,6 +11,12 @@ vi.mock("../../../auth", () => ({
 vi.mock("../../pages/KitchenBoard", () => ({
   KitchenBoard: () => <div>board</div>,
 }));
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ cancelQueries: vi.fn(), clear: vi.fn() }),
+}));
+vi.mock("../../../../shared/lib/query-scope", () => ({
+  getKitchenQueryScope: () => [null, null],
+}));
 
 import { KitchenApp } from "@/features/kitchen/components/KitchenApp";
 

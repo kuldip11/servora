@@ -2,16 +2,10 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  query: { current: {} as any },
-  snapshot: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ query: { current: {} as any } }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => mocks.query.current,
-}));
-vi.mock("@/features/operations/services/operations.service", () => ({
-  operationsService: { snapshot: mocks.snapshot },
+vi.mock("@/features/operations/hooks/useOperationsSnapshot", () => ({
+  useOperationsSnapshot: () => mocks.query.current,
 }));
 vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: (error: unknown, fallback: string) =>
@@ -83,9 +77,7 @@ describe("BranchHealthPage error states", () => {
       error: new Error("branch health unavailable"),
       refetch: vi.fn(),
     };
-
     render(<BranchHealthPage />);
-
     expect(screen.getByText("Unable to load branch health")).toBeTruthy();
     expect(screen.getByText("branch health unavailable")).toBeTruthy();
     expect(screen.queryByText("Central")).toBeNull();
@@ -100,9 +92,7 @@ describe("BranchHealthPage error states", () => {
       error: new Error("refresh failed"),
       refetch: vi.fn(),
     };
-
     render(<BranchHealthPage />);
-
     expect(screen.getByText(/Branch health refresh failed/)).toBeTruthy();
     expect(screen.getByText("Central")).toBeTruthy();
   });

@@ -186,9 +186,11 @@ describe("web service coverage", () => {
     await analyticsService.dashboard();
     await analyticsService.costMargin();
     await analyticsService.costMargin("c1");
-    expect(h.analytics.costMargin).toHaveBeenNthCalledWith(1, {});
-    expect(h.analytics.costMargin).toHaveBeenNthCalledWith(2, {
-      categoryId: "c1",
-    });
+    expect(h.analytics.costMargin).toHaveBeenNthCalledWith(1, {}, undefined);
+    expect(h.analytics.costMargin).toHaveBeenNthCalledWith(
+      2,
+      { categoryId: "c1" },
+      undefined,
+    );
   });
 });

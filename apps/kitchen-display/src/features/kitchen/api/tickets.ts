@@ -10,12 +10,15 @@ import type {
 
 export const fetchKitchenTickets = async (
   stationId?: string,
+  signal?: AbortSignal,
 ): Promise<KitchenTicket[]> => {
-  return kitchenApi.tickets(stationId);
+  return kitchenApi.tickets(stationId, signal);
 };
 
-export const fetchKitchenStations = async (): Promise<KitchenStation[]> => {
-  return kitchenApi.stations();
+export const fetchKitchenStations = async (
+  signal?: AbortSignal,
+): Promise<KitchenStation[]> => {
+  return kitchenApi.stations(signal);
 };
 
 export const updateTicketStatus = async (

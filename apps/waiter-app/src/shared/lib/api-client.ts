@@ -1,6 +1,8 @@
 import { createApiClient, type TokenStorageAdapter } from "@pos/api-client";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { clearTokens, getToken, saveTokens } from "@/features/auth/storage";
+import { queryClient } from "@/shared/lib/query-client";
+import { clearWaiterQueries } from "@/shared/lib/query-lifecycle";
 
 const waiterStorageAdapter: TokenStorageAdapter = {
   getAccessToken: getToken,
@@ -16,7 +18,9 @@ export const apiClient = createApiClient({
   timeout: 15_000,
   storage: waiterStorageAdapter,
   onRefreshFailure: () => {
-    waiterStorageAdapter.clear();
-    window.location.reload();
+    void clearWaiterQueries(queryClient).finally(() => {
+      waiterStorageAdapter.clear();
+      window.location.reload();
+    });
   },
 });

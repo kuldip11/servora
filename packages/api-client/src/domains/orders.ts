@@ -35,7 +35,10 @@ export interface OrderAdjustmentReason {
 
 export const createOrdersApi = (client: DomainHttpClient) => {
   return {
-    list(filters: OrdersListFilters = {}): Promise<PaginatedResult<Order>> {
+    list(
+      filters: OrdersListFilters = {},
+      signal?: AbortSignal,
+    ): Promise<PaginatedResult<Order>> {
       const params: Record<string, string> = {};
       if (filters.status) params["status"] = filters.status;
       if (filters.type) params["type"] = filters.type;
@@ -46,10 +49,17 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       if (filters.sortBy) params["sortBy"] = filters.sortBy;
       if (filters.sortDirection)
         params["sortDirection"] = filters.sortDirection;
-      return getPaginatedDomainData<Order>(client, "/orders", { params });
+      return getPaginatedDomainData<Order>(client, "/orders", {
+        params,
+        ...(signal ? { signal } : {}),
+      });
     },
-    get(orderId: string): Promise<Order> {
-      return getDomainData<Order>(client, `/orders/${orderId}`);
+    get(orderId: string, signal?: AbortSignal): Promise<Order> {
+      return getDomainData<Order>(
+        client,
+        `/orders/${orderId}`,
+        signal ? { signal } : undefined,
+      );
     },
     create(input: TransportInput<CreateOrderRequest>): Promise<Order> {
       return postDomainData<Order>(client, "/orders", input);
@@ -133,11 +143,16 @@ export const createOrdersApi = (client: DomainHttpClient) => {
         client.post(`/orders/${sourceOrderId}/merge`, { targetOrderId }),
       );
     },
-    listCancellationReasons(): Promise<CancellationReason[]> {
+    listCancellationReasons(
+      signal?: AbortSignal,
+    ): Promise<CancellationReason[]> {
       return getDomainData<CancellationReason[]>(
         client,
         "/orders/cancellation-reasons",
-        { params: { activeOnly: "true" } },
+        {
+          params: { activeOnly: "true" },
+          ...(signal ? { signal } : {}),
+        },
       );
     },
     setItemSeatShares(
@@ -151,10 +166,13 @@ export const createOrdersApi = (client: DomainHttpClient) => {
         }),
       );
     },
-    listAllCancellationReasons(): Promise<CancellationReason[]> {
+    listAllCancellationReasons(
+      signal?: AbortSignal,
+    ): Promise<CancellationReason[]> {
       return getDomainData<CancellationReason[]>(
         client,
         "/orders/cancellation-reasons",
+        signal ? { signal } : undefined,
       );
     },
     createCancellationReason(label: string): Promise<CancellationReason> {
@@ -174,8 +192,12 @@ export const createOrdersApi = (client: DomainHttpClient) => {
         patch,
       );
     },
-    explain<T>(orderId: string): Promise<T> {
-      return getDomainData<T>(client, `/orders/${orderId}/explain`);
+    explain<T>(orderId: string, signal?: AbortSignal): Promise<T> {
+      return getDomainData<T>(
+        client,
+        `/orders/${orderId}/explain`,
+        signal ? { signal } : undefined,
+      );
     },
   };
 };

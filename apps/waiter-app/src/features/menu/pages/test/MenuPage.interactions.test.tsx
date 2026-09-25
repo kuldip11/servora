@@ -16,7 +16,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
   useQuery: ({ queryKey }: any) => {
     const key = JSON.stringify(queryKey);
-    if (key.includes('"menus","active"'))
+    if (key.includes('"active"'))
       return {
         data: [
           {
@@ -30,7 +30,7 @@ vi.mock("@tanstack/react-query", () => ({
       };
     if (key.includes("tenant-settings"))
       return { data: { courseSequencingEnabled: true } };
-    if (key.includes("menu-combos"))
+    if (key.includes('"combos"'))
       return {
         data: [
           {
@@ -50,13 +50,13 @@ vi.mock("@tanstack/react-query", () => ({
           },
         ],
       };
-    if (key.includes("menu-promotions"))
+    if (key.includes('"promotions"'))
       return {
         data: [{ id: "p1", name: "Promo", couponCode: null, isActive: true }],
       };
     if (key.includes("customer-groups"))
       return { data: [{ id: "g1", name: "VIP" }] };
-    if (key.includes("menu-price-rules"))
+    if (key.includes('"price-rules"'))
       return {
         data: [{ id: "r1", isPerCover: true, coverTier: "ADULT", price: 50 }],
       };

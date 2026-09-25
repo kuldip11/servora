@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   options: [] as any[],
 }));
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useInfiniteQuery: (options: any) => {
     mocks.options.push(options);
     return mocks.infiniteQuery(options);

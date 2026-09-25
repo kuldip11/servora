@@ -52,9 +52,15 @@ vi.mock("@pos/api-client", async (importOriginal) => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: ({ queryKey, queryFn }: any) => {
     const key = JSON.stringify(queryKey);
-    const value = h.queryData.get(key);
+    const value =
+      h.queryData.get(key) ??
+      (queryKey.includes("customer-groups")
+        ? h.queryData.get(JSON.stringify(["customer-groups"]))
+        : undefined);
     if (value !== undefined) return { data: value };
     const fnValue = queryFn?.();
     return {

@@ -1,5 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifySuccess } from "@/shared/lib/notify";
 import {
   inventoryService,
@@ -8,6 +7,7 @@ import {
 import { inventoryKeys } from "@/features/inventory/query-keys";
 
 export const useAddInventoryItem = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: InventoryItemFormInput) => inventoryService.add(input),
     onSuccess: () => {

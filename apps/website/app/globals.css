@@ -1210,6 +1210,7 @@ button:active,
   color: #bdc8bb;
 }
 .cookie-dialog {
+  --text-secondary: #465444;
   position: fixed;
   bottom: 18px;
   left: var(--page-pad);
@@ -1251,11 +1252,9 @@ button:active,
 }
 @keyframes surface-enter {
   from {
-    opacity: 0.3;
     transform: translateY(15px);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
@@ -1393,10 +1392,10 @@ button:active,
   }
   .hero-kitchen,
   .hero-guest {
-    grid-column: span 1;
-    padding: 10px;
-    min-height: 290px;
-    max-height: 340px;
+    grid-column: 1/-1;
+    padding: 16px;
+    min-height: 0;
+    max-height: none;
   }
   .hero-kitchen .surface-toolbar > span {
     display: none;
@@ -1488,7 +1487,7 @@ button:active,
   }
   .capability-media > .product-surface,
   .capability-media:last-child > .product-surface {
-    max-height: 220px;
+    max-height: none;
   }
   .faq-layout {
     grid-template-columns: 1fr;
@@ -1526,17 +1525,17 @@ button:active,
   }
   .product-index {
     margin-top: 40px;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .module-entry,
   .module-entry:nth-child(5n + 1) {
     grid-column: span 1;
     padding: 24px;
-    min-height: 240px;
+    min-height: 0;
   }
   .module-entry:nth-child(5n + 1) {
     grid-column: 1/-1;
-    min-height: 220px;
+    min-height: 0;
   }
   .module-entry h2 {
     font-size: 28px;

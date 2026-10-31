@@ -132,7 +132,7 @@ export const CustomerDemo = () => {
             aria-selected={screen === item}
             onClick={() => patch({ screen: item })}
             className={`rounded-lg px-1 py-2 text-[12px] font-bold capitalize ${
-              screen === item ? "bg-white text-[#174e36] " : "text-[#657068]"
+              screen === item ? "bg-white text-[#174e36] " : "text-[#465444]"
             }`}
           >
             {item}

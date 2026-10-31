@@ -1332,6 +1332,30 @@ button:active,
     gap: 20px;
   }
 }
+@media (min-width: 761px) and (max-width: 1000px) {
+  .hero-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hero-copy {
+    grid-column: 1/-1;
+    grid-row: auto;
+    padding: 36px;
+  }
+  .hero-copy h1 {
+    max-width: 10ch;
+  }
+  .hero-copy > p {
+    max-width: 48ch;
+  }
+  .hero-management {
+    grid-column: 1/-1;
+  }
+  .hero-kitchen,
+  .hero-guest {
+    grid-column: span 1;
+    max-height: none;
+  }
+}
 @media (max-width: 760px) {
   .site-header {
     padding-block: 18px;

@@ -10,6 +10,10 @@ const tailwind = require("tailwindcss");
 const autoprefixer = require("autoprefixer");
 export default defineConfig({
   root,
+  resolve: { alias: {
+    react: path.dirname(require.resolve("react/package.json")),
+    "react-dom": path.dirname(require.resolve("react-dom/package.json")),
+  } },
   esbuild: { jsx: "automatic" },
   plugins: [{ name: "application-local-aliases", enforce: "pre", resolveId(id, importer) {
     if (!id.startsWith("@/") || !importer) return;

@@ -1389,7 +1389,7 @@ button:active,
     gap: 20px;
   }
   .hero-copy h1 {
-    font-size: 76px;
+    font-size: clamp(52px, 19vw, 76px);
   }
   .hero-copy > p {
     font-size: 18px;
@@ -1712,6 +1712,28 @@ button:active,
   .cookie-actions button {
     font-size: 14px;
     padding: 10px 12px;
+  }
+}
+@media (max-width: 360px) {
+  .wordmark {
+    font-size: 26px;
+  }
+  .hero-copy,
+  .feature-heading {
+    padding: 24px;
+  }
+  .feature-heading h1 {
+    font-size: 42px;
+  }
+  .page-intro h1,
+  .form-story h1 {
+    font-size: 46px;
+  }
+  .hero-management .order-row {
+    grid-template-columns: 52px 1fr 64px;
+  }
+  .hero-management .order-items {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

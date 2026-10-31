@@ -11,7 +11,7 @@ const routes = [
   "/product/billing-and-payments",
   "/product/inventory",
 ];
-for (const width of [1440, 768, 390]) {
+for (const width of [1920, 1440, 768, 390, 320]) {
   test(`major routes fit a ${width}px viewport`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     for (const route of routes) {

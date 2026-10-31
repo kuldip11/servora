@@ -34,7 +34,7 @@ export const CustomerCustomizeScreen = ({
   onAddToOrder,
 }: CustomerCustomizeScreenProps) => (
   <div className="flex h-full flex-col">
-    <div className="bg-[#174e36] px-4 pb-6 pt-9 text-white">
+    <div className="bg-[#172019] px-4 pb-6 pt-5 text-white">
       <button
         type="button"
         onClick={onClose}
@@ -42,12 +42,11 @@ export const CustomerCustomizeScreen = ({
       >
         Close
       </button>
-      <div className="mx-auto mt-2 h-24 w-36 rounded-full bg-gradient-to-br from-[#f1d28e] to-[#b76532]" />
     </div>
 
-    <div className="flex-1 overflow-y-auto rounded-t-[26px] bg-[#f6f2e8] px-4 pb-24 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <h3 className="font-serif text-2xl font-bold">Truffle mushroom pizza</h3>
-      <p className="mt-2 text-[10px] leading-5 text-[#6d756f]">
+    <div className="flex-1 overflow-y-auto rounded-t-[26px] bg-[#f5f7f2] px-4 pb-24 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <h3 className="font-sans text-2xl font-bold">Truffle mushroom pizza</h3>
+      <p className="mt-2 text-[12px] leading-5 text-[#6d756f]">
         Stone-baked crust, roasted mushrooms, mozzarella and fragrant thyme.
       </p>
       <div className="mt-5 flex justify-between text-xs font-bold">
@@ -104,8 +103,8 @@ export const CustomerCustomizeScreen = ({
       ))}
     </div>
 
-    <div className="absolute inset-x-0 bottom-0 flex gap-2 border-t border-[#ddd8cd] bg-[#fffdf8] p-3">
-      <div className="flex items-center gap-3 rounded-xl bg-[#eee9de] px-2 text-xs font-bold">
+    <div className="absolute inset-x-0 bottom-0 flex gap-2 border-t border-[#ddd8cd] bg-[#ffffff] p-3">
+      <div className="flex items-center gap-3 rounded-sm bg-[#e7ede2] px-2 text-xs font-bold">
         <button
           type="button"
           aria-label="Decrease quantity"
@@ -128,7 +127,7 @@ export const CustomerCustomizeScreen = ({
       <button
         type="button"
         onClick={onAddToOrder}
-        className="flex-1 rounded-xl bg-[#174e36] py-3 text-xs font-bold text-white"
+        className="flex-1 rounded-sm bg-[#174e36] py-3 text-xs font-bold text-white"
       >
         Add to order · ₹{customizedPrice}
       </button>

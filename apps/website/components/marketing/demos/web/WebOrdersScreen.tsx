@@ -11,7 +11,7 @@ const orders = [
 ] as const;
 
 export const WebOrdersScreen = ({ statuses, onAdvance }: Props) => (
-  <div className="mt-4 overflow-hidden rounded-xl border border-[#dfe6e1] bg-white">
+  <div className="mt-4 overflow-hidden rounded-sm border border-[#dfe6e1] bg-white">
     {orders.map(([id, tableLabel, total]) => {
       const status = statuses[id] ?? "Preparing";
       const nextStatus =
@@ -25,7 +25,7 @@ export const WebOrdersScreen = ({ statuses, onAdvance }: Props) => (
           type="button"
           key={id}
           onClick={() => onAdvance(id, nextStatus, status)}
-          className="grid w-full grid-cols-4 gap-2 border-b border-[#e8ece9] p-3 text-left text-[8px] last:border-0 hover:bg-[#f6faf7]"
+          className="grid w-full grid-cols-4 gap-2 border-b border-[#e8ece9] p-3 text-left text-[12px] last:border-0 hover:bg-[#f6faf7]"
         >
           <strong>{id}</strong>
           <span>{tableLabel}</span>

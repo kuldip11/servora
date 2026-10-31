@@ -10,10 +10,10 @@ export const WebBusinessScreen = ({
   onNotice,
 }: Props) => (
   <div className="mt-4 space-y-3">
-    <div className="rounded-xl border border-[#dfe6e1] bg-white p-4">
+    <div className="rounded-sm border border-[#dfe6e1] bg-white p-4">
       <div className="flex justify-between">
         <div>
-          <span className="text-[8px] font-bold uppercase text-[#23724d]">
+          <span className="text-[12px] font-bold uppercase text-[#23724d]">
             Business
           </span>
           <strong className="mt-1 block text-sm">Olive & Ember Group</strong>
@@ -21,7 +21,7 @@ export const WebBusinessScreen = ({
         <button
           type="button"
           onClick={() => onNotice("Business editor opened")}
-          className="text-[9px] font-bold text-[#174e36]"
+          className="text-[12px] font-bold text-[#174e36]"
         >
           Edit
         </button>
@@ -30,7 +30,7 @@ export const WebBusinessScreen = ({
         <button
           type="button"
           onClick={() => onNotice("Delhi Franchise details opened")}
-          className="rounded-lg bg-[#edf3ef] p-3 text-left text-[9px]"
+          className="rounded-lg bg-[#edf3ef] p-3 text-left text-[12px]"
         >
           <strong className="block">Delhi Franchise</strong>
           <span className="text-[#6e7a72]">2 branches · View details</span>
@@ -38,13 +38,13 @@ export const WebBusinessScreen = ({
         <button
           type="button"
           onClick={onFranchiseCreate}
-          className="rounded-lg border border-dashed border-[#b9c5bd] p-3 text-left text-[9px] font-bold text-[#174e36]"
+          className="rounded-lg border border-dashed border-[#b9c5bd] p-3 text-left text-[12px] font-bold text-[#174e36]"
         >
           {franchiseCreated ? "✓ North Region Franchise" : "+ Create franchise"}
         </button>
       </div>
     </div>
-    <div className="rounded-xl border border-[#dfe6e1] bg-white p-4 text-[9px]">
+    <div className="rounded-sm border border-[#dfe6e1] bg-white p-4 text-[12px]">
       <strong>Branches</strong>
       <div className="mt-2 flex justify-between rounded-lg bg-[#f1f5f2] p-3">
         <span>Connaught Place</span>

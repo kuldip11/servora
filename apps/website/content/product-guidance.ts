@@ -2,6 +2,12 @@ export const productGuidance: Record<
   string,
   { question: string; answer: string; demo: string }
 > = {
+  "waiter-app": {
+    question: "What does the floor team need next?",
+    answer:
+      "The waiter workspace brings table-aware ordering, ready food and guest requests into the service workflow. Staff can move from the table to menu selection while keeping order context.",
+    demo: "Choose a table, add item choices and follow an order through preparation. Review a ready order and a guest request with the team.",
+  },
   "pos-and-orders": {
     question: "How does an order move from table to kitchen?",
     answer:

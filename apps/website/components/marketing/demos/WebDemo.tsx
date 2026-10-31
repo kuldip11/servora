@@ -11,10 +11,13 @@ import { WebOverviewScreen } from "./web/WebOverviewScreen";
 type Section = "overview" | "business" | "orders" | "menu";
 
 const sectionMeta: Record<Section, { title: string; subtitle: string }> = {
-  overview: { title: "Today at a glance", subtitle: "Connaught Place · Live" },
+  overview: {
+    title: "Today at a glance",
+    subtitle: "Connaught Place · Sample",
+  },
   business: { title: "Business structure", subtitle: "Olive & Ember Group" },
-  orders: { title: "Order operations", subtitle: "18 open orders" },
-  menu: { title: "Menu management", subtitle: "146 active items" },
+  orders: { title: "Order operations", subtitle: "4 sample orders" },
+  menu: { title: "Menu management", subtitle: "Sample menu items" },
 };
 
 export const WebDemo = () => {
@@ -45,11 +48,11 @@ export const WebDemo = () => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border-[5px] border-[#172019] bg-[#f8faf8] text-[#172019] shadow-2xl">
+    <div className="relative overflow-hidden rounded-sm border border-[#172019] bg-[#f8faf8] text-[#172019] ">
       {notice && (
         <div
           role="status"
-          className="absolute right-3 top-12 z-20 flex items-center gap-2 rounded-lg bg-[#172019] px-3 py-2 text-[8px] font-bold text-white shadow-lg"
+          className="absolute right-3 top-12 z-20 flex items-center gap-2 rounded-lg bg-[#172019] px-3 py-2 text-[12px] font-bold text-white "
         >
           <span>{notice}</span>
           <button
@@ -61,7 +64,7 @@ export const WebDemo = () => {
           </button>
         </div>
       )}
-      <header className="flex items-center justify-between border-b border-[#dfe6e1] px-4 py-3 text-[10px] font-bold">
+      <header className="flex items-center justify-between border-b border-[#dfe6e1] px-4 py-3 text-[12px] font-bold">
         <span>servora · Olive & Ember</span>
         <Select
           aria-label="Branch"
@@ -71,7 +74,7 @@ export const WebDemo = () => {
             (value) => ({ value, label: value }),
           )}
           containerClassName="min-w-36"
-          className="border-0 bg-transparent py-1 text-[10px] text-[#6e7a72] shadow-none"
+          className="border-0 bg-transparent py-1 text-[12px] text-[#6e7a72] shadow-none"
         />
       </header>
       <div className="grid min-h-[390px] grid-cols-[96px_1fr] sm:grid-cols-[130px_1fr]">
@@ -88,25 +91,27 @@ export const WebDemo = () => {
               key={key}
               type="button"
               onClick={() => setSection(key)}
-              className={`mb-1 w-full rounded-lg px-2 py-2 text-left text-[9px] font-bold ${section === key ? "bg-[#dfeee4] text-[#174e36]" : "text-[#738078]"}`}
+              className={`mb-1 w-full rounded-lg px-2 py-2 text-left text-[12px] font-bold ${section === key ? "bg-[#dfeee4] text-[#174e36]" : "text-[#738078]"}`}
             >
               {label}
             </button>
           ))}
         </aside>
-        <main className="min-w-0 p-4">
+        <div className="min-w-0 p-4">
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#23724d]">
+              <p className="text-[12px] font-bold uppercase tracking-widest text-[#23724d]">
                 Management & POS
               </p>
               <h3 className="mt-1 text-lg font-bold">{content.title}</h3>
             </div>
-            <span className="text-[8px] text-[#6e7a72]">
+            <span className="text-[12px] text-[#6e7a72]">
               {content.subtitle}
             </span>
           </div>
-          {section === "overview" && <WebOverviewScreen />}
+          {section === "overview" && (
+            <WebOverviewScreen statuses={orderStatuses} />
+          )}
           {section === "business" && (
             <WebBusinessScreen
               franchiseCreated={franchiseCreated}
@@ -132,7 +137,7 @@ export const WebDemo = () => {
               }}
             />
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -18,7 +18,6 @@ const demoScreens: CustomerDemoScreen[] = [
 interface CustomerDemoState {
   screen: CustomerDemoScreen;
   largeSize: boolean;
-  extraMushrooms: boolean;
   quantity: number;
   cartQuantities: number[];
   serviceMessage: string | null;
@@ -36,7 +35,6 @@ type CustomerDemoAction =
 const initialState: CustomerDemoState = {
   screen: "menu",
   largeSize: true,
-  extraMushrooms: true,
   quantity: 1,
   cartQuantities: [1, 1],
   serviceMessage: null,
@@ -64,9 +62,6 @@ const reducer = (
           ...state.extras,
           [action.label]: !state.extras[action.label],
         },
-        ...(action.index === 0
-          ? { extraMushrooms: !state.extraMushrooms }
-          : {}),
       };
     case "set-cart-quantity":
       return {
@@ -83,7 +78,6 @@ export const CustomerDemo = () => {
   const {
     screen,
     largeSize,
-    extraMushrooms,
     quantity,
     cartQuantities,
     serviceMessage,
@@ -96,9 +90,25 @@ export const CustomerDemo = () => {
   const patch = (next: Partial<CustomerDemoState>) =>
     dispatch({ type: "patch", patch: next });
 
-  const customizedPrice =
-    (560 + (largeSize ? 170 : 0) + (extraMushrooms ? 60 : 0)) * quantity;
-  const cartSubtotal = 790 * cartQuantities[0]! + 380 * cartQuantities[1]!;
+  const extraPrices: Record<string, number> = {
+    "Extra mushrooms · + ₹60": 60,
+    "Chilli oil · + ₹30": 30,
+    "Gluten-free crust · + ₹90": 90,
+  };
+  const selectedExtras = Object.entries(extras)
+    .filter(([, selected]) => selected)
+    .map(([label]) => label);
+  const unitPrice =
+    560 +
+    (largeSize ? 170 : 0) +
+    selectedExtras.reduce((sum, label) => sum + (extraPrices[label] ?? 0), 0);
+  const customizedPrice = unitPrice * quantity;
+  const firstItemMeta = [
+    largeSize ? "Large" : "Regular",
+    ...selectedExtras.map((label) => label.split(" · ")[0]),
+  ].join(" · ");
+  const cartSubtotal =
+    unitPrice * cartQuantities[0]! + 380 * cartQuantities[1]!;
   const cartTax = cartSubtotal * 0.05;
 
   const toggleExtra = (label: string, index: number) =>
@@ -112,7 +122,7 @@ export const CustomerDemo = () => {
       <div
         role="tablist"
         aria-label="Customer ordering demo screens"
-        className="mb-3 grid grid-cols-4 gap-1 rounded-xl bg-[#e8ece8] p-1"
+        className="mb-3 grid grid-cols-4 gap-1 rounded-sm bg-[#e8ece8] p-1"
       >
         {demoScreens.map((item) => (
           <button
@@ -121,10 +131,8 @@ export const CustomerDemo = () => {
             role="tab"
             aria-selected={screen === item}
             onClick={() => patch({ screen: item })}
-            className={`rounded-lg px-1 py-2 text-[10px] font-bold capitalize ${
-              screen === item
-                ? "bg-white text-[#174e36] shadow-sm"
-                : "text-[#657068]"
+            className={`rounded-lg px-1 py-2 text-[12px] font-bold capitalize ${
+              screen === item ? "bg-white text-[#174e36] " : "text-[#657068]"
             }`}
           >
             {item}
@@ -132,9 +140,11 @@ export const CustomerDemo = () => {
         ))}
       </div>
 
-      <div className="relative h-[520px] overflow-hidden rounded-[30px] border-[6px] border-[#172019] bg-[#f6f2e8] text-[#172019] shadow-2xl">
+      <div className="relative h-[610px] overflow-hidden rounded-sm border border-[#172019] bg-[#f5f7f2] text-[#172019] ">
         {screen === "menu" && (
           <CustomerMenuScreen
+            cartCount={cartQuantities.reduce((sum, value) => sum + value, 0)}
+            cartSubtotal={cartSubtotal}
             menuQuery={menuQuery}
             menuCategory={menuCategory}
             onMenuQueryChange={(value) => patch({ menuQuery: value })}
@@ -153,11 +163,18 @@ export const CustomerDemo = () => {
             onToggleExtra={toggleExtra}
             onQuantityChange={(value) => patch({ quantity: value })}
             onClose={() => patch({ screen: "menu" })}
-            onAddToOrder={() => patch({ screen: "cart" })}
+            onAddToOrder={() =>
+              patch({
+                screen: "cart",
+                cartQuantities: [quantity, cartQuantities[1]!],
+              })
+            }
           />
         )}
         {screen === "cart" && (
           <CustomerCartScreen
+            firstItemPrice={unitPrice}
+            firstItemMeta={firstItemMeta}
             quantities={cartQuantities}
             couponApplied={couponApplied}
             subtotal={cartSubtotal}

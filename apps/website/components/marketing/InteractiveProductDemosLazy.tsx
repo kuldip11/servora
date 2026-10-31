@@ -1,27 +1,18 @@
 "use client";
-
 import dynamic from "next/dynamic";
-
 const InteractiveProductDemos = dynamic(
   () =>
-    import("./InteractiveProductDemos").then(
-      (module) => module.InteractiveProductDemos,
-    ),
+    import("./InteractiveProductDemos").then((m) => m.InteractiveProductDemos),
   {
     ssr: false,
     loading: () => (
-      <section
-        id="interactive-demos"
-        aria-busy="true"
-        aria-label="Loading interactive product demos"
-        className="bg-[#f6f2e8] py-20 sm:py-24"
-      >
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="h-[560px] animate-pulse rounded-3xl border border-[#dcd8cd] bg-[#fffdf8]" />
+      <section id="interactive-demos" className="demo-section" aria-busy="true">
+        <div className="demo-loading">
+          <p>Loading interactive product demonstrations…</p>
+          <a href="/product">Explore the product capabilities</a>
         </div>
       </section>
     ),
   },
 );
-
 export const InteractiveProductDemosLazy = () => <InteractiveProductDemos />;

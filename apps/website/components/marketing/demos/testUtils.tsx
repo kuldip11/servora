@@ -103,7 +103,15 @@ export const renderDemo = async (
     },
     change: async (target, value) => {
       await act(async () => {
-        target.value = value;
+        const prototype =
+          target instanceof HTMLInputElement
+            ? HTMLInputElement.prototype
+            : HTMLSelectElement.prototype;
+        Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(
+          target,
+          value,
+        );
+        target.dispatchEvent(new Event("input", { bubbles: true }));
         target.dispatchEvent(new Event("change", { bubbles: true }));
       });
     },

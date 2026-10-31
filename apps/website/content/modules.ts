@@ -36,6 +36,30 @@ export const modules: Module[] = [
     related: ["qr-ordering", "kitchen-display", "billing-and-payments"],
   },
   {
+    slug: "waiter-app",
+    name: "Waiter App",
+    eyebrow: "Table service",
+    description:
+      "Give your floor team a focused workspace for tables, menu ordering, ready food and guest requests.",
+    capabilities: [
+      "Table-aware ordering",
+      "Ready orders",
+      "Guest service requests",
+    ],
+    capabilityDescriptions: [
+      "Take an order with table context and item choices before sending it into the service workflow.",
+      "Review food ready for service and keep the next table action visible to the floor team.",
+      "Respond to guest requests alongside the table and order context they belong to.",
+    ],
+    workflow: [
+      "Choose the table and capture item choices",
+      "Send the order and follow preparation progress",
+      "Serve ready food and respond to guest requests",
+    ],
+    roles: ["Waiters", "Front-of-house teams", "Floor managers"],
+    related: ["pos-and-orders", "kitchen-display", "qr-ordering"],
+  },
+  {
     slug: "menu-management",
     name: "Menu Management",
     eyebrow: "Catalog",
@@ -219,8 +243,12 @@ export const modules: Module[] = [
     name: "Security & Reliability",
     eyebrow: "Trust",
     description:
-      "A trust layer built around authentication, authorization and responsible product claims.",
-    capabilities: ["Authentication", "RBAC", "Tenant isolation architecture"],
+      "Keep sign-in, staff permissions and organization context explicit across restaurant operations.",
+    capabilities: [
+      "Authenticated access",
+      "Role permissions",
+      "Organization separation",
+    ],
     capabilityDescriptions: [
       "Require authenticated access before users enter operational Servora workspaces.",
       "Use role-based authorization to limit actions to the responsibilities assigned to each restaurant user.",

@@ -5,6 +5,12 @@ export type ProductSeo = {
 };
 
 export const productSeoBySlug = {
+  "waiter-app": {
+    title: "Restaurant waiter ordering app",
+    description:
+      "Help restaurant floor teams take table orders, review ready food and respond to guest requests with the Servora waiter app.",
+    searchIntent: ["restaurant waiter app", "waiter ordering software"],
+  },
   "pos-and-orders": {
     title: "Restaurant POS and order management",
     description:

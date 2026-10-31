@@ -1,14 +1,20 @@
 import { createPageMetadata } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
 export const metadata = createPageMetadata(websitePageSeo.cookies);
-export default function Cookies() {
+export default function LegalPage() {
   return (
-    <section className="mx-auto max-w-3xl px-6 py-20 lg:px-8">
-      <p className="text-sm font-semibold text-[var(--primary)]">Legal</p>
-      <h1 className="mt-3 text-4xl font-bold">Cookie Policy</h1>
-      <p className="mt-8 text-sm leading-7 text-[var(--text-secondary)]">
+    <section className="legal-page">
+      <h1>Cookie Policy</h1>
+      <p>
         This page is a launch placeholder and must be replaced with approved
         legal copy before public production launch.
+      </p>
+      <p>
+        For questions about Servora,{" "}
+        <a className="text-link" href="/contact">
+          contact the team
+        </a>
+        .
       </p>
     </section>
   );

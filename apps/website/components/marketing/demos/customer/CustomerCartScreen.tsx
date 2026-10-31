@@ -1,4 +1,6 @@
 type CustomerCartScreenProps = {
+  firstItemPrice: number;
+  firstItemMeta: string;
   quantities: number[];
   couponApplied: boolean;
   subtotal: number;
@@ -20,6 +22,8 @@ const cartItems = [
 ];
 
 export const CustomerCartScreen = ({
+  firstItemPrice,
+  firstItemMeta,
   quantities,
   couponApplied,
   subtotal,
@@ -38,44 +42,40 @@ export const CustomerCartScreen = ({
     >
       ← Menu
     </button>
-    <h3 className="mt-2 font-serif text-2xl font-bold">Your order</h3>
-    <div className="mt-3 flex justify-between rounded-xl bg-[#e1eee5] px-3 py-2 text-[10px] font-bold text-[#174e36]">
+    <h3 className="mt-2 font-sans text-2xl font-bold">Your order</h3>
+    <div className="mt-3 flex justify-between rounded-sm bg-[#e1eee5] px-3 py-2 text-[12px] font-bold text-[#174e36]">
       <span>Table 12 · Dine in</span>
-      <span>2 items</span>
+      <span>{quantities.reduce((sum, value) => sum + value, 0)} items</span>
     </div>
 
     {cartItems.map(({ name, meta, price }, index) => (
       <div
         key={name}
-        className="grid grid-cols-[54px_1fr_auto] gap-3 border-b border-[#ddd8cd] py-4"
+        className="grid grid-cols-[1fr_auto] gap-3 border-b border-[#ddd8cd] py-4"
       >
-        <span
-          className={`h-14 rounded-xl bg-gradient-to-br ${
-            index === 0
-              ? "from-[#edca7e] to-[#c66f31]"
-              : "from-[#dce6bd] to-[#789756]"
-          }`}
-        />
         <div>
           <strong className="block text-xs">{name}</strong>
-          <span className="mt-1 block text-[9px] text-[#6d756f]">
-            {meta}
+          <span className="mt-1 block text-[12px] text-[#6d756f]">
+            {index === 0 ? firstItemMeta : meta}
             <br />
             Eat here
           </span>
           <button
             type="button"
             onClick={onEditChoices}
-            className="mt-2 text-[9px] font-bold text-[#174e36]"
+            className="mt-2 text-[12px] font-bold text-[#174e36]"
           >
             Edit choices
           </button>
         </div>
         <div className="text-right">
-          <strong className="text-[10px]">
-            ₹{price * (quantities[index] ?? 1)}
+          <strong className="text-[12px]">
+            ₹
+            {(
+              (index === 0 ? firstItemPrice : price) * (quantities[index] ?? 1)
+            ).toFixed(2)}
           </strong>
-          <div className="mt-5 flex items-center gap-2 text-[10px]">
+          <div className="mt-5 flex items-center gap-2 text-[12px]">
             <button
               type="button"
               aria-label={`Decrease ${name}`}
@@ -86,7 +86,7 @@ export const CustomerCartScreen = ({
                   Math.max(1, (quantities[index] ?? 1) - 1),
                 )
               }
-              className="grid size-6 place-items-center rounded-full bg-[#eee9de] disabled:opacity-35"
+              className="grid size-6 place-items-center rounded-full bg-[#e7ede2] disabled:opacity-35"
             >
               −
             </button>
@@ -97,7 +97,7 @@ export const CustomerCartScreen = ({
               onClick={() =>
                 onQuantityChange(index, (quantities[index] ?? 1) + 1)
               }
-              className="grid size-6 place-items-center rounded-full bg-[#eee9de]"
+              className="grid size-6 place-items-center rounded-full bg-[#e7ede2]"
             >
               +
             </button>
@@ -109,7 +109,7 @@ export const CustomerCartScreen = ({
     <button
       type="button"
       onClick={onToggleCoupon}
-      className="mt-4 w-full rounded-xl border border-dashed border-[#cfc9bd] px-3 py-3 text-left text-[10px] text-[#6d756f]"
+      className="mt-4 w-full rounded-sm border border-dashed border-[#cfc9bd] px-3 py-3 text-left text-[12px] text-[#6d756f]"
     >
       {couponApplied ? "WELCOME10 reward applied" : "Add coupon or reward"}
       <span className="float-right font-bold text-[#174e36]">
@@ -117,7 +117,7 @@ export const CustomerCartScreen = ({
       </span>
     </button>
 
-    <div className="mt-5 space-y-2 text-[10px]">
+    <div className="mt-5 space-y-2 text-[12px]">
       <div className="flex justify-between text-[#6d756f]">
         <span>Subtotal</span>
         <span>₹{subtotal.toFixed(0)}</span>
@@ -143,7 +143,7 @@ export const CustomerCartScreen = ({
     <button
       type="button"
       onClick={onSubmit}
-      className="absolute inset-x-3 bottom-3 rounded-xl bg-[#174e36] py-4 text-xs font-bold text-white"
+      className="absolute inset-x-3 bottom-3 rounded-sm bg-[#174e36] py-4 text-xs font-bold text-white"
     >
       Send order to kitchen →
     </button>

@@ -1,0 +1,28 @@
+name: Website product evidence
+on:
+  push:
+    branches: [codex/servora-market-rebuild]
+    paths: [website-redesign/product-capture/**, .github/workflows/website-product-evidence.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        working-directory: apps/website
+      - run: node website-redesign/product-capture/capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: servora-product-evidence
+          path: website-redesign/research/product-captures/

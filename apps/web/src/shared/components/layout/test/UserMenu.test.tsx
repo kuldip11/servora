@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +38,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
   useRouter: () => ({ navigate: mocks.navigate }),
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: { logout: mocks.logoutApi },
 }));
 vi.mock("@tanstack/react-query", () => ({

@@ -1,3 +1,4 @@
+import { menuMutationSync } from "@/features/menu/query-sync";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifySuccess } from "@/shared/lib/notify";
 import {
@@ -9,6 +10,10 @@ import { menuKeys } from "@/features/menu/query-keys";
 export const useSaveBranchOverride = (itemId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
+    onMutate: () => ({
+      sync: menuMutationSync(queryClient),
+      editKey: menuKeys.branchOverrides(itemId),
+    }),
     mutationFn: ({
       branchId,
       input,
@@ -16,11 +21,15 @@ export const useSaveBranchOverride = (itemId: string) => {
       branchId: string;
       input: BranchOverrideFormInput;
     }) => menuBranchOverridesService.save(itemId, branchId, input),
-    onSuccess: () => {
+    onSuccess: async (_result, variables, context) => {
+      if (!context) return;
       notifySuccess("Branch override saved");
-      queryClient.invalidateQueries({
-        queryKey: menuKeys.branchOverrides(itemId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: context.editKey,
+        }),
+        context.sync.invalidate(variables.branchId),
+      ]);
     },
   });
 };

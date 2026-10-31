@@ -362,7 +362,7 @@ describe("TablesPage coverage", () => {
       expect.any(Object),
     );
     const transferOptions = mocks.transfer.mock.calls.at(-1)?.[1];
-    act(() => transferOptions.onSuccess());
+    await act(() => transferOptions.onSuccess());
     fireEvent.click(screen.getByRole("button", { name: "Merge" }));
     expect(screen.getByRole("heading", { name: "Merge A1" })).toBeTruthy();
     fireEvent.change(screen.getAllByRole("combobox").at(-1)!, {
@@ -374,9 +374,9 @@ describe("TablesPage coverage", () => {
       expect.any(Object),
     );
     const mergeOptions = mocks.merge.mock.calls.at(-1)?.[1];
-    act(() => mergeOptions.onSuccess());
+    await act(() => mergeOptions.onSuccess());
   });
-  it("covers aggregate grouping, loading and empty filtered states", () => {
+  it("covers aggregate grouping, loading and empty filtered states", async () => {
     useAuthStore.setState({ branchId: "all" });
     const { rerender } = render(<TablesPage />);
     expect(screen.getByText("Central")).toBeTruthy();
@@ -490,7 +490,7 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByRole("button", { name: "Merge" })).toBeNull();
   });
 
-  it("shows a load error instead of a false empty table state", () => {
+  it("shows a load error instead of a false empty table state", async () => {
     mocks.tables.current = {
       data: undefined,
       isLoading: false,
@@ -506,7 +506,7 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByText("No tables yet")).toBeNull();
   });
 
-  it("blocks transfer and merge while open orders are unavailable", () => {
+  it("blocks transfer and merge while open orders are unavailable", async () => {
     mocks.orders.current = {
       data: undefined,
       isSuccess: false,
@@ -528,19 +528,19 @@ describe("TablesPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add Table/ }));
     fireEvent.click(screen.getByRole("button", { name: "submit-add" }));
     const addOptions = mocks.add.mock.calls.at(-1)?.[1];
-    act(() => addOptions.onSuccess());
+    await act(() => addOptions.onSuccess());
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "add-table" })).toBeNull(),
     );
     fireEvent.click(screen.getAllByLabelText("Edit table")[1]!);
     fireEvent.click(screen.getByRole("button", { name: "submit-edit" }));
     const updateOptions = mocks.update.mock.calls.at(-1)?.[1];
-    act(() => updateOptions.onSuccess());
+    await act(() => updateOptions.onSuccess());
 
     fireEvent.click(screen.getAllByLabelText("Show table QR code")[1]!);
     fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
     const regenOptions = mocks.regen.mock.calls.at(-1)?.[1];
-    act(() => regenOptions.onSuccess({ ...t2, publicQrToken: "new-q" }));
+    await act(() => regenOptions.onSuccess({ ...t2, publicQrToken: "new-q" }));
     expect(screen.getAllByText(/new-q/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "modal-x" }));
 

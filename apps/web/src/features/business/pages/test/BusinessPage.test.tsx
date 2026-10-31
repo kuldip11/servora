@@ -67,7 +67,7 @@ vi.mock("@/features/business/services/business.service", () => ({
     archiveBranch: mocks.archiveBranch,
   },
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: { memberships: mocks.authMemberships },
 }));
 vi.mock("@/shared/auth/active-context", () => ({

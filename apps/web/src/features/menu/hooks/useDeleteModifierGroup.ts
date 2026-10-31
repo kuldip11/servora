@@ -8,7 +8,9 @@ export const useDeleteModifierGroup = () => {
   return useMutation({
     mutationFn: (id: string) => modifierGroupsService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.modifierGroups() });
+      void queryClient.invalidateQueries({
+        queryKey: menuKeys.modifierGroups(),
+      });
       notifySuccess("Modifier group deleted");
     },
     onError: (error) =>

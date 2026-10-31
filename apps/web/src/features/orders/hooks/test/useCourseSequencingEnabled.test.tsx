@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/lib/query-context", () => ({
   activeFranchiseId: mocks.activeFranchiseId,
 }));
-vi.mock("@/features/settings/hooks/useTenantSettings", () => ({
+vi.mock("@/features/settings", () => ({
   useTenantSettings: mocks.useTenantSettings,
 }));
 

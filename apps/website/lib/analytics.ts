@@ -18,5 +18,13 @@ export const track = (event: AnalyticsEvent) => {
   if (consent !== "accepted") return;
   const gtag = (window as Window & { gtag?: (...args: unknown[]) => void })
     .gtag;
+  if (event.event === "page_view") {
+    gtag?.("event", "page_view", {
+      page_path: event.path,
+      page_location: `${window.location.origin}${event.path}`,
+      page_title: document.title,
+    });
+    return;
+  }
   gtag?.("event", event.event, { ...event, event: undefined });
 };

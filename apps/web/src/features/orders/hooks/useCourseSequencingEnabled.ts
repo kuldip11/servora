@@ -1,5 +1,5 @@
 import { activeFranchiseId } from "@/shared/lib/query-context";
-import { useTenantSettings } from "@/features/settings/hooks/useTenantSettings";
+import { useTenantSettings } from "@/features/settings";
 
 export const useCourseSequencingEnabled = (): boolean => {
   const tenantId = activeFranchiseId();

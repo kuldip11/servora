@@ -11,7 +11,7 @@ export const useAddStaff = () => {
   return useMutation({
     mutationFn: (input: StaffFormInput) => staffService.add(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: staffKeys.list() });
       notifySuccess("Staff member added");
     },
   });

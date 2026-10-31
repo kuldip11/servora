@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ navigate: mocks.navigate }),
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     login: mocks.login,
     signup: mocks.signup,

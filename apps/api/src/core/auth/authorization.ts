@@ -1,11 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import {
-  membershipBranches,
-  membershipRoles,
   permissions,
   rolePermissions,
-  roles,
   tenantMemberships,
   branches,
 } from "@/db/schema";

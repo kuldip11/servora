@@ -5,15 +5,15 @@ import {
   type CreateOrderInput,
 } from "@/features/orders/services/orders.service";
 import { orderKeys } from "@/features/orders/query-keys";
-import { tableKeys } from "@/features/tables/query-keys";
+import { tableKeys } from "@/features/tables/public/query-keys";
 
 export const useCreateOrder = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateOrderInput) => ordersService.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Order created successfully!");
     },
     onError: (err) => notifyError(err, "Failed to create order"),

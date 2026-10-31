@@ -17,7 +17,7 @@ export const useSaveTemplateFromCategory = () => {
       input: SaveTemplateInput;
     }) => menuTemplatesService.saveFromCategory(categoryId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.templates() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.templates() });
       notifySuccess("Template saved");
     },
   });

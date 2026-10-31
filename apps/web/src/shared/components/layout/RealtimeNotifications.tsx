@@ -2,9 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "@pos/ui";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
-import { menuKeys } from "@/features/menu/query-keys";
-import { analyticsKeys } from "@/features/analytics/query-keys";
-import { inventoryKeys } from "@/features/inventory/query-keys";
+import { menuKeys } from "@/features/menu/public/query-keys";
+import { analyticsKeys } from "@/features/analytics/public/query-keys";
+import { inventoryKeys } from "@/features/inventory/public/query-keys";
 
 export const RealtimeNotifications = () => {
   const queryClient = useQueryClient();

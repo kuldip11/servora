@@ -1,6 +1,6 @@
 import { Building2 } from "lucide-react";
 import { Card, Pagination } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { InventoryTable } from "@/features/inventory/components/InventoryTable";
 
 interface InventoryListProps {

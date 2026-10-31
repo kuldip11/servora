@@ -16,7 +16,7 @@ export const useBulkUpdateTags = () => {
       mode: "add" | "remove" | "replace";
     }) => menuItemsService.bulkUpdateTags(itemIds, tagIds, mode),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Updated tags on ${data.updated} item(s)`);
     },
     onError: (error) => notifyError(error, "Failed to update tags"),

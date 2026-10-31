@@ -1,4 +1,4 @@
-import React, { act } from "react";
+import { act } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@pos/ui", async (importOriginal) => ({

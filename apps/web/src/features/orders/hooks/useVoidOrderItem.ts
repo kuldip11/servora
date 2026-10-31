@@ -17,8 +17,10 @@ export const useVoidOrderItem = (orderId: string) => {
       approvalToken?: string;
     }) => ordersService.voidItem(orderId, itemId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(orderId),
+      });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       notifySuccess("Item voided");
     },
     onError: (error) => {

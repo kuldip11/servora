@@ -4,7 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { ChefHat } from "lucide-react";
 import { z } from "zod";
 
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import { Button, Card, FormErrorSummary, Input, toast } from "@pos/ui";
@@ -50,7 +50,7 @@ export const SignupPage = () => {
         title: "Account created. Choose or create a business.",
         tone: "success",
       });
-      router.navigate({ to: "/business" });
+      void router.navigate({ to: "/business" });
     } catch (error: unknown) {
       handleApiError(
         error,
@@ -77,7 +77,11 @@ export const SignupPage = () => {
         </div>
 
         <Card className="rounded-xl p-8" padding="none">
-          <form onSubmit={handleSignup} className="space-y-5" noValidate>
+          <form
+            onSubmit={(event) => void handleSignup(event)}
+            className="space-y-5"
+            noValidate
+          >
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First name"

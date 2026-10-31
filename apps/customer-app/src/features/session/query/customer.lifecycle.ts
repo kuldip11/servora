@@ -1,8 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import {
-  clearPersistedOrderId,
-  clearPersistedSession,
-} from "@/features/cart/persistence";
+import { clearPersistedOrderId, clearPersistedSession } from "@/features/cart";
 import { customerKeys } from "./customer.keys";
 
 export const clearCustomerSessionQueries = async (

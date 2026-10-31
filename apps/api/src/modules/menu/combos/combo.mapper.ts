@@ -1,4 +1,4 @@
-import type { ComboResponse } from "@pos/contracts";
+import type { ComboResponse, ComboPreviewResponse } from "@pos/contracts";
 
 const numeric = (value: string | number | null | undefined): number | null =>
   value == null ? null : Number(value);
@@ -27,8 +27,6 @@ export const toComboResponse = (row: any): ComboResponse => ({
     })),
   })),
 });
-
-import type { ComboPreviewResponse } from "@pos/contracts";
 
 const previewLine = (line: any) => ({
   menuItemId: line.menuItemId ?? null,

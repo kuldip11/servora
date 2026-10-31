@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../../../../shared/lib/api-client", () => ({ apiClient: api }));
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 
 const user = { id: "u1", tenantId: "t1", branchId: "b1" } as any;
 

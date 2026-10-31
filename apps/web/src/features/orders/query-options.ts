@@ -4,7 +4,7 @@ import {
   type OrdersListFilters,
 } from "./services/orders.service";
 import { orderKeys } from "./query-keys";
-import { queryFreshness } from "@/shared/lib/query-policy";
+import { queryFreshness, queryPolling } from "@/shared/lib/query-policy";
 
 export const ordersListQuery = (filters: OrdersListFilters) => {
   return queryOptions({
@@ -12,6 +12,7 @@ export const ordersListQuery = (filters: OrdersListFilters) => {
     queryFn: ({ signal }) => ordersService.list(filters, signal),
     placeholderData: keepPreviousData,
     staleTime: queryFreshness.operational,
+    refetchInterval: queryPolling.operational,
   });
 };
 
@@ -21,6 +22,7 @@ export const orderDetailQuery = (orderId: string) => {
     queryFn: ({ signal }) => ordersService.detail(orderId, signal),
     enabled: Boolean(orderId),
     staleTime: queryFreshness.operational,
+    refetchInterval: queryPolling.operational,
   });
 };
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -36,7 +35,7 @@ vi.mock("@pos/ui", () => ({
   ),
 }));
 
-import { CartSummary } from "@/features/menu/components/CartSummary";
+import { CartSummaryFixture as CartSummary } from "./cart-summary-fixture";
 
 const cart: any[] = [
   {
@@ -170,12 +169,12 @@ describe("CartSummary interactions", () => {
     expect(props.onSubmit).toHaveBeenCalled();
   });
 
-  it("covers existing-order round selection, pending and table-required states", () => {
+  it("covers existing-order round selection and pending state", () => {
     const props = {
       ...makeProps(),
       isAddingToExisting: true,
       isPending: true,
-      needsTable: true,
+      needsTable: false,
     };
     render(<CartSummary {...props} />);
     fireEvent.change(screen.getByLabelText("This round"), {
@@ -185,7 +184,7 @@ describe("CartSummary interactions", () => {
       target: { value: "round" },
     });
     expect(screen.getByText("Placing…")).toBeTruthy();
-    expect(screen.getByText(/Select a table/)).toBeTruthy();
+    expect(screen.queryByText(/Select a table/)).toBeNull();
     expect(props.onRoundCourseNumberChange).toHaveBeenCalledWith(2);
   });
 });

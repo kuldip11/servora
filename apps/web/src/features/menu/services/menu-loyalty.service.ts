@@ -1,18 +1,19 @@
-import { createCustomersApi, createMenuApi } from "@pos/api-client";
+import {
+  createCustomersApi,
+  createMenuApi,
+  type CustomerGroupDto,
+  type LoyaltyCustomerDto,
+  type MenuLoyaltyTierDto,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import type {
-  CustomerGroup,
-  CustomerLoyaltyTier,
-  LoyaltyCustomer,
-} from "@pos/types";
 
 const menuApi = createMenuApi(apiClient);
 const customersApi = createCustomersApi(apiClient);
 
 export const menuLoyaltyService = {
-  listTiers: () => menuApi.listLoyaltyTiers<CustomerLoyaltyTier>(),
-  createTier: (input: Record<string, unknown>) =>
-    menuApi.createLoyaltyTier<CustomerLoyaltyTier>(input),
+  listTiers: () => menuApi.listLoyaltyTiers(),
+  createTier: (input: Parameters<typeof menuApi.createLoyaltyTier>[0]) =>
+    menuApi.createLoyaltyTier(input),
   removeTier: menuApi.removeLoyaltyTier,
   listCustomers: customersApi.list,
   createCustomer: customersApi.create,
@@ -23,6 +24,6 @@ export const menuLoyaltyService = {
   deleteGroup: customersApi.deleteGroup,
 };
 
-export type MenuLoyaltyTier = CustomerLoyaltyTier;
-export type MenuLoyaltyCustomer = LoyaltyCustomer;
-export type MenuCustomerGroup = CustomerGroup;
+export type MenuLoyaltyTier = MenuLoyaltyTierDto;
+export type MenuLoyaltyCustomer = LoyaltyCustomerDto;
+export type MenuCustomerGroup = CustomerGroupDto;

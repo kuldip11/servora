@@ -8,7 +8,7 @@ export const useDeleteTable = () => {
   return useMutation({
     mutationFn: (id: string) => tablesService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Table removed");
     },
     onError: (err) => notifyError(err, "Failed to remove table"),

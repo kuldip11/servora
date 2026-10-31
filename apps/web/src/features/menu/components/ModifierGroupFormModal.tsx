@@ -72,7 +72,6 @@ export const ModifierGroupFormModal = ({
     control,
     reset,
     handleSubmit,
-    setError,
     formState: { errors, isDirty, isValid },
   } = useForm<ModifierGroupFormValues>({
     resolver: zodResolver(modifierGroupFormSchema),
@@ -132,7 +131,7 @@ export const ModifierGroupFormModal = ({
       size="lg"
     >
       <form
-        onSubmit={handleSubmit(submit)}
+        onSubmit={(event) => void handleSubmit(submit)(event)}
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
       >
         <FormErrorSummary messages={formErrorMessages} />

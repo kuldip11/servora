@@ -1,5 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoginPage, getToken, logout, restoreSession } from "@/features/auth";
 import { clearWaiterQueries } from "@/shared/lib/query-lifecycle";
@@ -39,7 +39,11 @@ export const AuthBoundary = () => {
   }
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+    return (
+      <Suspense fallback={<div role="status">Loading sign in…</div>}>
+        <LoginPage onLogin={() => setIsLoggedIn(true)} />
+      </Suspense>
+    );
   }
 
   return <Outlet />;

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { saveContext } from "@/features/auth/storage";
+import { saveContext } from "@/shared/auth/storage";
 
 export const clearWaiterQueries = async (queryClient: QueryClient) => {
   await queryClient.cancelQueries();

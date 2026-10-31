@@ -1,6 +1,6 @@
 import { Plus, Receipt } from "lucide-react";
 import { Button } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 
 interface Props {
   order: Order;

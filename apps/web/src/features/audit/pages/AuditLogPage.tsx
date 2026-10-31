@@ -119,7 +119,7 @@ export const AuditLogPage = () => {
                 <Button
                   variant="secondary"
                   loading={isFetchingNextPage}
-                  onClick={() => fetchNextPage()}
+                  onClick={() => void fetchNextPage()}
                 >
                   Load older activity
                 </Button>
@@ -209,7 +209,7 @@ export const AuditLogPage = () => {
                 <Button
                   variant="secondary"
                   loading={isFetchingMoreMenuHistory}
-                  onClick={() => fetchMoreMenuHistory()}
+                  onClick={() => void fetchMoreMenuHistory()}
                 >
                   Load older menu changes
                 </Button>

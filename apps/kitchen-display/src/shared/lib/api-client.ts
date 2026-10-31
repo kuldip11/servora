@@ -1,6 +1,6 @@
 import { createApiClient, type TokenStorageAdapter } from "@pos/api-client";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
-import { clearTokens, getToken, saveTokens } from "@/features/auth/storage";
+import { clearTokens, getToken, saveTokens } from "@/shared/auth/storage";
 import { queryClient } from "@/shared/lib/query-client";
 import { clearKitchenQueries } from "@/shared/lib/query-lifecycle";
 

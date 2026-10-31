@@ -17,7 +17,7 @@ export const useBulkSetStatus = () => {
       reason?: string;
     }) => menuItemsService.bulkSetStatus(itemIds, status, reason),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Updated status for ${data.updated} item(s)`);
     },
     onError: (error) => notifyError(error, "Failed to update status"),

@@ -8,7 +8,7 @@ export const useRegenerateTableQr = () => {
   return useMutation({
     mutationFn: (id: string) => tablesService.regenerateQr(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Table QR code regenerated");
     },
     onError: (err) => notifyError(err, "Failed to regenerate QR code"),

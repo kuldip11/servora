@@ -5,7 +5,9 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "noEmit": true,
-    "types": ["@testing-library/jest-dom"]
+    "types": ["@testing-library/jest-dom"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": ["src", "vitest.setup.ts"],
   "exclude": [

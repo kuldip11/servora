@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@pos/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -45,7 +44,7 @@ vi.mock("./shared/lib/notify", () => ({
   notifySuccess: vi.fn(),
 }));
 
-vi.mock("./features/auth/services/auth.service", () => ({
+vi.mock("./shared/auth/auth.service", () => ({
   authService: {
     login: vi.fn(),
     signup: vi.fn(),

@@ -21,3 +21,24 @@ describe("SEO validation", () => {
     expect(() => assertCanonicalPath("pricing")).toThrow();
   });
 });
+
+it.each([
+  "https://example.com",
+  "https://sub.example.com",
+  "https://user:pass@servora.app",
+  "https://servora.app/path",
+  "https://servora.app?q=1",
+  "https://servora.app#frag",
+  "https://localhost",
+  "https://127.0.0.1",
+])("rejects unsafe production origin %s", (url) => {
+  expect(isValidProductionOrigin(url)).toBe(false);
+});
+it.each([
+  "//external.test/path",
+  "/\\external.test",
+  "/pricing?x=1",
+  "/pricing#x",
+])("rejects noncanonical path %s", (path) => {
+  expect(() => assertCanonicalPath(path)).toThrow();
+});

@@ -51,7 +51,6 @@ export const orderController = {
     status: OrderStatus,
     reason: string | undefined,
     cancellationReasonId?: string | undefined,
-    approvalToken?: string | undefined,
   ) {
     const order = await orderService.updateStatus(
       auth,

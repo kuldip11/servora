@@ -128,7 +128,7 @@ export const customerRouter = new Elysia({ prefix: "/api/customer" })
   )
   .get(
     "/orders/:id",
-    ({ headers, params, set }) => {
+    ({ headers, params }) => {
       const token = sessionToken(headers);
       if (!token) {
         throw new CustomerSessionRequiredError();

@@ -99,6 +99,9 @@ export const categoryIdParamsSchema = Type.Object(
 
 export type CreateMenuRequest = Static<typeof createMenuBodySchema>;
 export type UpdateMenuRequest = Static<typeof updateMenuBodySchema>;
+export type CreateMenuCategoryRequest = Static<typeof createCategoryBodySchema>;
+export type UpdateMenuCategoryRequest = Static<typeof updateCategoryBodySchema>;
+export type MenuScheduleRequest = Static<typeof menuScheduleBodySchema>;
 
 export const foodTypeSchema = Type.Union([
   Type.Literal("VEG"),
@@ -310,6 +313,12 @@ export const menuItemStatusQuerySchema = Type.Object(
   { additionalProperties: false },
 );
 
+export type CreateMenuItemRequest = Static<typeof createMenuItemBodySchema>;
+export type UpdateMenuItemRequest = Static<typeof updateMenuItemBodySchema>;
+export type MenuItemStatusRequest = Static<
+  typeof updateMenuItemStatusBodySchema
+>;
+
 // Availability contracts
 export const availabilityItemStatusSchema = menuItemStatusSchema;
 export const availabilityScheduleTypeSchema = Type.Union([
@@ -335,6 +344,9 @@ export const availabilityDashboardQuerySchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export type AvailabilityDashboardQuery = Static<
+  typeof availabilityDashboardQuerySchema
+>;
 export const createAvailabilityScheduleBodySchema = Type.Object(
   {
     scheduleType: availabilityScheduleTypeSchema,
@@ -470,6 +482,34 @@ export const availabilityManualOverrideBodySchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+export type CreateAvailabilityScheduleRequest = Static<
+  typeof createAvailabilityScheduleBodySchema
+>;
+export type UpdateAvailabilityScheduleRequest = Static<
+  typeof updateAvailabilityScheduleBodySchema
+>;
+export type CreateAvailabilityHolidayRequest = Static<
+  typeof createAvailabilityHolidayBodySchema
+>;
+export type UpdateAvailabilityHolidayRequest = Static<
+  typeof updateAvailabilityHolidayBodySchema
+>;
+export type UpsertAvailabilityBranchOverrideRequest = Static<
+  typeof upsertAvailabilityBranchOverrideBodySchema
+>;
+export type AvailabilityChannelOverrideRequest = Static<
+  typeof availabilityChannelOverrideBodySchema
+>;
+export type AvailabilityVariantOverrideRequest = Static<
+  typeof availabilityVariantOverrideBodySchema
+>;
+export type AvailabilityStockCountRequest = Static<
+  typeof availabilityStockCountBodySchema
+>;
+export type AvailabilityManualOverrideRequest = Static<
+  typeof availabilityManualOverrideBodySchema
+>;
 
 // Menu import/export contracts. Multipart File parsing remains API-framework specific.
 export const menuExportFormatSchema = Type.Union([

@@ -11,7 +11,7 @@ export const useAddHoliday = () => {
   return useMutation({
     mutationFn: (input: HolidayFormInput) => menuHolidaysService.add(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.holidays() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.holidays() });
       notifySuccess("Holiday added");
     },
   });

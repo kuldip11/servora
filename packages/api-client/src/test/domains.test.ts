@@ -99,7 +99,9 @@ describe("small domain APIs", () => {
       password: "secret",
     });
     await createApprovalsApi(client).listThresholds();
-    await createApprovalsApi(client).setThreshold("VOID", { amount: 10 });
+    await createApprovalsApi(client).setThreshold("VOID", {
+      thresholdAmount: 10,
+    });
     await createAvailabilityApi(client).dashboard({
       channel: "STAFF",
       fulfillmentType: "DINE_IN",
@@ -278,7 +280,7 @@ describe("orders and organizations APIs", () => {
     await organizations.update("org1", { name: "Org 2" });
     await organizations.archive("org1");
     await organizations.menus("org1");
-    await organizations.createMenu("org1", { name: "Dinner" });
+    await organizations.createMenu("org1", { name: "Dinner", items: [] });
     await organizations.updateMenu("org1", "m1", { name: "Dinner 2" });
     await organizations.removeMenu("org1", "m1");
     await organizations.loyaltyTiers("org1");
@@ -399,17 +401,17 @@ describe("menu API", () => {
     await api.removeCombo("c1");
     await api.previewCombo({});
     await api.listChannelOverrides("i1");
-    await api.saveChannelOverride("i1", {});
+    await api.saveChannelOverride("i1", { channel: "STAFF" });
     await api.removeChannelOverride("co1");
     await api.listPriceRulesFor({ channel: "STAFF" });
     await api.createPriceRule({});
     await api.removePriceRule("pr1");
     await api.createHappyHourRule({});
     await api.listLoyaltyTiers();
-    await api.createLoyaltyTier({});
+    await api.createLoyaltyTier({ name: "Gold" });
     await api.removeLoyaltyTier("lt1");
     await api.listMenuSchedules("m1");
-    await api.createMenuSchedule("m1", {});
+    await api.createMenuSchedule("m1", { scheduleType: "DAILY" });
     await api.removeMenuSchedule("ms1");
     await api.updateVariantAvailability("v1", { status: null, reason: null });
     await api.updateModifierGroup("g1", {});

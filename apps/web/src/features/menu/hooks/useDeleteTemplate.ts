@@ -8,7 +8,7 @@ export const useDeleteTemplate = () => {
   return useMutation({
     mutationFn: (id: string) => menuTemplatesService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.templates() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.templates() });
       notifySuccess("Template deleted");
     },
     onError: (error) => notifyError(error, "Failed to delete template"),

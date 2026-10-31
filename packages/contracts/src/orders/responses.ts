@@ -419,8 +419,59 @@ export const orderInventoryImpactResponseSchema = successResponseSchema(
   Type.Array(inventoryImpactItemSchema),
 );
 
-// Explainability contains intentionally extensible evidence/trace objects. The outer
-// contract is strict while replay payloads remain forward-compatible JSON records.
+const orderPriceSourceSchema = Type.Object(
+  {
+    kind: Type.String(),
+    id: Type.String(),
+    description: Type.String(),
+  },
+  { additionalProperties: false },
+);
+const orderPricingReplaySchema = Type.Object(
+  {
+    priceSource: Type.Union([orderPriceSourceSchema, Type.Null()]),
+    baseResolvedUnitPrice: Type.Number(),
+    variantDelta: Type.Number(),
+    modifierDelta: Type.Number(),
+    comboDelta: Type.Number(),
+    promotionDelta: Type.Number(),
+    loyaltyDelta: Type.Number(),
+    replayedPreComboSubtotal: Type.Number(),
+    preComboSubtotal: Type.Number(),
+    replayedSubtotal: Type.Number(),
+    persistedSubtotal: Type.Number(),
+    payableBeforeTax: Type.Number(),
+    matchesSnapshot: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+const authoritativePricingReplaySchema = Type.Object(
+  {
+    unitPrice: Type.Number(),
+    subtotal: Type.Number(),
+    taxRate: Type.Number(),
+    matchesSnapshot: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+const authoritativeAvailabilityReplaySchema = Type.Object(
+  {
+    effectiveStatus: Type.String(),
+    isHidden: Type.Boolean(),
+    availabilityReason: Type.Union([Type.String(), Type.Null()]),
+    availabilityCause: Type.String(),
+    matchesSnapshot: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+const orderExplainTraceSchema = Type.Object(
+  {
+    stage: Type.String(),
+    explanation: Type.String(),
+  },
+  { additionalProperties: true },
+);
+
 export const orderExplainLineSchema = Type.Object(
   {
     orderItemId: uuidSchema,
@@ -431,17 +482,17 @@ export const orderExplainLineSchema = Type.Object(
     snapshotPrice: Type.Number(),
     snapshotTaxRate: Type.Optional(Type.Number()),
     pricingAttribution: Type.Optional(jsonObjectSchema),
-    pricingReplay: jsonObjectSchema,
+    pricingReplay: orderPricingReplaySchema,
     authoritativePricingReplay: Type.Optional(
-      Type.Union([jsonObjectSchema, Type.Null()]),
+      Type.Union([authoritativePricingReplaySchema, Type.Null()]),
     ),
     availabilityAtOrder: Type.Optional(
       Type.Union([orderAvailabilitySnapshotSchema, Type.Null()]),
     ),
     authoritativeAvailabilityReplay: Type.Optional(
-      Type.Union([jsonObjectSchema, Type.Null()]),
+      Type.Union([authoritativeAvailabilityReplaySchema, Type.Null()]),
     ),
-    trace: Type.Array(jsonObjectSchema),
+    trace: Type.Array(orderExplainTraceSchema),
   },
   { additionalProperties: false },
 );

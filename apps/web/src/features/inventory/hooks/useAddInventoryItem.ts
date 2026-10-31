@@ -11,7 +11,7 @@ export const useAddInventoryItem = () => {
   return useMutation({
     mutationFn: (input: InventoryItemFormInput) => inventoryService.add(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
+      void queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
       notifySuccess("Item added to inventory");
     },
   });

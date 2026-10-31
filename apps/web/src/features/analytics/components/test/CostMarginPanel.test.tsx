@@ -1,5 +1,4 @@
-import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { chooseSelectOption } from "@/test/select";
 const state = vi.hoisted(() => ({ query: {} as any }));

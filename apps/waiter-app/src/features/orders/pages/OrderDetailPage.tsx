@@ -10,7 +10,7 @@ import { OrderTotals } from "@/features/orders/components/OrderTotals";
 import { OrderTimeline } from "@/features/orders/components/OrderTimeline";
 import { OrderActions } from "@/features/orders/components/OrderActions";
 import { useLineAdjustments } from "@/features/orders/hooks/useLineAdjustments";
-import { hasPermission } from "@/features/auth/storage";
+import { hasPermission } from "@/shared/auth/storage";
 import type { ManagerApprovalRequest } from "@/features/orders/components/ManagerApprovalDialog";
 import {
   OrderDetailDialogs,

@@ -6,7 +6,7 @@ vi.mock("elysia", async (importOriginal) => {
     constructor(options: any = {}) {
       this.name = options.name ?? "";
     }
-    use(plugin: any) {
+    use(_plugin: any) {
       return this;
     }
     get(path: string, handler?: unknown) {

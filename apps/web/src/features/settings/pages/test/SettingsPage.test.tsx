@@ -16,15 +16,12 @@ vi.mock("@/store/auth", () => ({ useAuthStore: mocks.auth }));
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/orders", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/orders")>()),
+vi.mock("@/features/orders/public/cancellation-reasons", () => ({
   useCancellationReasons: mocks.reasons,
   cancellationReasonKeys: {
     all: () => ["reasons"],
     active: () => ["reasons", "active"],
   },
-}));
-vi.mock("@/features/orders/services/cancellation-reasons.service", () => ({
   cancellationReasonsService: { create: mocks.create, update: mocks.update },
 }));
 vi.mock("@/shared/lib/api-client", () => ({

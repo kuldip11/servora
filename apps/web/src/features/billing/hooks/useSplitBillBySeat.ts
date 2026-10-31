@@ -17,7 +17,7 @@ export const useSplitBillBySeat = () => {
     }) => billingService.splitOrderBySeat(orderId, strategy),
     onSuccess: (result, variables) => {
       if (result.status === "MANUAL_REQUIRED") return;
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: billingKeys.order(variables.orderId),
       });
       notifySuccess("Bill split by seat");

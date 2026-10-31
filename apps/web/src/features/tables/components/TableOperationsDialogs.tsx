@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Select } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { useMergeOrders, useTransferTable } from "@/features/orders";
 import type { RestaurantTable } from "@/features/tables/types";
 

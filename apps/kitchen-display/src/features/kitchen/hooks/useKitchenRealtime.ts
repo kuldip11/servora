@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { useRealtimeEvent, useConnectionStatus } from "@/shared/lib/realtime";
 import { filterTicketForStation } from "@/features/kitchen/utils/ticket";
 import { kitchenKeys } from "@/features/kitchen/query/kitchen.keys";
@@ -39,13 +39,9 @@ export const useKitchenRealtime = (
   const qc = useQueryClient();
   const connected = useConnectionStatus();
   const key = kitchenKeys.ticketList(getKitchenQueryScope(), stationId);
-  const upsert = (incoming: KitchenTicket) => {
-    qc.setQueryData<KitchenTicket[]>(key, (current) =>
-      mergeKitchenTicketIntoQueue(current, incoming, stationId),
-    );
-  };
-  useRealtimeEvent("kitchen.ticket.created", (event) => upsert(event.payload));
-  useRealtimeEvent("kitchen.ticket.updated", (event) => upsert(event.payload));
-  useRealtimeEvent("order.item.voided", (event) => upsert(event.payload));
+  const refreshQueue = () => void qc.invalidateQueries({ queryKey: key });
+  useRealtimeEvent("kitchen.ticket.created", refreshQueue);
+  useRealtimeEvent("kitchen.ticket.updated", refreshQueue);
+  useRealtimeEvent("order.item.voided", refreshQueue);
   return { connected };
 };

@@ -12,7 +12,9 @@
       "@pos/types": ["../../packages/types/src/index.ts"],
       "@pos/ui": ["../../packages/ui/src/index.tsx"]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

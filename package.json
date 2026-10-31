@@ -13,6 +13,7 @@
     "dev:website": "cd apps/website && bun run dev",
     "test": "turbo run test",
     "lint": "eslint 'apps/**/*.{ts,tsx}' 'packages/**/*.{ts,tsx}'",
+    "lint:cached": "eslint 'apps/**/*.{ts,tsx}' 'packages/**/*.{ts,tsx}' --cache --cache-location .cache/eslint/.eslintcache",
     "typecheck": "turbo run typecheck",
     "db:migrate": "cd apps/api && bun run db:migrate",
     "db:reset": "cd apps/api && bun run db:reset",
@@ -85,16 +86,24 @@
     "audit:cleanup": "bun run verify:cleanup && bun run verify:cleanup:boundaries && bun run report:cleanup:dead-code && bun run report:cleanup:sizes && bun run report:cleanup:mocks",
     "report:cleanup:mocks": "node scripts/cleanup/report-broad-mocks.mjs",
     "verify:cleanup:boundaries": "node scripts/cleanup/report-boundaries.mjs",
-    "report:cleanup:dead-code": "node scripts/cleanup/report-dead-code.mjs"
+    "report:cleanup:dead-code": "node scripts/cleanup/report-dead-code.mjs",
+    "verify:quality": "bun run format:check && bun run lint && bun run verify:cleanup && bun run verify:cleanup:boundaries && bun run report:cleanup:dead-code && bun run report:cleanup:mocks && bun run contracts:verify && bun run typecheck && bun run test && bun run build",
+    "test:billing:postgres": "cd apps/api && bun run test:billing:postgres",
+    "seo:live": "node scripts/seo/audit-live.mjs",
+    "test:seo:checks": "node --test scripts/seo/production-env.test.mjs && python3 -m unittest discover -s scripts/seo -p 'test_*.py'",
+    "test:e2e:website:production": "cd apps/website && bun run test:e2e:production"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.66.0",
+    "@typescript-eslint/parser": "^8.70.1",
     "eslint": "^9.39.5",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "turbo": "^2.0.0",
-    "typescript": "^5.4.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.6.2",
-    "@typescript-eslint/parser": "^8.66.0"
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=20.0.0",

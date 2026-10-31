@@ -1,4 +1,3 @@
-import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,7 +36,7 @@ describe("MenuGrid interactions", () => {
     (globalThis as any).IntersectionObserver = ObserverMock;
   });
 
-  it("renders loading and both empty messages", () => {
+  it("renders loading and both empty messages", async () => {
     const p = {
       items: [],
       cart: [],
@@ -54,7 +53,7 @@ describe("MenuGrid interactions", () => {
     expect(screen.getByText("No items match your search")).toBeTruthy();
   });
 
-  it("aggregates cart quantity, protects option items, and loads more", () => {
+  it("aggregates cart quantity, protects option items, and loads more", async () => {
     const items = Array.from({ length: 30 }, (_, i) => item(i + 1, i === 1));
     const cart: any[] = [
       {
@@ -101,8 +100,8 @@ describe("MenuGrid interactions", () => {
     );
     expect(onQtyChange).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading more menu items…")).toBeTruthy();
-    act(() => mocks.observer.cb([{ isIntersecting: false }]));
-    act(() => mocks.observer.cb([{ isIntersecting: true }]));
+    await act(() => mocks.observer.cb([{ isIntersecting: false }]));
+    await act(() => mocks.observer.cb([{ isIntersecting: true }]));
     expect(screen.getByText("Item 30:0:multi")).toBeTruthy();
 
     rerender(

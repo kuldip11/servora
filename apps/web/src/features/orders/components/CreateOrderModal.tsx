@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, Select } from "@pos/ui";
 import { MenuPicker } from "./create-order/MenuPicker";
 import { OrderCart } from "./create-order/OrderCart";
@@ -15,11 +15,12 @@ import type { FoodType, MenuCategory, MenuItem } from "@pos/types";
 import { createOrderSchema } from "@pos/validation";
 import { useBranches } from "@/features/branches";
 import { useCourseSequencingEnabled } from "@/features/orders/hooks/useCourseSequencingEnabled";
+import type { MenuFulfillmentTypeDto } from "@pos/api-client";
 
 import { ALL_ORDER_TYPES } from "@/features/orders/constants";
 
 export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
-  const [orderType, setOrderType] = useState("DINE_IN");
+  const [orderType, setOrderType] = useState<MenuFulfillmentTypeDto>("DINE_IN");
   const [tableId, setTableId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<CartItem[]>([]);
@@ -40,9 +41,13 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
   const currentBranch =
     branchesInScope?.length === 1 ? branchesInScope[0] : undefined;
 
-  const availableOrderTypes = currentBranch
-    ? ALL_ORDER_TYPES.filter((t) => currentBranch[t.capabilityKey])
-    : [];
+  const availableOrderTypes = useMemo(
+    () =>
+      currentBranch
+        ? ALL_ORDER_TYPES.filter((type) => currentBranch[type.capabilityKey])
+        : [],
+    [currentBranch],
+  );
 
   const tablesEnabled = currentBranch?.tablesEnabled === true;
 
@@ -52,12 +57,15 @@ export const CreateOrderModal = ({ onClose }: { onClose: () => void }) => {
       setOrderType(availableOrderTypes[0]!.value);
       setTableId("");
     }
-  }, [currentBranch?.id]);
+  }, [availableOrderTypes, orderType]);
 
   const categoriesQuery = useMenuCategories();
   const categories = categoriesQuery.data;
   const activeMenusQuery = useActiveMenus(orderType);
-  const activeMenus = activeMenusQuery.data ?? [];
+  const activeMenus = useMemo(
+    () => activeMenusQuery.data ?? [],
+    [activeMenusQuery.data],
+  );
   useEffect(() => {
     if (!activeMenus.some((menu) => menu.id === selectedMenuId))
       setSelectedMenuId(activeMenus[0]?.id ?? "");

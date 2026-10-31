@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 import { clearPersistedContext } from "@/shared/auth/active-context";
 import { toast } from "@pos/ui";
@@ -31,7 +31,7 @@ export const UserMenu = () => {
       clearPersistedContext();
       logout();
       toast({ title: "Logged out successfully", tone: "success" });
-      router.navigate({ to: "/login" });
+      void router.navigate({ to: "/login" });
     }
   };
   return (

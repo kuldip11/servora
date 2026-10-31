@@ -1,12 +1,12 @@
-import { createKitchenApi } from "@pos/api-client";
+import {
+  createKitchenApi,
+  type KitchenStationDto as KitchenStation,
+  type KitchenTicketDto as KitchenTicket,
+  type KitchenTicketUpdateStatus,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
 const kitchenApi = createKitchenApi(apiClient);
-import type {
-  KitchenStation,
-  KitchenTicket,
-  KitchenTicketStatus,
-} from "@pos/types";
 
 export const fetchKitchenTickets = async (
   stationId?: string,
@@ -23,7 +23,7 @@ export const fetchKitchenStations = async (
 
 export const updateTicketStatus = async (
   id: string,
-  status: KitchenTicketStatus,
+  status: KitchenTicketUpdateStatus,
 ): Promise<void> => {
   await kitchenApi.updateTicketStatus(id, status);
 };

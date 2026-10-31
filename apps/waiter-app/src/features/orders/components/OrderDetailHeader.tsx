@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { IconButton } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { StatusBadge } from "./StatusBadge";
 import { shortOrderId } from "@/features/orders/utils/orderHelpers";
 

@@ -74,6 +74,10 @@ export const TablesPage = () => {
   const takeawayQrQuery = useTakeawayQr(branchId, { enabled: false });
   const branches = branchesQuery.data;
   const tables = tablesQuery.data;
+  const branchNames = useMemo(
+    () => new Map((branches ?? []).map((branch) => [branch.id, branch.name])),
+    [branches],
+  );
   const openOrders = openOrdersQuery.data ?? [];
   useTablesRealtimeSync();
 
@@ -103,13 +107,13 @@ export const TablesPage = () => {
     return (tables ?? []).filter(
       (table) =>
         (!search ||
-          `${table.name} ${table.section ?? ""} ${table.branch?.name ?? ""}`
+          `${table.name} ${table.section ?? ""} ${branchNames.get(table.branchId) ?? ""}`
             .toLowerCase()
             .includes(search)) &&
         (!statusFilter || table.status === statusFilter) &&
         (!sectionFilter || table.section === sectionFilter),
     );
-  }, [sectionFilter, statusFilter, tableSearch, tables]);
+  }, [branchNames, sectionFilter, statusFilter, tableSearch, tables]);
   const hasTableFilters = Boolean(tableSearch || statusFilter || sectionFilter);
 
   const openTakeawayQr = async () => {
@@ -188,6 +192,7 @@ export const TablesPage = () => {
         error={tablesQuery.error}
         fetching={tablesQuery.isFetching}
         aggregate={isAggregate}
+        branchNames={branchNames}
         hasFilters={hasTableFilters}
         canCreate={has("tables:create")}
         canManageOrders={has("orders:update")}

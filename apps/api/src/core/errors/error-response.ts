@@ -1,8 +1,4 @@
-import type {
-  ApiErrorPayload,
-  ApiErrorResponse,
-  ApiFieldErrors,
-} from "@pos/contracts";
+import type { ApiErrorResponse, ApiFieldErrors } from "@pos/contracts";
 import type { AppError } from "./app-error";
 
 export type {

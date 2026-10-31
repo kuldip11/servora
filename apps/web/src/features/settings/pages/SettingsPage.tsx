@@ -17,7 +17,7 @@ import {
 } from "@pos/ui";
 import { Building2, Shield, Palette } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissions";
-import { useCancellationReasons } from "@/features/orders";
+import { useCancellationReasons } from "@/features/orders/public/cancellation-reasons";
 import { PricingSettingsCard } from "@/features/settings/components/PricingSettingsCard";
 import { KitchenOperationsSettingsCard } from "@/features/settings/components/KitchenOperationsSettingsCard";
 import { ApprovalThresholdSettingsCard } from "@/features/settings/components/ApprovalThresholdSettingsCard";

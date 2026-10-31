@@ -10,7 +10,7 @@ export const useCreateTable = () => {
   return useMutation({
     mutationFn: (input: TableFormInput) => tablesService.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Table added");
     },
     onError: (err) => {

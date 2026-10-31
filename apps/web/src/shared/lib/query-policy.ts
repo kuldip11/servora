@@ -8,6 +8,7 @@ export const queryFreshness = {
 } as const;
 
 export const queryPolling = {
+  operational: 15_000,
   dashboard: 30_000,
   operations: 60_000,
 } as const;

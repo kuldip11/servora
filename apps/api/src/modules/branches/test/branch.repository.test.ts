@@ -21,7 +21,7 @@ const { findMany, branchFindFirst, orderFindFirst } = vi.hoisted(() => ({
   branchFindFirst: vi.fn(),
   orderFindFirst: vi.fn(),
 }));
-const { query, db } = vi.hoisted(() => {
+const { db } = vi.hoisted(() => {
   const query = {
     branches: { findMany, findFirst: branchFindFirst },
     orders: { findFirst: orderFindFirst },

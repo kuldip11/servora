@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Button,
   Input,
@@ -7,7 +7,7 @@ import {
   Select,
   Spinner,
 } from "@pos/ui";
-import type { Bill, Order } from "@pos/types";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 import { createPaymentSchema } from "@pos/validation";
 import { PAYMENT_METHODS } from "@/features/billing/constants";
 import { useCollectPayment } from "@/features/billing/hooks/useCollectPayment";
@@ -48,6 +48,7 @@ export const PaymentDialog = ({
       ? initialPaymentForm(order)
       : { method: "CASH", amount: "", reference: "" },
   );
+  const paymentRequests = useRef(new Map<string, string>());
   const [selectedBillId, setSelectedBillId] = useState("");
   const [validationError, setValidationError] = useState("");
   const payMutation = useCollectPayment();
@@ -103,10 +104,23 @@ export const PaymentDialog = ({
       return;
     }
     setValidationError("");
+    const fingerprint = JSON.stringify([
+      order.id,
+      selectedBillId,
+      parsed.data.method,
+      parsed.data.amount,
+      parsed.data.reference ?? null,
+    ]);
+    let idempotencyKey = paymentRequests.current.get(fingerprint);
+    if (!idempotencyKey) {
+      idempotencyKey = crypto.randomUUID();
+      paymentRequests.current.set(fingerprint, idempotencyKey);
+    }
     payMutation.mutate(
       {
         orderId: order.id,
         input: {
+          idempotencyKey,
           ...(selectedBillId ? { billId: selectedBillId } : {}),
           method: parsed.data.method,
           amount: parsed.data.amount,

@@ -4,19 +4,9 @@ import { extractApiError } from "@/shared/lib/api-client";
 import { differentiatorsService } from "@/features/differentiators/services/differentiators.service";
 import { useGuidedBuilderState } from "@/features/differentiators/hooks/useGuidedBuilderState";
 
-import type {
-  ComboPolicy,
-  ComboSlotDraft,
-  MenuChoice,
-  PromotionType,
-} from "@/features/differentiators/components/guided-builder/types";
+import type { MenuChoice } from "@/features/differentiators/components/guided-builder/types";
 import { GuidedComboBuilder } from "@/features/differentiators/components/guided-builder/GuidedComboBuilder";
 import { GuidedPromotionBuilder } from "@/features/differentiators/components/guided-builder/GuidedPromotionBuilder";
-
-const initialComboSlots: ComboSlotDraft[] = [
-  { id: 1, name: "Main", menuItemId: "", upcharge: "0" },
-  { id: 2, name: "Side", menuItemId: "", upcharge: "0" },
-];
 
 type GuidedBuilderPanelProps = {
   menuChoices: MenuChoice[];
@@ -91,9 +81,7 @@ export const GuidedBuilderPanel = ({
 
   const getComboPreview = async () => {
     const { name: _name, ...previewInput } = comboPayload;
-    const response = await differentiatorsService.previewCombo<{
-      resolvedTotal: number;
-    }>(previewInput);
+    const response = await differentiatorsService.previewCombo(previewInput);
     return Number(response.resolvedTotal);
   };
 
@@ -151,11 +139,7 @@ export const GuidedBuilderPanel = ({
 
   const getPromotionPreview = async () => {
     if (!promotionReady) return null;
-    const result = await differentiatorsService.previewPromotion<{
-      subtotal: number;
-      discountAmount: number;
-      totalAmount: number;
-    }>({
+    const result = await differentiatorsService.previewPromotion({
       promotion: promotionPayload,
       items: [{ menuItemId: promotionPreviewItemId, quantity: 1 }],
     });

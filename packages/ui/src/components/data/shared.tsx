@@ -118,7 +118,7 @@ export const useVirtualizedRows = (
       el.removeEventListener("scroll", onScroll);
       resizeObserver.disconnect();
     };
-  }, [containerRef.current]);
+  }, [containerRef]);
 
   const totalHeight = count * rowHeight;
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);

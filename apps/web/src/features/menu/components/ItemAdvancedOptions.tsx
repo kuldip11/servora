@@ -3,20 +3,16 @@ import type {
   UseFormRegister,
   UseFormSetValue,
 } from "react-hook-form";
-import { Button, Input, Select } from "@pos/ui";
+import { Input } from "@pos/ui";
 import type { MenuItem } from "@pos/types";
 import type { MenuItemFormValues } from "@pos/validation";
 import { MenuMembershipsEditor } from "./forms/MenuMembershipsEditor";
 import { ItemMediaVariantsSection } from "./forms/ItemMediaVariantsSection";
 import { ItemAssociationsSection } from "./forms/ItemAssociationsSection";
-import { StationRoutingEditor } from "./forms/StationRoutingEditor";
-import { RecipeBuilder } from "./RecipeBuilder";
-import { ScheduleManager } from "./ScheduleManager";
-import { BranchOverridesPanel } from "./BranchOverridesPanel";
-import { ChannelOverridesPanel } from "./ChannelOverridesPanel";
-import { PriceRulesPanel } from "./PriceRulesPanel";
-import { VariantAvailabilityPanel } from "./VariantAvailabilityPanel";
-import { VariantModifierPricingPanel } from "./VariantModifierPricingPanel";
+import { ItemOperationalPanels } from "./forms/ItemOperationalPanels";
+import { ItemOrderingExperienceSection } from "./forms/ItemOrderingExperienceSection";
+import { ItemPricingStockSection } from "./forms/ItemPricingStockSection";
+import { ItemRecipeDeductionSection } from "./forms/ItemRecipeDeductionSection";
 import type { useItemFormWorkflow } from "@/features/menu/hooks/useItemFormWorkflow";
 import type { useModifierGroups } from "@/features/menu/hooks/useModifierGroups";
 import type { useMenuTags } from "@/features/menu/hooks/useMenuTags";
@@ -58,37 +54,16 @@ export const ItemAdvancedOptions = ({
     variants,
     imageUrls,
     newImageUrl,
-    displayMode,
-    effectiveFrom,
-    pricingMode,
-    weightUnit,
-    openPriceMin,
-    openPriceMax,
-    supportsZones,
-    zonePricingRule,
-    trackByCount,
-    manualStockCount,
     selectedGroupIds,
     selectedTagIds,
     selectedAllergenIds,
     setVariants,
     setImageUrls,
     setNewImageUrl,
-    setDisplayMode,
-    setEffectiveFrom,
-    setPricingMode,
-    setWeightUnit,
-    setOpenPriceMin,
-    setOpenPriceMax,
-    setSupportsZones,
-    setZonePricingRule,
-    setTrackByCount,
-    setManualStockCount,
     setSelectedGroupIds,
     setSelectedTagIds,
     setSelectedAllergenIds,
   } = workflow;
-  const isEdit = !!item;
   const toggle = (
     id: string,
     list: string[],
@@ -101,114 +76,7 @@ export const ItemAdvancedOptions = ({
   return (
     <div className="space-y-5 rounded-lg border border-border bg-surface-secondary/20 p-4">
       {item && <MenuMembershipsEditor item={item} categories={categories} />}
-      <section className="space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary">
-            Pricing & stock
-          </h3>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Optional pricing modes, split-zone pricing, and finite stock
-            tracking.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Select
-            label="Pricing mode"
-            value={pricingMode}
-            onChange={(value) => setPricingMode(value as typeof pricingMode)}
-            options={[
-              { value: "FIXED", label: "Fixed price" },
-              { value: "WEIGHT_BASED", label: "Weight based" },
-              { value: "OPEN", label: "Open / manual price" },
-            ]}
-          />
-          {pricingMode === "WEIGHT_BASED" && (
-            <Select
-              label="Rate unit"
-              value={weightUnit}
-              onChange={(value) => setWeightUnit(value as typeof weightUnit)}
-              options={[
-                { value: "G", label: "gram (g)" },
-                { value: "KG", label: "kilogram (kg)" },
-                { value: "LB", label: "pound (lb)" },
-                { value: "OZ", label: "ounce (oz)" },
-              ]}
-            />
-          )}
-          {pricingMode === "OPEN" && (
-            <>
-              <Input
-                label="Minimum manual price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={openPriceMin}
-                onChange={(event) => setOpenPriceMin(event.target.value)}
-              />
-              <Input
-                label="Maximum manual price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={openPriceMax}
-                onChange={(event) => setOpenPriceMax(event.target.value)}
-              />
-            </>
-          )}
-        </div>
-        {pricingMode === "OPEN" &&
-          openPriceMin !== "" &&
-          openPriceMax !== "" &&
-          Number(openPriceMin) > Number(openPriceMax) && (
-            <p className="text-xs text-danger">
-              Minimum manual price cannot exceed maximum.
-            </p>
-          )}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-            <input
-              type="checkbox"
-              checked={supportsZones}
-              onChange={(event) => setSupportsZones(event.target.checked)}
-            />
-            Supports split zones / half-and-half
-          </label>
-          {supportsZones && (
-            <Select
-              label="Zone pricing rule"
-              value={zonePricingRule}
-              onChange={(value) =>
-                setZonePricingRule(value as typeof zonePricingRule)
-              }
-              options={[
-                { value: "HIGHER", label: "Charge higher-priced zone" },
-                { value: "AVERAGE", label: "Average zone modifier totals" },
-                { value: "SUM_HALF", label: "Sum half of each zone" },
-              ]}
-            />
-          )}
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-            <input
-              type="checkbox"
-              checked={trackByCount}
-              onChange={(event) => setTrackByCount(event.target.checked)}
-            />
-            Track finite stock by item count
-          </label>
-          {trackByCount && (
-            <Input
-              label="Current stock count"
-              type="number"
-              min="0"
-              step="1"
-              value={manualStockCount}
-              onChange={(event) => setManualStockCount(event.target.value)}
-            />
-          )}
-        </div>
-      </section>
+      <ItemPricingStockSection workflow={workflow} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Input
           label="SKU (optional)"
@@ -266,45 +134,7 @@ export const ItemAdvancedOptions = ({
           ])
         }
       />
-      <div className="rounded border border-border p-3 space-y-2">
-        <Select
-          label="Ordering experience"
-          value={displayMode}
-          options={[
-            { value: "STANDARD", label: "Standard item" },
-            { value: "GUIDED_BUILDER", label: "Guided build-your-own" },
-          ]}
-          onChange={(event) =>
-            setDisplayMode(event as "STANDARD" | "GUIDED_BUILDER")
-          }
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setDisplayMode("GUIDED_BUILDER");
-            setSelectedGroupIds(
-              groups
-                .filter((group) => group.minSelections > 0)
-                .map((group) => group.id),
-            );
-          }}
-        >
-          Apply Build-Your-Own preset
-        </Button>
-        <Input
-          label="Effective from (optional)"
-          type="datetime-local"
-          value={effectiveFrom}
-          onChange={(event) => setEffectiveFrom(event.target.value)}
-        />
-        {effectiveFrom && new Date(effectiveFrom) > new Date() && (
-          <p className="text-xs text-warning">
-            Pending publish · live {new Date(effectiveFrom).toLocaleString()}
-          </p>
-        )}
-      </div>
+      <ItemOrderingExperienceSection workflow={workflow} groups={groups} />
       <ItemAssociationsSection
         groups={groups}
         tags={tags}
@@ -320,58 +150,12 @@ export const ItemAdvancedOptions = ({
           else toggle(id, selectedAllergenIds, setSelectedAllergenIds);
         }}
       />
-      <div>
-        <label className="flex items-center gap-2 text-sm text-text-secondary mb-2">
-          <input
-            type="checkbox"
-            checked={form.enableRecipeDeduction}
-            onChange={(event) =>
-              setValue("enableRecipeDeduction", event.target.checked, {
-                shouldValidate: true,
-              })
-            }
-          />
-          Auto-manage availability from inventory
-        </label>
-        {isEdit ? (
-          form.enableRecipeDeduction && <RecipeBuilder item={item} />
-        ) : (
-          <p className="text-xs text-text-disabled">
-            Save the item first, then edit it to link ingredients.
-          </p>
-        )}
-      </div>
-      {isEdit && (
-        <div className="space-y-5">
-          <ScheduleManager itemId={item.id} />
-          <ChannelOverridesPanel itemId={item.id} />
-          <VariantAvailabilityPanel
-            itemId={item.id}
-            variants={item.variants ?? []}
-          />
-          <VariantModifierPricingPanel
-            variants={item.variants ?? []}
-            groups={groups.filter((group) =>
-              selectedGroupIds.includes(group.id),
-            )}
-          />
-          <PriceRulesPanel itemId={item.id} branchId={item.branchId} />
-        </div>
-      )}
-      {isEdit && item.branchId === null && (
-        <BranchOverridesPanel
-          itemId={item.id}
-          basePrice={item.basePrice}
-          baseTaxRate={item.taxRate}
-          basePrepTimeMinutes={item.prepTimeMinutes}
-        />
-      )}
-      {isEdit && (
-        <StationRoutingEditor
-          itemId={item.id}
-          groups={groups.filter((group) => selectedGroupIds.includes(group.id))}
-        />
-      )}
+      <ItemRecipeDeductionSection item={item} form={form} setValue={setValue} />
+      <ItemOperationalPanels
+        item={item}
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+      />
     </div>
   );
 };

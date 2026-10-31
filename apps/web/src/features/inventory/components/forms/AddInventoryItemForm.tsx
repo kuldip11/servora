@@ -70,7 +70,7 @@ export const AddInventoryItemForm = ({
   });
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={(event) => void submit(event)} className="space-y-4">
       <Input
         label="Item name"
         required

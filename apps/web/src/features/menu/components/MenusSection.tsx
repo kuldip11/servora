@@ -121,7 +121,10 @@ export const MenusSection = () => {
         </div>
       ) : null}
 
-      <form className="max-w-md space-y-2" onSubmit={submit}>
+      <form
+        className="max-w-md space-y-2"
+        onSubmit={(event) => void submit(event)}
+      >
         <FormErrorSummary messages={formErrorMessages} />
         <div className="flex items-end gap-2">
           <Input

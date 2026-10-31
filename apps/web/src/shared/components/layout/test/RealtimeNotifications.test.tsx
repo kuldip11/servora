@@ -1,4 +1,3 @@
-import React from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
@@ -19,13 +18,13 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: h.invalidate }),
 }));
 
-vi.mock("@/features/menu/query-keys", () => ({
+vi.mock("@/features/menu/public/query-keys", () => ({
   menuKeys: { categories: () => ["menu", "current", "categories"] },
 }));
-vi.mock("@/features/analytics/query-keys", () => ({
+vi.mock("@/features/analytics/public/query-keys", () => ({
   analyticsKeys: { dashboard: () => ["analytics", "current", "dashboard"] },
 }));
-vi.mock("@/features/inventory/query-keys", () => ({
+vi.mock("@/features/inventory/public/query-keys", () => ({
   inventoryKeys: { items: () => ["inventory", "current", "items"] },
 }));
 import { RealtimeNotifications } from "../RealtimeNotifications";

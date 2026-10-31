@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
-import type { KitchenTicketStatus } from "@pos/types";
+import type { KitchenTicketUpdateStatus } from "@pos/api-client";
 import { extractApiError } from "@pos/api-client";
 import { updateTicketStatus } from "@/features/kitchen/api/tickets";
 import { kitchenKeys } from "@/features/kitchen/query/kitchen.keys";
@@ -11,10 +11,15 @@ export const useUpdateTicketStatus = () => {
   const scope = getKitchenQueryScope();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: KitchenTicketStatus }) =>
-      updateTicketStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: KitchenTicketUpdateStatus;
+    }) => updateTicketStatus(id, status),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: kitchenKeys.tickets(scope) });
+      void qc.invalidateQueries({ queryKey: kitchenKeys.tickets(scope) });
       toast({ title: "Ticket updated", tone: "success" });
     },
     onError: (error) =>

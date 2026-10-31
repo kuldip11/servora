@@ -4,7 +4,7 @@ import type {
   FranchiseBusinessFormValues,
   OrganizationBusinessFormValues,
 } from "@pos/validation";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { activateMembershipContext } from "@/shared/auth/active-context";
 import { useAuthStore } from "@/store/auth";
 import { businessKeys } from "../query-keys";

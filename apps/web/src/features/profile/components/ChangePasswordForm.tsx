@@ -51,7 +51,7 @@ export const ChangePasswordForm = () => {
   });
 
   return (
-    <form className="space-y-4" onSubmit={submit}>
+    <form className="space-y-4" onSubmit={(event) => void submit(event)}>
       <Input
         label="Current password"
         required

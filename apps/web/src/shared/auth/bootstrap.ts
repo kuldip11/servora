@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 import { restoreActiveContext } from "@/shared/auth/active-context";
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -105,26 +104,6 @@ const variants: any[] = [
     manualStockCount: null,
   },
 ];
-const groups: any[] = [
-  {
-    id: "g1",
-    name: "Milk",
-    options: [
-      {
-        id: "o1",
-        name: "Oat",
-        additionalPrice: 10,
-        isAvailable: true,
-        maxQuantity: 1,
-        variantPrices: [
-          { variantId: "v1", additionalPrice: 12 },
-          { variantId: "old", additionalPrice: 7 },
-        ],
-      },
-    ],
-  },
-];
-
 import { VariantAvailabilityPanel } from "../VariantAvailabilityPanel";
 
 describe("VariantAvailabilityPanel", () => {

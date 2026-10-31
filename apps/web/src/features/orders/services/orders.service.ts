@@ -1,7 +1,10 @@
-import { createOrdersApi, type OrdersListFilters } from "@pos/api-client";
+import {
+  createOrdersApi,
+  type OrdersListFilters,
+  OrderDto as Order,
+} from "@pos/api-client";
 import type { CreateOrderInput as ValidatedCreateOrderInput } from "@pos/validation";
 import { apiClient } from "@/shared/lib/api-client";
-import type { Order } from "@pos/types";
 import type { CartItem } from "@/features/orders/utils/cartTypes";
 import type { OrderExplanation } from "@/features/orders/types/order-explanation.types";
 
@@ -85,7 +88,7 @@ export const ordersService = {
   transferTable: ordersApi.transferTable,
   mergeOrders: ordersApi.merge,
   explain(orderId: string, signal?: AbortSignal): Promise<OrderExplanation> {
-    return ordersApi.explain<OrderExplanation>(orderId, signal);
+    return ordersApi.explain(orderId, signal);
   },
   setItemSeatShares(
     orderId: string,

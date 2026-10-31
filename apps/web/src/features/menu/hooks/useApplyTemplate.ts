@@ -16,7 +16,7 @@ export const useApplyTemplate = () => {
       input: ApplyTemplateInput;
     }) => menuTemplatesService.apply(templateId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
     },
   });
 };

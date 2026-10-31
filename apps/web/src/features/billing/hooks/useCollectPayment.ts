@@ -5,8 +5,8 @@ import {
   type CollectPaymentInput,
 } from "@/features/billing/services/billing.service";
 import { billingKeys } from "@/features/billing/query-keys";
-import { orderKeys } from "@/features/orders/query-keys";
-import { tableKeys } from "@/features/tables/query-keys";
+import { orderKeys } from "@/features/orders/public/query-keys";
+import { tableKeys } from "@/features/tables/public/query-keys";
 
 export const useCollectPayment = () => {
   const queryClient = useQueryClient();
@@ -19,14 +19,14 @@ export const useCollectPayment = () => {
       input: CollectPaymentInput;
     }) => billingService.collectPayment(orderId, input),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: billingKeys.order(variables.orderId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: orderKeys.detail(variables.orderId),
       });
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Payment recorded successfully");
     },
     onError: (err) => notifyError(err, "Payment failed"),

@@ -1,7 +1,7 @@
 import { useForm, useFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, FormErrorSummary, Input } from "@pos/ui";
-import type { User } from "@pos/types";
+import type { AuthUserDto as User } from "@pos/api-client";
 import {
   profileFormSchema,
   type ProfileFormValues,
@@ -53,7 +53,7 @@ export const ProfileDetailsForm = ({ user }: { user: User | null }) => {
   });
 
   return (
-    <form className="space-y-4" onSubmit={submit}>
+    <form className="space-y-4" onSubmit={(event) => void submit(event)}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           label="First name"

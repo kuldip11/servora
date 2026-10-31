@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ClipboardList } from "lucide-react";
 import { Spinner, EmptyState } from "@pos/ui";
-import { useInfiniteOrders } from "@/features/orders";
-import { OrderCard } from "@/features/orders";
+import { useInfiniteOrders, OrderCard } from "@/features/orders";
 
 interface Props {
   onSelectOrder: (id: string) => void;

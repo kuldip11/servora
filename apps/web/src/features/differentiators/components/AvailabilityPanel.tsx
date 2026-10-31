@@ -48,7 +48,10 @@ export const AvailabilityPanel = () => {
             only aggregates its output.
           </p>
         </div>
-        <Button loading={availabilityQuery.isFetching} onClick={refresh}>
+        <Button
+          loading={availabilityQuery.isFetching}
+          onClick={() => void refresh()}
+        >
           Refresh
         </Button>
       </div>

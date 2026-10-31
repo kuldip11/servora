@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { toast } from "@pos/ui";
-import type { KitchenTicket } from "@pos/types";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 import { filterTicketForStation } from "@/features/kitchen/utils/ticket";
 import { getVoidAlertsEnabled } from "@/features/kitchen/terminal-storage";
@@ -15,10 +14,7 @@ export const useKitchenAttention = (stationId?: string) => {
   }, []);
   useRealtimeEvent("kitchen.ticket.created", (event) => {
     if (!initialized.current) return;
-    const ticket = filterTicketForStation(
-      event.payload as KitchenTicket,
-      stationId,
-    );
+    const ticket = filterTicketForStation(event.payload, stationId);
     if (!ticket || ticket.status === "HELD") return;
     const table = ticket.order?.table?.name;
     toast({
@@ -29,10 +25,7 @@ export const useKitchenAttention = (stationId?: string) => {
   });
   useRealtimeEvent("order.item.voided", (event) => {
     if (!initialized.current || !getVoidAlertsEnabled()) return;
-    const ticket = filterTicketForStation(
-      event.payload as KitchenTicket,
-      stationId,
-    );
+    const ticket = filterTicketForStation(event.payload, stationId);
     if (!ticket) return;
     const inProgress =
       ticket.status === "PREPARING" || ticket.status === "READY";

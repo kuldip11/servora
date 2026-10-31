@@ -8,14 +8,14 @@ import {
   type CustomerMenuItem,
   type CustomerOrder,
 } from "@/api";
-import type { CartLine } from "@/features/cart/pricing";
+import type { CartLine } from "@/features/cart";
 import {
   clearPersistedOrderId,
   loadPersistedOrderId,
   loadPersistedSession,
   restoreCart,
   savePersistedSession,
-} from "@/features/cart/persistence";
+} from "@/features/cart";
 import { customerKeys } from "./customer.keys";
 import { expireCustomerSession } from "./customer.lifecycle";
 
@@ -173,13 +173,13 @@ export const customerOrderQuery = (
   storageScope: string | null,
   sessionToken: string | undefined,
   orderId: string | undefined,
-  live: boolean,
 ) => ({
   queryKey: customerKeys.order(storageScope, sessionToken, orderId),
   queryFn: ({ signal }: { signal: AbortSignal }) =>
     getCustomerOrder(sessionToken!, orderId!, signal),
   enabled: Boolean(sessionToken && orderId),
   staleTime: 15_000,
-  refetchInterval: live ? (false as const) : 15_000,
+  // A connected socket does not guarantee that every update is delivered.
+  refetchInterval: 15_000,
   retry: false,
 });

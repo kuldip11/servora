@@ -69,3 +69,10 @@ export const updateKitchenTicketStatusBodySchema = Type.Object(
 export type UpdateKitchenTicketStatusRequest = Static<
   typeof updateKitchenTicketStatusBodySchema
 >;
+export type CreateKitchenStationRequest = Static<
+  typeof createKitchenStationBodySchema
+>;
+export type UpdateKitchenStationRequest = Static<
+  typeof updateKitchenStationBodySchema
+>;
+export type SetKitchenRouteRequest = Static<typeof setKitchenRouteBodySchema>;

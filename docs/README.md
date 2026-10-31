@@ -3,6 +3,7 @@
 ## Maintained architecture and implementation documents
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system architecture, tenancy, realtime, reliability, and data-flow boundaries.
+- [`CODE_QUALITY_ARCHITECTURE_STATUS.md`](./CODE_QUALITY_ARCHITECTURE_STATUS.md) — verified progress and remaining work for repository-wide code-quality and architecture remediation.
 - [`FRONTEND_ENGINEERING.md`](./FRONTEND_ENGINEERING.md) — frontend engineering, performance, accessibility, authorization, observability, and UI standards.
 - [`API_ERROR_CONTRACT.md`](./API_ERROR_CONTRACT.md) — standardized frontend-friendly API error contract and failure-path rules.
 - [`API_CONTRACT_HARDENING_PLAN.md`](./API_CONTRACT_HARDENING_PLAN.md) — detailed production-hardening plan for request schemas, response DTOs, runtime validation, OpenAPI, generated clients, webhooks, and realtime contracts.

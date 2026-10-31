@@ -5,7 +5,7 @@ const {
   findRoleById,
   findBranchesByIds,
   create,
-  updateUser,
+  updateGlobalUserProfile,
   updateMembershipStatus,
   setRole,
   setBranches,
@@ -17,7 +17,7 @@ const {
   findRoleById: vi.fn(),
   findBranchesByIds: vi.fn(),
   create: vi.fn(),
-  updateUser: vi.fn(),
+  updateGlobalUserProfile: vi.fn(),
   updateMembershipStatus: vi.fn(),
   setRole: vi.fn(),
   setBranches: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock("../staff.repository", () => ({
     findRoleById,
     findBranchesByIds,
     create,
-    updateUser,
+    updateGlobalUserProfile,
     updateMembershipStatus,
     setRole,
     setBranches,
@@ -235,11 +235,9 @@ describe("staff service", () => {
         },
       ),
     ).resolves.toEqual(membership);
-    expect(updateUser).toHaveBeenCalledWith(
-      "t1",
-      "u2",
-      expect.objectContaining({ firstName: "New", status: "INACTIVE" }),
-    );
+    expect(updateGlobalUserProfile).toHaveBeenCalledWith("u2", {
+      firstName: "New",
+    });
     expect(updateMembershipStatus).toHaveBeenCalledWith("t1", "u2", "INACTIVE");
     expect(setRole).toHaveBeenCalledWith("m1", "r1");
     expect(setBranches).toHaveBeenCalledWith("m1", ["b1"]);

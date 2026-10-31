@@ -18,7 +18,7 @@ export const useSplitBill = () => {
         ? billingService.splitOrderByItems(orderId, allocations)
         : billingService.splitOrder(orderId, splitWays),
     onSuccess: (_result, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: billingKeys.order(variables.orderId),
       });
       notifySuccess("Bill split successfully");

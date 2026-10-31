@@ -4,34 +4,17 @@ import {
   createAvailabilityApi,
   createMenuApi,
   createOrdersApi,
+  type AnalyticsMenuEngineeringRowDto,
+  type AvailabilityDashboardDto,
+  type AvailabilityDashboardParams,
 } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 import type { MenuChoice } from "../components/guided-builder/types";
 
-export type AvailabilityRow = {
-  entityType: "ITEM" | "VARIANT" | "MODIFIER_OPTION";
-  entityId: string;
-  menuItemId: string;
-  name: string;
-  status: string;
-  reason: string;
-  cause: string;
-  branchId: string;
-  branchName?: string;
-  channel: string;
-  fulfillmentType: string;
-};
+export type AvailabilityRow = AvailabilityDashboardDto["rows"][number];
 
-export type EngineeringQuadrant = "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG";
-export type EngineeringRow = {
-  menuItemId: string;
-  menuItemName: string;
-  variantName: string | null;
-  margin: number;
-  salesVolume: number;
-  quadrant: EngineeringQuadrant;
-  recommendation: string;
-};
+export type EngineeringRow = AnalyticsMenuEngineeringRowDto;
+export type EngineeringQuadrant = EngineeringRow["quadrant"];
 
 export type Explanation = {
   orderId: string;
@@ -94,14 +77,16 @@ export const differentiatorsService = {
     );
   },
   availability: (channel: string, fulfillment: string, cause: string) =>
-    availabilityApi.dashboard<{ rows: AvailabilityRow[] }>({
-      channel,
-      fulfillmentType: fulfillment,
+    availabilityApi.dashboard({
+      channel: channel as NonNullable<AvailabilityDashboardParams["channel"]>,
+      fulfillmentType: fulfillment as NonNullable<
+        AvailabilityDashboardParams["fulfillmentType"]
+      >,
       ...(cause.trim() ? { cause: cause.trim() } : {}),
     }),
   engineering: (windowDays: string) =>
-    analyticsApi.menuEngineering<EngineeringRow[]>(Number(windowDays)),
-  explainOrder: (orderId: string) => ordersApi.explain<Explanation>(orderId),
+    analyticsApi.menuEngineering(Number(windowDays)),
+  explainOrder: (orderId: string) => ordersApi.explain(orderId),
   setApprovalThreshold: (
     action: "VOID" | "COMP",
     thresholdAmount: number,

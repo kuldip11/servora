@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
-import type { User } from "@pos/types";
+import type { AuthUserDto as User } from "@pos/api-client";
 
 let accessToken: string | null = null;
 

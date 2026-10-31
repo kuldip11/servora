@@ -19,7 +19,7 @@ export const useSaveMenuItem = () => {
       payload: MenuItemFormPayload;
     }) => menuItemsService.saveItem(item, payload),
     onSuccess: (_data, { item }) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(item ? "Item updated" : "Item added");
     },
     onError: (err) => {

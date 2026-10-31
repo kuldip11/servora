@@ -361,7 +361,7 @@ describe("InventoryPage coverage", () => {
       ),
     );
     const wasteOptions = mocks.waste.mock.calls.at(-1)?.[1];
-    act(() => wasteOptions.onSuccess());
+    await act(() => wasteOptions.onSuccess());
     fireEvent.click(screen.getAllByRole("button", { name: "Log waste" })[0]!);
     fireEvent.change(screen.getByLabelText("New waste reason"), {
       target: { value: "Prep trim" },
@@ -385,7 +385,7 @@ describe("InventoryPage coverage", () => {
     expect(screen.getByText("Modifier option")).toBeTruthy();
     expect(screen.getByText("Auto 86")).toBeTruthy();
   });
-  it("covers aggregate grouping and empty states", () => {
+  it("covers aggregate grouping and empty states", async () => {
     useAuthStore.setState({ branchId: "all" });
     mocks.items.current = {
       data: { items: [item, item2], pagination: { total: 2 } },
@@ -443,7 +443,7 @@ describe("InventoryPage coverage", () => {
     ).toBeTruthy();
   });
 
-  it("covers aggregate page-size reset and missing branches list", () => {
+  it("covers aggregate page-size reset and missing branches list", async () => {
     useAuthStore.setState({ branchId: "all" });
     mocks.branches.current = undefined as any;
     mocks.items.current = {
@@ -457,7 +457,7 @@ describe("InventoryPage coverage", () => {
       screen.getByRole("heading", { name: "Add Inventory Item" }),
     ).toBeTruthy();
   });
-  it("does not turn failed inventory or low-stock reads into healthy empty values", () => {
+  it("does not turn failed inventory or low-stock reads into healthy empty values", async () => {
     mocks.items.current = {
       data: undefined,
       isLoading: false,

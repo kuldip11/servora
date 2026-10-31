@@ -170,8 +170,9 @@ export const staffRepository = {
     });
   },
 
-  async updateUser(
-    tenantId: string,
+  // A user's name belongs to their global identity. Tenant authorization is
+  // enforced by the service before this repository operation is called.
+  async updateGlobalUserProfile(
     userId: string,
     data: {
       firstName?: string;

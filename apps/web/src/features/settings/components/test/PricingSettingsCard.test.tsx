@@ -63,8 +63,10 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: ({ queryFn }: any) => {
     const [data, setData] = React.useState<any>();
+    const queryFnRef = React.useRef(queryFn);
     React.useEffect(() => {
-      void queryFn({ signal: new AbortController().signal })
+      void queryFnRef
+        .current({ signal: new AbortController().signal })
         .then(setData)
         .catch(() => {});
     }, []);

@@ -1,4 +1,3 @@
-import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -48,7 +47,7 @@ describe("OrdersPage interactions", () => {
     });
   });
 
-  it("switches filters and renders their empty-state descriptions", () => {
+  it("switches filters and renders their empty-state descriptions", async () => {
     render(<OrdersPage onSelectOrder={vi.fn()} />);
     expect(screen.getByText(/Nothing is waiting to be served/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Active" }));
@@ -61,7 +60,7 @@ describe("OrdersPage interactions", () => {
     expect(screen.getByText(/No orders placed yet/)).toBeTruthy();
   });
 
-  it("renders loading, data, selection and infinite-scroll states", () => {
+  it("renders loading, data, selection and infinite-scroll states", async () => {
     mocks.useInfiniteOrders.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -91,7 +90,7 @@ describe("OrdersPage interactions", () => {
     fireEvent.click(screen.getByText("Order o1"));
     expect(onSelectOrder).toHaveBeenCalledWith("o1");
     expect(screen.getByText("Scroll for more orders")).toBeTruthy();
-    act(() => mocks.observer.cb([{ isIntersecting: true }]));
+    await act(() => mocks.observer.cb([{ isIntersecting: true }]));
     expect(mocks.fetchNextPage).toHaveBeenCalled();
 
     mocks.useInfiniteOrders.mockReturnValue({

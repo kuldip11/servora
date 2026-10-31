@@ -1,68 +1,33 @@
 import { voidDomainRequest } from "./shared";
+import type {
+  CreateRoleRequest,
+  CreateStaffRequest,
+  PermissionResponseItem,
+  RoleResponseItem,
+  RoleWithPermissionsResponse,
+  SetRolePermissionsRequest,
+  StaffListQuery,
+  StaffMemberResponse,
+  UpdateRoleRequest,
+  UpdateStaffRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   getPaginatedDomainData,
   patchDomainData,
   postDomainData,
+  putDomainData,
   type DomainHttpClient,
   type PaginatedResult,
 } from "./shared";
 
-export interface PermissionDto {
-  id: string;
-  key: string;
-  module: string;
-  description?: string | null;
-}
-
-export interface RoleDto {
-  id: string;
-  name: string;
-  description?: string | null;
-  scope: "GLOBAL" | "TENANT" | "BRANCH";
-  tenantId?: string | null;
-  isSystem?: boolean;
-  isActive?: boolean;
-}
-
-export interface CreateRoleInput {
-  name: string;
-  description?: string;
-  scope: "TENANT" | "BRANCH";
-}
-
-export interface StaffRowDto {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  status: string;
-  assignedBranches?: { id?: string; name?: string }[];
-  roles?: { name?: string; scope?: string }[];
-}
-
-export interface AddStaffInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  roleId: string;
-  branchIds: string[];
-}
-
-export interface UpdateStaffInput {
-  firstName?: string;
-  lastName?: string;
-  roleId?: string;
-  branchIds?: string[];
-}
-
-export interface StaffListFilters {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: string;
-}
+export type PermissionDto = PermissionResponseItem;
+export type RoleDto = RoleResponseItem;
+export type CreateRoleInput = CreateRoleRequest;
+export type StaffRowDto = StaffMemberResponse;
+export type AddStaffInput = CreateStaffRequest;
+export type UpdateStaffInput = UpdateStaffRequest;
+export type StaffListFilters = StaffListQuery;
 
 export const createStaffApi = (client: DomainHttpClient) => {
   return {
@@ -81,17 +46,20 @@ export const createStaffApi = (client: DomainHttpClient) => {
         ...(signal ? { signal } : {}),
       });
     },
-    addStaff(input: AddStaffInput): Promise<void> {
-      return voidDomainRequest(client.post("/staff", input));
+    addStaff(input: AddStaffInput): Promise<StaffRowDto> {
+      return postDomainData<StaffRowDto>(client, "/staff", input);
     },
     removeStaff(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/staff/${id}`));
     },
-    updateStaffStatus(id: string, status: string): Promise<void> {
-      return voidDomainRequest(client.patch(`/staff/${id}`, { status }));
+    updateStaffStatus(
+      id: string,
+      status: NonNullable<UpdateStaffRequest["status"]>,
+    ): Promise<StaffRowDto> {
+      return patchDomainData<StaffRowDto>(client, `/staff/${id}`, { status });
     },
-    updateStaff(id: string, input: UpdateStaffInput): Promise<void> {
-      return voidDomainRequest(client.patch(`/staff/${id}`, input));
+    updateStaff(id: string, input: UpdateStaffInput): Promise<StaffRowDto> {
+      return patchDomainData<StaffRowDto>(client, `/staff/${id}`, input);
     },
     listRoles(signal?: AbortSignal): Promise<RoleDto[]> {
       return getDomainData<RoleDto[]>(
@@ -103,10 +71,7 @@ export const createStaffApi = (client: DomainHttpClient) => {
     createRole(input: CreateRoleInput): Promise<RoleDto> {
       return postDomainData<RoleDto>(client, "/roles", input);
     },
-    updateRole(
-      id: string,
-      input: Pick<CreateRoleInput, "name" | "description">,
-    ): Promise<RoleDto> {
+    updateRole(id: string, input: UpdateRoleRequest): Promise<RoleDto> {
       return patchDomainData<RoleDto>(client, `/roles/${id}`, input);
     },
     archiveRole(id: string): Promise<void> {
@@ -132,9 +97,12 @@ export const createStaffApi = (client: DomainHttpClient) => {
     setPermissionsForRole(
       roleId: string,
       permissionIds: string[],
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.put(`/roles/${roleId}/permissions`, { permissionIds }),
+    ): Promise<RoleWithPermissionsResponse> {
+      const input: SetRolePermissionsRequest = { permissionIds };
+      return putDomainData<RoleWithPermissionsResponse>(
+        client,
+        `/roles/${roleId}/permissions`,
+        input,
       );
     },
   };

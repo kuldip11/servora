@@ -1,7 +1,16 @@
 import { usePermissions } from "@/shared/auth/permissions";
 import { useEffect, useState } from "react";
 import { Plus, ShoppingBag } from "lucide-react";
-import { Button, Table, Page, Card, Pagination, type SortState } from "@pos/ui";
+import {
+  Button,
+  Table,
+  Page,
+  Card,
+  Pagination,
+  QueryErrorState,
+  StaleDataBanner,
+  type SortState,
+} from "@pos/ui";
 import { useOrdersPage } from "@/features/orders";
 import { useOrdersRealtimeSync } from "@/features/orders/hooks/useOrdersRealtimeSync";
 import { CreateOrderModal } from "@/features/orders/components/CreateOrderModal";
@@ -31,6 +40,8 @@ export const OrdersPage = () => {
     data: result,
     isLoading,
     isFetching,
+    isError,
+    refetch,
   } = useOrdersPage({
     status: statusFilter,
     type: typeFilter,
@@ -88,39 +99,57 @@ export const OrdersPage = () => {
         />
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-md">
-          <Table
-            columns={columns}
-            data={orders}
-            getRowId={(row) => row.id}
-            loading={isLoading || (isFetching && orders.length === 0)}
-            sort={sort}
-            onSortChange={(next) => {
-              setSort(next);
-              setPage(1);
-            }}
-            maxHeight="100%"
-            className="min-h-0 flex-1"
-            emptyIcon={ShoppingBag}
-            emptyTitle="No orders found"
-            emptyDescription="Create a new order or adjust your filters."
-            emptyAction={
-              <Button onClick={() => setShowCreate(true)}>
-                <Plus className="w-4 h-4" /> New Order
-              </Button>
-            }
-          />
-          <Pagination
-            className="border-t border-border px-2 pt-4 mt-4"
-            page={page}
-            pageCount={pageCount}
-            totalItems={total}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => {
-              setPageSize(next);
-              setPage(1);
-            }}
-          />
+          {isError && !result ? (
+            <QueryErrorState
+              title="Unable to load orders"
+              description="Orders could not be retrieved. Please try again."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
+          ) : (
+            <>
+              {isError ? (
+                <StaleDataBanner
+                  message="Unable to refresh orders. Showing the last available data."
+                  onRetry={() => void refetch()}
+                  isRetrying={isFetching}
+                />
+              ) : null}
+              <Table
+                columns={columns}
+                data={orders}
+                getRowId={(row) => row.id}
+                loading={isLoading || (isFetching && orders.length === 0)}
+                sort={sort}
+                onSortChange={(next) => {
+                  setSort(next);
+                  setPage(1);
+                }}
+                maxHeight="100%"
+                className="min-h-0 flex-1"
+                emptyIcon={ShoppingBag}
+                emptyTitle="No orders found"
+                emptyDescription="Create a new order or adjust your filters."
+                emptyAction={
+                  <Button onClick={() => setShowCreate(true)}>
+                    <Plus className="w-4 h-4" /> New Order
+                  </Button>
+                }
+              />
+              <Pagination
+                className="border-t border-border px-2 pt-4 mt-4"
+                page={page}
+                pageCount={pageCount}
+                totalItems={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(next) => {
+                  setPageSize(next);
+                  setPage(1);
+                }}
+              />
+            </>
+          )}
         </div>
       </Card>
 

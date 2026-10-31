@@ -69,7 +69,7 @@ export const ApplyTemplateModal = ({
 
   return (
     <Modal open onClose={onClose} title={`Apply "${template.name}"`} size="sm">
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={(event) => void submit(event)} className="space-y-4">
         <FormErrorSummary messages={formErrorMessages} />
         <Input
           label="New category name"

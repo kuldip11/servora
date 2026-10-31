@@ -3,9 +3,10 @@ import {
   createOrdersApi,
   type OrdersListFilters,
   type PaginatedResult,
+  CancellationReasonDto as CancellationReason,
+  OrderDto as Order,
 } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import type { CancellationReason, Order } from "@pos/types";
 import {
   addOrderItemsSchema,
   updateOrderStatusSchema,

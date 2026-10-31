@@ -20,16 +20,15 @@ import {
 import { OrganizationMenuPanel } from "@/features/menu/components/organization-management/OrganizationMenuPanel";
 import { OrganizationPriceRulesPanel } from "@/features/menu/components/organization-management/OrganizationPriceRulesPanel";
 import { OrganizationLoyaltyPanel } from "@/features/menu/components/organization-management/OrganizationLoyaltyPanel";
-import type {
-  OrgMenu,
-  OrganizationSummary,
-} from "@/features/menu/components/organization-management/types";
 
 export const OrganizationManagementSection = () => {
   const { has } = usePermissions();
   const canManage = has("organization:manage");
   const organizationsQuery = useManagedOrganizations(canManage);
-  const organizations = organizationsQuery.data ?? [];
+  const organizations = useMemo(
+    () => organizationsQuery.data ?? [],
+    [organizationsQuery.data],
+  );
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const organizationId = selectedOrgId || organizations[0]?.id || "";
   const organization = useMemo(

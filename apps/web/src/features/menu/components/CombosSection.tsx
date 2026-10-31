@@ -49,7 +49,10 @@ export const CombosSection = () => {
   >(null);
   const validationVisibility = useFormValidationVisibility();
   const categoriesQuery = useMenuCategories();
-  const categories = categoriesQuery.data ?? [];
+  const categories = useMemo(
+    () => categoriesQuery.data ?? [],
+    [categoriesQuery.data],
+  );
 
   const itemChoices = useMemo(
     () =>

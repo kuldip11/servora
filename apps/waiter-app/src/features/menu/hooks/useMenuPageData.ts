@@ -5,6 +5,9 @@ import {
   createAuthApi,
   createCustomersApi,
   createMenuApi,
+  type ActiveMenuDto,
+  type MenuPriceRuleDto,
+  type MenuPromotionDto,
 } from "@pos/api-client";
 import type { OrderableMenuItem, Tenant } from "@pos/types";
 
@@ -12,21 +15,14 @@ import type { WaiterCombo, WaiterComboMenuItem } from "@/features/menu/combo";
 import { ALL_ORDER_TYPES } from "@/features/menu/constants";
 import { useCustomerSearch } from "@/features/menu/hooks/useCustomerSearch";
 import type { WaiterOrderType } from "@/features/menu/hooks/useOrderDraft";
-import { useMenuCategories } from "@/features/menu";
+import { useMenuCategories, useTables } from "@/features/menu";
 import { useMyBranch } from "@/features/menu/hooks/useMyBranch";
-import { useTables } from "@/features/menu";
 import type { WaiterMenuCategory } from "@/features/menu/api/menu";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { apiClient } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 import { menuKeys } from "@/features/menu/query/menu.keys";
 import { getWaiterQueryScope } from "@/shared/lib/query-scope";
-
-type ActiveMenu = {
-  id: string;
-  name: string;
-  memberships: Array<{ menuItemId: string }>;
-};
 
 type Params = {
   isAddingToExisting: boolean;
@@ -61,12 +57,14 @@ export const useMenuPageData = ({
   const scope = getWaiterQueryScope();
   const categoriesQuery = useMenuCategories();
   const { data: categories, isLoading: menuLoading } = categoriesQuery;
-  const activeMenusQuery = useQuery<ActiveMenu[]>({
+  const activeMenusQuery = useQuery<ActiveMenuDto[]>({
     queryKey: menuKeys.activeMenus(scope, orderType),
-    queryFn: ({ signal }) =>
-      menuApi.listActiveMenus<ActiveMenu>(orderType, signal),
+    queryFn: ({ signal }) => menuApi.listActiveMenus(orderType, signal),
   });
-  const activeMenus = activeMenusQuery.data ?? [];
+  const activeMenus = useMemo(
+    () => activeMenusQuery.data ?? [],
+    [activeMenusQuery.data],
+  );
 
   useEffect(() => {
     if (!activeMenusQuery.data) return;
@@ -116,47 +114,21 @@ export const useMenuPageData = ({
 
   const combosQuery = useQuery<WaiterCombo[]>({
     queryKey: menuKeys.combos(scope),
-    queryFn: ({ signal }) => menuApi.listCombos<WaiterCombo>(signal),
+    queryFn: ({ signal }) => menuApi.listCombos(signal),
     enabled: !isAddingToExisting,
   });
-  const promotionsQuery = useQuery<
-    Array<{
-      id: string;
-      name: string;
-      couponCode: string | null;
-      isActive: boolean;
-    }>
-  >({
+  const promotionsQuery = useQuery<MenuPromotionDto[]>({
     queryKey: menuKeys.promotions(scope),
-    queryFn: ({ signal }) =>
-      menuApi.listPromotions<{
-        id: string;
-        name: string;
-        couponCode: string | null;
-        isActive: boolean;
-      }>(signal),
+    queryFn: ({ signal }) => menuApi.listPromotions(signal),
   });
   const customerGroupsQuery = useQuery<Array<{ id: string; name: string }>>({
     queryKey: menuKeys.customerGroups(scope),
     queryFn: ({ signal }) => customersApi.listGroups(signal),
     enabled: !isAddingToExisting,
   });
-  const priceRulesQuery = useQuery<
-    Array<{
-      id: string;
-      isPerCover?: boolean;
-      coverTier?: "ADULT" | "CHILD" | null;
-      price: string | number | null;
-    }>
-  >({
+  const priceRulesQuery = useQuery<MenuPriceRuleDto[]>({
     queryKey: menuKeys.priceRules(scope),
-    queryFn: ({ signal }) =>
-      menuApi.listPriceRules<{
-        id: string;
-        isPerCover?: boolean;
-        coverTier?: "ADULT" | "CHILD" | null;
-        price: string | number | null;
-      }>(signal),
+    queryFn: ({ signal }) => menuApi.listPriceRules(signal),
     enabled: !isAddingToExisting,
   });
 
@@ -175,9 +147,13 @@ export const useMenuPageData = ({
 
   const branchQuery = useMyBranch();
   const myBranch = branchQuery.data;
-  const availableOrderTypes = myBranch
-    ? ALL_ORDER_TYPES.filter((type) => myBranch[type.capabilityKey])
-    : [];
+  const availableOrderTypes = useMemo(
+    () =>
+      myBranch
+        ? ALL_ORDER_TYPES.filter((type) => myBranch[type.capabilityKey])
+        : [],
+    [myBranch],
+  );
   const tablesEnabled = myBranch?.tablesEnabled === true;
 
   useEffect(() => {
@@ -193,14 +169,16 @@ export const useMenuPageData = ({
   const customerSearchQuery = useCustomerSearch(customerSearch);
 
   useRealtimeEvent("table.updated", () => {
-    queryClient.invalidateQueries({ queryKey: menuKeys.tables(scope) });
+    void queryClient.invalidateQueries({ queryKey: menuKeys.tables(scope) });
   });
   useRealtimeEvent("menu.availability.updated", () => {
-    queryClient.invalidateQueries({ queryKey: menuKeys.categories(scope) });
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
+      queryKey: menuKeys.categories(scope),
+    });
+    void queryClient.invalidateQueries({
       queryKey: [...menuKeys.all(scope), "active"],
     });
-    queryClient.invalidateQueries({ queryKey: menuKeys.combos(scope) });
+    void queryClient.invalidateQueries({ queryKey: menuKeys.combos(scope) });
   });
 
   useEffect(() => {

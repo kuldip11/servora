@@ -1,14 +1,22 @@
+import type { AuditLogResponse, MenuChangeEventResponse } from "@pos/contracts";
 import { getDomainData, type DomainHttpClient } from "./shared";
+
+export type AuditEntryDto = AuditLogResponse;
+export type MenuHistoryEntryDto = MenuChangeEventResponse;
 
 export const createAuditApi = (client: DomainHttpClient) => {
   return {
-    list<T>(params: Record<string, string | number | undefined>): Promise<T> {
-      return getDomainData<T>(client, "/audit", { params });
+    list(
+      params: Record<string, string | number | undefined>,
+    ): Promise<AuditEntryDto[]> {
+      return getDomainData<AuditEntryDto[]>(client, "/audit", { params });
     },
-    menuHistory<T>(
+    menuHistory(
       filters: Record<string, string | number | undefined> = {},
-    ): Promise<T> {
-      return getDomainData<T>(client, "/menu/history", { params: filters });
+    ): Promise<MenuHistoryEntryDto[]> {
+      return getDomainData<MenuHistoryEntryDto[]>(client, "/menu/history", {
+        params: filters,
+      });
     },
   };
 };

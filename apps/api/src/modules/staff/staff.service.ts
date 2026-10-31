@@ -165,17 +165,16 @@ export const staffService = {
     if (!membership) throw staffNotFound(id);
     canManageTarget(auth, membership);
 
-    const profile: {
+    const globalProfile: {
       firstName?: string;
       lastName?: string;
-      status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
     } = {};
-    if (input.firstName !== undefined) profile.firstName = input.firstName;
-    if (input.lastName !== undefined) profile.lastName = input.lastName;
-    if (input.status !== undefined) profile.status = input.status;
+    if (input.firstName !== undefined)
+      globalProfile.firstName = input.firstName;
+    if (input.lastName !== undefined) globalProfile.lastName = input.lastName;
     if (input.firstName !== undefined || input.lastName !== undefined) {
       requirePermission(auth, "staff:update");
-      await staffRepository.updateUser(auth.tenantId, id, profile);
+      await staffRepository.updateGlobalUserProfile(id, globalProfile);
     }
 
     if (input.status !== undefined) {

@@ -1,17 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createCustomersApi, extractApiError } from "@pos/api-client";
+import {
+  createCustomersApi,
+  extractApiError,
+  type CustomerRequestDto,
+} from "@pos/api-client";
 import { toast } from "@pos/ui";
 import { apiClient } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
-export interface WaiterCustomerRequest {
-  id: string;
-  tableId: string;
-  orderId: string | null;
-  type: string;
-  status: string;
-}
+export type WaiterCustomerRequest = CustomerRequestDto;
 
 export const customerRequestKeys = {
   all: (scope: ReturnType<typeof getWaiterQueryScope>) =>
@@ -27,8 +25,8 @@ export const useCustomerRequests = () => {
     queryKey,
     queryFn: (context) =>
       context?.signal
-        ? customersApi.listRequests<WaiterCustomerRequest>(context.signal)
-        : customersApi.listRequests<WaiterCustomerRequest>(),
+        ? customersApi.listRequests(context.signal)
+        : customersApi.listRequests(),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
@@ -39,16 +37,7 @@ export const useCustomerRequests = () => {
       (current = []) =>
         current.some((request) => request.id === event.payload.id)
           ? current
-          : [
-              {
-                id: event.payload.id,
-                tableId: event.payload.tableId,
-                orderId: event.payload.orderId,
-                type: event.payload.type,
-                status: event.payload.status,
-              },
-              ...current,
-            ],
+          : [event.payload, ...current],
     );
   });
 

@@ -17,8 +17,8 @@ export const useUpdateInventoryStock = () => {
       input: StockUpdateInput;
     }) => inventoryService.updateStock(itemId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
+      void queryClient.invalidateQueries({
         queryKey: inventoryKeys.transactions(),
       });
       notifySuccess("Stock updated");

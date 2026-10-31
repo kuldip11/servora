@@ -27,7 +27,7 @@ vi.mock("../../../db/schema", () => ({
   membershipRoles,
   users,
 }));
-const { findMany, findFirst, query, transaction, db } = vi.hoisted(() => {
+const { findMany, findFirst, db } = vi.hoisted(() => {
   const findMany = vi.fn(),
     findFirst = vi.fn();
   const query = {
@@ -118,7 +118,9 @@ describe("staff repository", () => {
   });
   it("maps user and membership status updates through the database boundary", async () => {
     expect(
-      await staffRepository.updateUser("t1", "u1", { firstName: "New" }),
+      await staffRepository.updateGlobalUserProfile("u1", {
+        firstName: "New",
+      }),
     ).toEqual({ id: "u1" });
     expect(db.update).toHaveBeenCalled();
   });

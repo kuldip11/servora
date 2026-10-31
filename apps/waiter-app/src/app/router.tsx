@@ -13,25 +13,27 @@ import { AuthBoundary } from "./AuthBoundary";
 import { RouteFallback } from "./RouteFallback";
 
 const HomePage = lazy(() =>
-  import("@/features/home/pages/HomePage").then((module) => ({
+  import("@/features/home/public/HomePage").then((module) => ({
     default: module.HomePage,
   })),
 );
 const OrdersPage = lazy(() =>
-  import("@/features/orders/pages/OrdersPage").then((module) => ({
+  import("@/features/orders/public/OrdersPage").then((module) => ({
     default: module.OrdersPage,
   })),
 );
 const MenuPage = lazy(() =>
-  import("@/features/menu").then((module) => ({ default: module.MenuPage })),
+  import("@/features/menu/public/MenuPage").then((module) => ({
+    default: module.MenuPage,
+  })),
 );
 const OrderDetailPage = lazy(() =>
-  import("@/features/orders/pages/OrderDetailPage").then((module) => ({
+  import("@/features/orders/public/OrderDetailPage").then((module) => ({
     default: module.OrderDetailPage,
   })),
 );
 const ProfilePage = lazy(() =>
-  import("@/features/profile/pages/ProfilePage").then((module) => ({
+  import("@/features/profile/public/ProfilePage").then((module) => ({
     default: module.ProfilePage,
   })),
 );
@@ -47,16 +49,16 @@ const rootRoute = createRootRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: () => {
+  component: function HomeRouteComponent() {
     const navigate = useNavigate();
     return (
       <AppLayout>
         {withSuspense(
           <HomePage
-            onNewOrder={() => navigate({ to: "/menu" })}
-            onViewOrders={() => navigate({ to: "/orders" })}
+            onNewOrder={() => void navigate({ to: "/menu" })}
+            onViewOrders={() => void navigate({ to: "/orders" })}
             onSelectOrder={(orderId) =>
-              navigate({ to: "/orders/$orderId", params: { orderId } })
+              void navigate({ to: "/orders/$orderId", params: { orderId } })
             }
           />,
         )}
@@ -68,15 +70,15 @@ const homeRoute = createRoute({
 const menuRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/menu",
-  component: () => {
+  component: function MenuRouteComponent() {
     const navigate = useNavigate();
     return (
       <AppLayout>
         {withSuspense(
           <MenuPage
-            onBack={() => navigate({ to: "/" })}
+            onBack={() => void navigate({ to: "/" })}
             onOrderPlaced={(orderId) =>
-              navigate({
+              void navigate({
                 to: "/orders/$orderId",
                 params: { orderId },
                 replace: true,
@@ -92,14 +94,14 @@ const menuRoute = createRoute({
 const ordersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/orders",
-  component: () => {
+  component: function OrdersRouteComponent() {
     const navigate = useNavigate();
     return (
       <AppLayout>
         {withSuspense(
           <OrdersPage
             onSelectOrder={(orderId) =>
-              navigate({ to: "/orders/$orderId", params: { orderId } })
+              void navigate({ to: "/orders/$orderId", params: { orderId } })
             }
           />,
         )}
@@ -111,15 +113,15 @@ const ordersRoute = createRoute({
 const orderDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/orders/$orderId",
-  component: () => {
+  component: function OrderDetailRouteComponent() {
     const navigate = useNavigate();
     const { orderId } = orderDetailRoute.useParams();
     return withSuspense(
       <OrderDetailPage
         orderId={orderId}
-        onBack={() => navigate({ to: "/orders" })}
+        onBack={() => void navigate({ to: "/orders" })}
         onAddItems={(id) =>
-          navigate({ to: "/orders/$orderId/add", params: { orderId: id } })
+          void navigate({ to: "/orders/$orderId/add", params: { orderId: id } })
         }
       />,
     );
@@ -129,15 +131,17 @@ const orderDetailRoute = createRoute({
 const addItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/orders/$orderId/add",
-  component: () => {
+  component: function AddItemsRouteComponent() {
     const navigate = useNavigate();
     const { orderId } = addItemsRoute.useParams();
     return withSuspense(
       <MenuPage
         existingOrderId={orderId}
-        onBack={() => navigate({ to: "/orders/$orderId", params: { orderId } })}
+        onBack={() =>
+          void navigate({ to: "/orders/$orderId", params: { orderId } })
+        }
         onOrderPlaced={(id) =>
-          navigate({
+          void navigate({
             to: "/orders/$orderId",
             params: { orderId: id },
             replace: true,
@@ -151,20 +155,20 @@ const addItemsRoute = createRoute({
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/profile",
-  component: () => {
+  component: function ProfileRouteComponent() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     return withSuspense(
       <ProfilePage
         waiterName={getWaiterName()}
-        onBack={() => navigate({ to: "/" })}
+        onBack={() => void navigate({ to: "/" })}
         onLogout={async () => {
           try {
             await logoutSession();
           } finally {
             await clearWaiterQueries(queryClient);
             logout();
-            navigate({ to: "/" });
+            void navigate({ to: "/" });
             window.location.reload();
           }
         }}

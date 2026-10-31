@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,7 +58,7 @@ vi.mock("@tanstack/react-query", () => ({
     reset: vi.fn(),
     mutate: (variables: any, options?: any) => {
       const result = config.mutationFn(variables);
-      Promise.resolve(result).then((value) => {
+      void Promise.resolve(result).then((value) => {
         config.onSuccess?.(value);
         options?.onSuccess?.(value);
       });
@@ -141,7 +140,7 @@ vi.mock("@/features/menu", () => ({
     ],
   }),
 }));
-vi.mock("@/features/auth/storage", () => ({ hasPermission: () => true }));
+vi.mock("@/shared/auth/storage", () => ({ hasPermission: () => true }));
 vi.mock("@pos/api-client", () => ({
   extractApiError: (e: any) => String(e?.message ?? e),
   toApiClientError: (e: any) => ({

@@ -13,15 +13,10 @@ import { Pagination, type PaginationProps } from "./Pagination";
 import { DataGridToolbar } from "./DataGridToolbar";
 import { DataGridTable } from "./DataGridTable";
 import {
-  ALIGN_CLASSES,
-  CELL_PADDING,
-  CLICKABLE_ROW_FOCUS_CLASSES,
-  clickableRowKeyDown,
   type Column,
   computeStickyOffsets,
   matchesGlobalFilter,
   nextSortState,
-  SORT_BUTTON_FOCUS_CLASSES,
   sortRows,
   type SortState,
   type TableDensity,

@@ -1,19 +1,14 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invalidateQueries, api, customers } = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
+const { api } = vi.hoisted(() => ({
   api: {
     createLoyaltyTier: vi.fn(),
     removeLoyaltyTier: vi.fn(),
     listLoyaltyTiers: vi.fn(),
     createHappyHourRule: vi.fn(),
   },
-  customers: { list: vi.fn(), create: vi.fn(), assignTier: vi.fn() },
 }));
-let queryData: unknown[] = [];
-
 vi.mock("@pos/api-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiError: (error: any) =>
@@ -82,7 +77,6 @@ import { HappyHourSection } from "../HappyHourSection";
 describe("HappyHourSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    queryData = [[], []];
     api.createHappyHourRule.mockResolvedValue([{}, {}]);
   });
 

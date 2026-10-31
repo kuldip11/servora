@@ -6,7 +6,7 @@ import {
   StatusBadge,
   type Column,
 } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { formatCurrency, formatTime } from "@/shared/utils/format";
 import {
   getOrderStatusColor,

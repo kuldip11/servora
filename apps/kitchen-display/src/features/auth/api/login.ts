@@ -1,9 +1,12 @@
-import { createAuthApi, type AuthResponse } from "@pos/api-client";
+import {
+  createAuthApi,
+  type AuthResponse,
+  type AvailableMembershipDto as AvailableMembership,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import { saveTokens } from "@/features/auth/storage";
+import { saveTokens } from "@/shared/auth/storage";
 
 const authApi = createAuthApi(apiClient);
-import type { AvailableMembership } from "@pos/types";
 export const login = async (
   email: string,
   password: string,

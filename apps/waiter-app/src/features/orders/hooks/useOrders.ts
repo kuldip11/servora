@@ -4,8 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { Order } from "@pos/types";
-import type { OrdersListFilters } from "@pos/api-client";
+import type { OrderDto as Order, OrdersListFilters } from "@pos/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 import { fetchOrders } from "@/features/orders/api/orders";
@@ -13,10 +12,7 @@ import {
   orderKeys,
   ORDERS_POLL_INTERVAL_MS,
 } from "@/features/orders/constants";
-import {
-  mergeRealtimeTicket,
-  shouldApplyRealtime,
-} from "@/features/orders/utils/realtime";
+import { mergeRealtimeTicket } from "@/features/orders/utils/realtime";
 
 export const useOrders = (filters: OrdersListFilters) => {
   const qc = useQueryClient();
@@ -30,15 +26,13 @@ export const useOrders = (filters: OrdersListFilters) => {
     refetchInterval: ORDERS_POLL_INTERVAL_MS,
   });
 
-  const upsert = (order: Order) => {
+  const refreshOrder = (order: { id: string }) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
-    qc.setQueryData<Order>(orderKeys.detail(scope, order.id), (current) =>
-      shouldApplyRealtime(current, order) ? order : current,
-    );
+    void qc.invalidateQueries({ queryKey: orderKeys.detail(scope, order.id) });
   };
 
-  useRealtimeEvent("order.created", (event) => upsert(event.payload));
-  useRealtimeEvent("order.updated", (event) => upsert(event.payload));
+  useRealtimeEvent("order.created", (event) => refreshOrder(event.payload));
+  useRealtimeEvent("order.updated", (event) => refreshOrder(event.payload));
   useRealtimeEvent("kitchen.ticket.updated", (event) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
     qc.setQueryData<Order>(
@@ -72,14 +66,12 @@ export const useOrdersPage = (filters: OrdersListFilters) => {
     placeholderData: keepPreviousData,
   });
 
-  const sync = (order: Order) => {
+  const refreshOrder = (order: { id: string }) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
-    qc.setQueryData<Order>(orderKeys.detail(scope, order.id), (current) =>
-      shouldApplyRealtime(current, order) ? order : current,
-    );
+    void qc.invalidateQueries({ queryKey: orderKeys.detail(scope, order.id) });
   };
-  useRealtimeEvent("order.created", (event) => sync(event.payload));
-  useRealtimeEvent("order.updated", (event) => sync(event.payload));
+  useRealtimeEvent("order.created", (event) => refreshOrder(event.payload));
+  useRealtimeEvent("order.updated", (event) => refreshOrder(event.payload));
   useRealtimeEvent("kitchen.ticket.updated", (event) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
     qc.setQueryData<Order>(
@@ -120,14 +112,12 @@ export const useInfiniteOrders = (filters: Omit<OrdersListFilters, "page">) => {
     refetchInterval: ORDERS_POLL_INTERVAL_MS,
   });
 
-  const sync = (order: Order) => {
+  const refreshOrder = (order: { id: string }) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
-    qc.setQueryData<Order>(orderKeys.detail(scope, order.id), (current) =>
-      shouldApplyRealtime(current, order) ? order : current,
-    );
+    void qc.invalidateQueries({ queryKey: orderKeys.detail(scope, order.id) });
   };
-  useRealtimeEvent("order.created", (event) => sync(event.payload));
-  useRealtimeEvent("order.updated", (event) => sync(event.payload));
+  useRealtimeEvent("order.created", (event) => refreshOrder(event.payload));
+  useRealtimeEvent("order.updated", (event) => refreshOrder(event.payload));
   useRealtimeEvent("kitchen.ticket.updated", (event) => {
     void qc.invalidateQueries({ queryKey: orderKeys.lists(scope) });
     qc.setQueryData<Order>(

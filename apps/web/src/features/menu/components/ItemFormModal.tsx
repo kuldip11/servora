@@ -81,39 +81,12 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
     showAdvanced,
     variants,
     imageUrls,
-    newImageUrl,
-    displayMode,
     taxMode,
-    effectiveFrom,
-    pricingMode,
-    weightUnit,
-    openPriceMin,
-    openPriceMax,
-    supportsZones,
-    zonePricingRule,
-    trackByCount,
-    manualStockCount,
     selectedGroupIds,
     selectedTagIds,
     selectedAllergenIds,
     setShowAdvanced,
-    setVariants,
-    setImageUrls,
-    setNewImageUrl,
-    setDisplayMode,
     setTaxMode,
-    setEffectiveFrom,
-    setPricingMode,
-    setWeightUnit,
-    setOpenPriceMin,
-    setOpenPriceMax,
-    setSupportsZones,
-    setZonePricingRule,
-    setTrackByCount,
-    setManualStockCount,
-    setSelectedGroupIds,
-    setSelectedTagIds,
-    setSelectedAllergenIds,
   } = workflow;
   const groupsQuery = useModifierGroups();
   const tagsQuery = useMenuTags();
@@ -227,10 +200,12 @@ export const ItemFormModal = ({ categoryId, item, onClose }: Props) => {
       <form
         className="space-y-5"
         noValidate
-        onSubmit={handleSubmit((values) => {
-          formApiErrors.clearFormErrors();
-          handleSave(values);
-        })}
+        onSubmit={(event) =>
+          void handleSubmit((values) => {
+            formApiErrors.clearFormErrors();
+            handleSave(values);
+          })(event)
+        }
       >
         <FormErrorSummary messages={formApiErrors.formErrorMessages} />
         <ItemCoreFields

@@ -1,5 +1,9 @@
 import { CheckCircle2 } from "lucide-react";
-import type { KitchenTicket, KitchenTicketStatus } from "@pos/types";
+import type {
+  KitchenTicketDto as KitchenTicket,
+  KitchenTicketStatus,
+  KitchenTicketUpdateStatus,
+} from "@pos/api-client";
 import { EmptyState, Spinner } from "@pos/ui";
 import { TicketCard } from "./TicketCard";
 
@@ -10,7 +14,7 @@ interface KitchenStatusColumnProps {
   tickets: KitchenTicket[];
   isLoading: boolean;
   isTicketUpdating: (ticketId: string) => boolean;
-  onUpdateStatus: (ticketId: string, status: KitchenTicketStatus) => void;
+  onUpdateStatus: (ticketId: string, status: KitchenTicketUpdateStatus) => void;
 }
 
 export const KitchenStatusColumn = ({

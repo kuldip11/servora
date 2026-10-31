@@ -7,9 +7,15 @@ import {
   loadPersistedCart,
   restoreCart,
   savePersistedCart,
+  clearPersistedOrderId,
+  clearPersistedSession,
+  loadPersistedOrderId,
+  loadPersistedSession,
+  savePersistedOrderId,
+  savePersistedSession,
 } from "./persistence";
 import type { CartLine } from "./pricing";
-import type { CustomerMenuItem } from "@/features/menu/api";
+import type { CustomerMenuItem } from "@/features/menu";
 
 const item: CustomerMenuItem = {
   id: "item-1",
@@ -127,15 +133,6 @@ describe("customer cart persistence", () => {
     expect(loadPersistedCart(scope)).toEqual([]);
   });
 });
-
-import {
-  clearPersistedOrderId,
-  clearPersistedSession,
-  loadPersistedOrderId,
-  loadPersistedSession,
-  savePersistedOrderId,
-  savePersistedSession,
-} from "./persistence";
 
 describe("customer session and order persistence", () => {
   beforeEach(() => localStorage.clear());

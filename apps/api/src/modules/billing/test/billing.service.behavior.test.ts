@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+}));
+vi.mock("@/modules/tables/table.mapper", () => ({
+  toTableResponse: (value: unknown) => value,
+}));
 import type { AuthContext } from "@/core/auth";
 
 const mocks = vi.hoisted(() => ({
@@ -40,6 +47,7 @@ vi.mock("@/modules/orders/order.repository", () => ({
 }));
 vi.mock("../billing-authorization", () => ({
   assertBillingResourceAccess: mocks.assertAccess,
+  requireBillingWriteContext: vi.fn(),
   requireBillingPermission: mocks.requirePermission,
 }));
 vi.mock("../billing-split", () => ({

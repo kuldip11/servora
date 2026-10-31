@@ -15,7 +15,7 @@ export const useCommitMenuImport = () => {
   return useMutation({
     mutationFn: (file: File) => menuImportService.commit(file),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Imported: ${data.inserted} new, ${data.updated} updated`);
     },
     onError: (err) => notifyError(err, "Import failed"),

@@ -8,7 +8,7 @@ export const useAddCategory = () => {
   return useMutation({
     mutationFn: (name: string) => menuItemsService.addCategory(name),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess("Category added");
     },
   });

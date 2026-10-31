@@ -10,7 +10,7 @@ vi.mock("@pos/api-client", () => ({
 }));
 
 import { apiClient } from "@/shared/lib/api-client";
-import { getToken, saveTokens } from "@/features/auth/storage";
+import { getToken, saveTokens } from "@/shared/auth/storage";
 
 describe("api client", () => {
   beforeEach(() => sessionStorage.clear());

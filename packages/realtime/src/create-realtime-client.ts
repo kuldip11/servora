@@ -22,6 +22,7 @@ export function createRealtimeClient<E extends { type: string }>(
     getTenantId,
     getBranchId,
     reconnectDelayMs = 3000,
+    validateEvent,
   } = config;
 
   let ws: WebSocket | null = null;
@@ -46,10 +47,12 @@ export function createRealtimeClient<E extends { type: string }>(
 
     const tenantId = getTenantId?.() ?? null;
     const branchId = getBranchId?.() ?? null;
-    ws = new WebSocket(url);
+    const socket = new WebSocket(url);
+    ws = socket;
 
-    ws.onopen = () => {
-      ws?.send(
+    socket.onopen = () => {
+      if (ws !== socket) return;
+      socket.send(
         JSON.stringify({
           type: "auth",
           token,
@@ -59,7 +62,8 @@ export function createRealtimeClient<E extends { type: string }>(
       );
     };
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
+      if (ws !== socket) return;
       try {
         const parsed: unknown = JSON.parse(event.data);
         if (!isTypedMessage(parsed)) return;
@@ -67,13 +71,15 @@ export function createRealtimeClient<E extends { type: string }>(
           setConnected(true);
           return;
         }
+        if (validateEvent && !validateEvent(parsed)) return;
         handlers.forEach((handler) => handler(parsed as E));
       } catch {
         // Ignore malformed/untrusted realtime frames; the connection remains usable.
       }
     };
 
-    ws.onclose = () => {
+    socket.onclose = () => {
+      if (ws !== socket) return;
       ws = null;
       setConnected(false);
 
@@ -86,14 +92,23 @@ export function createRealtimeClient<E extends { type: string }>(
       }, reconnectDelayMs);
     };
 
-    ws.onerror = () => ws?.close();
+    socket.onerror = () => {
+      if (ws === socket) socket.close();
+    };
   }
 
   function disconnect() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = null;
-    ws?.close();
+    const previous = ws;
     ws = null;
+    if (previous) {
+      previous.onopen = null;
+      previous.onmessage = null;
+      previous.onclose = null;
+      previous.onerror = null;
+      previous.close();
+    }
     setConnected(false);
   }
 
@@ -110,11 +125,9 @@ export function createRealtimeClient<E extends { type: string }>(
   }
 
   function reconnect() {
-    if (ws) ws.close();
-    else {
-      const token = getAccessToken();
-      if (token) connect(token);
-    }
+    disconnect();
+    const token = getAccessToken();
+    if (token && handlers.size > 0) connect(token);
   }
 
   function onConnectionChange(listener: (connected: boolean) => void) {

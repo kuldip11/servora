@@ -35,9 +35,9 @@ export const useAddOrderItems = () => {
         ...(couponCode ? { couponCode } : {}),
         ...(promotionIds?.length ? { promotionIds } : {}),
       }),
-    onSuccess: (data, variables) => {
-      qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
-      qc.invalidateQueries({
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      void qc.invalidateQueries({
         queryKey: orderKeys.detail(scope, variables.orderId),
       });
       toast({ title: "Sent to kitchen!", tone: "success" });

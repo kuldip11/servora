@@ -75,6 +75,28 @@ export const FranchiseModal = ({
   const archiveMutation = useArchiveFranchise(franchise?.id ?? "");
   const values = form.watch();
   const e = form.formState.errors;
+  const finishSave = (message: string) => {
+    notifySuccess(message);
+    void onSaved()
+      .then(onClose)
+      .catch((error: unknown) =>
+        notifyError(error, "Could not refresh the business structure"),
+      );
+  };
+  const submit = form.handleSubmit((values) => {
+    clearFormErrors();
+    mutation.mutate(values, {
+      onSuccess: () =>
+        finishSave(franchise ? "Franchise updated" : "Franchise created"),
+      onError: (error) =>
+        handleApiError(
+          error,
+          form.setError,
+          franchiseFieldPaths,
+          "Could not save franchise",
+        ),
+    });
+  });
   return (
     <Modal
       open={open}
@@ -84,25 +106,7 @@ export const FranchiseModal = ({
     >
       <form
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
-        onSubmit={form.handleSubmit((values) => {
-          clearFormErrors();
-          mutation.mutate(values, {
-            onSuccess: async () => {
-              notifySuccess(
-                franchise ? "Franchise updated" : "Franchise created",
-              );
-              await onSaved();
-              onClose();
-            },
-            onError: (error) =>
-              handleApiError(
-                error,
-                form.setError,
-                franchiseFieldPaths,
-                "Could not save franchise",
-              ),
-          });
-        })}
+        onSubmit={(event) => void submit(event)}
       >
         {!franchise && (
           <Select
@@ -306,11 +310,7 @@ export const FranchiseModal = ({
               onClick={() =>
                 window.confirm("Archive this franchise?") &&
                 archiveMutation.mutate(undefined, {
-                  onSuccess: async () => {
-                    notifySuccess("Franchise archived");
-                    await onSaved();
-                    onClose();
-                  },
+                  onSuccess: () => finishSave("Franchise archived"),
                   onError: (error) =>
                     notifyError(error, "Could not archive franchise"),
                 })

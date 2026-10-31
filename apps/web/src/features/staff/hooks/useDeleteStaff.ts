@@ -8,7 +8,7 @@ export const useDeleteStaff = () => {
   return useMutation({
     mutationFn: (id: string) => staffService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: staffKeys.list() });
       notifySuccess("Staff member removed");
     },
     onError: (err) => notifyError(err, "Failed to remove staff"),

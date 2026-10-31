@@ -16,7 +16,7 @@ export const useUpdateTicketStatus = () => {
     mutationFn: ({ ticketId, status }: { ticketId: string; status: string }) =>
       updateTicketStatus(ticketId, status),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      void qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
       toast({ title: "Ticket updated", tone: "success" });
     },
     onError: (err: unknown) =>

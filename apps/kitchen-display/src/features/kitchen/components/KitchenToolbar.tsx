@@ -1,5 +1,5 @@
 import { LogOut, Palette, RefreshCw, Wifi, WifiOff } from "lucide-react";
-import type { KitchenStation } from "@pos/types";
+import type { KitchenStationDto as KitchenStation } from "@pos/api-client";
 import { IconButton, Popover, Select, ThemeSwitcher } from "@pos/ui";
 
 interface KitchenToolbarProps {

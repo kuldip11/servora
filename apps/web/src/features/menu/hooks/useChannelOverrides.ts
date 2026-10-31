@@ -10,8 +10,9 @@ export const useChannelOverrides = (itemId: string) =>
 export const useSaveChannelOverride = (itemId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Record<string, unknown>) =>
-      menuChannelOverridesService.save(itemId, input),
+    mutationFn: (
+      input: Parameters<typeof menuChannelOverridesService.save>[1],
+    ) => menuChannelOverridesService.save(itemId, input),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: menuKeys.channelOverrides(itemId),

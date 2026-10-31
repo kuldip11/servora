@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
 import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 import { fetchOrder } from "@/features/orders/api/orders";
@@ -7,10 +7,7 @@ import {
   orderKeys,
   ORDER_DETAIL_POLL_INTERVAL_MS,
 } from "@/features/orders/constants";
-import {
-  mergeRealtimeTicket,
-  shouldApplyRealtime,
-} from "@/features/orders/utils/realtime";
+import { mergeRealtimeTicket } from "@/features/orders/utils/realtime";
 
 export const useOrder = (orderId: string | null) => {
   const qc = useQueryClient();
@@ -18,15 +15,11 @@ export const useOrder = (orderId: string | null) => {
 
   useRealtimeEvent("order.updated", (event) => {
     if (orderId && event.payload.id === orderId)
-      qc.setQueryData<Order>(orderKeys.detail(scope, orderId), (current) =>
-        shouldApplyRealtime(current, event.payload) ? event.payload : current,
-      );
+      void qc.invalidateQueries({ queryKey: orderKeys.detail(scope, orderId) });
   });
   useRealtimeEvent("order.created", (event) => {
     if (orderId && event.payload.id === orderId)
-      qc.setQueryData<Order>(orderKeys.detail(scope, orderId), (current) =>
-        shouldApplyRealtime(current, event.payload) ? event.payload : current,
-      );
+      void qc.invalidateQueries({ queryKey: orderKeys.detail(scope, orderId) });
   });
   useRealtimeEvent("kitchen.ticket.updated", (event) => {
     if (!orderId || event.payload.orderId !== orderId) return;

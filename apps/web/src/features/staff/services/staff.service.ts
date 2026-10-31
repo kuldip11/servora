@@ -8,6 +8,7 @@ import { apiClient } from "@/shared/lib/api-client";
 
 const staffApi = createStaffApi(apiClient);
 export type StaffRow = StaffRowDto;
+export type StaffStatus = StaffRowDto["status"];
 
 export interface StaffFormInput {
   firstName: string;
@@ -33,7 +34,7 @@ export const staffService = {
   },
   remove: staffApi.removeStaff,
   updateStatus: staffApi.updateStaffStatus,
-  update(id: string, input: UpdateStaffInput): Promise<void> {
-    return staffApi.updateStaff(id, input);
+  async update(id: string, input: UpdateStaffInput): Promise<void> {
+    await staffApi.updateStaff(id, input);
   },
 };

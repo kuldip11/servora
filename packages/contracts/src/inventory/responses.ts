@@ -142,3 +142,6 @@ export type WasteReasonResponse = Static<typeof wasteReasonSchema>;
 export type InventoryRecipeImpactResponse = Static<
   typeof inventoryRecipeImpactSchema
 >;
+export type InventoryStockUpdateResponse = Static<
+  typeof inventoryStockUpdateSchema
+>;

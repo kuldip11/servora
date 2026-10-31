@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { cancellationReasonKeys } from "@/features/orders";
-import { cancellationReasonsService } from "@/features/orders/services/cancellation-reasons.service";
+import {
+  cancellationReasonKeys,
+  cancellationReasonsService,
+} from "@/features/orders/public/cancellation-reasons";
 
 export type CancellationReasonAction =
   | { type: "create"; label: string }

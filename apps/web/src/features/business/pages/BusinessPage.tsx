@@ -82,7 +82,7 @@ export const BusinessPage = () => {
     if (!selectedEntity && data.organizations[0]) {
       setSelectedEntity({ type: "organization", id: data.organizations[0].id });
     }
-  }, [data.organizations, selectedOrganizationId]);
+  }, [data.organizations, selectedEntity, selectedOrganizationId]);
 
   useEffect(() => {
     if (!selectedEntity) return;
@@ -110,6 +110,13 @@ export const BusinessPage = () => {
     selectedEntity?.type === "branch"
       ? branches.find((item) => item.id === selectedEntity.id)
       : undefined;
+  const branchFranchise = data.franchises.find(
+    (item) =>
+      item.id ===
+      (selectedFranchise?.id ??
+        selectedBranch?.tenantId ??
+        activeMembership?.tenant.id),
+  );
 
   if (query.isLoading)
     return (
@@ -278,7 +285,7 @@ export const BusinessPage = () => {
       <BranchModal
         open={branchModal}
         branch={editingBranch}
-        currency={activeMembership?.tenant.defaultCurrency || "INR"}
+        currency={branchFranchise?.defaultCurrency || "INR"}
         onClose={() => {
           setBranchModal(false);
           setEditingBranch(null);

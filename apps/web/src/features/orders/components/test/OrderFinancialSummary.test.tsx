@@ -1,10 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 vi.mock("@pos/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@pos/ui")>()),
   Card: ({ children }: any) => <section>{children}</section>,
 }));
-import { vi } from "vitest";
 import { OrderFinancialSummary } from "../OrderFinancialSummary";
 const order = (over: any = {}) =>
   ({

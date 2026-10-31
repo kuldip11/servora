@@ -12,8 +12,19 @@ export const requireBillingPermission = (
   }
 };
 
+type BillingScope = {
+  branchId: string | null;
+  tenantWide?: boolean | undefined;
+};
+
+export const requireBillingWriteContext = (auth: BillingScope): void => {
+  if (!auth.tenantWide && !auth.branchId) {
+    throw new ForbiddenError("Billing branch access denied");
+  }
+};
+
 export const assertBillingResourceAccess = (
-  auth: AuthContext,
+  auth: BillingScope,
   resourceBranchId: string,
 ): void => {
   if (auth.tenantWide) {

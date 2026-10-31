@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Select } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { useWasteReasons } from "@/features/inventory/hooks/useWasteReasons";
 import {
   useCreateWasteReason,

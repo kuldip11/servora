@@ -2,14 +2,14 @@ import { expect, it, vi } from "vitest";
 const request = vi.hoisted(() => vi.fn());
 vi.mock("@/shared/api/client", () => ({ request }));
 import { createCustomerRequest } from "../api";
-it("creates requests with and without order", () => {
-  createCustomerRequest("s", "WATER");
+it("creates requests with and without order", async () => {
+  await createCustomerRequest("s", "WATER");
   expect(request).toHaveBeenLastCalledWith(
     "/api/customer/requests",
     { method: "POST", body: JSON.stringify({ type: "WATER" }) },
     "s",
   );
-  createCustomerRequest("s", "BILL", "o");
+  await createCustomerRequest("s", "BILL", "o");
   expect(request).toHaveBeenLastCalledWith(
     "/api/customer/requests",
     { method: "POST", body: JSON.stringify({ type: "BILL", orderId: "o" }) },

@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { CustomerOrder } from "@/api";
+import {
+  isCustomerRealtimeConnectedMessage,
+  isRealtimeEnvelope,
+} from "@pos/contracts";
 
 import {
   CUSTOMER_ORDER_INITIAL_RECONNECT_DELAY_MS,
@@ -16,6 +20,9 @@ export const useCustomerOrderRealtime = (
   const reconnectTimer = useRef<number | undefined>(undefined);
   const pingTimer = useRef<number | undefined>(undefined);
   const reconnectAttempt = useRef(0);
+
+  const handleOrder = useEffectEvent(onOrder);
+  const handleMenuAvailability = useEffectEvent(() => onMenuAvailability?.());
 
   useEffect(() => {
     if (!sessionToken) {
@@ -62,16 +69,15 @@ export const useCustomerOrderRealtime = (
       socket = new WebSocket(`${wsBase}/customer/events`);
 
       socket.onopen = () => {
+        if (stopped) return;
         socket?.send(JSON.stringify({ type: "auth", session: sessionToken }));
       };
 
       socket.onmessage = (event) => {
+        if (stopped) return;
         try {
-          const message = JSON.parse(event.data) as {
-            type?: string;
-            payload?: CustomerOrder & { id?: string };
-          };
-          if (message.type === "connected") {
+          const message: unknown = JSON.parse(event.data);
+          if (isCustomerRealtimeConnectedMessage(message)) {
             reconnectAttempt.current = 0;
             setLive(true);
             if (pingTimer.current !== undefined) {
@@ -80,14 +86,16 @@ export const useCustomerOrderRealtime = (
             pingTimer.current = window.setInterval(() => {
               if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
             }, 25_000);
+          } else if (!isRealtimeEnvelope(message)) {
+            return;
           } else if (
             message.type === "order.updated" &&
             orderId &&
-            message.payload?.id === orderId
+            message.payload.id === orderId
           ) {
-            onOrder(message.payload);
+            handleOrder(message.payload);
           } else if (message.type === "menu.availability.updated") {
-            onMenuAvailability?.();
+            handleMenuAvailability();
           }
         } catch {
           // Ignore malformed/untrusted realtime frames; HTTP state remains authoritative.
@@ -95,10 +103,12 @@ export const useCustomerOrderRealtime = (
       };
 
       socket.onerror = () => {
+        if (stopped) return;
         setLive(false);
       };
 
       socket.onclose = () => {
+        if (stopped) return;
         setLive(false);
         if (pingTimer.current !== undefined) {
           window.clearInterval(pingTimer.current);
@@ -116,7 +126,7 @@ export const useCustomerOrderRealtime = (
       socket?.close();
       setLive(false);
     };
-  }, [sessionToken, orderId, onOrder, onMenuAvailability]);
+  }, [sessionToken, orderId]);
 
   return live;
 };

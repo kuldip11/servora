@@ -1,14 +1,14 @@
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { FieldErrorText, Select } from "@pos/ui";
+import type { MenuItem } from "@pos/types";
 import type {
-  InventoryItem,
-  InventoryUnit,
-  MenuItem,
-  SubRecipe,
-} from "@pos/types";
+  InventoryItemDto as InventoryItem,
+  InventoryUnitDto,
+  SubRecipeDto,
+} from "@pos/api-client";
 import type { RecipeDraftRow } from "@/features/menu/helpers/recipe-form";
 
-const UNIT_OPTIONS: { value: InventoryUnit; label: string }[] = [
+const UNIT_OPTIONS: { value: InventoryUnitDto; label: string }[] = [
   { value: "KG", label: "kg" },
   { value: "GRAMS", label: "g" },
   { value: "LITERS", label: "L" },
@@ -28,7 +28,7 @@ type Props = {
   index: number;
   item: MenuItem;
   inventoryItems: InventoryItem[];
-  subRecipes: SubRecipe[];
+  subRecipes: SubRecipeDto[];
   modifierOptions: ModifierOption[];
   quantityError?: string | undefined;
   yieldError?: string | undefined;
@@ -155,7 +155,7 @@ export const RecipeRowEditor = ({
           aria-label={`Unit for recipe row ${index + 1}`}
           required
           value={row.unit}
-          onChange={(value) => onUpdate({ unit: value as InventoryUnit })}
+          onChange={(value) => onUpdate({ unit: value as InventoryUnitDto })}
           options={UNIT_OPTIONS}
         />
         <button

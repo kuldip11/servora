@@ -31,5 +31,16 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     }
-  }
+  },
+  "globalEnv": [
+    "NODE_ENV",
+    "CI",
+    "SERVORA_SEO_TEST_BUILD",
+    "VERCEL_ENV",
+    "RENDER",
+    "SERVORA_VALIDATE_PRODUCTION_ENV",
+    "NEXT_PUBLIC_*",
+    "VITE_PUBLIC_APP_URL",
+    "LEAD_WEBHOOK_URL"
+  ]
 }

@@ -11,6 +11,7 @@ type Props = {
   error: unknown;
   fetching: boolean;
   aggregate: boolean;
+  branchNames: ReadonlyMap<string, string>;
   hasFilters: boolean;
   canCreate: boolean;
   canManageOrders: boolean;
@@ -32,6 +33,7 @@ export const TablesContent = ({
   error,
   fetching,
   aggregate,
+  branchNames,
   hasFilters,
   canCreate,
   canManageOrders,
@@ -105,7 +107,7 @@ export const TablesContent = ({
   const tablesByBranch = filteredTables.reduce<
     Record<string, RestaurantTable[]>
   >((accumulator, table) => {
-    const branchName = table.branch?.name ?? "Unknown branch";
+    const branchName = branchNames.get(table.branchId) ?? "Unknown branch";
     (accumulator[branchName] ??= []).push(table);
     return accumulator;
   }, {});

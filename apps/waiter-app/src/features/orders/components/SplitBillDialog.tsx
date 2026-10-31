@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { extractApiError } from "@pos/api-client";
 import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { useSplitOrderBill } from "@/features/orders/hooks/useOrderActions";
 
 type SplitMode = "EVEN" | "ITEM" | "SEAT";

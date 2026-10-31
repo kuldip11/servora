@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({
   refresh: vi.fn(),
   memberships: vi.fn(),
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({ authService: h }));
+vi.mock("@/shared/auth/auth.service", () => ({ authService: h }));
 const membership = (id: string) =>
   ({
     membershipId: id,

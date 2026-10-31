@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,55 +32,47 @@ vi.mock("@/shared/components/layout/RootLayout", () => ({
 vi.mock("@/shared/components/layout/DashboardLayout", () => ({
   DashboardLayout: () => <div>layout</div>,
 }));
-vi.mock("@/features/auth/pages/LoginPage", () => ({
+vi.mock("@/features/auth", () => ({
   LoginPage: () => <div>login</div>,
-}));
-vi.mock("@/features/auth/pages/SignupPage", () => ({
   SignupPage: () => <div>signup</div>,
-}));
-vi.mock("@/features/auth/pages/ForbiddenPage", () => ({
   ForbiddenPage: () => <div>forbidden</div>,
 }));
-vi.mock("@/features/business/pages/BusinessPage", () => ({
+vi.mock("@/features/business/public/pages", () => ({
   BusinessPage: () => <div>business-page</div>,
 }));
-vi.mock("@/features/analytics/pages/DashboardPage", () => ({
+vi.mock("@/features/analytics/public/pages", () => ({
   DashboardPage: () => <div>dashboard-page</div>,
-}));
-vi.mock("@/features/analytics/pages/MenuEngineeringPage", () => ({
   MenuEngineeringPage: () => <div>menu-engineering-page</div>,
 }));
-vi.mock("@/features/orders/pages/OrdersPage", () => ({
+vi.mock("@/features/orders/public/pages", () => ({
   OrdersPage: () => <div>orders-page</div>,
-}));
-vi.mock("@/features/orders/pages/OrderDetailPage", () => ({
   OrderDetailPage: () => <div>order-detail-page</div>,
 }));
-vi.mock("@/features/menu/pages/MenuPage", () => ({
+vi.mock("@/features/menu/public/pages", () => ({
   MenuPage: () => <div>menu-page</div>,
 }));
-vi.mock("@/features/availability/pages/AvailabilityDashboardPage", () => ({
+vi.mock("@/features/availability/public/pages", () => ({
   AvailabilityDashboardPage: () => <div>availability-page</div>,
 }));
-vi.mock("@/features/tables/pages/TablesPage", () => ({
+vi.mock("@/features/tables/public/pages", () => ({
   TablesPage: () => <div>tables-page</div>,
 }));
-vi.mock("@/features/inventory/pages/InventoryPage", () => ({
+vi.mock("@/features/inventory/public/pages", () => ({
   InventoryPage: () => <div>inventory-page</div>,
 }));
-vi.mock("@/features/staff/pages/StaffPage", () => ({
+vi.mock("@/features/staff/public/pages", () => ({
   StaffPage: () => <div>staff-page</div>,
 }));
-vi.mock("@/features/billing/pages/BillingPage", () => ({
+vi.mock("@/features/billing/public/pages", () => ({
   BillingPage: () => <div>billing-page</div>,
 }));
-vi.mock("@/features/audit/pages/AuditLogPage", () => ({
+vi.mock("@/features/audit/public/pages", () => ({
   AuditLogPage: () => <div>audit-page</div>,
 }));
-vi.mock("@/features/settings/pages/SettingsPage", () => ({
+vi.mock("@/features/settings/public/pages", () => ({
   SettingsPage: () => <div>settings-page</div>,
 }));
-vi.mock("@/features/profile/pages/ProfilePage", () => ({
+vi.mock("@/features/profile/public/pages", () => ({
   ProfilePage: () => <div>profile-page</div>,
 }));
 

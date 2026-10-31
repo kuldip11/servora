@@ -1,7 +1,7 @@
-import React, { act } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { ticket } from "@/features/kitchen/test/fixtures";
 
 (

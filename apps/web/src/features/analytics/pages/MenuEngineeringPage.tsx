@@ -22,7 +22,10 @@ export const MenuEngineeringPage = () => {
   const [quadrant, setQuadrant] = useState<"ALL" | EngineeringQuadrant>("ALL");
   const [sort, setSort] = useState<EngineeringSort>("volume");
   const engineeringQuery = useMenuEngineering(Number(appliedWindowDays));
-  const rows = engineeringQuery.data ?? [];
+  const rows = useMemo(
+    () => engineeringQuery.data ?? [],
+    [engineeringQuery.data],
+  );
 
   const visibleRows = useMemo(() => {
     const filtered =

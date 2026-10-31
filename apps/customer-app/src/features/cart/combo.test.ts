@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CustomerCombo, CustomerMenuItem } from "@/features/menu/api";
+import type { CustomerCombo, CustomerMenuItem } from "@/features/menu";
 import { comboLineKey, estimateComboLine } from "./combo";
 
 const combo = (overrides: Partial<CustomerCombo> = {}): CustomerCombo => ({

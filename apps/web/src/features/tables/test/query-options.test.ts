@@ -13,7 +13,7 @@ vi.mock("../../../store/auth", () => ({
 import { takeawayQrQuery, tablesQuery } from "@/features/tables/query-options";
 
 describe("tablesQuery", () => {
-  it("binds the table key to the table service", () => {
+  it("binds the table key to the table service", async () => {
     const query = tablesQuery();
     expect(query.queryKey).toEqual([
       "tables",
@@ -22,7 +22,7 @@ describe("tablesQuery", () => {
       "br-1",
       "list",
     ]);
-    query.queryFn?.({ signal } as never);
+    await query.queryFn?.({ signal } as never);
     expect(mocks.list).toHaveBeenCalledWith(signal);
   });
 

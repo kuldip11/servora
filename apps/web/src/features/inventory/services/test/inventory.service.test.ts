@@ -30,7 +30,7 @@ describe("inventoryService", () => {
     api.post.mockResolvedValue({ data: { data: { id: "i1" } } });
     await inventoryService.add({
       name: "Rice",
-      unit: "kg",
+      unit: "KG",
       currentStock: "12.5",
       minimumStock: "2",
       reorderPoint: "4.5",
@@ -39,7 +39,7 @@ describe("inventoryService", () => {
     });
     expect(api.post).toHaveBeenCalledWith("/inventory/items", {
       name: "Rice",
-      unit: "kg",
+      unit: "KG",
       currentStock: 12.5,
       minimumStock: 2,
       reorderPoint: 4.5,
@@ -47,15 +47,17 @@ describe("inventoryService", () => {
     });
   });
   it("updates stock with parsed quantity and optional notes", async () => {
-    api.patch.mockResolvedValue({});
+    api.patch.mockResolvedValue({
+      data: { data: { item: {}, transaction: {} } },
+    });
     await inventoryService.updateStock("i1", {
       quantity: "3.5",
-      transactionType: "ADD",
+      transactionType: "IN",
       notes: "",
     });
     expect(api.patch).toHaveBeenCalledWith("/inventory/items/i1/stock", {
       quantity: 3.5,
-      transactionType: "ADD",
+      transactionType: "IN",
     });
   });
 });

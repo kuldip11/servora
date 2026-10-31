@@ -129,6 +129,7 @@ describe("CombosSection", () => {
     );
   });
 
+  // This multi-step DOM interaction exceeds five seconds under root-suite CPU load.
   it("creates percent combos and covers slot/choice controls, refill, cancel and delete", async () => {
     listCombos.mockResolvedValue([
       {
@@ -221,7 +222,7 @@ describe("CombosSection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(removeCombo).toHaveBeenCalledWith("combo-2"));
-  });
+  }, 15_000);
 
   it("keeps invalid percent and slot configurations from saving", async () => {
     listCombos.mockResolvedValue([]);

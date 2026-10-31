@@ -1,4 +1,5 @@
-import type { KitchenTicket, OrderItemFulfillmentType } from "@pos/types";
+import type { OrderItemFulfillmentType } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 
 interface Props {
   notes: KitchenTicket["notes"];

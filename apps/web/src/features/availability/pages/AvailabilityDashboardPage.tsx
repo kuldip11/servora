@@ -26,7 +26,10 @@ export const AvailabilityDashboardPage = () => {
     fulfillmentType,
     ...(cause ? { cause } : {}),
   });
-  const rows = availabilityQuery.data ?? [];
+  const rows = useMemo(
+    () => availabilityQuery.data ?? [],
+    [availabilityQuery.data],
+  );
 
   useRealtimeEvent("menu.availability.updated", () => {
     void availabilityQuery.refetch();

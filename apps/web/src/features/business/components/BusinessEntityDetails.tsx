@@ -8,7 +8,7 @@ import {
   Store,
 } from "lucide-react";
 import { Button } from "@pos/ui";
-import type { Branch, OrganizationSummary, Tenant } from "@pos/types";
+import type { OrganizationSummary, Tenant } from "@pos/types";
 
 export type BusinessBranch = {
   id: string;

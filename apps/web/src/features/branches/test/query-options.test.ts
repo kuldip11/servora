@@ -14,10 +14,10 @@ vi.mock("../../../store/auth", () => ({
 import { branchesQuery } from "@/features/branches/query-options";
 
 describe("branchesQuery", () => {
-  it("binds the branch-list query key and service", () => {
+  it("binds the branch-list query key and service", async () => {
     const query = branchesQuery();
     expect(query.queryKey).toEqual(["branches", "franchise", "fr-1", "list"]);
-    query.queryFn?.({ signal } as never);
+    await query.queryFn?.({ signal } as never);
     expect(list).toHaveBeenCalledWith(signal);
     expect(query.staleTime).toBe(300_000);
   });

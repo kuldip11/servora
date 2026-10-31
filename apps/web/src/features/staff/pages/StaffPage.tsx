@@ -15,8 +15,7 @@ import { useRoles } from "@/features/staff/hooks/useRoles";
 import { useAddStaff } from "@/features/staff/hooks/useAddStaff";
 import { useDeleteStaff } from "@/features/staff/hooks/useDeleteStaff";
 import { useUpdateStaffStatus } from "@/features/staff/hooks/useUpdateStaffStatus";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
-import type { StaffRow } from "@/features/staff/services/staff.service";
+import { notifySuccess } from "@/shared/lib/notify";
 import { useUpdateStaff } from "@/features/staff/hooks/useUpdateStaff";
 import { AddStaffForm } from "@/features/staff/components/forms/AddStaffForm";
 import { EditStaffForm } from "@/features/staff/components/forms/EditStaffForm";
@@ -59,7 +58,7 @@ export const StaffPage = () => {
     page,
     limit: pageSize,
     search: debouncedSearch,
-    status: statusFilter,
+    ...(statusFilter ? { status: statusFilter } : {}),
   });
   const staffResult = staffQuery.data;
   const staff = staffResult?.items ?? [];

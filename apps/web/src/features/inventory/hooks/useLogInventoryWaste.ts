@@ -23,8 +23,8 @@ export const useLogInventoryWaste = () => {
         ...(notes !== undefined ? { notes } : {}),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
+      void queryClient.invalidateQueries({
         queryKey: inventoryKeys.transactions(),
       });
       notifySuccess("Waste logged");

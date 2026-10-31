@@ -1,4 +1,3 @@
-import React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { toast, mutate, api, storage, extractApiError, holder } = vi.hoisted(
@@ -29,7 +28,7 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@pos/ui", () => ({ toast }));
 vi.mock("@pos/api-client", () => ({ extractApiError }));
 vi.mock("@/features/auth/api/login", () => api);
-vi.mock("@/features/auth/storage", () => storage);
+vi.mock("@/shared/auth/storage", () => storage);
 import { useLogin } from "../useLogin";
 beforeEach(() => {
   vi.clearAllMocks();

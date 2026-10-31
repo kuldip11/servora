@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
 import { extractApiError } from "@pos/api-client";
 import { login, fetchMemberships } from "@/features/auth/api/login";
-import { saveTokens, clearTokens } from "@/features/auth/storage";
+import { saveTokens, clearTokens } from "@/shared/auth/storage";
 import {
   clearKitchenQueries,
   replaceKitchenContext,

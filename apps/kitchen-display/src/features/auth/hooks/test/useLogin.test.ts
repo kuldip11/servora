@@ -61,7 +61,7 @@ vi.mock("@/features/auth/api/login", () => ({
   login: mocks.login,
   fetchMemberships: mocks.fetchMemberships,
 }));
-vi.mock("@/features/auth/storage", () => ({
+vi.mock("@/shared/auth/storage", () => ({
   saveTokens: mocks.saveTokens,
   clearTokens: mocks.clearTokens,
 }));

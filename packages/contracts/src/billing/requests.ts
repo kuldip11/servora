@@ -12,6 +12,7 @@ export const paymentMethodSchema = Type.Union([
 export const createPaymentBodySchema = Type.Object(
   {
     orderId: uuidSchema,
+    idempotencyKey: Type.Optional(uuidSchema),
     billId: Type.Optional(uuidSchema),
     method: paymentMethodSchema,
     amount: Type.Number({ minimum: 0.01 }),

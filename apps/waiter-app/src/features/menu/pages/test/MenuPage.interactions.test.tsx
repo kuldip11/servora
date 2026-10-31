@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -134,8 +133,6 @@ vi.mock("@/features/menu", async (importOriginal) => ({
   useTables: () => ({
     data: [{ id: "t1", name: "Table 1", status: "AVAILABLE" }],
   }),
-}));
-vi.mock("@/features/menu/hooks/useMyBranch", () => ({
   useMyBranch: () => ({
     data: {
       id: "b1",
@@ -282,31 +279,38 @@ vi.mock("@/features/menu/components/ComboCustomiser", () => ({
     </div>
   ),
 }));
-vi.mock("@/features/menu/components/CartSummary", () => ({
-  CartSummary: (props: any) => (
+vi.mock("@/features/menu/components/CartSummary", () => {
+  const MockCart = (props: any) => (
     <div>
-      <button onClick={props.onSubmit}>submit-order</button>
-      <button onClick={() => props.onCourseModeChange(true)}>course-on</button>
-      <button onClick={() => props.onCourseModeChange(false)}>
+      <button onClick={props.checkout.submit}>submit-order</button>
+      <button onClick={() => props.courses.setEnabled(true)}>course-on</button>
+      <button onClick={() => props.courses.setEnabled(false)}>
         course-off
       </button>
-      <button onClick={() => props.onRoundCourseNumberChange(2)}>
+      <button onClick={() => props.courses.setRoundNumber?.(2)}>
         round-course
       </button>
-      <button onClick={() => props.onUpdateCourse("m1||||", 2)}>
+      <button onClick={() => props.courses.updateItem?.("m1||||", 2)}>
         item-course
       </button>
-      <button onClick={() => props.onUpdateComboCourse("combo1|slot1:m1", 2)}>
+      <button onClick={() => props.courses.updateCombo?.("combo1|slot1:m1", 2)}>
         combo-course
       </button>
-      <button onClick={() => props.onOrderNotesChange("notes")}>notes</button>
-      <button onClick={() => props.onCouponCodeChange("SAVE")}>coupon</button>
-      <button onClick={() => props.onTogglePromotion("p1")}>promo</button>
-      <button onClick={() => props.onUpdateQty("m1||||", -1)}>cart-dec</button>
-      <button onClick={props.onClose}>close-cart</button>
+      <button onClick={() => props.checkout.setNotes("notes")}>notes</button>
+      <button onClick={() => props.checkout.setCouponCode("SAVE")}>
+        coupon
+      </button>
+      <button onClick={() => props.checkout.togglePromotion("p1")}>
+        promo
+      </button>
+      <button onClick={() => props.actions.updateQty("m1||||", -1)}>
+        cart-dec
+      </button>
+      <button onClick={props.checkout.close}>close-cart</button>
     </div>
-  ),
-}));
+  );
+  return { NewOrderCartSummary: MockCart, AddRoundCartSummary: MockCart };
+});
 
 import { MenuPage } from "@/features/menu/pages/MenuPage";
 

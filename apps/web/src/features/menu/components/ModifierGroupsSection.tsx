@@ -5,10 +5,7 @@ import { useModifierGroups } from "@/features/menu/hooks/useModifierGroups";
 import { useSaveModifierGroup } from "@/features/menu/hooks/useSaveModifierGroup";
 import { useDeleteModifierGroup } from "@/features/menu/hooks/useDeleteModifierGroup";
 import { ModifierGroupList } from "./ModifierGroupList";
-import {
-  ModifierGroupFormModal,
-  type EMPTY_MODIFIER_GROUP,
-} from "./ModifierGroupFormModal";
+import { ModifierGroupFormModal } from "./ModifierGroupFormModal";
 
 const toPayload = (values: ModifierGroupFormValues) => ({
   name: values.name.trim(),

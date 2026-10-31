@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/features/cart/persistence", () => ({
+vi.mock("@/features/cart", () => ({
   clearPersistedSession: mocks.clearPersistedSession,
   clearPersistedOrderId: mocks.clearPersistedOrderId,
 }));

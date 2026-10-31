@@ -55,7 +55,7 @@ export const ExportMenu = () => {
                   <button
                     type="button"
                     key={format}
-                    onClick={() => handleDownload(e.value, format)}
+                    onClick={() => void handleDownload(e.value, format)}
                     disabled={downloadingKey === key}
                     className="text-xs font-medium text-primary hover:opacity-80 disabled:opacity-40 px-1.5 py-0.5 rounded uppercase"
                   >

@@ -16,12 +16,7 @@ import { customerKeys } from "./customer.keys";
 describe("customer query definitions", () => {
   it("keeps polling as fallback and forwards the TanStack signal", async () => {
     mocks.getCustomerOrder.mockResolvedValue({ id: "order-1" });
-    const fallback = customerOrderQuery(
-      "scope-a",
-      "session-a",
-      "order-1",
-      false,
-    );
+    const fallback = customerOrderQuery("scope-a", "session-a", "order-1");
     const signal = new AbortController().signal;
 
     await expect(fallback.queryFn({ signal })).resolves.toEqual({
@@ -36,10 +31,5 @@ describe("customer query definitions", () => {
       "order-1",
       signal,
     );
-
-    expect(
-      customerOrderQuery("scope-a", "session-a", "order-1", true)
-        .refetchInterval,
-    ).toBe(false);
   });
 });

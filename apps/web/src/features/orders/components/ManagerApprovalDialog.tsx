@@ -71,7 +71,7 @@ export const ManagerApprovalDialog = ({
           <Button
             loading={approvalMutation.isPending}
             disabled={!managerEmail.trim() || !password}
-            onClick={approve}
+            onClick={() => void approve()}
           >
             Approve and continue
           </Button>

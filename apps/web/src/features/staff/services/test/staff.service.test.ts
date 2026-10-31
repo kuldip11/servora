@@ -25,8 +25,8 @@ describe("staffService", () => {
         pagination: { page: 1, limit: 25, total: 1, hasMore: false },
       },
     });
-    api.post.mockResolvedValue({});
-    api.patch.mockResolvedValue({});
+    api.post.mockResolvedValue({ data: { data: { id: "s1" } } });
+    api.patch.mockResolvedValue({ data: { data: { id: "s1" } } });
     api.delete.mockResolvedValue({});
     await expect(staffService.list()).resolves.toEqual({
       items: ["s"],
@@ -84,7 +84,7 @@ describe("rolesService", () => {
 });
 
 it("sends the selected branch as branchIds", async () => {
-  api.post.mockResolvedValue({});
+  api.post.mockResolvedValue({ data: { data: { id: "s1" } } });
   await staffService.add({ ...input, branchId: "b1" });
   expect(api.post).toHaveBeenCalledWith(
     "/staff",

@@ -7,8 +7,7 @@ import {
 } from "lucide-react";
 import { QueryErrorState, StaleDataBanner, Card } from "@pos/ui";
 import { extractApiError } from "@pos/api-client";
-import { useOrders } from "@/features/orders";
-import { OrderCard } from "@/features/orders";
+import { useOrders, OrderCard } from "@/features/orders";
 import {
   useCustomerRequests,
   useResolveCustomerRequest,

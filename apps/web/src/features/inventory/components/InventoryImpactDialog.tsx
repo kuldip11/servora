@@ -1,5 +1,5 @@
 import { Modal, StatusBadge } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { useInventoryRecipeImpact } from "@/features/inventory/hooks/useInventoryRecipeImpact";
 
 export const InventoryImpactDialog = ({

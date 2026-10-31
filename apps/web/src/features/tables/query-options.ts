@@ -1,13 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { tablesService } from "./services/tables.service";
 import { tableKeys } from "./query-keys";
-import { queryFreshness } from "@/shared/lib/query-policy";
+import { queryFreshness, queryPolling } from "@/shared/lib/query-policy";
 
 export const tablesQuery = () => {
   return queryOptions({
     queryKey: tableKeys.list(),
     queryFn: ({ signal }) => tablesService.list(signal),
     staleTime: queryFreshness.operational,
+    refetchInterval: queryPolling.operational,
   });
 };
 

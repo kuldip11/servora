@@ -1,5 +1,5 @@
 import { StatusBadge, type StatusTone } from "@pos/ui";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { Timer } from "./Timer";
 
 interface Props {

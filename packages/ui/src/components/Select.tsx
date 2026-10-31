@@ -1,4 +1,11 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -66,7 +73,7 @@ export const Select = ({
   const listboxId = useId();
   const listRef = useRef<HTMLUListElement>(null);
 
-  const rows = buildRows(options);
+  const rows = useMemo(() => buildRows(options), [options]);
   const selectedOption = options.find((o) => o.value === value);
 
   const commitRow = (rowIndex: number) => {
@@ -87,7 +94,7 @@ export const Select = ({
       (r) => r.kind === "option" && r.option.value === value,
     );
     if (selectedRow >= 0) setActiveRowIndex(selectedRow);
-  }, [open]);
+  }, [open, rows, setActiveRowIndex, value]);
 
   const handleTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "Escape") {

@@ -46,15 +46,19 @@ vi.mock("@tanstack/react-query", () => ({
   queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: (options: any) => {
+    const optionsRef = React.useRef(options);
+    optionsRef.current = options;
     const [state, setState] = React.useState<any>({
       data: undefined,
       isLoading: Boolean(options.enabled),
       isError: false,
       isFetching: false,
     });
+    const enabled = Boolean(options.enabled);
     const key = JSON.stringify(options.queryKey);
     const run = React.useCallback(async () => {
-      if (!options.enabled) return;
+      const currentOptions = optionsRef.current;
+      if (!enabled) return;
       setState((current: any) => ({
         ...current,
         isLoading: current.data === undefined,
@@ -62,7 +66,8 @@ vi.mock("@tanstack/react-query", () => ({
         isError: false,
       }));
       try {
-        const data = await options.queryFn({
+        const data = await currentOptions.queryFn({
+          queryKey: JSON.parse(key),
           signal: new AbortController().signal,
         });
         setState({ data, isLoading: false, isError: false, isFetching: false });
@@ -74,7 +79,7 @@ vi.mock("@tanstack/react-query", () => ({
           isFetching: false,
         }));
       }
-    }, [options.enabled, key]);
+    }, [enabled, key]);
     React.useEffect(() => {
       void run();
     }, [run]);

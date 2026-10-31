@@ -1,4 +1,8 @@
 import { useState } from "react";
+import type {
+  MenuChannelOverrideDto,
+  MenuItemStatusDto,
+} from "@pos/api-client";
 import {
   Button,
   Input,
@@ -15,9 +19,13 @@ import {
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
 
 export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
-  const [channel, setChannel] = useState("CUSTOMER_QR");
-  const [fulfillmentType, setFulfillmentType] = useState("DELIVERY");
-  const [status, setStatus] = useState("OUT_OF_STOCK");
+  const [channel, setChannel] =
+    useState<MenuChannelOverrideDto["channel"]>("CUSTOMER_QR");
+  const [fulfillmentType, setFulfillmentType] =
+    useState<NonNullable<MenuChannelOverrideDto["fulfillmentType"]>>(
+      "DELIVERY",
+    );
+  const [status, setStatus] = useState<MenuItemStatusDto>("OUT_OF_STOCK");
   const [isHidden, setIsHidden] = useState(false);
   const [reason, setReason] = useState("");
   const overridesQuery = useChannelOverrides(itemId);
@@ -69,7 +77,9 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         <Select
           aria-label="Ordering channel"
           value={channel}
-          onChange={setChannel}
+          onChange={(value) =>
+            setChannel(value as MenuChannelOverrideDto["channel"])
+          }
           className="text-sm"
           options={[
             { value: "STAFF", label: "Staff" },
@@ -79,7 +89,11 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         <Select
           aria-label="Fulfillment type"
           value={fulfillmentType}
-          onChange={setFulfillmentType}
+          onChange={(value) =>
+            setFulfillmentType(
+              value as NonNullable<MenuChannelOverrideDto["fulfillmentType"]>,
+            )
+          }
           className="text-sm"
           options={FULFILLMENT_TYPES.map((type) => ({
             value: type,
@@ -89,7 +103,7 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         <Select
           aria-label="Channel status"
           value={status}
-          onChange={setStatus}
+          onChange={(value) => setStatus(value as MenuItemStatusDto)}
           className="text-sm"
           options={[
             { value: "ACTIVE", label: "Active" },

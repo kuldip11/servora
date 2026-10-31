@@ -25,7 +25,7 @@ export const useLineAdjustments = (orderId: string) => {
         : compOrderItem(orderId, itemId, reason),
     onSuccess: (order) => {
       qc.setQueryData(orderKeys.detail(scope, orderId), order);
-      qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      void qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
       toast({ title: "Order item updated", tone: "success" });
     },
     onError: (error) => {

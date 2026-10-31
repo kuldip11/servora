@@ -3,6 +3,7 @@ import { websitePageSeo } from "@/content/seo";
 import {
   createOrganizationSchema,
   createSoftwareApplicationSchema,
+  serializeJsonLd,
   createWebSiteSchema,
 } from "@pos/seo";
 import Link from "next/link";
@@ -89,7 +90,7 @@ const HeroProductPreview = () => (
             ),
           )}
         </aside>
-        <main className="min-w-0 p-3 sm:p-5">
+        <div className="min-w-0 p-3 sm:p-5">
           <div className="flex items-end justify-between">
             <h3 className="text-sm font-bold sm:text-base">
               Today at a glance
@@ -132,7 +133,7 @@ const HeroProductPreview = () => (
               ))}
             </div>
           </div>
-        </main>
+        </div>
       </div>
     </div>
     <div className="absolute bottom-0 left-0 z-10 h-[275px] w-[142px] -rotate-[4deg] overflow-hidden rounded-[28px] border-[6px] border-[#151b17] bg-[#f6f2e8] text-[#172019] shadow-[0_24px_50px_rgba(23,32,25,0.28)] sm:h-[330px] sm:w-[175px]">
@@ -200,7 +201,7 @@ export default function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
       <section className="relative overflow-hidden bg-[#f6f2e8] text-[#142219]">
         <div className="pointer-events-none absolute -right-48 -top-64 size-[620px] rounded-full bg-[radial-gradient(circle,rgba(200,235,134,0.35),transparent_68%)]" />
@@ -210,13 +211,14 @@ export default function Home() {
               Restaurant operations, in sync
             </p>
             <h1 className="mt-5 max-w-3xl font-serif text-5xl font-bold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-              Every order. Every team.{" "}
-              <span className="text-[#23724d]">One flow.</span>
+              Restaurant management software.{" "}
+              <span className="text-[#23724d]">One connected flow.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-8 text-[#657068] sm:text-lg">
-              Servora connects guest ordering, front of house, kitchen
-              execution, billing and business control—so your restaurant runs as
-              one operation instead of separate tools.
+              Every order. Every team. One flow. Servora connects guest
+              ordering, front of house, kitchen execution, billing and business
+              control—so your restaurant runs as one operation instead of
+              separate tools.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link

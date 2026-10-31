@@ -1,6 +1,11 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+  toRealtimeKitchenTicketPayload: (value: unknown) => value,
+}));
+
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   findOrder: vi.fn(),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   KitchenLogin,
@@ -55,12 +55,14 @@ export const KitchenApp = () => {
   }
   if (!loggedIn)
     return (
-      <KitchenLogin
-        onLogin={() => {
-          setContextRevision((value) => value + 1);
-          setLoggedIn(true);
-        }}
-      />
+      <Suspense fallback={<div role="status">Loading sign in…</div>}>
+        <KitchenLogin
+          onLogin={() => {
+            setContextRevision((value) => value + 1);
+            setLoggedIn(true);
+          }}
+        />
+      </Suspense>
     );
   const [tenantId, branchId] = getKitchenQueryScope();
   return (

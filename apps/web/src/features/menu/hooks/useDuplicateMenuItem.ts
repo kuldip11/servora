@@ -8,7 +8,7 @@ export const useDuplicateMenuItem = () => {
   return useMutation({
     mutationFn: (id: string) => menuItemsService.duplicateItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess("Item duplicated");
     },
     onError: (err) => notifyError(err, "Failed to duplicate item"),

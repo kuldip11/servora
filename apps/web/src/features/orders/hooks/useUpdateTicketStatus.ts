@@ -9,7 +9,9 @@ export const useUpdateTicketStatus = (orderId: string) => {
     mutationFn: ({ ticketId, status }: { ticketId: string; status: string }) =>
       ordersService.updateTicketStatus(ticketId, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
+      void queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(orderId),
+      });
       notifySuccess("Ticket updated");
     },
     onError: (err) => notifyError(err, "Failed to update ticket"),

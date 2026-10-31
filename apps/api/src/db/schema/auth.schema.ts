@@ -14,7 +14,7 @@ import {
 import { sql } from "drizzle-orm";
 import { tenants } from "./tenant.schema";
 import { branches } from "./branch.schema";
-import { users, userStatusEnum } from "./user.schema";
+import { users } from "./user.schema";
 
 export { users, userStatusEnum } from "./user.schema";
 

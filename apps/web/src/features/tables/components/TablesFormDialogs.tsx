@@ -1,5 +1,5 @@
 import type { UseFormReturn } from "react-hook-form";
-import type { Branch } from "@pos/types";
+import type { BranchDto } from "@pos/api-client";
 import { TableFormModal } from "./TableFormModal";
 import type { RestaurantTable } from "../types";
 import type { TableFormValues } from "../table-form.types";
@@ -7,7 +7,7 @@ import type { TableFormValues } from "../table-form.types";
 type TablesFormDialogsProps = {
   addOpen: boolean;
   editing: RestaurantTable | null;
-  branches: Branch[];
+  branches: BranchDto[];
   aggregate: boolean;
   dependencyError?: string;
   form: UseFormReturn<TableFormValues>;
@@ -53,7 +53,6 @@ export const TablesFormDialogs = ({
       <TableFormModal
         mode="add"
         open={addOpen}
-        editing={null}
         branches={branches}
         aggregate={aggregate}
         errors={errors}
@@ -84,7 +83,6 @@ export const TablesFormDialogs = ({
       <TableFormModal
         mode="edit"
         open={!!editing}
-        editing={editing}
         branches={branches}
         aggregate={false}
         errors={errors}

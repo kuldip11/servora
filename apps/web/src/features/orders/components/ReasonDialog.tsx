@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CancellationReason } from "@pos/types";
+import type { CancellationReasonDto as CancellationReason } from "@pos/api-client";
 import {
   Button,
   Input,

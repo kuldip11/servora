@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { User } from "@pos/types";
+import type { AuthUserDto as User } from "@pos/api-client";
 import { getAuthorizedHomePath } from "../default-route";
 
 const userWith = (permissions: string[], roleNames: string[] = []): User =>

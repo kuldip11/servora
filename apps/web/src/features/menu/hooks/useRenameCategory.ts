@@ -9,7 +9,7 @@ export const useRenameCategory = () => {
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       menuItemsService.renameCategory(id, name),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess("Category renamed");
     },
   });

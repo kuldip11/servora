@@ -1,24 +1,54 @@
 import { voidDomainRequest } from "./shared";
 import type {
-  FoodType,
-  Holiday,
-  ItemStationRoute,
-  KitchenStation,
-  Menu,
-  MenuCategory,
-  MenuItem,
-  MenuItemBranchOverride,
-  MenuItemSchedule,
-  MenuItemScheduleType,
-  MenuItemStatus,
-  MenuTag,
-  MenuTemplate,
-  ModifierGroup,
-  OrderableMenuCategory,
-  SubRecipe,
-  SpiceLevel,
-  SubRecipeInput,
-} from "@pos/types";
+  ActiveMenuResponse,
+  AvailabilityBranchOverrideResponse,
+  AvailabilityChannelOverrideRequest,
+  AvailabilityChannelOverrideResponse,
+  AvailabilityHolidayResponse,
+  AvailabilityItemStateResponse,
+  AvailabilityManualOverrideRequest,
+  AvailabilityScheduleResponse,
+  AvailabilityStockCountRequest,
+  AvailabilityStockCountResponse,
+  AvailabilityVariantOverrideRequest,
+  AvailabilityVariantOverrideResponse,
+  BulkDeleteResultResponse,
+  BulkOperationResultResponse,
+  BulkPriceOperationResultResponse,
+  ComboPreviewResponse,
+  ComboResponse,
+  CreateAvailabilityHolidayRequest,
+  CreateAvailabilityScheduleRequest,
+  CreateKitchenStationRequest,
+  CreateMenuItemRequest,
+  CreateMenuRequest,
+  KitchenItemRouteResponse,
+  KitchenStationResponse,
+  LoyaltyTierRequest,
+  LoyaltyTierResponse,
+  MenuAllergenResponse,
+  MenuCategoryResponse,
+  MenuImportCommitResult,
+  MenuImportValidationResult,
+  MenuItemResponse,
+  MenuResponse,
+  MenuScheduleRequest,
+  MenuScheduleResponse,
+  MenuTagResponse,
+  MenuTemplateApplyResponse,
+  MenuTemplateResponse,
+  ModifierGroupResponse,
+  PriceRuleResponse,
+  PromotionPreviewResponse,
+  PromotionResponse,
+  PromotionStatsResponse,
+  RecipeResponse,
+  SetKitchenRouteRequest,
+  SubRecipeResponse,
+  UpdateMenuItemRequest,
+  UpdateMenuRequest,
+  UpsertAvailabilityBranchOverrideRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   patchDomainData,
@@ -27,44 +57,40 @@ import {
   type DomainHttpClient,
 } from "./shared";
 
-interface MenuItemWriteFields {
-  name: string;
-  description?: string | null;
-  basePrice: number;
-  manualCost?: number | null;
-  pricingMode?: "FIXED" | "WEIGHT_BASED" | "OPEN";
-  weightUnit?: "G" | "KG" | "LB" | "OZ" | null;
-  openPriceMin?: number | null;
-  openPriceMax?: number | null;
-  supportsZones?: boolean;
-  zonePricingRule?: "AVERAGE" | "HIGHER" | "SUM_HALF";
-  manualStockCount?: number | null;
-  taxRate: number;
-  taxMode?: "INCLUSIVE" | "EXCLUSIVE" | null;
-  foodType: FoodType;
-  spiceLevel?: SpiceLevel | null;
-  sku?: string | null;
-  prepTimeMinutes?: number | null;
-  hsnCode?: string | null;
-  status: MenuItemStatus;
-  availabilityReason: string | null;
-  enableRecipeDeduction: boolean;
-  displayMode?: "STANDARD" | "GUIDED_BUILDER";
-  effectiveFrom?: string | null;
-  modifierGroupIds: string[];
-  tagIds: string[];
-  allergenIds: string[];
-  imageUrls: string[];
-}
+export type MenuDto = MenuResponse;
+export type ActiveMenuDto = ActiveMenuResponse;
+export type MenuCategoryDto = MenuCategoryResponse;
+export type MenuItemDto = MenuItemResponse;
+export type MenuItemStatusDto = MenuItemResponse["status"];
+export type MenuFulfillmentTypeDto = NonNullable<
+  MenuResponse["availableFulfillmentTypes"]
+>[number];
+export type MenuScheduleDto = MenuScheduleResponse;
+export type MenuWindowInput = MenuScheduleRequest;
+export type MenuItemScheduleDto = AvailabilityScheduleResponse;
+export type MenuHolidayDto = AvailabilityHolidayResponse;
+export type MenuBranchOverrideDto = AvailabilityBranchOverrideResponse;
+export type MenuChannelOverrideDto = AvailabilityChannelOverrideResponse;
+export type MenuTagDto = MenuTagResponse;
+export type MenuAllergenDto = MenuAllergenResponse;
+export type ModifierGroupDto = ModifierGroupResponse;
+export type MenuTemplateDto = MenuTemplateResponse;
+export type SubRecipeDto = SubRecipeResponse;
+export type MenuRecipeDto = RecipeResponse;
+export type MenuComboDto = ComboResponse;
+export type MenuPriceRuleDto = PriceRuleResponse;
+export type MenuPromotionDto = PromotionResponse;
+export type MenuPromotionStatsDto = PromotionStatsResponse;
+export type MenuPromotionPreviewDto = PromotionPreviewResponse;
+export type MenuComboPreviewDto = ComboPreviewResponse;
+export type MenuLoyaltyTierDto = LoyaltyTierResponse;
+export type MenuImportValidationDto = MenuImportValidationResult;
+export type MenuImportCommitDto = MenuImportCommitResult;
+export type MenuKitchenStationDto = KitchenStationResponse;
+export type MenuKitchenRouteDto = KitchenItemRouteResponse;
 
-export interface CreateMenuItemInput extends MenuItemWriteFields {
-  categoryId: string;
-  variants: Array<{ name: string; price: number }>;
-}
-
-export interface UpdateMenuItemInput extends MenuItemWriteFields {
-  variants: Array<{ id?: string; name: string; price: number }>;
-}
+export type CreateMenuItemInput = CreateMenuItemRequest;
+export type UpdateMenuItemInput = UpdateMenuItemRequest;
 
 export interface ModifierGroupPayload {
   name: string;
@@ -82,100 +108,109 @@ export interface ModifierGroupPayload {
   }>;
 }
 
-export interface MenuScheduleInput {
-  scheduleType: MenuItemScheduleType;
-  statusDuringPeriod: MenuItemStatus;
-  startTime?: string;
-  endTime?: string;
-  dayOfWeek?: number;
-  startDate?: string;
-  endDate?: string;
-  holidayName?: string;
-}
+export type MenuScheduleInput = CreateAvailabilityScheduleRequest;
+export type BranchOverrideInput = UpsertAvailabilityBranchOverrideRequest;
 
-export interface BranchOverrideInput {
-  price: number | null;
-  taxRate: number | null;
-  prepTimeMinutes: number | null;
-  status: MenuItemStatus | null;
-  isHidden: boolean;
-  availabilityReason: string | null;
+export interface SubRecipeInput {
+  name: string;
+  yieldQuantity: number;
+  yieldUnit: SubRecipeResponse["yieldUnit"];
+  yieldPercent?: number | null;
+  ingredients: Array<{
+    inventoryItemId?: string | null;
+    ingredientSubRecipeId?: string | null;
+    quantity: number;
+    unit: SubRecipeResponse["yieldUnit"];
+  }>;
 }
 
 export const createMenuApi = (client: DomainHttpClient) => {
   return {
-    listCategories(): Promise<MenuCategory[]> {
-      return getDomainData<MenuCategory[]>(client, "/menu/categories");
+    listCategories(): Promise<MenuCategoryDto[]> {
+      return getDomainData<MenuCategoryDto[]>(client, "/menu/categories");
     },
-    listOrderableCategories(
-      signal?: AbortSignal,
-    ): Promise<OrderableMenuCategory[]> {
-      return getDomainData<OrderableMenuCategory[]>(
+    listOrderableCategories(signal?: AbortSignal): Promise<MenuCategoryDto[]> {
+      return getDomainData<MenuCategoryDto[]>(
         client,
         "/menu/categories",
         signal ? { signal } : undefined,
       );
     },
-    createCategory(name: string): Promise<MenuCategory> {
-      return postDomainData<MenuCategory>(client, "/menu/categories", { name });
-    },
-    renameCategory(id: string, name: string): Promise<MenuCategory> {
-      return patchDomainData<MenuCategory>(client, `/menu/categories/${id}`, {
+    createCategory(name: string): Promise<MenuCategoryDto> {
+      return postDomainData<MenuCategoryDto>(client, "/menu/categories", {
         name,
       });
+    },
+    renameCategory(id: string, name: string): Promise<MenuCategoryDto> {
+      return patchDomainData<MenuCategoryDto>(
+        client,
+        `/menu/categories/${id}`,
+        { name },
+      );
     },
     deleteCategory(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/categories/${id}`));
     },
-    createItem(input: CreateMenuItemInput): Promise<MenuItem> {
-      return postDomainData<MenuItem>(client, "/menu/items", input);
+    createItem(input: CreateMenuItemInput): Promise<MenuItemDto> {
+      return postDomainData<MenuItemDto>(client, "/menu/items", input);
     },
-    updateItem(id: string, input: UpdateMenuItemInput): Promise<MenuItem> {
-      return patchDomainData<MenuItem>(client, `/menu/items/${id}`, input);
+    updateItem(id: string, input: UpdateMenuItemInput): Promise<MenuItemDto> {
+      return patchDomainData<MenuItemDto>(client, `/menu/items/${id}`, input);
     },
     setManualStockCount(
       id: string,
       count: number | null,
       variantId?: string,
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.post(`/menu/items/${id}/stock-count`, {
-          count,
-          ...(variantId ? { variantId } : {}),
-        }),
+    ): Promise<AvailabilityStockCountResponse> {
+      const input: AvailabilityStockCountRequest = {
+        count,
+        ...(variantId ? { variantId } : {}),
+      };
+      return postDomainData<AvailabilityStockCountResponse>(
+        client,
+        `/menu/items/${id}/stock-count`,
+        input,
       );
     },
     setManualAvailabilityOverride(
       id: string,
-      status: MenuItemStatus,
+      status: MenuItemStatusDto,
       reason: string,
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.put(`/menu/items/${id}/manual-override`, { status, reason }),
+    ): Promise<AvailabilityItemStateResponse> {
+      const input: AvailabilityManualOverrideRequest = { status, reason };
+      return putDomainData<AvailabilityItemStateResponse>(
+        client,
+        `/menu/items/${id}/manual-override`,
+        input,
       );
     },
-    clearManualAvailabilityOverride(id: string): Promise<void> {
-      return voidDomainRequest(
-        client.delete(`/menu/items/${id}/manual-override`),
-      );
+    clearManualAvailabilityOverride(
+      id: string,
+    ): Promise<AvailabilityItemStateResponse> {
+      return client
+        .delete(`/menu/items/${id}/manual-override`)
+        .then(
+          (response) => response.data.data as AvailabilityItemStateResponse,
+        );
     },
     deleteItem(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/items/${id}`));
     },
-    duplicateItem(id: string): Promise<MenuItem> {
-      return postDomainData<MenuItem>(client, `/menu/items/${id}/duplicate`);
+    duplicateItem(id: string): Promise<MenuItemDto> {
+      return postDomainData<MenuItemDto>(client, `/menu/items/${id}/duplicate`);
     },
-    setPublished(id: string, publish: boolean): Promise<void> {
-      return voidDomainRequest(
-        client.patch(`/menu/items/${id}/${publish ? "publish" : "unpublish"}`),
+    setPublished(id: string, publish: boolean): Promise<MenuItemDto> {
+      return patchDomainData<MenuItemDto>(
+        client,
+        `/menu/items/${id}/${publish ? "publish" : "unpublish"}`,
       );
     },
     bulkSetStatus(
       itemIds: string[],
-      status: MenuItemStatus,
+      status: MenuItemStatusDto,
       reason?: string,
-    ): Promise<{ updated: number }> {
-      return postDomainData<{ updated: number }>(
+    ): Promise<BulkOperationResultResponse> {
+      return postDomainData<BulkOperationResultResponse>(
         client,
         "/menu/items/bulk/status",
         { itemIds, status, reason },
@@ -184,8 +219,8 @@ export const createMenuApi = (client: DomainHttpClient) => {
     bulkMoveCategory(
       itemIds: string[],
       categoryId: string,
-    ): Promise<{ updated: number }> {
-      return postDomainData<{ updated: number }>(
+    ): Promise<BulkOperationResultResponse> {
+      return postDomainData<BulkOperationResultResponse>(
         client,
         "/menu/items/bulk/category",
         { itemIds, categoryId },
@@ -195,8 +230,8 @@ export const createMenuApi = (client: DomainHttpClient) => {
       itemIds: string[],
       tagIds: string[],
       mode: "add" | "remove" | "replace",
-    ): Promise<{ updated: number }> {
-      return postDomainData<{ updated: number }>(
+    ): Promise<BulkOperationResultResponse> {
+      return postDomainData<BulkOperationResultResponse>(
         client,
         "/menu/items/bulk/tags",
         { itemIds, tagIds, mode },
@@ -206,42 +241,34 @@ export const createMenuApi = (client: DomainHttpClient) => {
       itemIds: string[],
       priceChange: number,
       mode: "set" | "increase" | "decrease",
-    ): Promise<{ updated: number }> {
-      return postDomainData<{ updated: number }>(
+    ): Promise<BulkPriceOperationResultResponse> {
+      return postDomainData<BulkPriceOperationResultResponse>(
         client,
         "/menu/items/bulk/price",
         { itemIds, priceChange, mode },
       );
     },
-    bulkDelete(
-      itemIds: string[],
-    ): Promise<{ deleted: number; protected: number }> {
-      return postDomainData<{ deleted: number; protected: number }>(
+    bulkDelete(itemIds: string[]): Promise<BulkDeleteResultResponse> {
+      return postDomainData<BulkDeleteResultResponse>(
         client,
         "/menu/items/bulk/delete",
         { itemIds },
       );
     },
-    listMenus(): Promise<Menu[]> {
-      return getDomainData<Menu[]>(client, "/menu/menus");
+    listMenus(): Promise<MenuDto[]> {
+      return getDomainData<MenuDto[]>(client, "/menu/menus");
     },
-    createMenu(input: { name: string; description?: string }): Promise<Menu> {
-      return postDomainData<Menu>(client, "/menu/menus", input);
+    createMenu(input: CreateMenuRequest): Promise<MenuDto> {
+      return postDomainData<MenuDto>(client, "/menu/menus", input);
     },
-    updateMenu(
-      id: string,
-      input: Pick<
-        Menu,
-        "availableChannels" | "availableFulfillmentTypes" | "availableBranchIds"
-      > & { effectiveFrom?: string | null },
-    ): Promise<Menu> {
-      return patchDomainData<Menu>(client, `/menu/menus/${id}`, input);
+    updateMenu(id: string, input: UpdateMenuRequest): Promise<MenuDto> {
+      return patchDomainData<MenuDto>(client, `/menu/menus/${id}`, input);
     },
-    publishMenu(id: string): Promise<Menu> {
-      return postDomainData<Menu>(client, `/menu/menus/${id}/publish`);
+    publishMenu(id: string): Promise<MenuDto> {
+      return postDomainData<MenuDto>(client, `/menu/menus/${id}/publish`);
     },
-    unpublishMenu(id: string): Promise<Menu> {
-      return postDomainData<Menu>(client, `/menu/menus/${id}/unpublish`);
+    unpublishMenu(id: string): Promise<MenuDto> {
+      return postDomainData<MenuDto>(client, `/menu/menus/${id}/unpublish`);
     },
     removeMenu(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/menus/${id}`));
@@ -259,21 +286,26 @@ export const createMenuApi = (client: DomainHttpClient) => {
         client.delete(`/menu/items/${itemId}/memberships/${menuId}`),
       );
     },
-    listKitchenStations(): Promise<KitchenStation[]> {
-      return getDomainData<KitchenStation[]>(client, "/kitchen/stations");
+    listKitchenStations(): Promise<MenuKitchenStationDto[]> {
+      return getDomainData<MenuKitchenStationDto[]>(
+        client,
+        "/kitchen/stations",
+      );
     },
-    createKitchenStation(input: {
-      name: string;
-      printerIdentifier?: string;
-      sortOrder?: number;
-    }): Promise<KitchenStation> {
-      return postDomainData<KitchenStation>(client, "/kitchen/stations", input);
+    createKitchenStation(
+      input: CreateKitchenStationRequest,
+    ): Promise<MenuKitchenStationDto> {
+      return postDomainData<MenuKitchenStationDto>(
+        client,
+        "/kitchen/stations",
+        input,
+      );
     },
     removeKitchenStation(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/kitchen/stations/${id}`));
     },
-    listStationRoutes(itemId: string): Promise<ItemStationRoute[]> {
-      return getDomainData<ItemStationRoute[]>(
+    listStationRoutes(itemId: string): Promise<MenuKitchenRouteDto[]> {
+      return getDomainData<MenuKitchenRouteDto[]>(
         client,
         `/kitchen/stations/routes/${itemId}`,
       );
@@ -282,13 +314,16 @@ export const createMenuApi = (client: DomainHttpClient) => {
       itemId: string,
       stationId: string,
       modifierOptionId?: string | null,
-    ): Promise<ItemStationRoute> {
-      return client
-        .put(`/kitchen/stations/routes/${itemId}`, {
-          stationId,
-          modifierOptionId: modifierOptionId ?? null,
-        })
-        .then((response) => response.data.data as ItemStationRoute);
+    ): Promise<MenuKitchenRouteDto> {
+      const input: SetKitchenRouteRequest = {
+        stationId,
+        modifierOptionId: modifierOptionId ?? null,
+      };
+      return putDomainData<MenuKitchenRouteDto>(
+        client,
+        `/kitchen/stations/routes/${itemId}`,
+        input,
+      );
     },
     removeStationRoute(
       itemId: string,
@@ -300,20 +335,20 @@ export const createMenuApi = (client: DomainHttpClient) => {
         }),
       );
     },
-    listModifierGroups(): Promise<ModifierGroup[]> {
-      return getDomainData<ModifierGroup[]>(client, "/menu/modifier-groups");
+    listModifierGroups(): Promise<ModifierGroupDto[]> {
+      return getDomainData<ModifierGroupDto[]>(client, "/menu/modifier-groups");
     },
     saveModifierGroup(
       existingId: string | null,
       payload: ModifierGroupPayload,
-    ): Promise<ModifierGroup> {
+    ): Promise<ModifierGroupDto> {
       return existingId
-        ? patchDomainData<ModifierGroup>(
+        ? patchDomainData<ModifierGroupDto>(
             client,
             `/menu/modifier-groups/${existingId}`,
             payload,
           )
-        : postDomainData<ModifierGroup>(
+        : postDomainData<ModifierGroupDto>(
             client,
             "/menu/modifier-groups",
             payload,
@@ -322,8 +357,8 @@ export const createMenuApi = (client: DomainHttpClient) => {
     removeModifierGroup(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/modifier-groups/${id}`));
     },
-    listTemplates(): Promise<MenuTemplate[]> {
-      return getDomainData<MenuTemplate[]>(client, "/menu/templates");
+    listTemplates(): Promise<MenuTemplateDto[]> {
+      return getDomainData<MenuTemplateDto[]>(client, "/menu/templates");
     },
     removeTemplate(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/templates/${id}`));
@@ -331,46 +366,48 @@ export const createMenuApi = (client: DomainHttpClient) => {
     applyTemplate(
       templateId: string,
       input: { branchId?: string; categoryName?: string },
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.post(`/menu/templates/${templateId}/apply`, input),
+    ): Promise<MenuTemplateApplyResponse> {
+      return postDomainData<MenuTemplateApplyResponse>(
+        client,
+        `/menu/templates/${templateId}/apply`,
+        input,
       );
     },
     saveTemplateFromCategory(
       categoryId: string,
       input: { name: string; description?: string },
-    ): Promise<MenuTemplate> {
-      return postDomainData<MenuTemplate>(
+    ): Promise<MenuTemplateDto> {
+      return postDomainData<MenuTemplateDto>(
         client,
         `/menu/templates/from-category/${categoryId}`,
         input,
       );
     },
-    listSubRecipes(): Promise<SubRecipe[]> {
-      return getDomainData<SubRecipe[]>(client, "/menu/sub-recipes/");
+    listSubRecipes(): Promise<SubRecipeDto[]> {
+      return getDomainData<SubRecipeDto[]>(client, "/menu/sub-recipes/");
     },
-    createSubRecipe(input: SubRecipeInput): Promise<SubRecipe> {
-      return postDomainData<SubRecipe>(client, "/menu/sub-recipes/", input);
+    createSubRecipe(input: SubRecipeInput): Promise<SubRecipeDto> {
+      return postDomainData<SubRecipeDto>(client, "/menu/sub-recipes/", input);
     },
-    updateSubRecipe(id: string, input: SubRecipeInput): Promise<SubRecipe> {
+    updateSubRecipe(id: string, input: SubRecipeInput): Promise<SubRecipeDto> {
       return client
         .put(`/menu/sub-recipes/${id}`, input)
-        .then((response) => response.data.data as SubRecipe);
+        .then((response) => response.data.data as SubRecipeDto);
     },
     removeSubRecipe(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/sub-recipes/${id}`));
     },
-    listTags(): Promise<MenuTag[]> {
-      return getDomainData<MenuTag[]>(client, "/menu/tags");
+    listTags(): Promise<MenuTagDto[]> {
+      return getDomainData<MenuTagDto[]>(client, "/menu/tags");
     },
-    createTag(name: string, color: string): Promise<MenuTag> {
-      return postDomainData<MenuTag>(client, "/menu/tags", { name, color });
+    createTag(name: string, color: string): Promise<MenuTagDto> {
+      return postDomainData<MenuTagDto>(client, "/menu/tags", { name, color });
     },
     removeTag(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/tags/${id}`));
     },
-    listSchedules(itemId: string): Promise<MenuItemSchedule[]> {
-      return getDomainData<MenuItemSchedule[]>(
+    listSchedules(itemId: string): Promise<MenuItemScheduleDto[]> {
+      return getDomainData<MenuItemScheduleDto[]>(
         client,
         `/menu/items/${itemId}/schedules`,
       );
@@ -378,7 +415,7 @@ export const createMenuApi = (client: DomainHttpClient) => {
     addSchedule(
       itemId: string,
       input: MenuScheduleInput,
-    ): Promise<MenuItemSchedule> {
+    ): Promise<MenuItemScheduleDto> {
       const payload: Record<string, unknown> = {
         scheduleType: input.scheduleType,
         statusDuringPeriod: input.statusDuringPeriod,
@@ -395,7 +432,7 @@ export const createMenuApi = (client: DomainHttpClient) => {
       }
       if (input.scheduleType === "HOLIDAY")
         payload["holidayName"] = input.holidayName;
-      return postDomainData<MenuItemSchedule>(
+      return postDomainData<MenuItemScheduleDto>(
         client,
         `/menu/items/${itemId}/schedules`,
         payload,
@@ -406,21 +443,19 @@ export const createMenuApi = (client: DomainHttpClient) => {
         client.delete(`/menu/items/schedules/${scheduleId}`),
       );
     },
-    listHolidays(): Promise<Holiday[]> {
-      return getDomainData<Holiday[]>(client, "/menu/holidays");
+    listHolidays(): Promise<MenuHolidayDto[]> {
+      return getDomainData<MenuHolidayDto[]>(client, "/menu/holidays");
     },
-    addHoliday(input: {
-      name: string;
-      holidayDate: string;
-      region?: string;
-    }): Promise<Holiday> {
-      return postDomainData<Holiday>(client, "/menu/holidays", input);
+    addHoliday(
+      input: CreateAvailabilityHolidayRequest,
+    ): Promise<MenuHolidayDto> {
+      return postDomainData<MenuHolidayDto>(client, "/menu/holidays", input);
     },
     removeHoliday(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/holidays/${id}`));
     },
-    listBranchOverrides(itemId: string): Promise<MenuItemBranchOverride[]> {
-      return getDomainData<MenuItemBranchOverride[]>(
+    listBranchOverrides(itemId: string): Promise<MenuBranchOverrideDto[]> {
+      return getDomainData<MenuBranchOverrideDto[]>(
         client,
         `/menu/items/${itemId}/branches`,
       );
@@ -429,9 +464,11 @@ export const createMenuApi = (client: DomainHttpClient) => {
       itemId: string,
       branchId: string,
       input: BranchOverrideInput,
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.put(`/menu/items/${itemId}/branch/${branchId}`, input),
+    ): Promise<MenuBranchOverrideDto> {
+      return putDomainData<MenuBranchOverrideDto>(
+        client,
+        `/menu/items/${itemId}/branch/${branchId}`,
+        input,
       );
     },
     resetBranchOverride(itemId: string, branchId: string): Promise<void> {
@@ -439,45 +476,53 @@ export const createMenuApi = (client: DomainHttpClient) => {
         client.delete(`/menu/items/${itemId}/branch/${branchId}`),
       );
     },
-    listActiveMenus<T>(
-      fulfillmentType: string,
+    listActiveMenus(
+      fulfillmentType: MenuFulfillmentTypeDto,
       signal?: AbortSignal,
-    ): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/menus/active", {
+    ): Promise<ActiveMenuDto[]> {
+      return getDomainData<ActiveMenuDto[]>(client, "/menu/menus/active", {
         params: { channel: "STAFF", fulfillmentType },
         ...(signal ? { signal } : {}),
       });
     },
-    listCombos<T>(signal?: AbortSignal): Promise<T[]> {
-      return getDomainData<T[]>(
+    listCombos(signal?: AbortSignal): Promise<MenuComboDto[]> {
+      return getDomainData<MenuComboDto[]>(
         client,
         "/menu/combos",
         signal ? { signal } : undefined,
       );
     },
-    listPromotions<T>(signal?: AbortSignal): Promise<T[]> {
-      return getDomainData<T[]>(
+    listPromotions(signal?: AbortSignal): Promise<MenuPromotionDto[]> {
+      return getDomainData<MenuPromotionDto[]>(
         client,
         "/menu/promotions",
         signal ? { signal } : undefined,
       );
     },
-    listPriceRules<T>(signal?: AbortSignal): Promise<T[]> {
-      return getDomainData<T[]>(
+    listPriceRules(signal?: AbortSignal): Promise<MenuPriceRuleDto[]> {
+      return getDomainData<MenuPriceRuleDto[]>(
         client,
         "/menu/price-rules",
         signal ? { signal } : undefined,
       );
     },
-    listAllergens<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/allergens");
+    listAllergens(): Promise<MenuAllergenDto[]> {
+      return getDomainData<MenuAllergenDto[]>(client, "/menu/allergens");
     },
-    getItemRecipes<T>(itemId: string): Promise<T[]> {
-      return getDomainData<T[]>(client, `/menu/items/${itemId}/recipes`);
+    getItemRecipes(itemId: string): Promise<MenuRecipeDto[]> {
+      return getDomainData<MenuRecipeDto[]>(
+        client,
+        `/menu/items/${itemId}/recipes`,
+      );
     },
-    saveItemRecipes(itemId: string, ingredients: unknown[]): Promise<void> {
-      return voidDomainRequest(
-        client.post(`/menu/items/${itemId}/recipes`, { ingredients }),
+    saveItemRecipes(
+      itemId: string,
+      ingredients: unknown[],
+    ): Promise<MenuRecipeDto[]> {
+      return postDomainData<MenuRecipeDto[]>(
+        client,
+        `/menu/items/${itemId}/recipes`,
+        { ingredients },
       );
     },
     async downloadImportTemplate(format: "csv" | "xlsx"): Promise<Blob> {
@@ -487,15 +532,25 @@ export const createMenuApi = (client: DomainHttpClient) => {
       });
       return response.data;
     },
-    validateImport<T>(form: FormData): Promise<T> {
-      return postDomainData<T>(client, "/menu/import/items/validate", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    validateImport(form: FormData): Promise<MenuImportValidationResult> {
+      return postDomainData<MenuImportValidationResult>(
+        client,
+        "/menu/import/items/validate",
+        form,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
     },
-    commitImport<T>(form: FormData): Promise<T> {
-      return postDomainData<T>(client, "/menu/import/items/commit", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    commitImport(form: FormData): Promise<MenuImportCommitResult> {
+      return postDomainData<MenuImportCommitResult>(
+        client,
+        "/menu/import/items/commit",
+        form,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
     },
     async exportEntity(
       entity: "items" | "categories" | "recipes" | "modifiers",
@@ -507,47 +562,76 @@ export const createMenuApi = (client: DomainHttpClient) => {
       });
       return response.data;
     },
-    listPromotionsFor<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/promotions");
+    listPromotionsFor(): Promise<MenuPromotionDto[]> {
+      return getDomainData<MenuPromotionDto[]>(client, "/menu/promotions");
     },
-    promotionStats<T>(id: string): Promise<T> {
-      return getDomainData<T>(client, `/menu/promotions/${id}/stats`);
+    promotionStats(id: string): Promise<PromotionStatsResponse> {
+      return getDomainData<PromotionStatsResponse>(
+        client,
+        `/menu/promotions/${id}/stats`,
+      );
     },
-    createPromotion<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/promotions", input);
+    createPromotion(input: Record<string, unknown>): Promise<MenuPromotionDto> {
+      return postDomainData<MenuPromotionDto>(
+        client,
+        "/menu/promotions",
+        input,
+      );
     },
-    updatePromotion<T>(id: string, patch: Record<string, unknown>): Promise<T> {
-      return patchDomainData<T>(client, `/menu/promotions/${id}`, patch);
+    updatePromotion(
+      id: string,
+      patch: Record<string, unknown>,
+    ): Promise<MenuPromotionDto> {
+      return patchDomainData<MenuPromotionDto>(
+        client,
+        `/menu/promotions/${id}`,
+        patch,
+      );
     },
     removePromotion(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/promotions/${id}`));
     },
-    previewPromotion<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/promotions/preview", input);
+    previewPromotion(
+      input: Record<string, unknown>,
+    ): Promise<PromotionPreviewResponse> {
+      return postDomainData<PromotionPreviewResponse>(
+        client,
+        "/menu/promotions/preview",
+        input,
+      );
     },
-    createCombo<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/combos", input);
+    createCombo(input: Record<string, unknown>): Promise<MenuComboDto> {
+      return postDomainData<MenuComboDto>(client, "/menu/combos", input);
     },
-    updateCombo<T>(id: string, input: Record<string, unknown>): Promise<T> {
-      return patchDomainData<T>(client, `/menu/combos/${id}`, input);
+    updateCombo(
+      id: string,
+      input: Record<string, unknown>,
+    ): Promise<MenuComboDto> {
+      return patchDomainData<MenuComboDto>(client, `/menu/combos/${id}`, input);
     },
     removeCombo(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/combos/${id}`));
     },
-    previewCombo<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/combos/preview", input);
+    previewCombo(
+      input: Record<string, unknown>,
+    ): Promise<ComboPreviewResponse> {
+      return postDomainData<ComboPreviewResponse>(
+        client,
+        "/menu/combos/preview",
+        input,
+      );
     },
-    listChannelOverrides<T>(itemId: string): Promise<T[]> {
-      return getDomainData<T[]>(
+    listChannelOverrides(itemId: string): Promise<MenuChannelOverrideDto[]> {
+      return getDomainData<MenuChannelOverrideDto[]>(
         client,
         `/menu/items/${itemId}/channel-overrides`,
       );
     },
-    saveChannelOverride<T>(
+    saveChannelOverride(
       itemId: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return putDomainData<T>(
+      input: AvailabilityChannelOverrideRequest,
+    ): Promise<MenuChannelOverrideDto> {
+      return putDomainData<MenuChannelOverrideDto>(
         client,
         `/menu/items/${itemId}/channel-overrides`,
         input,
@@ -558,37 +642,56 @@ export const createMenuApi = (client: DomainHttpClient) => {
         client.delete(`/menu/items/channel-overrides/${id}`),
       );
     },
-    listPriceRulesFor<T>(
+    listPriceRulesFor(
       params: Record<string, string | undefined> = {},
-    ): Promise<T[]> {
-      return getDomainData<T[]>(client, "/menu/price-rules", { params });
+    ): Promise<MenuPriceRuleDto[]> {
+      return getDomainData<MenuPriceRuleDto[]>(client, "/menu/price-rules", {
+        params,
+      });
     },
-    createPriceRule<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/price-rules", input);
+    createPriceRule(input: Record<string, unknown>): Promise<MenuPriceRuleDto> {
+      return postDomainData<MenuPriceRuleDto>(
+        client,
+        "/menu/price-rules",
+        input,
+      );
     },
     removePriceRule(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/price-rules/${id}`));
     },
-    createHappyHourRule<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/menu/price-rules/happy-hour", input);
+    createHappyHourRule(
+      input: Record<string, unknown>,
+    ): Promise<MenuPriceRuleDto[]> {
+      return postDomainData<MenuPriceRuleDto[]>(
+        client,
+        "/menu/price-rules/happy-hour",
+        input,
+      );
     },
-    listLoyaltyTiers<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/loyalty/tiers");
+    listLoyaltyTiers(): Promise<MenuLoyaltyTierDto[]> {
+      return getDomainData<MenuLoyaltyTierDto[]>(client, "/loyalty/tiers");
     },
-    createLoyaltyTier<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/loyalty/tiers", input);
+    createLoyaltyTier(input: LoyaltyTierRequest): Promise<MenuLoyaltyTierDto> {
+      return postDomainData<MenuLoyaltyTierDto>(
+        client,
+        "/loyalty/tiers",
+        input,
+      );
     },
     removeLoyaltyTier(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/loyalty/tiers/${id}`));
     },
-    listMenuSchedules<T>(menuId: string): Promise<T[]> {
-      return getDomainData<T[]>(client, `/menu/menus/${menuId}/schedules`);
+    listMenuSchedules(menuId: string): Promise<MenuScheduleDto[]> {
+      return getDomainData<MenuScheduleDto[]>(
+        client,
+        `/menu/menus/${menuId}/schedules`,
+      );
     },
-    createMenuSchedule<T>(
+    createMenuSchedule(
       menuId: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return postDomainData<T>(
+      input: MenuScheduleRequest,
+    ): Promise<MenuScheduleDto> {
+      return postDomainData<MenuScheduleDto>(
         client,
         `/menu/menus/${menuId}/schedules`,
         input,
@@ -597,21 +700,21 @@ export const createMenuApi = (client: DomainHttpClient) => {
     removeMenuSchedule(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/menu/menus/schedules/${id}`));
     },
-    updateVariantAvailability<T>(
+    updateVariantAvailability(
       variantId: string,
-      input: { status: string | null; reason: string | null },
-    ): Promise<T> {
-      return putDomainData<T>(
+      input: AvailabilityVariantOverrideRequest,
+    ): Promise<AvailabilityVariantOverrideResponse> {
+      return putDomainData<AvailabilityVariantOverrideResponse>(
         client,
         `/menu/variants/${variantId}/availability`,
         input,
       );
     },
-    updateModifierGroup<T>(
+    updateModifierGroup(
       groupId: string,
       patch: Record<string, unknown>,
-    ): Promise<T> {
-      return patchDomainData<T>(
+    ): Promise<ModifierGroupDto> {
+      return patchDomainData<ModifierGroupDto>(
         client,
         `/menu/modifier-groups/${groupId}`,
         patch,

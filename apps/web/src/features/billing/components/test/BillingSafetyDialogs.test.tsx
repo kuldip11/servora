@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -168,4 +167,22 @@ describe("billing safety dialogs", () => {
     fireEvent.click(confirm);
     expect(mocks.collectMutate).toHaveBeenCalledTimes(1);
   });
+});
+
+it("reuses a payment request key on retry and assigns a new key for changed details", () => {
+  render(<PaymentDialog order={order} onClose={vi.fn()} />);
+  fireEvent.click(screen.getByText("Confirm Payment"));
+  fireEvent.click(screen.getByText("Confirm Payment"));
+  const first = mocks.collectMutate.mock.calls[0]![0].input.idempotencyKey;
+  expect(first).toMatch(/^[0-9a-f-]{36}$/);
+  expect(mocks.collectMutate.mock.calls[1]![0].input.idempotencyKey).toBe(
+    first,
+  );
+  fireEvent.change(screen.getByLabelText("Amount"), {
+    target: { value: "50" },
+  });
+  fireEvent.click(screen.getByText("Confirm Payment"));
+  expect(mocks.collectMutate.mock.calls[2]![0].input.idempotencyKey).not.toBe(
+    first,
+  );
 });

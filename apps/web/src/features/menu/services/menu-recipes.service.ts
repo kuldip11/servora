@@ -1,12 +1,12 @@
-import { createMenuApi } from "@pos/api-client";
+import { createMenuApi, type MenuRecipeDto } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
 const menuApi = createMenuApi(apiClient);
-import type { Recipe, RecipeIngredientInput } from "@pos/types";
+import type { RecipeIngredientInput } from "@pos/types";
 
 export const menuRecipesService = {
-  async get(itemId: string): Promise<Recipe[]> {
-    return menuApi.getItemRecipes<Recipe>(itemId);
+  async get(itemId: string): Promise<MenuRecipeDto[]> {
+    return menuApi.getItemRecipes(itemId);
   },
 
   async save(

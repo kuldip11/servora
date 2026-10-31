@@ -16,8 +16,10 @@ export const useRefireOrderItem = (orderId: string) => {
       alsoCompOriginal: boolean;
     }) => ordersService.refireItem(orderId, itemId, reason, alsoCompOriginal),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(orderId),
+      });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       notifySuccess("Item refired");
     },
     onError: (error) => notifyError(error, "Failed to refire item"),

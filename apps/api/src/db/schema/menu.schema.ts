@@ -13,7 +13,6 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  unique,
   jsonb,
   check,
   foreignKey,

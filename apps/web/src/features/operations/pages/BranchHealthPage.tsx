@@ -10,9 +10,9 @@ import {
 } from "@pos/ui";
 import { extractApiError } from "@/shared/lib/api-client";
 import { useOperationsSnapshot } from "@/features/operations/hooks/useOperationsSnapshot";
-import type { Branch } from "@pos/types";
+import type { BranchDto } from "@pos/api-client";
 
-const capabilityScore = (branch: Branch) => {
+const capabilityScore = (branch: BranchDto) => {
   const enabled = [
     branch.dineInEnabled,
     branch.takeawayEnabled,

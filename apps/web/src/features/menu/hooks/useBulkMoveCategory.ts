@@ -14,7 +14,7 @@ export const useBulkMoveCategory = () => {
       categoryId: string;
     }) => menuItemsService.bulkMoveCategory(itemIds, categoryId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Moved ${data.updated} item(s)`);
     },
     onError: (error) => notifyError(error, "Failed to move items"),

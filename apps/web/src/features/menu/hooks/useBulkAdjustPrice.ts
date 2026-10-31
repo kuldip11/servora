@@ -16,7 +16,7 @@ export const useBulkAdjustPrice = () => {
       mode: "set" | "increase" | "decrease";
     }) => menuItemsService.bulkAdjustPrice(itemIds, priceChange, mode),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(`Repriced ${data.updated} item(s)`);
     },
     onError: (error) => notifyError(error, "Failed to update prices"),

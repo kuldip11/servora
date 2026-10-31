@@ -1,6 +1,9 @@
 import { queryClient } from "@/shared/lib/query-client";
 import { create } from "zustand";
-import type { AvailableMembership, User } from "@pos/types";
+import type {
+  AuthUserDto as User,
+  AvailableMembershipDto as AvailableMembership,
+} from "@pos/api-client";
 
 interface AuthState {
   user: User | null;

@@ -163,7 +163,7 @@ export const CustomerGroupsSection = () => {
 
       <form
         className="grid max-w-2xl grid-cols-1 gap-2 md:grid-cols-3"
-        onSubmit={submit}
+        onSubmit={(event) => void submit(event)}
       >
         <div className="md:col-span-3">
           <FormErrorSummary messages={formErrorMessages} />

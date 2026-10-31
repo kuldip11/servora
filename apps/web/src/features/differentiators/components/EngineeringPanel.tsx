@@ -22,7 +22,8 @@ export const EngineeringPanel = () => {
             (row) => row.quadrant === quadrantFilter,
           );
     return rows.sort((a, b) => {
-      if (sort === "margin") return b.margin - a.margin;
+      if (sort === "margin")
+        return (b.margin ?? -Infinity) - (a.margin ?? -Infinity);
       if (sort === "volume") return b.salesVolume - a.salesVolume;
       return (
         a.menuItemName.localeCompare(b.menuItemName) ||
@@ -112,7 +113,10 @@ export const EngineeringPanel = () => {
                 </Badge>
               </div>
               <p className="mt-2 text-sm">
-                {row.salesVolume} sold · margin ₹{row.margin.toFixed(2)}
+                {row.salesVolume} sold · margin{" "}
+                {row.margin === null
+                  ? "unavailable"
+                  : `₹${row.margin.toFixed(2)}`}
               </p>
               <p className="mt-2 text-sm text-text-secondary">
                 {row.recommendation}

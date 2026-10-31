@@ -1,8 +1,11 @@
+import type { MenuItemStatusDto } from "@pos/api-client";
+
 export interface WaiterComboOption {
   id: string;
   menuItemId: string;
   variantId: string | null;
-  upcharge: string;
+  upcharge: number;
+  isUnlimitedRefill?: boolean;
 }
 
 export interface WaiterComboSlot {
@@ -19,9 +22,9 @@ export interface WaiterCombo {
   name: string;
   description: string | null;
   pricePolicy: "FIXED" | "PERCENT_OFF_SUM";
-  fixedPrice: string | null;
-  percentOff: string | null;
-  status: "ACTIVE" | "INACTIVE";
+  fixedPrice: number | null;
+  percentOff: number | null;
+  status: MenuItemStatusDto;
   slots: WaiterComboSlot[];
 }
 

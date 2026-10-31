@@ -9,7 +9,7 @@ export const useSetItemPublished = () => {
     mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
       menuItemsService.setPublished(id, publish),
     onSuccess: (_data, { publish }) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(publish ? "Item published" : "Moved to draft");
     },
     onError: (err) => notifyError(err, "Failed to update publish state"),

@@ -44,7 +44,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/store/auth", () => ({ useAuthStore: mocks.authHook }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     updateProfile: mocks.updateProfile,
     changePassword: mocks.changePassword,

@@ -12,8 +12,10 @@ export const useAddOrderItems = (orderId: string) => {
     mutationFn: (input: AddOrderItemsInput) =>
       ordersService.addItems(orderId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: orderKeys.detail(orderId),
+      });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       notifySuccess("Items added to order");
     },
     onError: (err) => notifyError(err, "Failed to add items"),

@@ -9,7 +9,7 @@ export const useAddMenuTag = () => {
     mutationFn: ({ name, color }: { name: string; color: string }) =>
       menuTagsService.create(name, color),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.tags() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.tags() });
       notifySuccess("Tag created");
     },
   });

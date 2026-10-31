@@ -53,6 +53,30 @@ export const OrganizationModal = ({
   const mutation = useSaveOrganization(organization?.id);
   const archiveMutation = useArchiveOrganization(organization?.id ?? "");
   const e = form.formState.errors;
+  const finishSave = (message: string) => {
+    notifySuccess(message);
+    void onSaved()
+      .then(onClose)
+      .catch((error: unknown) =>
+        notifyError(error, "Could not refresh the business structure"),
+      );
+  };
+  const submit = form.handleSubmit((values) => {
+    clearFormErrors();
+    mutation.mutate(values, {
+      onSuccess: () =>
+        finishSave(
+          organization ? "Organization updated" : "Organization created",
+        ),
+      onError: (error) =>
+        handleApiError(
+          error,
+          form.setError,
+          organizationFieldPaths,
+          "Could not save organization",
+        ),
+    });
+  });
   return (
     <Modal
       open={open}
@@ -62,25 +86,7 @@ export const OrganizationModal = ({
     >
       <form
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
-        onSubmit={form.handleSubmit((values) => {
-          clearFormErrors();
-          mutation.mutate(values, {
-            onSuccess: async () => {
-              notifySuccess(
-                organization ? "Organization updated" : "Organization created",
-              );
-              await onSaved();
-              onClose();
-            },
-            onError: (error) =>
-              handleApiError(
-                error,
-                form.setError,
-                organizationFieldPaths,
-                "Could not save organization",
-              ),
-          });
-        })}
+        onSubmit={(event) => void submit(event)}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -243,11 +249,7 @@ export const OrganizationModal = ({
               onClick={() =>
                 window.confirm("Archive this organization?") &&
                 archiveMutation.mutate(undefined, {
-                  onSuccess: async () => {
-                    notifySuccess("Organization archived");
-                    await onSaved();
-                    onClose();
-                  },
+                  onSuccess: () => finishSave("Organization archived"),
                   onError: (error) =>
                     notifyError(error, "Could not archive organization"),
                 })

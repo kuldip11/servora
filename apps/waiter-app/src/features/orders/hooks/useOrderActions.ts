@@ -122,8 +122,9 @@ export const useMergeCandidates = (open: boolean) => {
   const scope = getWaiterQueryScope();
   return useQuery({
     queryKey: orderKeys.list(scope, { view: "ACTIVE", limit: 100 }),
-    queryFn: async ({ signal }) =>
-      (await fetchOrders({ view: "ACTIVE", limit: 100 }, signal)).items,
+    queryFn: ({ signal }) =>
+      fetchOrders({ view: "ACTIVE", limit: 100 }, signal),
+    select: (result) => result.items,
     enabled: open,
   });
 };

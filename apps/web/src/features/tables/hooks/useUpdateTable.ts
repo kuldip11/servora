@@ -16,7 +16,7 @@ export const useUpdateTable = () => {
       input: Omit<TableFormInput, "branchId">;
     }) => tablesService.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tableKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: tableKeys.list() });
       notifySuccess("Table updated");
     },
     onError: (err) => {

@@ -1,5 +1,5 @@
 import { Card } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { formatCurrency } from "@/features/orders/utils/orderHelpers";
 
 interface Props {

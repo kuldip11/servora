@@ -9,6 +9,8 @@ import {
   normalizeOrigin,
   SITE_NAME,
   TWITTER_CARD,
+  OG_IMAGE_WIDTH,
+  OG_IMAGE_HEIGHT,
 } from "@pos/seo";
 
 export {
@@ -23,7 +25,8 @@ export {
 export const getSiteUrl = () =>
   normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL);
 
-export const getAbsoluteUrl = (path: string) => `${getSiteUrl()}${path}`;
+export const getAbsoluteUrl = (path: string) =>
+  `${getSiteUrl()}${assertCanonicalPath(path)}`;
 
 type PageMetadataInput = {
   title: string;
@@ -35,17 +38,13 @@ type PageMetadataInput = {
   absoluteTitle?: boolean;
 };
 
-/**
- * Builds page-specific metadata while deliberately leaving social image
- * selection to Next.js file-based metadata (`app/opengraph-image.png` and
- * `app/twitter-image.png`). Next.js gives file-based metadata higher priority
- * and emits the image URL, type, width and height automatically.
- */
+// Nested social metadata is replaced per segment; include complete image defaults.
 export const createPageMetadata = ({
   title,
   description,
   path,
   ogTitle = title,
+  imageAlt = "Servora restaurant operations platform",
   index = true,
   absoluteTitle = false,
 }: PageMetadataInput): Metadata => {
@@ -67,10 +66,19 @@ export const createPageMetadata = ({
       title: ogTitle,
       description,
       url: path,
+      images: [
+        {
+          url: "/opengraph-image.png",
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          alt: imageAlt,
+        },
+      ],
     },
     twitter: {
       card: TWITTER_CARD,
       title: socialTitle,
+      images: [{ url: "/twitter-image.png", alt: imageAlt }],
       description,
     },
   };

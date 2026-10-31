@@ -29,7 +29,7 @@ export const settingsService = {
     tenantId: string,
     signal?: AbortSignal,
   ): Promise<TenantSettings> {
-    const memberships = await settingsApi.tenants<TenantSettings>(signal);
+    const memberships = await settingsApi.tenants(signal);
     const tenant = memberships.find(
       (entry) => entry.tenant.id === tenantId,
     )?.tenant;
@@ -37,6 +37,6 @@ export const settingsService = {
     return tenant;
   },
   updateTenant(tenantId: string, input: TenantSettingsUpdate) {
-    return settingsApi.updateTenant<TenantSettings>(tenantId, input);
+    return settingsApi.updateTenant(tenantId, input);
   },
 };

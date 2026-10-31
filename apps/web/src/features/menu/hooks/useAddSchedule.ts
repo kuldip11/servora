@@ -13,7 +13,7 @@ export const useAddSchedule = (itemId: string) => {
       menuSchedulesService.add(itemId, input),
     onSuccess: () => {
       notifySuccess("Schedule added");
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: menuKeys.itemSchedules(itemId),
       });
     },

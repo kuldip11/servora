@@ -1,51 +1,7 @@
 import { request } from "@/shared/api/client";
+import type { OrderResponse } from "@pos/contracts";
 
-export type CustomerOrder = {
-  id: string;
-  status: string;
-  subtotal: string;
-  taxAmount: string;
-  discountAmount: string;
-  serviceChargeAmount: string;
-  roundingAdjustment: string;
-  totalAmount: string;
-  createdAt: string;
-  items: Array<{
-    id: string;
-    menuItemId: string | null;
-    menuItemName: string;
-    comboId?: string | null;
-    comboGroupId?: string | null;
-    variantId: string | null;
-    variantName: string | null;
-    quantity: number;
-    unitPrice: string | number;
-    subtotal: string | number;
-    taxRate?: string | number;
-    taxMode?: "INCLUSIVE" | "EXCLUSIVE";
-    chefNotes: string | null;
-    fulfillmentType: "DINE_IN" | "TAKEAWAY";
-    modifiers: Array<{
-      modifierId: string;
-      modifierGroupName: string | null;
-      name: string;
-      price: string | number;
-      quantity: number;
-    }>;
-  }>;
-  kitchenTickets: Array<{
-    id: string;
-    ticketNumber: number;
-    status: "PENDING_PAYMENT" | "FIRED" | "PREPARING" | "READY" | "SERVED";
-  }>;
-  payments: Array<{
-    id: string;
-    method: "CASH" | "CARD" | "UPI" | "RAZORPAY" | "STRIPE";
-    status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
-    amount: string;
-    reference: string | null;
-  }>;
-};
+export type CustomerOrder = OrderResponse;
 
 export type CreateCustomerOrderInput = {
   fulfillmentType?: "DINE_IN" | "TAKEAWAY";

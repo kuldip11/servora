@@ -8,7 +8,7 @@ export const useDeleteCategory = () => {
   return useMutation({
     mutationFn: (id: string) => menuItemsService.deleteCategory(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess("Category removed");
     },
     onError: (err) => notifyError(err, "Failed to remove category"),

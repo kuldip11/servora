@@ -5,17 +5,10 @@ import {
   type DomainHttpClient,
 } from "./shared";
 
-export interface ManagerApprovalInput {
-  actionType: "VOID" | "COMP";
-  orderId: string;
-  orderItemId: string;
-  managerEmail: string;
-  password: string;
-}
-
-export interface ManagerApprovalResult {
-  token: string;
-}
+export type ManagerApprovalInput = ManagerApprovalIssueBody;
+export type ManagerApprovalResult = ManagerApprovalToken;
+export type ApprovalThresholdDto = ApprovalThreshold;
+export type ApprovalThresholdInput = ApprovalThresholdUpsertBody;
 
 export const createApprovalsApi = (client: DomainHttpClient) => {
   return {
@@ -28,18 +21,18 @@ export const createApprovalsApi = (client: DomainHttpClient) => {
         input,
       );
     },
-    listThresholds<T>(signal?: AbortSignal): Promise<T[]> {
-      return getDomainData<T[]>(
+    listThresholds(signal?: AbortSignal): Promise<ApprovalThresholdDto[]> {
+      return getDomainData<ApprovalThresholdDto[]>(
         client,
         "/approvals/thresholds",
         signal ? { signal } : undefined,
       );
     },
-    setThreshold<T>(
-      actionType: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return putDomainData<T>(
+    setThreshold(
+      actionType: ApprovalAction,
+      input: ApprovalThresholdInput,
+    ): Promise<ApprovalThresholdDto> {
+      return putDomainData<ApprovalThresholdDto>(
         client,
         `/approvals/thresholds/${actionType}`,
         input,
@@ -47,3 +40,10 @@ export const createApprovalsApi = (client: DomainHttpClient) => {
     },
   };
 };
+import type {
+  ApprovalAction,
+  ApprovalThreshold,
+  ApprovalThresholdUpsertBody,
+  ManagerApprovalIssueBody,
+  ManagerApprovalToken,
+} from "@pos/contracts";

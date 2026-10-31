@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Select } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { useSplitBill } from "@/features/billing/hooks/useSplitBill";
 import { useSplitBillBySeat } from "@/features/billing/hooks/useSplitBillBySeat";
 

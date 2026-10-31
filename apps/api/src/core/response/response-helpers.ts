@@ -1,8 +1,4 @@
-import type {
-  PaginatedResponse,
-  PaginationMeta,
-  SuccessResponse,
-} from "@pos/contracts";
+import type { PaginatedResponse, SuccessResponse } from "@pos/contracts";
 
 export type {
   PaginatedResponse,

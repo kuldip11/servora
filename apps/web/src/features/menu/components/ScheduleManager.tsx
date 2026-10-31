@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, X, Clock } from "lucide-react";
 import { Select } from "@pos/ui";
-import { MENU_ITEM_STATUS_OPTIONS } from "@/features/menu/constants";
+import { MENU_ITEM_STATUS_OPTIONS, WEEK_DAYS } from "@/features/menu/constants";
 import { useMenuItemSchedules } from "@/features/menu/hooks/useMenuItemSchedules";
 import { useAddSchedule } from "@/features/menu/hooks/useAddSchedule";
 import { useDeleteSchedule } from "@/features/menu/hooks/useDeleteSchedule";
@@ -10,8 +10,6 @@ import type {
   MenuItemScheduleType,
   MenuItemStatus,
 } from "@pos/types";
-
-import { WEEK_DAYS } from "@/features/menu/constants";
 
 const SCHEDULE_TYPE_OPTIONS: { value: MenuItemScheduleType; label: string }[] =
   [

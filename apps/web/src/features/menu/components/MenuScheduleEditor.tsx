@@ -23,7 +23,7 @@ interface MenuScheduleRow {
 }
 
 interface ScheduleDraft {
-  scheduleType: string;
+  scheduleType: MenuScheduleRow["scheduleType"];
   startTime: string;
   endTime: string;
   dayOfWeek: number;
@@ -122,7 +122,9 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
         <Select
           aria-label="Menu schedule type"
           value={draft.scheduleType}
-          onChange={(value) => setField("scheduleType", value)}
+          onChange={(value) =>
+            setField("scheduleType", value as MenuScheduleRow["scheduleType"])
+          }
           options={[
             { value: "DAILY", label: "Every day" },
             { value: "WEEKLY", label: "Weekly" },

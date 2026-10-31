@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import type { CustomerOrder } from "@/api";
-import type { CartLine } from "@/features/cart/pricing";
-import {
-  savePersistedCart,
-  savePersistedOrderId,
-} from "@/features/cart/persistence";
+import type { CartLine } from "@/features/cart";
+import { savePersistedCart, savePersistedOrderId } from "@/features/cart";
 import type { CustomerBootstrapData } from "@/features/session/useCustomerBootstrap";
 import { customerKeys } from "@/features/session/query/customer.keys";
 

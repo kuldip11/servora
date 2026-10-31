@@ -1,4 +1,4 @@
-import type { KitchenTicketStatus } from "@pos/types";
+import type { KitchenTicketStatus } from "@pos/api-client";
 import type { StatusTone } from "@pos/ui";
 
 export const STATUS_CONFIG = {

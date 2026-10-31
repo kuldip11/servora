@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { chooseSelectOption } from "@/test/select";
@@ -119,36 +118,6 @@ vi.mock("@pos/ui", async (importOriginal) => ({
     </label>
   ),
 }));
-
-const variants: any[] = [
-  { id: "v1", name: "Small", status: "ACTIVE", manualStockCount: 2 },
-  {
-    id: "v2",
-    name: "Large",
-    status: "OUT_OF_STOCK",
-    manualOverrideReason: "Sold out",
-    manualStockCount: null,
-  },
-];
-const groups: any[] = [
-  {
-    id: "g1",
-    name: "Milk",
-    options: [
-      {
-        id: "o1",
-        name: "Oat",
-        additionalPrice: 10,
-        isAvailable: true,
-        maxQuantity: 1,
-        variantPrices: [
-          { variantId: "v1", additionalPrice: 12 },
-          { variantId: "old", additionalPrice: 7 },
-        ],
-      },
-    ],
-  },
-];
 
 import { CustomerGroupsSection } from "../CustomerGroupsSection";
 

@@ -1,18 +1,24 @@
 import { voidDomainRequest } from "./shared";
 import type {
-  KitchenStation,
-  KitchenTicket,
-  KitchenTicketStatus,
-} from "@pos/types";
+  KitchenQueueTicketResponse,
+  KitchenStationResponse,
+  UpdateKitchenTicketStatusRequest,
+} from "@pos/contracts";
 import { getDomainData, type DomainHttpClient } from "./shared";
+
+export type KitchenTicketDto = KitchenQueueTicketResponse;
+export type KitchenStationDto = KitchenStationResponse;
+export type KitchenTicketStatus = KitchenQueueTicketResponse["status"];
+export type KitchenTicketUpdateStatus =
+  UpdateKitchenTicketStatusRequest["status"];
 
 export const createKitchenApi = (client: DomainHttpClient) => {
   return {
     tickets(
       stationId?: string,
       signal?: AbortSignal,
-    ): Promise<KitchenTicket[]> {
-      return getDomainData<KitchenTicket[]>(
+    ): Promise<KitchenTicketDto[]> {
+      return getDomainData<KitchenTicketDto[]>(
         client,
         "/kitchen-tickets",
         stationId || signal
@@ -23,14 +29,17 @@ export const createKitchenApi = (client: DomainHttpClient) => {
           : undefined,
       );
     },
-    stations(signal?: AbortSignal): Promise<KitchenStation[]> {
-      return getDomainData<KitchenStation[]>(
+    stations(signal?: AbortSignal): Promise<KitchenStationDto[]> {
+      return getDomainData<KitchenStationDto[]>(
         client,
         "/kitchen-tickets/stations",
         signal ? { signal } : undefined,
       );
     },
-    updateTicketStatus(id: string, status: KitchenTicketStatus): Promise<void> {
+    updateTicketStatus(
+      id: string,
+      status: KitchenTicketUpdateStatus,
+    ): Promise<void> {
       return voidDomainRequest(
         client.patch(`/kitchen-tickets/${id}/status`, { status }),
       );

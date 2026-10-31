@@ -1,6 +1,6 @@
 import { isAxiosError } from "axios";
-import type { AvailableMembership } from "@pos/types";
-import { authService } from "@/features/auth/services/auth.service";
+import type { AvailableMembershipDto as AvailableMembership } from "@pos/api-client";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 
 const STORAGE_KEY = "servora.active-context.v1";

@@ -1,4 +1,7 @@
-import type { CancellationReason, Order } from "@pos/types";
+import type {
+  CancellationReasonDto as CancellationReason,
+  OrderDto as Order,
+} from "@pos/api-client";
 import type { ManagerApprovalRequest } from "./ManagerApprovalDialog";
 import { ManagerApprovalDialog } from "./ManagerApprovalDialog";
 import { MergeOrderDialog } from "./MergeOrderDialog";

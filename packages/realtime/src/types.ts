@@ -6,4 +6,5 @@ export interface RealtimeClientConfig {
 
   getBranchId?: () => string | null;
   reconnectDelayMs?: number;
+  validateEvent?: (value: unknown) => boolean;
 }

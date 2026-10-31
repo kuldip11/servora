@@ -1,4 +1,5 @@
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import type { MenuWindowInput } from "@pos/api-client";
 import { notifyError } from "@/shared/lib/notify";
 import { menuKeys } from "@/features/menu/query-keys";
 import { menuSchedulesQuery } from "@/features/menu/query-options";
@@ -10,7 +11,7 @@ export const useMenuSchedules = (menuId: string) =>
 export const useCreateMenuSchedule = (menuId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Record<string, unknown>) =>
+    mutationFn: (input: MenuWindowInput) =>
       menuSchedulesService.createMenuSchedule(menuId, input),
     onSuccess: () =>
       queryClient.invalidateQueries({

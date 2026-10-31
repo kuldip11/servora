@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, SlidersHorizontal, UserRound, X } from "lucide-react";
 import { Select } from "@pos/ui";
-import type { LoyaltyCustomer } from "@pos/types";
+import type { LoyaltyCustomerDto } from "@pos/api-client";
 
 interface Props {
   customerId: string;
@@ -9,7 +9,7 @@ interface Props {
   onClearCustomer: () => void;
   customerSearch: string;
   onCustomerSearchChange: (value: string) => void;
-  customerResults: LoyaltyCustomer[] | undefined;
+  customerResults: LoyaltyCustomerDto[] | undefined;
   onSelectCustomer: (id: string, name: string) => void;
   customerGroups: Array<{ id: string; name: string }>;
   customerGroupId: string;

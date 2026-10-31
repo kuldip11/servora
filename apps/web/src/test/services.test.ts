@@ -44,7 +44,7 @@ vi.mock("@pos/api-client", async (importOriginal) => ({
   createBillingApi: () => h.billing,
   createAnalyticsApi: () => h.analytics,
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     createTenant: h.createTenant,
     updateTenant: h.updateTenant,
@@ -54,7 +54,7 @@ vi.mock("@/features/auth/services/auth.service", () => ({
 
 import { businessService } from "@/features/business/services/business.service";
 import { auditService } from "@/features/audit/services/audit.service";
-import { cancellationReasonsService } from "@/features/orders/services/cancellation-reasons.service";
+import { cancellationReasonsService } from "@/features/orders";
 import { billingService } from "@/features/billing/services/billing.service";
 import { analyticsService } from "@/features/analytics/services/analytics.service";
 
@@ -121,14 +121,23 @@ describe("web service coverage", () => {
       expect.objectContaining({
         address: "Road",
         onlineEnabled: true,
-        isActive: true,
-        phone: "",
       }),
+    );
+    expect(h.branches.create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ status: expect.anything(), phone: null }),
     );
     expect(h.branches.update).toHaveBeenCalledWith(
       "b1",
-      expect.objectContaining({ onlineEnabled: false, isActive: false }),
+      expect.objectContaining({ onlineEnabled: false }),
     );
+    expect(h.branches.update).toHaveBeenCalledWith(
+      "b1",
+      expect.not.objectContaining({
+        status: expect.anything(),
+        isActive: false,
+      }),
+    );
+    expect(h.branches.deactivate).toHaveBeenCalledTimes(2);
   });
 
   it("covers audit and cancellation-reason services", async () => {

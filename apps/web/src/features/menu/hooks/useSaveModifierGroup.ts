@@ -17,8 +17,10 @@ export const useSaveModifierGroup = () => {
       payload: ModifierGroupPayload;
     }) => modifierGroupsService.save(existingId, payload),
     onSuccess: (_data, { existingId }) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.modifierGroups() });
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({
+        queryKey: menuKeys.modifierGroups(),
+      });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(
         existingId ? "Modifier group updated" : "Modifier group created",
       );

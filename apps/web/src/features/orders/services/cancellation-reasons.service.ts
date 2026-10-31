@@ -1,4 +1,4 @@
-import type { CancellationReason } from "@pos/types";
+import type { CancellationReasonDto as CancellationReason } from "@pos/api-client";
 import { createOrdersApi } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 

@@ -33,7 +33,7 @@ export const TenantSwitcher = () => {
     try {
       await activateMembershipContext(next, memberships);
       setOpen(false);
-      router.navigate({
+      void router.navigate({
         to: getAuthorizedHomePath(useAuthStore.getState().user),
       });
     } finally {
@@ -62,9 +62,7 @@ export const TenantSwitcher = () => {
             Franchise
           </span>
           <span className="block truncate text-sm font-semibold leading-5 text-text-primary">
-            {current?.tenant.displayName ||
-              current?.tenant.name ||
-              "Select franchise"}
+            {current?.tenant.name || "Select franchise"}
           </span>
         </span>
         <ChevronDown
@@ -102,7 +100,7 @@ export const TenantSwitcher = () => {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-text-primary">
-                    {item.tenant.displayName || item.tenant.name}
+                    {item.tenant.name}
                   </span>
                   <span className="block truncate text-xs text-text-secondary">
                     {item.roles.map((role) => role.name).join(", ")}

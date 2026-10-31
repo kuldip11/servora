@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { KitchenTicketStatus } from "@pos/types";
+import type { KitchenTicketStatus } from "@pos/api-client";
 import { ticket } from "@/features/kitchen/test/fixtures";
 
 const mocks = vi.hoisted(() => ({ footerProps: undefined as any }));

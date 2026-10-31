@@ -17,12 +17,12 @@ const options = [
 ];
 
 describe("selection shared", () => {
-  it("builds grouped rows and filters options", () => {
+  it("builds grouped rows and filters options", async () => {
     expect(buildRows(options).some((row) => row.kind === "header")).toBe(true);
     expect(filterOptions(options, "ban")).toEqual([options[1]]);
     expect(rowDomId("list", 4)).toBe("list-row-4");
   });
-  it("tracks active rows and typeahead prefixes", () => {
+  it("tracks active rows and typeahead prefixes", async () => {
     const commit = vi.fn();
     const { result } = renderHook(() =>
       useActiveRow(buildRows(options), commit),
@@ -47,7 +47,7 @@ describe("selection shared", () => {
     );
     rerender({ value: "ab" });
     expect(result.current).toBe("a");
-    act(() => vi.advanceTimersByTime(50));
+    await act(() => vi.advanceTimersByTime(50));
     expect(result.current).toBe("ab");
     vi.useRealTimers();
   });

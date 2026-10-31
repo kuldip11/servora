@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import type { MenuFulfillmentTypeDto } from "@pos/api-client";
 import { menuItemsService } from "./services/menu-items.service";
 import { menusService } from "./services/menus.service";
 import { menuTagsService } from "./services/menu-tags.service";
@@ -90,7 +91,7 @@ export const menuItemBranchOverridesQuery = (itemId: string) => {
   });
 };
 
-export const activeMenusQuery = (orderType: string) => {
+export const activeMenusQuery = (orderType: MenuFulfillmentTypeDto) => {
   return queryOptions({
     queryKey: menuKeys.activeMenus(orderType),
     queryFn: () => menusService.listActive(orderType),

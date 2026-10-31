@@ -46,7 +46,11 @@ export const ContactForm = () => {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-5" noValidate>
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="space-y-5"
+      noValidate
+    >
       <div
         aria-hidden="true"
         className="absolute -left-[9999px] h-0 w-0 overflow-hidden"

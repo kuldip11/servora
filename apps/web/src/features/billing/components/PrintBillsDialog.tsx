@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
 import { Button, Modal, QueryErrorState, Spinner, StatusBadge } from "@pos/ui";
-import type { Bill, Order } from "@pos/types";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 import { printBills } from "@/features/billing/utils/print-bills";
 import { useOrderBills } from "@/features/billing/hooks/useOrderBills";
 import { extractApiError } from "@/shared/lib/api-client";
@@ -24,10 +24,18 @@ const fallbackBill = (order: Order): Bill => ({
     id: `preview-${item.id}`,
     billId: `order-${order.id}`,
     orderItemId: item.id,
+    allocationRatio: 1,
     orderItem: {
       menuItemId: item.menuItemId,
       menuItemName: item.menuItemName,
       quantity: item.quantity,
+      taxMode: item.taxMode,
+      comboId: item.comboId,
+      comboGroupId: item.comboGroupId,
+      order: {
+        id: order.id,
+        table: order.table ? { name: order.table.name } : null,
+      },
     },
   })),
 });

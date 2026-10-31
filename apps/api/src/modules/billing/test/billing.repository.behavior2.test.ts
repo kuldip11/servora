@@ -24,7 +24,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/db", () => {
   const tx = {
+    execute: vi.fn(),
     query: {
+      paymentCollectionRequests: { findFirst: vi.fn() },
       orders: {
         findFirst: mocks.txOrderFindFirst,
         findMany: mocks.txOrderFindMany,
@@ -61,6 +63,7 @@ vi.mock("@/db", () => {
 import { billingRepository } from "@/modules/billing/billing.repository";
 
 const tx = {
+  execute: vi.fn(),
   query: {
     orders: {
       findFirst: mocks.txOrderFindFirst,
@@ -210,6 +213,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "order_not_found" });
 
@@ -220,6 +224,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [{ orderItemIds: ["i1", "i2"] }],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "already_paid" });
 
@@ -229,6 +234,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [{ orderItemIds: [] }],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({
       status: "invalid_allocation",
@@ -248,6 +254,7 @@ describe("billingRepository additional coverage", () => {
         ],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({
       status: "invalid_allocation",
@@ -266,6 +273,7 @@ describe("billingRepository additional coverage", () => {
       ],
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
     });
     expect(result).toMatchObject({
       status: "ok",
@@ -281,6 +289,7 @@ describe("billingRepository additional coverage", () => {
         orderItemId: "i1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         shares: [],
       }),
     ).resolves.toMatchObject({ status: "order_not_found" });
@@ -292,6 +301,7 @@ describe("billingRepository additional coverage", () => {
         orderItemId: "i1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         shares: [],
       }),
     ).resolves.toMatchObject({ status: "item_not_found" });
@@ -303,6 +313,7 @@ describe("billingRepository additional coverage", () => {
         orderItemId: "i1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         shares: [],
       }),
     ).resolves.toMatchObject({ status: "already_paid" });
@@ -313,6 +324,7 @@ describe("billingRepository additional coverage", () => {
         orderItemId: "i1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         shares: [],
       }),
     ).resolves.toMatchObject({ status: "ok" });
@@ -324,6 +336,7 @@ describe("billingRepository additional coverage", () => {
         orderItemId: "i1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         shares: [
           { seatLabel: " Seat 1 ", shareRatio: 0.5 },
           { seatLabel: "Seat 2", shareRatio: 0.5 },
@@ -340,6 +353,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "order_not_found" });
 
@@ -350,6 +364,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "already_paid" });
 
@@ -359,6 +374,7 @@ describe("billingRepository additional coverage", () => {
         allocations: [{ itemShares: [] }],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({
       status: "invalid_allocation",
@@ -378,6 +394,7 @@ describe("billingRepository additional coverage", () => {
         ],
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({
       status: "invalid_allocation",
@@ -396,6 +413,7 @@ describe("billingRepository additional coverage", () => {
       ],
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
     });
     expect(result).toMatchObject({
       status: "ok",
@@ -429,6 +447,7 @@ describe("billingRepository additional coverage", () => {
         orderId: "o1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toEqual({ bills: [{ id: "b1" }], orderBranchId: "b1" });
     await expect(
@@ -436,6 +455,7 @@ describe("billingRepository additional coverage", () => {
         orderId: "o1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toEqual({ orderBranchId: "b1", items: activeItems });
   });
@@ -460,6 +480,7 @@ describe("billingRepository additional coverage", () => {
         processedBy: "u1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "not_refundable" });
 
@@ -485,6 +506,7 @@ describe("billingRepository additional coverage", () => {
         processedBy: "u1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "ok", refund: { id: "r1" } });
   });
@@ -510,6 +532,7 @@ describe("billingRepository additional coverage", () => {
         billId: "b1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toBeUndefined();
 
@@ -519,6 +542,7 @@ describe("billingRepository additional coverage", () => {
         billId: "missing",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toBeUndefined();
   });
@@ -530,6 +554,7 @@ describe("billingRepository additional coverage", () => {
       amount: 3,
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
       changedBy: "u1",
     };
 
@@ -625,6 +650,7 @@ describe("billingRepository additional coverage", () => {
     };
     mocks.txOrderFindFirst
       .mockResolvedValueOnce(child)
+      .mockResolvedValueOnce(parent)
       .mockResolvedValueOnce(parent);
     mocks.txOrderFindMany.mockResolvedValueOnce([child]);
     mocks.txBillFindMany.mockResolvedValueOnce([
@@ -701,6 +727,7 @@ describe("billingRepository additional coverage", () => {
       amount: 0,
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
       changedBy: "u1",
     };
     mocks.txBillFindMany.mockResolvedValueOnce([

@@ -1,4 +1,7 @@
-import type { PromotionResponse } from "@pos/contracts";
+import type {
+  PromotionResponse,
+  PromotionPreviewResponse,
+} from "@pos/contracts";
 
 export const toPromotionResponse = (row: any): PromotionResponse => ({
   id: row.id,
@@ -26,8 +29,6 @@ export const toPromotionResponse = (row: any): PromotionResponse => ({
   stackableWithLoyalty: Boolean(row.stackableWithLoyalty),
   isActive: Boolean(row.isActive),
 });
-
-import type { PromotionPreviewResponse } from "@pos/contracts";
 
 export const toPromotionPreviewResponse = (
   result: any,

@@ -106,7 +106,6 @@ export const SubRecipeManager = () => {
         inventory={inventory ?? []}
         subRecipes={subRecipes ?? []}
         isSaving={create.isPending}
-        onToggle={() => setOpen((value) => !value)}
         onCreate={(payload, onError, onSuccessReset) =>
           create.mutate(payload, {
             onError,

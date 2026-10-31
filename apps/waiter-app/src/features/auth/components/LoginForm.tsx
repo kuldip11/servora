@@ -21,7 +21,10 @@ export const LoginForm = ({
     defaultValues: { email: "", password: "" },
   });
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      className="space-y-4"
+    >
       <div>
         <label
           htmlFor="waiter-email"

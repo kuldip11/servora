@@ -1,4 +1,5 @@
-import type { KitchenTicket, OrderItemFulfillmentType } from "@pos/types";
+import type { OrderItemFulfillmentType } from "@pos/types";
+import type { OrderKitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 import {
   Card,

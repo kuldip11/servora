@@ -1,21 +1,26 @@
+import type {
+  AvailabilityDashboardQuery,
+  AvailabilityDashboardResponse,
+} from "@pos/contracts";
 import { getDomainData, type DomainHttpClient } from "./shared";
 
-export interface AvailabilityDashboardParams {
-  channel: string;
-  fulfillmentType: string;
-  cause?: string;
-}
+export type AvailabilityDashboardParams = AvailabilityDashboardQuery;
+export type AvailabilityDashboardDto = AvailabilityDashboardResponse;
 
 export const createAvailabilityApi = (client: DomainHttpClient) => {
   return {
-    dashboard<T>(
+    dashboard(
       params: AvailabilityDashboardParams,
       signal?: AbortSignal,
-    ): Promise<T> {
-      return getDomainData<T>(client, "/menu/availability/dashboard", {
-        params,
-        ...(signal ? { signal } : {}),
-      });
+    ): Promise<AvailabilityDashboardDto> {
+      return getDomainData<AvailabilityDashboardDto>(
+        client,
+        "/menu/availability/dashboard",
+        {
+          params,
+          ...(signal ? { signal } : {}),
+        },
+      );
     },
   };
 };

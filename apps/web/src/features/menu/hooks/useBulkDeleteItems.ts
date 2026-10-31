@@ -8,7 +8,7 @@ export const useBulkDeleteItems = () => {
   return useMutation({
     mutationFn: (itemIds: string[]) => menuItemsService.bulkDelete(itemIds),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
       notifySuccess(
         data.protected > 0
           ? `Deleted ${data.deleted} item(s) — ${data.protected} skipped (on open orders)`

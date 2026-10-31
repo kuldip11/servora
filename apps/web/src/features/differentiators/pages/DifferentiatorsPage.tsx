@@ -10,7 +10,6 @@ import { ApprovalRulesPanel } from "@/features/differentiators/components/Approv
 import { AvailabilityPanel } from "@/features/differentiators/components/AvailabilityPanel";
 import { EngineeringPanel } from "@/features/differentiators/components/EngineeringPanel";
 import { GuidedBuilderPanel } from "@/features/differentiators/components/GuidedBuilderPanel";
-import type { MenuChoice } from "@/features/differentiators/components/guided-builder/types";
 import { OrderExplainPanel } from "@/features/differentiators/components/OrderExplainPanel";
 import { useDifferentiatorMenuChoices } from "@/features/differentiators/hooks/useDifferentiators";
 

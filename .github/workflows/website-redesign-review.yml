@@ -36,7 +36,8 @@ jobs:
       - run: bun run lint:website && bun run typecheck:website && bun run test:website
       - run: bun run build:website
       - run: node scripts/seo/audit-built-pages.mjs --website-only
-      - run: bunx playwright install --with-deps chromium
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        working-directory: apps/website
       - run: bun run test:e2e:website:production
       - name: Save rendered pages and test results
         if: always()

@@ -21,7 +21,8 @@ test("contact form keeps entries through a failure and clears after success", as
     });
   });
   await page.goto("/contact");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  const form = page.locator("form");
+  await expect(form.getByRole("alert")).toHaveCount(0);
   const submit = page.getByRole("button", { name: "Send message" });
   await expect(submit).toBeDisabled();
   await page
@@ -34,17 +35,17 @@ test("contact form keeps entries through a failure and clears after success", as
     .getByRole("textbox", { name: "Message", exact: true })
     .fill("Can we discuss a two-branch restaurant setup?");
   await submit.click();
-  await expect(page.getByRole("alert")).toHaveText("Please try again shortly.");
+  await expect(form.getByRole("alert")).toHaveText("Please try again shortly.");
   await expect(
     page.getByRole("textbox", { name: "Name", exact: true }),
   ).toHaveValue("Review visitor");
   await submit.click();
-  await expect(page.getByRole("status")).toContainText(
+  await expect(form.getByRole("status")).toContainText(
     "Your message has been sent",
   );
   await expect(
     page.getByRole("textbox", { name: "Name", exact: true }),
   ).toHaveValue("");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(form.getByRole("alert")).toHaveCount(0);
   expect(attempts).toBe(2);
 });

@@ -91,7 +91,20 @@ export const StaffFormFields = ({
             .map((item) => ({ value: item.id, label: item.name })),
         ]}
         error={errors.roleId?.message}
-        {...register("roleId")}
+        value={roleId}
+        onChange={(value) =>
+          setValue("roleId", value, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
+        onBlur={() =>
+          setValue("roleId", roleId, {
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
       />
       {branchRequired && (
         <Select
@@ -104,7 +117,9 @@ export const StaffFormFields = ({
           error={errors.branchId?.message}
           value={branchId ?? ""}
           onChange={(event) =>
-            setValue("branchId", event.target.value || undefined, {
+            setValue("branchId", event || undefined, {
+              shouldDirty: true,
+              shouldTouch: true,
               shouldValidate: true,
             })
           }

@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,17 +12,28 @@ const h = vi.hoisted(() => ({
 let rules: any[] = [];
 let groups: any[] = [];
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
   Input: (props: any) => <input {...props} />,
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...props}>
+      <select
+        aria-label={label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((option: any) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -33,7 +43,8 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiFieldErrors: () => ({}),
   extractApiError: (_error: unknown, fallback: string) => fallback,
   createMenuApi: () => ({
@@ -54,8 +65,10 @@ vi.mock("@/shared/lib/query-client", () => ({
 }));
 vi.mock("@/shared/lib/errors", () => ({ getErrorMessage: h.getError }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: (cfg: any) => ({
-    data: cfg.queryKey[0] === "customer-groups" ? groups : rules,
+    data: cfg.queryKey.includes("customer-groups") ? groups : rules,
   }),
   useMutation: (cfg: any) => ({
     isPending: false,
@@ -123,7 +136,7 @@ describe("PriceRulesPanel coverage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
     await waitFor(() => expect(h.remove).toHaveBeenCalledWith("r1"));
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
 
     fireEvent.change(screen.getByLabelText("Rule channel"), {
@@ -170,7 +183,7 @@ describe("PriceRulesPanel coverage", () => {
       priority: 4,
     });
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
   });
 

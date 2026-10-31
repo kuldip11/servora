@@ -1,4 +1,3 @@
-import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
@@ -156,13 +155,13 @@ const defaults = () => {
 beforeEach(defaults);
 const actCheckout = () => act(() => h.checkoutArgs.onPlaced());
 describe("CustomerApp", () => {
-  it("renders loading skeleton", () => {
+  it("renders loading skeleton", async () => {
     h.sessionState.session = null;
     h.sessionState.loading = true;
     render(<CustomerApp />);
     expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(5);
   });
-  it("renders error retry and null state", () => {
+  it("renders error retry and null state", async () => {
     h.sessionState.session = null;
     h.sessionState.error = "bad";
     const { rerender } = render(<CustomerApp />);
@@ -172,7 +171,7 @@ describe("CustomerApp", () => {
     rerender(<CustomerApp />);
     expect(document.body.textContent).toBe("");
   });
-  it("covers menu search/cart/back/order/menu and checkout callbacks", () => {
+  it("covers menu search/cart/back/order/menu and checkout callbacks", async () => {
     render(<CustomerApp />);
     expect(screen.getByTestId("menu")).toBeTruthy();
     fireEvent.click(screen.getByText("search"));
@@ -193,7 +192,7 @@ describe("CustomerApp", () => {
     fireEvent.click(screen.getByText("menu"));
     expect(screen.getByTestId("menu")).toBeTruthy();
   });
-  it("blocks menu ordering when an active order cannot be refreshed and no cached order is available", () => {
+  it("blocks menu ordering when an active order cannot be refreshed and no cached order is available", async () => {
     h.sessionState.activeOrderError = "Order service unavailable";
 
     render(<CustomerApp />);
@@ -206,7 +205,7 @@ describe("CustomerApp", () => {
     expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
   });
 
-  it("keeps a cached active order visible and marks its status stale", () => {
+  it("keeps a cached active order visible and marks its status stale", async () => {
     h.sessionState.placedOrder = { id: "order" };
     h.sessionState.activeOrderError = "Order service unavailable";
 
@@ -221,7 +220,7 @@ describe("CustomerApp", () => {
     expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
   });
 
-  it("covers takeaway fallback and combo/item overlays including editing/variant branch", () => {
+  it("covers takeaway fallback and combo/item overlays including editing/variant branch", async () => {
     h.sessionState.session = { ...session, mode: "TAKEAWAY", table: null };
     h.cartState.selectedCombo = { id: "c" };
     h.cartState.selectedItem = { id: "i" };
@@ -236,16 +235,27 @@ describe("CustomerApp", () => {
     fireEvent.click(screen.getByText("cart"));
     expect(screen.getByTestId("cart")).toBeTruthy();
   });
-  it("covers checkout onPlaced transition and takeaway table fallback", () => {
+  it("covers checkout onPlaced transition and takeaway table fallback", async () => {
     h.sessionState.session = { ...session, table: null };
     h.sessionState.placedOrder = { id: "order" };
     render(<CustomerApp />);
-    actCheckout();
+    await actCheckout();
     expect(screen.getByTestId("order")).toBeTruthy();
     expect(screen.getByTestId("order").textContent).toContain("Takeaway");
   });
+  it("remounts local UI state when the customer session identity changes", async () => {
+    const { rerender } = render(<CustomerApp />);
+    fireEvent.click(screen.getByText("cart"));
+    expect(screen.getByTestId("cart")).toBeTruthy();
+
+    h.sessionState.session = { ...session, token: "replacement-session" };
+    rerender(<CustomerApp />);
+
+    expect(screen.getByTestId("menu")).toBeTruthy();
+    expect(screen.queryByTestId("cart")).toBeNull();
+  });
 });
-it("covers selected item without a variant", () => {
+it("covers selected item without a variant", async () => {
   h.cartState.selectedItem = { id: "i" };
   h.cartState.selectedVariantId = undefined;
   render(<CustomerApp />);

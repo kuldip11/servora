@@ -1,3 +1,9 @@
+// Reserved .invalid hosts are permitted only for explicit CI fixture builds.
+const isCiFixtureBuild =
+  process.env.CI === "true" &&
+  process.env.SERVORA_SEO_TEST_BUILD === "true" &&
+  process.env.VERCEL_ENV !== "production" &&
+  process.env.RENDER !== "true";
 const isProduction =
   process.env.VERCEL_ENV === "production" ||
   process.env.NODE_ENV === "production";
@@ -16,11 +22,16 @@ try {
   const url = new URL(value);
   if (
     url.protocol !== "https:" ||
+    (url.hostname.endsWith(".invalid") && !isCiFixtureBuild) ||
+    url.username ||
+    url.password ||
     url.pathname !== "/" ||
     url.search ||
     url.hash ||
     url.hostname.endsWith(".example") ||
-    url.hostname === "example.com"
+    /(^|\.)(example\.(com|org|net)|localhost)$/.test(url.hostname) ||
+    url.hostname.endsWith(".test") ||
+    !url.hostname.includes(".")
   ) {
     throw new Error("invalid production origin");
   }

@@ -5,7 +5,8 @@ const h = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createOrdersApi: () => ({
     listCancellationReasons: h.list,
     listAllCancellationReasons: h.listAll,

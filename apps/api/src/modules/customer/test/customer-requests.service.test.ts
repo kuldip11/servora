@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+}));
+vi.mock("@/modules/customer/customer-request.mapper", () => ({
+  toCustomerRequestResponse: (value: unknown) => value,
+}));
 import type { AuthContext } from "@/core/auth";
 
 const mocks = vi.hoisted(() => ({

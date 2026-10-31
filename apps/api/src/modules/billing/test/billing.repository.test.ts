@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { tx, db } = vi.hoisted(() => {
   const tx = {
+    execute: vi.fn(),
     query: {
+      paymentCollectionRequests: { findFirst: vi.fn() },
       orders: { findFirst: vi.fn(), findMany: vi.fn() },
       bills: { findFirst: vi.fn(), findMany: vi.fn() },
       orderItems: { findMany: vi.fn() },
@@ -20,11 +22,6 @@ vi.mock("../../../db", () => ({ db }));
 import { billingRepository } from "@/modules/billing/billing.repository";
 
 const returning = (rows: any[]) => vi.fn().mockResolvedValue(rows);
-const where = (rows: any[]) => ({
-  returning: returning(rows),
-  then: (resolve: any) => resolve(rows),
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
   tx.query.orders.findFirst.mockReset();

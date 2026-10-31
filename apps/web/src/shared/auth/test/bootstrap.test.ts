@@ -3,10 +3,10 @@ import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
   bootstrapAuthSession,
 } from "@/shared/auth/bootstrap";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 
-vi.mock("../../../features/auth/services/auth.service", () => ({
+vi.mock("../../../shared/auth/auth.service", () => ({
   authService: { refresh: vi.fn(), memberships: vi.fn() },
 }));
 
@@ -35,6 +35,7 @@ describe("bootstrapAuthSession", () => {
       } as any,
       accessToken: "access-1",
       expiresIn: 900,
+      sessionId: "00000000-0000-4000-8000-000000000001",
     });
 
     await expect(bootstrapAuthSession()).resolves.toBe("ready");

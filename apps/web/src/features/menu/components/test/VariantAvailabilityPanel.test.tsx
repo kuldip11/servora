@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -30,7 +29,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -50,6 +50,7 @@ vi.mock("@pos/api-client", () => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
   useQuery: ({ queryKey, queryFn }: any) => {
     const key = JSON.stringify(queryKey);
     const value = h.queryData.get(key);
@@ -80,7 +81,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -102,26 +104,6 @@ const variants: any[] = [
     manualStockCount: null,
   },
 ];
-const groups: any[] = [
-  {
-    id: "g1",
-    name: "Milk",
-    options: [
-      {
-        id: "o1",
-        name: "Oat",
-        additionalPrice: 10,
-        isAvailable: true,
-        maxQuantity: 1,
-        variantPrices: [
-          { variantId: "v1", additionalPrice: 12 },
-          { variantId: "old", additionalPrice: 7 },
-        ],
-      },
-    ],
-  },
-];
-
 import { VariantAvailabilityPanel } from "../VariantAvailabilityPanel";
 
 describe("VariantAvailabilityPanel", () => {

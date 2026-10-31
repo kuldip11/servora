@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -8,52 +7,27 @@ import {
   StaleDataBanner,
 } from "@pos/ui";
 import { ChefHat } from "lucide-react";
-import type { Tenant } from "@pos/types";
-import { createSettingsApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
 import { notifySuccess } from "@/shared/lib/notify";
 import { useLocalFormApiErrors } from "@/shared/hooks/useLocalFormApiErrors";
 
-const settingsApi = createSettingsApi(apiClient);
-
-type KitchenSettings = Required<Pick<Tenant, "id" | "courseSequencingEnabled">>;
+import {
+  useTenantSettings,
+  useUpdateTenantSettings,
+} from "@/features/settings/hooks/useTenantSettings";
 
 export const KitchenOperationsSettingsCard = ({
   tenantId,
 }: {
   tenantId: string;
 }) => {
-  const qc = useQueryClient();
   const [courseSequencingEnabled, setCourseSequencingEnabled] = useState(false);
   const formErrors = useLocalFormApiErrors();
-  const key = ["tenant-settings", tenantId];
-  const settingsQuery = useQuery<KitchenSettings>({
-    queryKey: key,
-    queryFn: async () => {
-      const memberships = await settingsApi.tenants<KitchenSettings>();
-      const tenant = memberships.find(
-        (entry) => entry.tenant.id === tenantId,
-      )?.tenant;
-      if (!tenant) throw new Error("Active tenant settings are unavailable");
-      return tenant;
-    },
-  });
+  const settingsQuery = useTenantSettings(tenantId);
+  const save = useUpdateTenantSettings(tenantId);
   useEffect(() => {
     if (settingsQuery.data)
       setCourseSequencingEnabled(settingsQuery.data.courseSequencingEnabled);
   }, [settingsQuery.data]);
-
-  const save = useMutation({
-    mutationFn: () =>
-      settingsApi.updateTenant<KitchenSettings>(tenantId, {
-        courseSequencingEnabled,
-      }),
-    onSuccess: () => {
-      formErrors.clearErrors();
-      qc.invalidateQueries({ queryKey: key });
-      notifySuccess("Kitchen operations settings updated");
-    },
-  });
 
   if (settingsQuery.isError && !settingsQuery.data) {
     return (
@@ -123,14 +97,21 @@ export const KitchenOperationsSettingsCard = ({
           onClick={() => {
             formErrors.clearErrors();
             if (!isDirty) return;
-            save.mutate(undefined, {
-              onError: (error) =>
-                formErrors.handleApiError(
-                  error,
-                  ["courseSequencingEnabled"],
-                  "Failed to update kitchen operations settings",
-                ),
-            });
+            save.mutate(
+              { courseSequencingEnabled },
+              {
+                onSuccess: () => {
+                  formErrors.clearErrors();
+                  notifySuccess("Kitchen operations settings updated");
+                },
+                onError: (error) =>
+                  formErrors.handleApiError(
+                    error,
+                    ["courseSequencingEnabled"],
+                    "Failed to update kitchen operations settings",
+                  ),
+              },
+            );
           }}
         >
           Save kitchen settings

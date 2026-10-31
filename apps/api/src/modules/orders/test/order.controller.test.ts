@@ -188,7 +188,7 @@ describe("order controller", () => {
         items: [],
       } as any),
     ).toEqual({ success: true, data: orderDto() });
-    await orderController.updateStatus(auth, "o1", "PAID", "r", "c1", "unused");
+    await orderController.updateStatus(auth, "o1", "PAID", "r", "c1");
     expect(svc.updateStatus).toHaveBeenCalledWith(
       auth,
       "o1",

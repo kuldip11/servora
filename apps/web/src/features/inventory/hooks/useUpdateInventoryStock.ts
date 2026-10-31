@@ -1,5 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifySuccess } from "@/shared/lib/notify";
 import {
   inventoryService,
@@ -8,6 +7,7 @@ import {
 import { inventoryKeys } from "@/features/inventory/query-keys";
 
 export const useUpdateInventoryStock = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       itemId,
@@ -17,9 +17,9 @@ export const useUpdateInventoryStock = () => {
       input: StockUpdateInput;
     }) => inventoryService.updateStock(itemId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({
-        queryKey: ["inventory", "transactions"],
+      void queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
+      void queryClient.invalidateQueries({
+        queryKey: inventoryKeys.transactions(),
       });
       notifySuccess("Stock updated");
     },

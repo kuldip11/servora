@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { SelectMenu } from "../index";
+import { Select } from "../index";
 
 const meta = {
   title: "Foundation/Selection",
-  component: SelectMenu,
+  component: Select,
   tags: ["autodocs"],
   parameters: { layout: "padded" },
-} satisfies Meta<typeof SelectMenu>;
+} satisfies Meta<typeof Select>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -17,7 +17,7 @@ const options = [
   { value: "divider", label: "Unavailable branch", disabled: true },
 ];
 
-export const SelectMenuStates: Story = {
+export const SelectStates: Story = {
   args: {
     options,
     value: "ranchi",
@@ -29,14 +29,14 @@ export const SelectMenuStates: Story = {
       const [value, setValue] = useState("ranchi");
       return (
         <div className="grid max-w-sm gap-5">
-          <SelectMenu
+          <Select
             options={options}
             value={value}
             onChange={setValue}
             label="Branch"
             hint="Keyboard and typeahead enabled"
           />
-          <SelectMenu
+          <Select
             options={options}
             value={undefined}
             onChange={() => undefined}

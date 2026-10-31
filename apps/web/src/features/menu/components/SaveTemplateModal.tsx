@@ -55,7 +55,7 @@ export const SaveTemplateModal = ({
 
   return (
     <Modal open onClose={onClose} title="Save as Template" size="sm">
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={(event) => void submit(event)} className="space-y-4">
         <FormErrorSummary messages={formErrorMessages} />
         <Input
           label="Template name"

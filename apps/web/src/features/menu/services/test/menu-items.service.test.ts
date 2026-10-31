@@ -31,6 +31,9 @@ const payload: CreateMenuItemInput = {
 describe("menuItemsService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.put.mockResolvedValue({ data: { data: {} } });
+    api.patch.mockResolvedValue({ data: { data: {} } });
+    api.delete.mockResolvedValue({ data: { data: {} } });
   });
 
   it("handles category CRUD through the expected endpoints", async () => {

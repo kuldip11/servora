@@ -16,10 +16,10 @@ describe("requestLoggingPlugin", () => {
     const observe = vi
       .spyOn(metrics, "observeDuration")
       .mockImplementation(() => undefined);
-    vi.spyOn(Date, "now").mockReturnValueOnce(100).mockReturnValue(125);
+    const now = vi.fn().mockReturnValueOnce(100).mockReturnValue(125);
 
     const app = new Elysia()
-      .use(requestLoggingPlugin())
+      .use(requestLoggingPlugin(now))
       .get("/health", () => ({ ok: true }));
 
     const response = await app.handle(new Request("http://localhost/health"));

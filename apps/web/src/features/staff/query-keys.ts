@@ -9,4 +9,11 @@ export const staffKeys = {
 export const roleKeys = {
   all: ["roles"] as const,
   list: () => [...roleKeys.all, ...franchiseQueryContextKey(), "list"] as const,
+  permissions: (roleId: string | null) =>
+    [
+      ...roleKeys.all,
+      ...franchiseQueryContextKey(),
+      "permissions",
+      roleId,
+    ] as const,
 };

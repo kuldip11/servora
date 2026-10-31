@@ -1,16 +1,21 @@
 import {
   createBranchesApi,
   createOrganizationsApi,
+  type BranchDto,
   type BranchInput,
+  type CreateOrganizationInput,
+  type TenantDto,
+  type UpdateOrganizationInput,
+  type UpdateTenantInput,
 } from "@pos/api-client";
-import type { Branch, OrganizationSummary, Tenant } from "@pos/types";
+import type { OrganizationSummary } from "@pos/types";
 import type {
   BusinessBranchFormValues,
   FranchiseBusinessFormValues,
   OrganizationBusinessFormValues,
 } from "@pos/validation";
 import { apiClient } from "@/shared/lib/api-client";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 
 const organizationsApi = createOrganizationsApi(apiClient);
 const branchesApi = createBranchesApi(apiClient);
@@ -23,22 +28,51 @@ const normalizeOptionalStrings = <T extends Record<string, unknown>>(
       key,
       typeof value === "string" && !value.trim() ? null : value,
     ]),
-  );
+  ) as T;
+
+const toBranchInput = (
+  values: BusinessBranchFormValues & { currency: string },
+): BranchInput => {
+  const { status: _status, phone, ...input } = values;
+  return Object.fromEntries(
+    Object.entries({
+      ...normalizeOptionalStrings(input),
+      address: values.addressLine1,
+      onlineEnabled: values.customerQrEnabled,
+      ...(phone ? { phone } : {}),
+    }).filter(([, value]) => value !== undefined),
+  ) as BranchInput;
+};
+
+const toTenantUpdateInput = (
+  input: FranchiseBusinessFormValues,
+): UpdateTenantInput =>
+  Object.fromEntries(
+    Object.entries(normalizeOptionalStrings(input)).filter(
+      ([, value]) => value !== undefined,
+    ),
+  ) as UpdateTenantInput;
+
+const toOrganizationInput = (
+  input: OrganizationBusinessFormValues,
+): CreateOrganizationInput =>
+  Object.fromEntries(
+    Object.entries(normalizeOptionalStrings(input)).filter(
+      ([, value]) => value !== undefined,
+    ),
+  ) as CreateOrganizationInput;
 
 export const businessService = {
-  organizations: () => organizationsApi.list<OrganizationSummary>(),
+  organizations: () => organizationsApi.list(),
   franchises: (organizationId: string) =>
-    organizationsApi.tenants<Tenant>(organizationId),
+    organizationsApi.tenants(organizationId),
   branches: () => branchesApi.list(),
   createOrganization: (input: OrganizationBusinessFormValues) =>
-    organizationsApi.create<{
-      organization: OrganizationSummary;
-      membershipId: string;
-    }>(normalizeOptionalStrings(input)),
+    organizationsApi.create(toOrganizationInput(input)),
   updateOrganization: (id: string, input: OrganizationBusinessFormValues) =>
-    organizationsApi.update<OrganizationSummary>(
+    organizationsApi.update(
       id,
-      normalizeOptionalStrings(input),
+      toOrganizationInput(input) satisfies UpdateOrganizationInput,
     ),
   archiveOrganization: (id: string) => organizationsApi.archive(id),
   createFranchise: (
@@ -50,31 +84,33 @@ export const businessService = {
       organizationId,
     }),
   updateFranchise: (id: string, input: FranchiseBusinessFormValues) =>
-    authService.updateTenant<Tenant>(id, normalizeOptionalStrings(input)),
+    authService.updateTenant(id, toTenantUpdateInput(input)),
   archiveFranchise: (id: string) => authService.archiveTenant(id),
-  createBranch: (input: BusinessBranchFormValues & { currency: string }) =>
-    branchesApi.create({
-      ...normalizeOptionalStrings(input),
-      address: input.addressLine1,
-      onlineEnabled: input.customerQrEnabled,
-      isActive: input.status === "ACTIVE",
-      phone: input.phone,
-    } as BranchInput),
-  updateBranch: (
+  createBranch: async (
+    input: BusinessBranchFormValues & { currency: string },
+  ) => {
+    const created = await branchesApi.create(toBranchInput(input));
+    if (input.status === "INACTIVE") {
+      await branchesApi.deactivate(created.id);
+      return { ...created, isActive: false };
+    }
+    return created;
+  },
+  updateBranch: async (
     id: string,
     input: BusinessBranchFormValues & { currency: string },
-  ) =>
-    branchesApi.update(id, {
-      ...normalizeOptionalStrings(input),
-      address: input.addressLine1,
-      onlineEnabled: input.customerQrEnabled,
-      isActive: input.status === "ACTIVE",
-      phone: input.phone,
-    } as Partial<BranchInput>),
+  ) => {
+    const updated = await branchesApi.update(id, toBranchInput(input));
+    if (input.status === "INACTIVE") {
+      await branchesApi.deactivate(id);
+      return { ...updated, isActive: false };
+    }
+    return updated;
+  },
   archiveBranch: (id: string) => branchesApi.deactivate(id),
 };
 
 export type BusinessHierarchy = Array<{
   organization: OrganizationSummary;
-  franchises: Array<{ franchise: Tenant; branches: Branch[] }>;
+  franchises: Array<{ franchise: TenantDto; branches: BranchDto[] }>;
 }>;

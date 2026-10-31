@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import type { AvailableMembership } from "@pos/types";
+import type { AvailableMembershipDto as AvailableMembership } from "@pos/api-client";
 
 interface Props {
   branches: AvailableMembership["branches"];

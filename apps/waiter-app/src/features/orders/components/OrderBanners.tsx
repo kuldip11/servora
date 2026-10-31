@@ -1,5 +1,8 @@
 import { Bell, Receipt } from "lucide-react";
-import type { Order, KitchenTicket } from "@pos/types";
+import type {
+  OrderDto as Order,
+  OrderKitchenTicketDto as KitchenTicket,
+} from "@pos/api-client";
 
 interface Props {
   order: Order;

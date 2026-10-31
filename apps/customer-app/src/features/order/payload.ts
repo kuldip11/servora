@@ -1,6 +1,6 @@
 import type { CreateCustomerOrderInput } from "@/features/order/api";
-import type { CartLine } from "@/features/cart/pricing";
-import { normalizeSelectedOptions } from "@/features/cart/configuration";
+import type { CartLine } from "@/features/cart";
+import { normalizeSelectedOptions } from "@/features/cart";
 
 export const createOrderPayload = (
   cart: CartLine[],

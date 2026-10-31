@@ -8,6 +8,7 @@ import { menuBranchOverridesService } from "@/features/menu/services/menu-branch
 describe("menuBranchOverridesService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.put.mockResolvedValue({ data: { data: {} } });
   });
 
   it("lists overrides for an item", async () => {

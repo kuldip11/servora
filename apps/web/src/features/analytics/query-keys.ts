@@ -11,4 +11,11 @@ export const analyticsKeys = {
       "cost-margin",
       categoryId ?? "all",
     ] as const,
+  menuEngineering: (windowDays: number) =>
+    [
+      ...analyticsKeys.all,
+      ...branchQueryContextKey(),
+      "menu-engineering",
+      windowDays,
+    ] as const,
 };

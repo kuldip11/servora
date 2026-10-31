@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { extractApiError } from "@pos/api-client";
 import {
   Button,
   FormErrorSummary,
   Modal,
   QueryErrorState,
-  SelectMenu,
+  Select,
 } from "@pos/ui";
-import { fetchOrders, mergeOrders } from "@/features/orders/api/orders";
+import {
+  useMergeCandidates,
+  useMergeOrder,
+} from "@/features/orders/hooks/useOrderActions";
 
 interface Props {
   open: boolean;
@@ -18,19 +20,10 @@ interface Props {
 
 export const MergeOrderDialog = ({ open, orderId, onClose }: Props) => {
   const [targetId, setTargetId] = useState("");
-  const candidatesQuery = useQuery({
-    queryKey: ["orders", "merge-candidates"],
-    queryFn: async () =>
-      (await fetchOrders({ view: "ACTIVE", limit: 100 })).items,
-    enabled: open,
-  });
-  const mergeOrder = useMutation({
-    mutationFn: (selectedTargetId: string) =>
-      mergeOrders(orderId, selectedTargetId),
-    onSuccess: () => {
-      setTargetId("");
-      onClose();
-    },
+  const candidatesQuery = useMergeCandidates(open);
+  const mergeOrder = useMergeOrder(orderId, () => {
+    setTargetId("");
+    onClose();
   });
 
   const candidates = candidatesQuery.data ?? [];
@@ -49,7 +42,7 @@ export const MergeOrderDialog = ({ open, orderId, onClose }: Props) => {
             isRetrying={candidatesQuery.isFetching}
           />
         ) : (
-          <SelectMenu
+          <Select
             label="Merge billing into"
             placeholder="Select another open table"
             value={targetId || undefined}

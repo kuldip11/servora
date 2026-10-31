@@ -1,4 +1,3 @@
-import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -15,7 +14,8 @@ vi.mock("@/features/home/hooks/useCustomerRequests", () => ({
   useCustomerRequests: mocks.useCustomerRequests,
   useResolveCustomerRequest: mocks.useResolveCustomerRequest,
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
 vi.mock("@pos/ui", () => ({

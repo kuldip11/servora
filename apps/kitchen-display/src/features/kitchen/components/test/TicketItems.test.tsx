@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { TicketItems } from "../TicketItems";
 import { ticket } from "../../test/fixtures";
 import { filterTicketForStation } from "../../utils/ticket";

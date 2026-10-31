@@ -201,7 +201,7 @@ describe("order repository", () => {
 
     const stockSets: Array<Record<string, unknown>> = [];
     const deductionSets: Array<Record<string, unknown>> = [];
-    tx.update.mockImplementation((table: unknown) => ({
+    tx.update.mockImplementation((_table: unknown) => ({
       set: vi.fn((data: Record<string, unknown>) => {
         const chain = {
           where: vi.fn(() => {

@@ -42,7 +42,8 @@ vi.mock("@/features/orders/hooks/useVoidOrderItem", () => ({
 vi.mock("@/features/orders/hooks/useCompOrderItem", () => ({
   useCompOrderItem: () => mocks.compItem,
 }));
-vi.mock("@/features/orders/hooks/useCancellationReasons", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCancellationReasons: mocks.reasons,
 }));
 vi.mock("@/features/orders/hooks/useOrdersRealtimeSync", () => ({
@@ -62,7 +63,8 @@ vi.mock("@/features/orders/utils/round-actions", () => ({
     canServe: true,
   }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({
+vi.mock("@/shared/lib/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/lib/api-client")>()),
   extractApiError: (e: unknown) => String(e),
   toApiClientError: (e: unknown) => ({
     code:
@@ -111,7 +113,8 @@ vi.mock("@/features/orders/components/ManagerApprovalDialog", () => ({
     </div>
   ),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, onClick, disabled }: any) => (
     <button disabled={disabled} onClick={onClick}>
       {children}

@@ -1,17 +1,20 @@
-import type { InventoryItem, InventoryUnit } from "@pos/types";
+import type {
+  CreateInventoryItemRequest,
+  InventoryItemResponse,
+} from "@pos/contracts";
 
 export const toRealtimeInventoryItem = (item: {
   id: string;
   tenantId: string;
   branchId: string;
   name: string;
-  unit: InventoryUnit;
+  unit: CreateInventoryItemRequest["unit"];
   currentStock: string;
   minimumStock: string;
   reorderPoint: string;
   costPerUnit: string;
   isActive: boolean;
-}): InventoryItem => {
+}): InventoryItemResponse => {
   return {
     id: item.id,
     tenantId: item.tenantId,

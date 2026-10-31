@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { IconButton } from "../IconButton";
+import { Select } from "../Select";
 
 export interface PaginationProps {
   page: number;
@@ -77,21 +78,18 @@ export const Pagination = ({
               </span>
             </span>
           )}
-        {onPageSizeChange && (
-          <label className="flex items-center gap-2">
-            Rows per page
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="bg-surface border border-border rounded-md px-2 py-1 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {pageSizeOptions.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+        {onPageSizeChange && pageSize !== undefined && (
+          <Select
+            aria-label="Rows per page"
+            value={String(pageSize)}
+            onChange={(value) => onPageSizeChange(Number(value))}
+            options={pageSizeOptions.map((size) => ({
+              value: String(size),
+              label: String(size),
+            }))}
+            containerClassName="min-w-32"
+            className="py-1 text-sm"
+          />
         )}
       </div>
 

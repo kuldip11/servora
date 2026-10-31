@@ -10,7 +10,8 @@ export type WebsitePageSeo = {
 
 export const websitePageSeo = {
   home: {
-    title: "Servora — Every order. Every team. One flow.",
+    title:
+      "Restaurant Management Software for POS, QR Ordering & Kitchens | Servora",
     description:
       "Connect guest ordering, front of house, kitchen execution, billing and business control with Servora's restaurant operating platform.",
     path: "/",

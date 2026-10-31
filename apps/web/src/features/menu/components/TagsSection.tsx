@@ -109,7 +109,10 @@ export const TagsSection = () => {
         )}
       </div>
 
-      <form onSubmit={submit} className="space-y-3 max-w-sm">
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="space-y-3 max-w-sm"
+      >
         <FormErrorSummary messages={formErrorMessages} />
         <div className="flex items-end gap-2">
           <Input

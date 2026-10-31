@@ -1,6 +1,6 @@
 import { useMemo, type ComponentType } from "react";
 import { Sun, Moon, Contrast } from "lucide-react";
-import { SelectMenu } from "../selection/SelectMenu";
+import { Select } from "../Select";
 import type { SelectOption } from "../selection/shared";
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
 
@@ -42,7 +42,7 @@ export const ThemeSwitcher = ({
   );
 
   return (
-    <SelectMenu
+    <Select
       id={id}
       label={label}
       options={options}

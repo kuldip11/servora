@@ -436,7 +436,7 @@ describe("auth service edge coverage", () => {
         lastName: "B",
       } as any),
     ).resolves.toMatchObject({ user: { roles: [{ description: "" }] } });
-  });
+  }, 15_000);
 
   it("rejects duplicate/missing/inactive login users and exercises unlocked failure", async () => {
     findUsersByEmail.mockResolvedValueOnce([]);

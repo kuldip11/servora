@@ -1,5 +1,4 @@
-import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
@@ -9,7 +8,8 @@ const h = vi.hoisted(() => ({
   error: vi.fn(),
   mutateRoute: vi.fn(),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -35,10 +35,20 @@ vi.mock("@pos/ui", () => ({
         {children}
       </div>
     ) : null,
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...props}>
+      <select
+        aria-label={label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}

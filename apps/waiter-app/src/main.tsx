@@ -38,7 +38,6 @@ createRoot(root).render(
         <AppErrorBoundary appName="Servora Waiter">
           <WaiterApp />
         </AppErrorBoundary>
-        {}
         <Toaster />
       </QueryClientProvider>
     </ThemeProvider>

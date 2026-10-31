@@ -754,6 +754,13 @@ export type ModifierGroupResponse = Static<typeof modifierGroupSchema>;
 export type ModifierOptionResponse = Static<typeof modifierOptionSchema>;
 export type MenuTagResponse = Static<typeof menuTagSchema>;
 export type MenuAllergenResponse = Static<typeof menuAllergenSchema>;
+export type BulkOperationResultResponse = Static<
+  typeof bulkOperationResultSchema
+>;
+export type BulkPriceOperationResultResponse = Static<
+  typeof bulkPriceOperationResultSchema
+>;
+export type BulkDeleteResultResponse = Static<typeof bulkDeleteResultSchema>;
 
 export const menuMembershipResponseSchema = successResponseSchema(
   menuItemMembershipSchema,
@@ -1209,6 +1216,7 @@ export const menuTemplateApplyResponseSchema = successResponseSchema(
 export type ComboResponse = Static<typeof comboResponseSchemaModel>;
 export type PriceRuleResponse = Static<typeof priceRuleResponseModelSchema>;
 export type PromotionResponse = Static<typeof promotionResponseModelSchema>;
+export type PromotionStatsResponse = Static<typeof promotionStatsSchema>;
 export type MenuTemplateResponse = Static<
   typeof menuTemplateResponseModelSchema
 >;

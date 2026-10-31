@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import {
   Button,
   Input,
@@ -8,11 +7,11 @@ import {
   Select,
   Spinner,
 } from "@pos/ui";
-import type { Bill, Order } from "@pos/types";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 import { createPaymentSchema } from "@pos/validation";
 import { PAYMENT_METHODS } from "@/features/billing/constants";
 import { useCollectPayment } from "@/features/billing/hooks/useCollectPayment";
-import { billingService } from "@/features/billing/services/billing.service";
+import { useOrderBills } from "@/features/billing/hooks/useOrderBills";
 import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 import { BillItemSummary } from "./BillItemSummary";
@@ -49,14 +48,11 @@ export const PaymentDialog = ({
       ? initialPaymentForm(order)
       : { method: "CASH", amount: "", reference: "" },
   );
+  const paymentRequests = useRef(new Map<string, string>());
   const [selectedBillId, setSelectedBillId] = useState("");
   const [validationError, setValidationError] = useState("");
   const payMutation = useCollectPayment();
-  const billsQuery = useQuery<Bill[]>({
-    queryKey: ["billing", "order", order?.id],
-    queryFn: () => billingService.getOrderBills(order!.id),
-    enabled: !!order,
-  });
+  const billsQuery = useOrderBills(order?.id, { enabled: !!order });
 
   if (!order) return null;
 
@@ -108,10 +104,23 @@ export const PaymentDialog = ({
       return;
     }
     setValidationError("");
+    const fingerprint = JSON.stringify([
+      order.id,
+      selectedBillId,
+      parsed.data.method,
+      parsed.data.amount,
+      parsed.data.reference ?? null,
+    ]);
+    let idempotencyKey = paymentRequests.current.get(fingerprint);
+    if (!idempotencyKey) {
+      idempotencyKey = crypto.randomUUID();
+      paymentRequests.current.set(fingerprint, idempotencyKey);
+    }
     payMutation.mutate(
       {
         orderId: order.id,
         input: {
+          idempotencyKey,
           ...(selectedBillId ? { billId: selectedBillId } : {}),
           method: parsed.data.method,
           amount: parsed.data.amount,
@@ -241,7 +250,7 @@ export const PaymentDialog = ({
           ]}
           value={selectedBillId}
           onChange={(event) => {
-            const id = event.target.value;
+            const id = event;
             setSelectedBillId(id);
             const bill = orderBills.find((candidate) => candidate.id === id);
             if (bill) {
@@ -260,7 +269,7 @@ export const PaymentDialog = ({
           options={PAYMENT_METHODS}
           value={form.method}
           onChange={(event) =>
-            setForm((current) => ({ ...current, method: event.target.value }))
+            setForm((current) => ({ ...current, method: event }))
           }
         />
         <Input

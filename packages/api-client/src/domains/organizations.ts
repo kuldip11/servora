@@ -1,4 +1,16 @@
 import { voidDomainRequest } from "./shared";
+import type {
+  CreateOrganizationRequest,
+  LoyaltyTierRequest,
+  LoyaltyTierResponse,
+  OrganizationCreatedResponse,
+  OrganizationMenuRequest,
+  OrganizationMenuResponse,
+  OrganizationResponse,
+  TenantResponse,
+  UpdateOrganizationMenuRequest,
+  UpdateOrganizationRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   patchDomainData,
@@ -6,25 +18,37 @@ import {
   type DomainHttpClient,
 } from "./shared";
 
+export type CreateOrganizationInput = CreateOrganizationRequest;
+export type UpdateOrganizationInput = UpdateOrganizationRequest;
+export type CreateOrganizationMenuInput = OrganizationMenuRequest;
+export type UpdateOrganizationMenuInput = UpdateOrganizationMenuRequest;
+export type CreateOrganizationLoyaltyTierInput = LoyaltyTierRequest;
+
 export const createOrganizationsApi = (client: DomainHttpClient) => {
   return {
-    list<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/organizations");
+    list(): Promise<OrganizationResponse[]> {
+      return getDomainData<OrganizationResponse[]>(client, "/organizations");
     },
-    tenants<T>(organizationId: string): Promise<T[]> {
-      return getDomainData<T[]>(
+    tenants(organizationId: string): Promise<TenantResponse[]> {
+      return getDomainData<TenantResponse[]>(
         client,
         `/organizations/${organizationId}/tenants`,
       );
     },
-    create<T>(input: Record<string, unknown>): Promise<T> {
-      return postDomainData<T>(client, "/organizations", input);
+    create(
+      input: CreateOrganizationRequest,
+    ): Promise<OrganizationCreatedResponse> {
+      return postDomainData<OrganizationCreatedResponse>(
+        client,
+        "/organizations",
+        input,
+      );
     },
-    update<T>(
+    update(
       organizationId: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return patchDomainData<T>(
+      input: UpdateOrganizationRequest,
+    ): Promise<OrganizationResponse> {
+      return patchDomainData<OrganizationResponse>(
         client,
         `/organizations/${organizationId}`,
         input,
@@ -35,28 +59,28 @@ export const createOrganizationsApi = (client: DomainHttpClient) => {
         client.delete(`/organizations/${organizationId}`),
       );
     },
-    menus<T>(organizationId: string): Promise<T[]> {
-      return getDomainData<T[]>(
+    menus(organizationId: string): Promise<OrganizationMenuResponse[]> {
+      return getDomainData<OrganizationMenuResponse[]>(
         client,
         `/organizations/${organizationId}/menus`,
       );
     },
-    createMenu<T>(
+    createMenu(
       organizationId: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return postDomainData<T>(
+      input: OrganizationMenuRequest,
+    ): Promise<OrganizationMenuResponse> {
+      return postDomainData<OrganizationMenuResponse>(
         client,
         `/organizations/${organizationId}/menus`,
         input,
       );
     },
-    updateMenu<T>(
+    updateMenu(
       organizationId: string,
       menuId: string,
-      patch: Record<string, unknown>,
-    ): Promise<T> {
-      return patchDomainData<T>(
+      patch: UpdateOrganizationMenuRequest,
+    ): Promise<OrganizationMenuResponse> {
+      return patchDomainData<OrganizationMenuResponse>(
         client,
         `/organizations/${organizationId}/menus/${menuId}`,
         patch,
@@ -67,17 +91,17 @@ export const createOrganizationsApi = (client: DomainHttpClient) => {
         client.delete(`/organizations/${organizationId}/menus/${menuId}`),
       );
     },
-    loyaltyTiers<T>(organizationId: string): Promise<T[]> {
-      return getDomainData<T[]>(
+    loyaltyTiers(organizationId: string): Promise<LoyaltyTierResponse[]> {
+      return getDomainData<LoyaltyTierResponse[]>(
         client,
         `/organizations/${organizationId}/loyalty-tiers`,
       );
     },
-    createLoyaltyTier<T>(
+    createLoyaltyTier(
       organizationId: string,
-      input: Record<string, unknown>,
-    ): Promise<T> {
-      return postDomainData<T>(
+      input: LoyaltyTierRequest,
+    ): Promise<LoyaltyTierResponse> {
+      return postDomainData<LoyaltyTierResponse>(
         client,
         `/organizations/${organizationId}/loyalty-tiers`,
         input,

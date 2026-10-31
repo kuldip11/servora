@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Minus, Plus, Check } from "lucide-react";
-import { Dialog, Button, TextInput } from "@pos/ui";
+import { Minus, Plus } from "lucide-react";
+import { Button, Dialog, Select, TextInput } from "@pos/ui";
+import { VariantSelector } from "@/features/orders/components/item-customizer/VariantSelector";
+import { ModifierGroupsEditor } from "@/features/orders/components/item-customizer/ModifierGroupsEditor";
 import { formatCurrency } from "@/shared/utils/format";
 import type {
   CartItem,
@@ -199,28 +201,21 @@ export const ItemCustomizerModal = ({
     >
       <div className="space-y-5">
         {courseMode && (
-          <label className="block text-sm font-medium text-text-primary">
-            Course
-            <select
-              className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
-              value={courseNumber}
-              onChange={(event) => setCourseNumber(Number(event.target.value))}
-            >
-              {[1, 2, 3, 4, 5].map((course) => (
-                <option key={course} value={course}>
-                  Course {course}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Course"
+            value={String(courseNumber)}
+            onChange={(value) => setCourseNumber(Number(value))}
+            options={[1, 2, 3, 4, 5].map((course) => ({
+              value: String(course),
+              label: `Course ${course}`,
+            }))}
+          />
         )}
-        {}
         <p className="text-sm text-primary font-semibold -mt-1">
           {formatCurrency(unitPrice)} × {quantity} ={" "}
           {formatCurrency(unitPrice * quantity)}
         </p>
 
-        {}
         <div>
           <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">
             Quantity
@@ -244,180 +239,21 @@ export const ItemCustomizerModal = ({
           </div>
         </div>
 
-        {}
-        {hasVariants && (
-          <div>
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">
-              Size / Variant
-            </p>
-            <div className="space-y-2">
-              {item.variants.map((v) => (
-                <button
-                  key={v.id}
-                  disabled={
-                    (v.manualOverrideStatus ?? v.status ?? "ACTIVE") !==
-                    "ACTIVE"
-                  }
-                  onClick={() => setVariantId(v.id)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
-                    variantId === v.id
-                      ? "border-primary bg-primary-surface"
-                      : "border-border"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        variantId === v.id
-                          ? "border-primary"
-                          : "border-text-disabled"
-                      }`}
-                    >
-                      {variantId === v.id && (
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-text-primary">
-                      {v.name}
-                      {(v.manualOverrideStatus ?? v.status ?? "ACTIVE") !==
-                      "ACTIVE"
-                        ? " — 86'd"
-                        : ""}
-                    </span>
-                  </div>
-                  <span className="text-sm text-text-secondary">
-                    {formatCurrency(Number(v.price))}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {hasVariants ? (
+          <VariantSelector
+            variants={item.variants}
+            selectedVariantId={variantId}
+            onChange={setVariantId}
+          />
+        ) : null}
 
-        {}
-        {groups
-          .filter(
-            (group) =>
-              !group.dependsOnOptionId ||
-              Object.values(selections)
-                .flat()
-                .some((option) => option.optionId === group.dependsOnOptionId),
-          )
-          .map((group) => {
-            const picked = selections[group.id] ?? [];
-            const atCap =
-              group.maxSelections != null &&
-              picked.length >= group.maxSelections;
-            return (
-              <div key={group.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                    {group.name}
-                  </p>
-                  <span
-                    className={`text-[11px] font-medium ${group.minSelections > 0 ? "text-warning" : "text-text-disabled"}`}
-                  >
-                    {group.minSelections > 0
-                      ? `Required · choose ${group.minSelections}${group.maxSelections ? `–${group.maxSelections}` : "+"}`
-                      : group.selectionType === "SINGLE"
-                        ? "Optional · choose 1"
-                        : `Optional${group.maxSelections ? ` · up to ${group.maxSelections}` : ""}`}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {group.options
-                    .filter((o) => o.isAvailable)
-                    .map((option) => {
-                      const selected = picked.find(
-                        (m) => m.optionId === option.id,
-                      );
-                      const disabled =
-                        !selected &&
-                        group.selectionType === "MULTIPLE" &&
-                        atCap;
-                      return (
-                        <div
-                          key={option.id}
-                          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border-2 transition-all ${
-                            selected
-                              ? "border-primary bg-primary-surface"
-                              : disabled
-                                ? "border-divider opacity-40"
-                                : "border-border"
-                          }`}
-                        >
-                          <button
-                            onClick={() =>
-                              !disabled && selectOption(group, option)
-                            }
-                            disabled={disabled}
-                            className="flex items-center gap-2 flex-1 text-left"
-                          >
-                            <div
-                              className={`flex items-center justify-center border-2 ${
-                                group.selectionType === "SINGLE"
-                                  ? "w-4 h-4 rounded-full"
-                                  : "w-4 h-4 rounded"
-                              } ${selected ? "border-primary bg-primary" : "border-text-disabled"}`}
-                            >
-                              {selected &&
-                                (group.selectionType === "SINGLE" ? (
-                                  <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                ) : (
-                                  <Check className="w-3 h-3 text-primary-foreground" />
-                                ))}
-                            </div>
-                            <span className="text-sm font-medium text-text-primary">
-                              {option.name}
-                            </span>
-                          </button>
-                          <div className="flex items-center gap-2">
-                            {selected && option.maxQuantity > 1 && (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() =>
-                                    setOptionQuantity(
-                                      group,
-                                      option,
-                                      selected.quantity - 1,
-                                    )
-                                  }
-                                  className="w-6 h-6 flex items-center justify-center bg-surface-secondary rounded-full text-text-secondary"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="text-xs font-semibold w-4 text-center">
-                                  {selected.quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    setOptionQuantity(
-                                      group,
-                                      option,
-                                      selected.quantity + 1,
-                                    )
-                                  }
-                                  className="w-6 h-6 flex items-center justify-center bg-primary rounded-full text-primary-foreground"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
-                            <span className="text-sm text-text-secondary min-w-[3.5rem] text-right">
-                              {Number(option.additionalPrice) > 0
-                                ? `+${formatCurrency(Number(option.additionalPrice))}`
-                                : "Free"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            );
-          })}
+        <ModifierGroupsEditor
+          groups={groups}
+          selections={selections}
+          onSelectOption={selectOption}
+          onSetOptionQuantity={setOptionQuantity}
+        />
 
-        {}
         {(item.allergenLinks?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {(item.allergenLinks ?? []).map((l) => (
@@ -431,7 +267,6 @@ export const ItemCustomizerModal = ({
           </div>
         )}
 
-        {}
         <TextInput
           label="Seat / diner (optional)"
           placeholder="e.g. Seat 1 or Priya"

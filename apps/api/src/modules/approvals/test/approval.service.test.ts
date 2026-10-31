@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findThreshold, tokenReturning, tokenWhere, tokenSet, update } =
-  vi.hoisted(() => {
-    const findThreshold = vi.fn();
-    const tokenReturning = vi.fn();
-    const tokenWhere = vi.fn(() => ({ returning: tokenReturning }));
-    const tokenSet = vi.fn(() => ({ where: tokenWhere }));
-    const update = vi.fn(() => ({ set: tokenSet }));
-    return { findThreshold, tokenReturning, tokenWhere, tokenSet, update };
-  });
+const { findThreshold, tokenReturning, tokenSet, update } = vi.hoisted(() => {
+  const findThreshold = vi.fn();
+  const tokenReturning = vi.fn();
+  const tokenWhere = vi.fn(() => ({ returning: tokenReturning }));
+  const tokenSet = vi.fn(() => ({ where: tokenWhere }));
+  const update = vi.fn(() => ({ set: tokenSet }));
+  return { findThreshold, tokenReturning, tokenWhere, tokenSet, update };
+});
 vi.mock("../../../db", () => ({
   db: {
     query: {

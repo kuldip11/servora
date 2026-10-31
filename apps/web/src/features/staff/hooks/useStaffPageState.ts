@@ -1,5 +1,8 @@
 import { useReducer } from "react";
-import type { StaffRow } from "@/features/staff/services/staff.service";
+import type {
+  StaffRow,
+  StaffStatus,
+} from "@/features/staff/services/staff.service";
 
 type StaffTab = "team" | "roles";
 
@@ -8,7 +11,7 @@ interface StaffPageState {
   editing: StaffRow | null;
   page: number;
   search: string;
-  statusFilter: string;
+  statusFilter: StaffStatus | "";
   activeTab: StaffTab;
   pageSize: number;
 }
@@ -18,7 +21,7 @@ type Action =
   | { type: "set-editing"; member: StaffRow | null }
   | { type: "set-page"; page: number }
   | { type: "set-search"; search: string }
-  | { type: "set-status"; status: string }
+  | { type: "set-status"; status: StaffStatus | "" }
   | { type: "set-tab"; tab: StaffTab }
   | { type: "set-page-size"; pageSize: number }
   | { type: "clear-filters" };
@@ -65,7 +68,7 @@ export const useStaffPageState = () => {
     setPage: (page: number) => dispatch({ type: "set-page", page }),
     setSearch: (search: string) => dispatch({ type: "set-search", search }),
     setStatusFilter: (status: string) =>
-      dispatch({ type: "set-status", status }),
+      dispatch({ type: "set-status", status: status as StaffStatus | "" }),
     setActiveTab: (tab: StaffTab) => dispatch({ type: "set-tab", tab }),
     setPageSize: (pageSize: number) =>
       dispatch({ type: "set-page-size", pageSize }),

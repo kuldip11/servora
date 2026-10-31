@@ -745,6 +745,27 @@ export type Schema_08d15b94531b = {
   };
 };
 
+export type Schema_08d290461e38 = {
+  type:
+    "web-vital" | "error" | "unhandled-rejection" | "react-error" | "ui-error";
+  app: string;
+  timestamp: string;
+  route?: string;
+  message?: string;
+  componentStack?: string;
+  code?: string;
+  status?: number;
+  requestId?: string;
+  operation?: string;
+  unknownFields?: Array<string>;
+  metric?: {
+    name: "CLS" | "INP" | "LCP" | "TTFB";
+    value: number;
+    rating: "good" | "needs-improvement" | "poor";
+    navigationType?: string;
+  };
+};
+
 export type Schema_099482f535bf = {
   name: string;
   capacity?: number;
@@ -1039,13 +1060,6 @@ export type Schema_152032fc1d9e = {
   label: string;
 };
 
-export type Schema_15e0892249a5 = {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
-};
-
 export type Schema_15f243ce76af = {
   success: true;
   data: {
@@ -1197,14 +1211,6 @@ export type Schema_1eaefa02c075 = {
   timestamp: string;
 };
 
-export type Schema_23c42f32e116 = {
-  orderId: string;
-  billId?: string;
-  method: "CASH" | "CARD" | "UPI" | "RAZORPAY" | "STRIPE";
-  amount: number;
-  reference?: string;
-};
-
 export type Schema_2554634cec19 = {
   quantity: number;
   transactionType: "IN" | "OUT" | "ADJUSTMENT" | "WASTE";
@@ -1317,20 +1323,6 @@ export type Schema_3117e1741c96 = {
       channel: "STAFF" | "CUSTOMER_QR";
       fulfillmentType: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "ONLINE";
     }>;
-  };
-};
-
-export type Schema_32a79fa8e17d = {
-  type: "web-vital" | "error" | "unhandled-rejection";
-  app: string;
-  timestamp: string;
-  route?: string;
-  message?: string;
-  metric?: {
-    name: "CLS" | "INP" | "LCP" | "TTFB";
-    value: number;
-    rating: "good" | "needs-improvement" | "poor";
-    navigationType?: string;
   };
 };
 
@@ -2096,13 +2088,7 @@ export type Schema_5f99b8a15836 = {
   holidayName?: string;
 };
 
-export type Schema_60ae0642c9ce = {
-  itemIds: Array<string>;
-  status: "ACTIVE" | "OUT_OF_STOCK" | "HIDDEN" | "SEASONAL" | "DISCONTINUED";
-  reason?: string;
-};
-
-export type Schema_62368b2f383c = {
+export type Schema_5fb69e834d1e = {
   success: true;
   data: {
     orderId: string;
@@ -2126,8 +2112,31 @@ export type Schema_62368b2f383c = {
       snapshotPrice: number;
       snapshotTaxRate?: number;
       pricingAttribution?: Record<string, unknown>;
-      pricingReplay: Record<string, unknown>;
-      authoritativePricingReplay?: Record<string, unknown> | null;
+      pricingReplay: {
+        priceSource: {
+          kind: string;
+          id: string;
+          description: string;
+        } | null;
+        baseResolvedUnitPrice: number;
+        variantDelta: number;
+        modifierDelta: number;
+        comboDelta: number;
+        promotionDelta: number;
+        loyaltyDelta: number;
+        replayedPreComboSubtotal: number;
+        preComboSubtotal: number;
+        replayedSubtotal: number;
+        persistedSubtotal: number;
+        payableBeforeTax: number;
+        matchesSnapshot: boolean;
+      };
+      authoritativePricingReplay?: {
+        unitPrice: number;
+        subtotal: number;
+        taxRate: number;
+        matchesSnapshot: boolean;
+      } | null;
       availabilityAtOrder?: {
         asOf: string;
         branchId: string;
@@ -2139,10 +2148,25 @@ export type Schema_62368b2f383c = {
         reason: string | null;
         cause: string;
       } | null;
-      authoritativeAvailabilityReplay?: Record<string, unknown> | null;
-      trace: Array<Record<string, unknown>>;
+      authoritativeAvailabilityReplay?: {
+        effectiveStatus: string;
+        isHidden: boolean;
+        availabilityReason: string | null;
+        availabilityCause: string;
+        matchesSnapshot: boolean;
+      } | null;
+      trace: Array<{
+        stage: string;
+        explanation: string;
+      }>;
     }>;
   };
+};
+
+export type Schema_60ae0642c9ce = {
+  itemIds: Array<string>;
+  status: "ACTIVE" | "OUT_OF_STOCK" | "HIDDEN" | "SEASONAL" | "DISCONTINUED";
+  reason?: string;
 };
 
 export type Schema_62dcb0560543 = {
@@ -3510,14 +3534,6 @@ export type Schema_7717dd85c2e5 = {
   id: string;
 };
 
-export type Schema_779b9b59a941 = {
-  action?: string;
-  entity?: string;
-  userId?: string;
-  before?: string;
-  limit?: number;
-};
-
 export type Schema_78ae6cbc701d = {
   success: true;
   data: Array<{
@@ -3800,6 +3816,15 @@ export type Schema_872a930119c9 = {
   data: {
     deleted: boolean;
   };
+};
+
+export type Schema_88df5a686dac = {
+  orderId: string;
+  idempotencyKey?: string;
+  billId?: string;
+  method: "CASH" | "CARD" | "UPI" | "RAZORPAY" | "STRIPE";
+  amount: number;
+  reference?: string;
 };
 
 export type Schema_898b53ff0b24 = {
@@ -4228,37 +4253,6 @@ export type Schema_9414ab8d74ba = {
       optionIds: Array<string>;
     }>;
   }>;
-};
-
-export type Schema_96fab151d33a = {
-  success: true;
-  data: Array<
-    {
-      id: string;
-      tenantId: string | null;
-      organizationId: string | null;
-      name: string;
-      description: string | null;
-      status: "DRAFT" | "PUBLISHED";
-      isDefault: boolean;
-      availableChannels: Array<"STAFF" | "CUSTOMER_QR"> | null;
-      availableFulfillmentTypes: Array<
-        "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "ONLINE"
-      > | null;
-      availableBranchIds: Array<string> | null;
-      effectiveFrom: string | null;
-      createdAt: string;
-      updatedAt: string;
-    } & {
-      memberships: Array<{
-        id: string;
-        menuId: string;
-        menuItemId: string;
-        categoryId: string;
-        sortOrder: number;
-      }>;
-    }
-  >;
 };
 
 export type Schema_97d12d80d53a = {
@@ -5060,6 +5054,14 @@ export type Schema_b424b79e10a6 = {
   }>;
 };
 
+export type Schema_b480c93e2cc6 = {
+  action?: string;
+  entity?: string;
+  userId?: string;
+  before?: string;
+  limit?: number;
+};
+
 export type Schema_b4e2e6e384c2 = {
   name: string;
   description?: string;
@@ -5325,6 +5327,13 @@ export type Schema_c2b2bcb681f8 = {
 
 export type Schema_c2fc85247e14 = {
   categoryId?: string;
+};
+
+export type Schema_c385454d7085 = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
 };
 
 export type Schema_c3ef4fabedf5 = {
@@ -5896,6 +5905,34 @@ export type Schema_ee9ed40b5d22 = {
   description?: string;
   sortOrder?: number;
   branchId?: string;
+};
+
+export type Schema_ef593e24bcb8 = {
+  success: true;
+  data: Array<{
+    id: string;
+    tenantId: string | null;
+    organizationId: string | null;
+    name: string;
+    description: string | null;
+    status: "DRAFT" | "PUBLISHED";
+    isDefault: boolean;
+    availableChannels: Array<"STAFF" | "CUSTOMER_QR"> | null;
+    availableFulfillmentTypes: Array<
+      "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "ONLINE"
+    > | null;
+    availableBranchIds: Array<string> | null;
+    effectiveFrom: string | null;
+    createdAt: string;
+    updatedAt: string;
+    memberships: Array<{
+      id: string;
+      menuId: string;
+      menuItemId: string;
+      categoryId: string;
+      sortOrder: number;
+    }>;
+  }>;
 };
 
 export type Schema_ef64bbcf5011 = {
@@ -6529,7 +6566,7 @@ export interface OpenApiOperationTypes {
   getApiAudit: {
     pathParams: never;
     pathParamsRequired: false;
-    query: Schema_779b9b59a941;
+    query: Schema_b480c93e2cc6;
     queryRequired: false;
     body: never;
     bodyRequired: false;
@@ -6929,7 +6966,7 @@ export interface OpenApiOperationTypes {
     queryRequired: true;
     body: never;
     bodyRequired: false;
-    response: Schema_96fab151d33a;
+    response: Schema_ef593e24bcb8;
   };
   getApiMenuMenusById: {
     pathParams: Schema_70cfdb50bb3d;
@@ -7064,7 +7101,7 @@ export interface OpenApiOperationTypes {
     queryRequired: false;
     body: never;
     bodyRequired: false;
-    response: Schema_62368b2f383c;
+    response: Schema_5fb69e834d1e;
   };
   "getApiOrdersByIdInventory-impact": {
     pathParams: Schema_70cfdb50bb3d;
@@ -7150,7 +7187,7 @@ export interface OpenApiOperationTypes {
   getApiStaff: {
     pathParams: never;
     pathParamsRequired: false;
-    query: Schema_15e0892249a5;
+    query: Schema_c385454d7085;
     queryRequired: false;
     body: never;
     bodyRequired: false;
@@ -8097,7 +8134,7 @@ export interface OpenApiOperationTypes {
     pathParamsRequired: false;
     query: never;
     queryRequired: false;
-    body: Schema_23c42f32e116;
+    body: Schema_88df5a686dac;
     bodyRequired: true;
     response: Schema_366c9299b84e;
   };
@@ -8151,7 +8188,7 @@ export interface OpenApiOperationTypes {
     pathParamsRequired: false;
     query: never;
     queryRequired: false;
-    body: Schema_32a79fa8e17d;
+    body: Schema_08d290461e38;
     bodyRequired: true;
     response: undefined;
   };

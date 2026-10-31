@@ -1,24 +1,19 @@
 import { useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Button,
-  FormErrorSummary,
-  FieldErrorText,
-  Input,
-  Modal,
-} from "@pos/ui";
+import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
 import type { OrganizationSummary } from "@pos/types";
 import {
   organizationBusinessFormSchema,
   type OrganizationBusinessFormValues,
 } from "@pos/validation";
-import { businessService } from "@/features/business/services/business.service";
+import {
+  useArchiveOrganization,
+  useSaveOrganization,
+} from "@/features/business/hooks/useBusiness";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import { useFormApiErrors } from "@/shared/hooks/useFormApiErrors";
 import {
-  inputClass,
   organizationDefaults,
   organizationFieldPaths,
 } from "./business-form-defaults";
@@ -55,39 +50,33 @@ export const OrganizationModal = ({
       );
     }
   }, [clearFormErrors, form, open, organization]);
-  const mutation = useMutation({
-    mutationFn: async (
-      values: OrganizationBusinessFormValues,
-    ): Promise<void> => {
-      if (organization)
-        await businessService.updateOrganization(organization.id, values);
-      else await businessService.createOrganization(values);
-    },
-    onSuccess: async () => {
-      notifySuccess(
-        organization ? "Organization updated" : "Organization created",
-      );
-      await onSaved();
-      onClose();
-    },
-    onError: (error) =>
-      handleApiError(
-        error,
-        form.setError,
-        organizationFieldPaths,
-        "Could not save organization",
-      ),
-  });
-  const archiveMutation = useMutation({
-    mutationFn: () => businessService.archiveOrganization(organization!.id),
-    onSuccess: async () => {
-      notifySuccess("Organization archived");
-      await onSaved();
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Could not archive organization"),
-  });
+  const mutation = useSaveOrganization(organization?.id);
+  const archiveMutation = useArchiveOrganization(organization?.id ?? "");
   const e = form.formState.errors;
+  const finishSave = (message: string) => {
+    notifySuccess(message);
+    void onSaved()
+      .then(onClose)
+      .catch((error: unknown) =>
+        notifyError(error, "Could not refresh the business structure"),
+      );
+  };
+  const submit = form.handleSubmit((values) => {
+    clearFormErrors();
+    mutation.mutate(values, {
+      onSuccess: () =>
+        finishSave(
+          organization ? "Organization updated" : "Organization created",
+        ),
+      onError: (error) =>
+        handleApiError(
+          error,
+          form.setError,
+          organizationFieldPaths,
+          "Could not save organization",
+        ),
+    });
+  });
   return (
     <Modal
       open={open}
@@ -97,10 +86,7 @@ export const OrganizationModal = ({
     >
       <form
         className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
-        onSubmit={form.handleSubmit((values) => {
-          clearFormErrors();
-          mutation.mutate(values);
-        })}
+        onSubmit={(event) => void submit(event)}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -110,32 +96,29 @@ export const OrganizationModal = ({
             error={e.name?.message}
             {...form.register("name")}
           />
-          <label className="text-sm font-medium">
-            Business type{" "}
-            <span className="text-danger" aria-hidden="true">
-              *
-            </span>
-            <select
-              aria-required="true"
-              className={`mt-1 ${inputClass}`}
-              aria-invalid={Boolean(e.businessType)}
-              {...form.register("businessType")}
-            >
-              {[
-                "RESTAURANT_GROUP",
-                "INDEPENDENT_RESTAURANT",
-                "HOSPITALITY_GROUP",
-                "CLOUD_KITCHEN_GROUP",
-                "CAFE_GROUP",
-                "QSR_GROUP",
-                "FOOD_SERVICE_COMPANY",
-                "OTHER",
-              ].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-            <FieldErrorText message={e.businessType?.message} />
-          </label>
+          <Select
+            label="Business type"
+            required
+            value={form.watch("businessType")}
+            onChange={(value) =>
+              form.setValue(
+                "businessType",
+                value as OrganizationBusinessFormValues["businessType"],
+                { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+              )
+            }
+            error={e.businessType?.message}
+            options={[
+              "RESTAURANT_GROUP",
+              "INDEPENDENT_RESTAURANT",
+              "HOSPITALITY_GROUP",
+              "CLOUD_KITCHEN_GROUP",
+              "CAFE_GROUP",
+              "QSR_GROUP",
+              "FOOD_SERVICE_COMPANY",
+              "OTHER",
+            ].map((value) => ({ value, label: value }))}
+          />
           <Input
             label="Primary contact name"
             required
@@ -265,7 +248,11 @@ export const OrganizationModal = ({
               loading={archiveMutation.isPending}
               onClick={() =>
                 window.confirm("Archive this organization?") &&
-                archiveMutation.mutate()
+                archiveMutation.mutate(undefined, {
+                  onSuccess: () => finishSave("Organization archived"),
+                  onError: (error) =>
+                    notifyError(error, "Could not archive organization"),
+                })
               }
             >
               Archive

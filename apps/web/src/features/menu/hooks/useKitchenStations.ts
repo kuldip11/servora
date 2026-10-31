@@ -1,35 +1,34 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { kitchenStationsService } from "@/features/menu/services/kitchen-stations.service";
-import { queryClient } from "@/shared/lib/query-client";
 import { notifyError } from "@/shared/lib/notify";
+import { menuKeys } from "@/features/menu/query-keys";
+import {
+  itemStationRoutesQuery,
+  kitchenStationsQuery,
+} from "@/features/menu/query-options";
 
-export const useKitchenStations = () =>
-  useQuery({
-    queryKey: ["kitchen-stations"],
-    queryFn: kitchenStationsService.list,
-  });
+export const useKitchenStations = () => useQuery(kitchenStationsQuery());
 export const useItemStationRoutes = (itemId: string) =>
-  useQuery({
-    queryKey: ["kitchen-stations", "routes", itemId],
-    queryFn: () => kitchenStationsService.routes(itemId),
-    enabled: !!itemId,
-  });
+  useQuery({ ...itemStationRoutesQuery(itemId), enabled: !!itemId });
 export const useCreateKitchenStation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kitchenStationsService.create,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["kitchen-stations"] }),
+      queryClient.invalidateQueries({ queryKey: menuKeys.kitchenStations() }),
   });
 };
 export const useDeleteKitchenStation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kitchenStationsService.remove,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["kitchen-stations"] }),
+      queryClient.invalidateQueries({ queryKey: menuKeys.kitchenStations() }),
     onError: (error) => notifyError(error, "Failed to delete kitchen station"),
   });
 };
 export const useSetItemStationRoute = (itemId: string) => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
       stationId: string | null;
@@ -49,7 +48,7 @@ export const useSetItemStationRoute = (itemId: string) => {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["kitchen-stations", "routes", itemId],
+        queryKey: menuKeys.stationRoutes(itemId),
       }),
     onError: (error) => notifyError(error, "Failed to update kitchen routing"),
   });

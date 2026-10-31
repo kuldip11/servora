@@ -1,6 +1,6 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   queryData: new Map<string, unknown>(),
@@ -30,7 +30,8 @@ vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({
     listChannelOverrides: h.listChannelOverrides,
     saveChannelOverride: h.saveChannelOverride,
@@ -50,9 +51,15 @@ vi.mock("@pos/api-client", () => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: ({ queryKey, queryFn }: any) => {
     const key = JSON.stringify(queryKey);
-    const value = h.queryData.get(key);
+    const value =
+      h.queryData.get(key) ??
+      (queryKey.includes("customer-groups")
+        ? h.queryData.get(JSON.stringify(["customer-groups"]))
+        : undefined);
     if (value !== undefined) return { data: value };
     const fnValue = queryFn?.();
     return {
@@ -90,7 +97,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages }: any) =>
     messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (
@@ -110,36 +118,6 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-
-const variants: any[] = [
-  { id: "v1", name: "Small", status: "ACTIVE", manualStockCount: 2 },
-  {
-    id: "v2",
-    name: "Large",
-    status: "OUT_OF_STOCK",
-    manualOverrideReason: "Sold out",
-    manualStockCount: null,
-  },
-];
-const groups: any[] = [
-  {
-    id: "g1",
-    name: "Milk",
-    options: [
-      {
-        id: "o1",
-        name: "Oat",
-        additionalPrice: 10,
-        isAvailable: true,
-        maxQuantity: 1,
-        variantPrices: [
-          { variantId: "v1", additionalPrice: 12 },
-          { variantId: "old", additionalPrice: 7 },
-        ],
-      },
-    ],
-  },
-];
 
 import { CustomerGroupsSection } from "../CustomerGroupsSection";
 
@@ -179,16 +157,13 @@ describe("CustomerGroupsSection", () => {
     fireEvent.change(screen.getByLabelText("Group name"), {
       target: { value: "New" },
     });
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "PERCENT" },
-    });
+    fireEvent.blur(screen.getByLabelText("Group name"));
+    chooseSelectOption("Default discount", "Percent");
     fireEvent.change(screen.getByLabelText("Percent"), {
       target: { value: "15" },
     });
+    fireEvent.blur(screen.getByLabelText("Percent"));
     const createButton = screen.getByRole("button", { name: "Create group" });
-    await waitFor(() =>
-      expect((createButton as HTMLButtonElement).disabled).toBe(false),
-    );
     fireEvent.submit(createButton.closest("form")!);
     await waitFor(() =>
       expect(h.createGroup).toHaveBeenCalledWith({

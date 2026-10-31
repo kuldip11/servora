@@ -44,7 +44,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/store/auth", () => ({ useAuthStore: mocks.authHook }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     updateProfile: mocks.updateProfile,
     changePassword: mocks.changePassword,
@@ -68,7 +68,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     }),
   };
 });
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

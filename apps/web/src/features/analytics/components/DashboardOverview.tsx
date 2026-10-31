@@ -8,11 +8,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { Badge, Button, Card, Grid, SkeletonCard, StatCard } from "@pos/ui";
+import { Button, Card, Grid, SkeletonCard, StatCard } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils/format";
 import { useDashboardStats } from "@/features/analytics/hooks/useDashboardStats";
 
-export const DashboardOverview = ({ scopeLabel }: { scopeLabel: string }) => {
+export const DashboardOverview = () => {
   const {
     data: stats,
     isLoading,

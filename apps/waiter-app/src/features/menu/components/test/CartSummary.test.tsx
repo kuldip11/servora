@@ -1,4 +1,3 @@
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,7 +12,7 @@ vi.mock("@pos/ui", () => ({
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
-  SelectMenu: ({ label, options, onChange, ...props }: any) => (
+  Select: ({ label, options, onChange, ...props }: any) => (
     <label>
       {label}
       <select
@@ -31,7 +30,7 @@ vi.mock("@pos/ui", () => ({
   ),
   TextInput: ({ label: _label, ...props }: any) => <input {...props} />,
 }));
-import { CartSummary } from "@/features/menu/components/CartSummary";
+import { CartSummaryFixture as CartSummary } from "./cart-summary-fixture";
 
 const cart = [
   {

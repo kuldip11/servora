@@ -24,5 +24,19 @@ describe("inventoryKeys", () => {
       "impact",
       "i1",
     ]);
+    expect(inventoryKeys.transactions()).toEqual([
+      "inventory",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "transactions",
+    ]);
+    expect(inventoryKeys.wasteReasons()).toEqual([
+      "inventory",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "waste-reasons",
+    ]);
   });
 });

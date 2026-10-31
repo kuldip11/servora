@@ -27,7 +27,9 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: (options: any) => {
     mocks.capturedQueryFn = options.queryFn;
@@ -35,12 +37,14 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async (value?: any) => {
+    mutate: async (value?: any, mutateOptions?: any) => {
       try {
         const result = await options.mutationFn(value);
         await options.onSuccess?.(result);
+        await mutateOptions?.onSuccess?.(result);
       } catch (error) {
         options.onError?.(error);
+        mutateOptions?.onError?.(error);
       }
     },
   }),
@@ -63,7 +67,7 @@ vi.mock("@/features/business/services/business.service", () => ({
     archiveBranch: mocks.archiveBranch,
   },
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: { memberships: mocks.authMemberships },
 }));
 vi.mock("@/shared/auth/active-context", () => ({
@@ -82,7 +86,8 @@ vi.mock("@pos/validation", () => ({
   franchiseBusinessFormSchema: {},
   organizationBusinessFormSchema: {},
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Building2: () => null,
   CheckCircle2: () => null,
   ChevronRight: () => null,
@@ -92,7 +97,8 @@ vi.mock("lucide-react", () => ({
   Plus: () => null,
   Store: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

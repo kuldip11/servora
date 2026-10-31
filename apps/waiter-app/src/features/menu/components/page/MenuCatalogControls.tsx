@@ -1,4 +1,4 @@
-import { SelectMenu } from "@pos/ui";
+import { Select } from "@pos/ui";
 import { CategoryTabs } from "@/features/menu/components/CategoryTabs";
 import { SearchBar } from "@/features/menu/components/SearchBar";
 import type { WaiterMenuCategory } from "@/features/menu/api/menu";
@@ -34,7 +34,7 @@ export const MenuCatalogControls = ({
   <div className="shrink-0 border-b border-border bg-background">
     {activeMenus.length > 1 && (
       <div className="px-4 pt-3">
-        <SelectMenu
+        <Select
           label="Menu"
           value={selectedMenuId || undefined}
           onChange={onMenuChange}

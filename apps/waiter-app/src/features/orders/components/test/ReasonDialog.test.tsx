@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,7 +18,7 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...props} />
     </label>
   ),
-  SelectMenu: ({ label, options, onChange, ...props }: any) => (
+  Select: ({ label, options, onChange, ...props }: any) => (
     <label>
       {label}
       <select

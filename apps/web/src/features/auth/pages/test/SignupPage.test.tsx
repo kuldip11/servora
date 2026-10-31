@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ navigate: mocks.navigate }),
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     login: mocks.login,
     signup: mocks.signup,
@@ -44,12 +44,14 @@ vi.mock("@/shared/auth/default-route", () => ({
 vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: mocks.errorText,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   ChefHat: () => null,
   Eye: () => <span>eye</span>,
   EyeOff: () => <span>eyeoff</span>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

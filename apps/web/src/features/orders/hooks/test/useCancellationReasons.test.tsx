@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => ({
   listAll: vi.fn(),
 }));
 
+vi.mock("@/shared/lib/query-context", () => ({
+  franchiseQueryContextKey: () => ["franchise", "t1"],
+}));
+
 vi.mock("@/features/orders/services/cancellation-reasons.service", () => ({
   cancellationReasonsService: {
     list: mocks.list,
@@ -35,11 +39,17 @@ describe("useCancellationReasons", () => {
   });
 
   it("exposes stable cancellation reason query keys", () => {
-    expect(cancellationReasonKeys.active).toEqual([
+    expect(cancellationReasonKeys.active()).toEqual([
       "cancellation-reasons",
+      "franchise",
+      "t1",
       "active",
     ]);
-    expect(cancellationReasonKeys.all).toEqual(["cancellation-reasons"]);
+    expect(cancellationReasonKeys.all()).toEqual([
+      "cancellation-reasons",
+      "franchise",
+      "t1",
+    ]);
   });
 
   it("loads active reasons when onlyActive is true", async () => {
@@ -48,7 +58,7 @@ describe("useCancellationReasons", () => {
     });
 
     await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
-    expect(mocks.list).toHaveBeenCalledWith(true);
+    expect(mocks.list).toHaveBeenCalledWith(true, expect.any(AbortSignal));
     expect(mocks.listAll).not.toHaveBeenCalled();
   });
 

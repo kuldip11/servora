@@ -10,10 +10,9 @@ import {
   verifyTakeawayPayment,
   type CustomerOrder,
 } from "@/api";
-import type { ComboCartLine } from "@/features/cart/combo";
-import { clearPersistedCart } from "@/features/cart/persistence";
-import type { CartLine } from "@/features/cart/pricing";
-import type { CustomerSessionState } from "@/features/session/useCustomerSession";
+import type { ComboCartLine, CartLine } from "@/features/cart";
+import { clearPersistedCart } from "@/features/cart";
+import type { CustomerSessionState } from "@/features/session";
 import { createOrderPayload } from "./payload";
 import { extractApiError } from "@pos/api-client";
 

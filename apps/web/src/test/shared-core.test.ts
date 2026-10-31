@@ -6,9 +6,9 @@ import { ApiClientErrorException } from "@pos/api-client";
 import { useAuthStore } from "@/store/auth";
 import { queryClient } from "@/shared/lib/query-client";
 import { bootstrapAuthSession } from "@/shared/auth/bootstrap";
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: { refresh: vi.fn() },
 }));
 

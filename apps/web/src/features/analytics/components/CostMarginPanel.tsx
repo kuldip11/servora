@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Badge, Card, SkeletonCard } from "@pos/ui";
+import { Badge, Card, Select, SkeletonCard } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils/format";
 import { useCostMarginReport } from "@/features/analytics/hooks/useCostMarginReport";
 
@@ -47,28 +47,26 @@ export const CostMarginPanel = ({ branchId }: { branchId: string | null }) => {
         </div>
         {branchId !== "all" ? (
           <div className="flex gap-2">
-            <select
+            <Select
               aria-label="Filter margin report by category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-primary"
-            >
-              <option value="all">All categories</option>
-              {categories.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={setCategory}
+              className="text-xs"
+              options={[
+                { value: "all", label: "All categories" },
+                ...categories.map(([id, name]) => ({ value: id, label: name })),
+              ]}
+            />
+            <Select
               aria-label="Sort margin report"
               value={sort}
-              onChange={(e) => setSort(e.target.value as "high" | "low")}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-primary"
-            >
-              <option value="high">Margin: high to low</option>
-              <option value="low">Margin: low to high</option>
-            </select>
+              onChange={(value) => setSort(value as "high" | "low")}
+              className="text-xs"
+              options={[
+                { value: "high", label: "Margin: high to low" },
+                { value: "low", label: "Margin: low to high" },
+              ]}
+            />
           </div>
         ) : null}
       </div>

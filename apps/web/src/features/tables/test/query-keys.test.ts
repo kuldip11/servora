@@ -16,5 +16,13 @@ describe("tableKeys", () => {
       "br-1",
       "list",
     ]);
+    expect(tableKeys.takeawayQr("br-1")).toEqual([
+      "tables",
+      "branch-context",
+      "fr-1",
+      "br-1",
+      "takeaway-qr",
+      "br-1",
+    ]);
   });
 });

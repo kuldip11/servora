@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, CalendarClock } from "lucide-react";
 import { Button, Card, Grid, SearchInput, Spinner } from "@pos/ui";
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useMenuCategories } from "@/features/menu";
 import { ItemFormModal } from "./ItemFormModal";
 import { SubRecipeManager } from "./SubRecipeManager";
 import type { MenuItem } from "@pos/types";

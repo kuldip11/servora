@@ -14,4 +14,11 @@ describe("fetchCategories", () => {
     await expect(fetchCategories()).resolves.toEqual([{ id: "c1" }]);
     expect(apiClient.get).toHaveBeenCalledWith("/menu/categories");
   });
+
+  it("forwards a cancellation signal", async () => {
+    const signal = new AbortController().signal;
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: [] } } as any);
+    await fetchCategories(signal);
+    expect(apiClient.get).toHaveBeenCalledWith("/menu/categories", { signal });
+  });
 });

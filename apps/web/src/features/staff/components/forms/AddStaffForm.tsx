@@ -73,7 +73,7 @@ export const AddStaffForm = ({
   });
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={(event) => void submit(event)} className="space-y-4">
       <StaffFormFields
         register={form.register}
         errors={form.formState.errors}

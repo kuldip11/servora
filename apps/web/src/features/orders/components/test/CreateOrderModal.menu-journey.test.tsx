@@ -3,16 +3,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const createOrder = vi.hoisted(() => vi.fn());
-const listActiveMenus = vi.hoisted(() => vi.fn());
-
-vi.mock("@pos/api-client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@pos/api-client")>();
-  return {
-    ...actual,
-    createMenuApi: () => ({ listActiveMenus }),
-  };
-});
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+const activeMenus = vi.hoisted(() => ({
+  current: [] as Array<Record<string, unknown>>,
+}));
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: [
       {
@@ -26,10 +20,17 @@ vi.mock("@/features/branches/hooks/useBranches", () => ({
     ],
   }),
 }));
-vi.mock("@/features/tables/hooks/useTables", () => ({
+vi.mock("@/features/tables", () => ({
   useTables: () => ({ data: [] }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
+  useActiveMenus: () => ({
+    data: activeMenus.current,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
   useMenuCategories: () => ({
     data: [
       {
@@ -100,13 +101,13 @@ vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
     ],
   }),
 }));
-vi.mock("@/features/orders/hooks/useCreateOrder", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCreateOrder: () => ({ mutate: createOrder, isPending: false }),
 }));
 vi.mock("@/features/orders/hooks/useCourseSequencingEnabled", () => ({
   useCourseSequencingEnabled: () => false,
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
 
 import { CreateOrderModal } from "@/features/orders/components/CreateOrderModal";
 
@@ -123,7 +124,7 @@ const renderModal = () => {
 
 describe("menu to order real-user journey", () => {
   it("shows a published Default Menu item, hides a draft, adds it to cart, and submits a table-less dine-in order when tables are disabled", async () => {
-    listActiveMenus.mockResolvedValue([
+    activeMenus.current = [
       {
         id: "default-menu",
         name: "Default Menu",
@@ -132,7 +133,7 @@ describe("menu to order real-user journey", () => {
           { menuItemId: "22222222-2222-4222-8222-222222222222" },
         ],
       },
-    ]);
+    ];
 
     renderModal();
 

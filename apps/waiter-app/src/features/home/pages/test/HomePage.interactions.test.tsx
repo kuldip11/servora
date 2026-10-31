@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,8 +9,12 @@ const mocks = vi.hoisted(() => ({
   requestsRefetch: vi.fn(),
 }));
 
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrders: mocks.useOrders,
+  OrderCard: ({ order, onSelect }: any) => (
+    <button onClick={() => onSelect(order.id)}>Order {order.id}</button>
+  ),
 }));
 vi.mock("@/features/home/hooks/useCustomerRequests", () => ({
   useCustomerRequests: mocks.useCustomerRequests,
@@ -21,7 +24,8 @@ vi.mock("@/features/home/hooks/useCustomerRequests", () => ({
     variables: undefined,
   }),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiError: (_error: unknown, fallback?: string) => fallback ?? "error",
 }));
 vi.mock("@pos/ui", () => ({
@@ -37,11 +41,6 @@ vi.mock("@pos/ui", () => ({
       <span>{message}</span>
       <button onClick={onRetry}>Retry stale</button>
     </div>
-  ),
-}));
-vi.mock("@/features/orders/components/OrderCard", () => ({
-  OrderCard: ({ order, onSelect }: any) => (
-    <button onClick={() => onSelect(order.id)}>Order {order.id}</button>
   ),
 }));
 

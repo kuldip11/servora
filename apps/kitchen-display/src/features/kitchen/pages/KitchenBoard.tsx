@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChefHat } from "lucide-react";
-import type { KitchenTicketStatus } from "@pos/types";
+import type { KitchenTicketUpdateStatus } from "@pos/api-client";
 import { Grid, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import {
   useKitchenStations,
@@ -63,7 +63,7 @@ export const KitchenBoard = ({ onLogout }: KitchenBoardProps) => {
   );
 
   const handleUpdateStatus = useCallback(
-    (ticketId: string, status: KitchenTicketStatus) =>
+    (ticketId: string, status: KitchenTicketUpdateStatus) =>
       updateMutation.mutate({ id: ticketId, status }),
     [updateMutation],
   );

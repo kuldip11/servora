@@ -11,14 +11,12 @@ import {
   QueryErrorState,
   Select,
 } from "@pos/ui";
-import type { Branch } from "@pos/types";
-import type { RestaurantTable } from "@/features/tables/types";
+import type { BranchDto } from "@pos/api-client";
 import type { TableFormValues } from "@/features/tables/table-form.types";
 
 export const TableFormModal = ({
   mode,
   open,
-  editing,
   branches,
   aggregate,
   errors,
@@ -27,6 +25,9 @@ export const TableFormModal = ({
   handleSubmit,
   pending,
   submitDisabled,
+  branchId = "",
+  onBranchIdChange,
+  onBranchIdBlur,
   dependencyError,
   onRetryDependency,
   onClose,
@@ -34,8 +35,7 @@ export const TableFormModal = ({
 }: {
   mode: "add" | "edit";
   open: boolean;
-  editing: RestaurantTable | null;
-  branches: Branch[];
+  branches: BranchDto[];
   aggregate: boolean;
   errors: FieldErrors<TableFormValues>;
   formErrorMessages: string[];
@@ -43,6 +43,9 @@ export const TableFormModal = ({
   handleSubmit: UseFormHandleSubmit<TableFormValues>;
   pending: boolean;
   submitDisabled: boolean;
+  branchId?: string;
+  onBranchIdChange?: (value: string) => void;
+  onBranchIdBlur?: () => void;
   dependencyError?: string;
   onRetryDependency?: () => void;
   onClose: () => void;
@@ -54,7 +57,11 @@ export const TableFormModal = ({
       onClose={onClose}
       title={mode === "add" ? "Add Table" : "Edit Table"}
     >
-      <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      >
         <FormErrorSummary messages={formErrorMessages} />
         {dependencyError ? (
           <QueryErrorState
@@ -97,7 +104,9 @@ export const TableFormModal = ({
             {...(errors.branchId?.message
               ? { error: errors.branchId.message }
               : {})}
-            {...register("branchId")}
+            value={branchId}
+            onChange={(value) => onBranchIdChange?.(value)}
+            onBlur={onBranchIdBlur}
           />
         )}
         <div className="flex gap-2 justify-end">

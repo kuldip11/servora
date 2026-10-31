@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const list = vi.hoisted(() => vi.fn());
@@ -41,7 +43,7 @@ describe("order query definitions", () => {
       "order-1",
     ]);
     expect(query.queryFn).toEqual(expect.any(Function));
-    await query.queryFn?.({} as never);
-    expect(detail).toHaveBeenCalledWith("order-1");
+    await query.queryFn?.({ signal } as never);
+    expect(detail).toHaveBeenCalledWith("order-1", signal);
   });
 });

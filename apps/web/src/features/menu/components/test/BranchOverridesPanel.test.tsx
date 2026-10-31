@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,7 +9,7 @@ let branches: any[] | undefined;
 let overrides: any[] | undefined;
 let loading = false;
 
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: branches }),
 }));
 vi.mock("@/features/menu/hooks/useMenuItemBranchOverrides", () => ({

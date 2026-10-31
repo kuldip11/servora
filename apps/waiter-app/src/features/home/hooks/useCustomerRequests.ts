@@ -1,52 +1,50 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createCustomersApi, extractApiError } from "@pos/api-client";
+import {
+  createCustomersApi,
+  extractApiError,
+  type CustomerRequestDto,
+} from "@pos/api-client";
 import { toast } from "@pos/ui";
 import { apiClient } from "@/shared/lib/api-client";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
-export interface WaiterCustomerRequest {
-  id: string;
-  tableId: string;
-  orderId: string | null;
-  type: string;
-  status: string;
-}
+export type WaiterCustomerRequest = CustomerRequestDto;
 
-export const CUSTOMER_REQUESTS_QUERY_KEY = ["customer-requests"] as const;
+export const customerRequestKeys = {
+  all: (scope: ReturnType<typeof getWaiterQueryScope>) =>
+    ["waiter-customer-requests", ...scope] as const,
+};
 const customersApi = createCustomersApi(apiClient);
 
 export const useCustomerRequests = () => {
   const queryClient = useQueryClient();
+  const scope = getWaiterQueryScope();
+  const queryKey = customerRequestKeys.all(scope);
   const query = useQuery({
-    queryKey: CUSTOMER_REQUESTS_QUERY_KEY,
-    queryFn: () => customersApi.listRequests<WaiterCustomerRequest>(),
+    queryKey,
+    queryFn: (context) =>
+      context?.signal
+        ? customersApi.listRequests(context.signal)
+        : customersApi.listRequests(),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
 
   useRealtimeEvent("customer.request.created", (event) => {
     queryClient.setQueryData<WaiterCustomerRequest[]>(
-      CUSTOMER_REQUESTS_QUERY_KEY,
+      queryKey,
       (current = []) =>
         current.some((request) => request.id === event.payload.id)
           ? current
-          : [
-              {
-                id: event.payload.id,
-                tableId: event.payload.tableId,
-                orderId: event.payload.orderId,
-                type: event.payload.type,
-                status: event.payload.status,
-              },
-              ...current,
-            ],
+          : [event.payload, ...current],
     );
   });
 
   useRealtimeEvent("customer.request.updated", (event) => {
     if (!["RESOLVED", "CANCELLED"].includes(event.payload.status)) return;
     queryClient.setQueryData<WaiterCustomerRequest[]>(
-      CUSTOMER_REQUESTS_QUERY_KEY,
+      queryKey,
       (current = []) =>
         current.filter((request) => request.id !== event.payload.id),
     );
@@ -57,12 +55,13 @@ export const useCustomerRequests = () => {
 
 export const useResolveCustomerRequest = () => {
   const queryClient = useQueryClient();
+  const queryKey = customerRequestKeys.all(getWaiterQueryScope());
 
   return useMutation({
     mutationFn: (id: string) => customersApi.resolveRequest(id),
     onSuccess: (_, id) => {
       queryClient.setQueryData<WaiterCustomerRequest[]>(
-        CUSTOMER_REQUESTS_QUERY_KEY,
+        queryKey,
         (current = []) => current.filter((request) => request.id !== id),
       );
     },

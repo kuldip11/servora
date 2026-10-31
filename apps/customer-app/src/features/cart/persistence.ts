@@ -1,4 +1,4 @@
-import type { CustomerMenuItem } from "@/features/menu/api";
+import type { CustomerMenuItem } from "@/features/menu";
 import type { CartLine, SelectedOption } from "./pricing";
 
 type PersistedSession = {

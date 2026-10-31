@@ -133,7 +133,7 @@ export const NativeSelectStates: Story = {
           <Select
             label="Status"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => setValue(event)}
             options={[
               { value: "AVAILABLE", label: "Available" },
               { value: "UNAVAILABLE", label: "Unavailable" },
@@ -142,7 +142,8 @@ export const NativeSelectStates: Story = {
           <Select
             label="Status with error"
             error="Choose a valid status"
-            defaultValue=""
+            value=""
+            onChange={() => {}}
             options={[{ value: "", label: "Select status" }]}
           />
         </div>

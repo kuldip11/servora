@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type, type Static } from "@sinclair/typebox";
 import { uuidSchema } from "../common";
 
 export const customerRequestTypeSchema = Type.Union([
@@ -135,3 +135,6 @@ export const takeawayPaymentVerificationBodySchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+export type CustomerRequestType = Static<typeof customerRequestTypeSchema>;
+export type CustomerRequestStatus = Static<typeof customerRequestStatusSchema>;

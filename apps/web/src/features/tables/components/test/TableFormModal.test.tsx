@@ -1,7 +1,7 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div role="dialog">
@@ -50,7 +50,6 @@ describe("TableFormModal coverage", () => {
       <TableFormModal
         mode="add"
         open
-        editing={null}
         branches={[{ id: "b1", name: "Central" } as any]}
         aggregate
         errors={{
@@ -86,7 +85,6 @@ describe("TableFormModal coverage", () => {
       <TableFormModal
         mode="edit"
         open
-        editing={{ id: "t1" } as any}
         branches={[]}
         aggregate={false}
         errors={{}}

@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   extractApiFieldErrors: vi.fn(),
 }));
 
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   extractApiFieldErrors: mocks.extractApiFieldErrors,
 }));
 

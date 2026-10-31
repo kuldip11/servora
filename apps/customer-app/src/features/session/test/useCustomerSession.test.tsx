@@ -26,7 +26,7 @@ vi.mock("@/api", () => ({
   getCustomerOrder: mocks.getCustomerOrder,
   createCustomerRequest: mocks.createCustomerRequest,
 }));
-vi.mock("@/features/cart/persistence", () => ({
+vi.mock("@/features/cart", () => ({
   clearPersistedOrderId: mocks.clearPersistedOrderId,
   clearPersistedSession: mocks.clearPersistedSession,
   getCustomerStorageScope: mocks.getCustomerStorageScope,
@@ -37,7 +37,7 @@ vi.mock("@/features/cart/persistence", () => ({
   savePersistedOrderId: mocks.savePersistedOrderId,
   savePersistedSession: mocks.savePersistedSession,
 }));
-vi.mock("@/features/ordering/useCustomerOrderRealtime", () => ({
+vi.mock("@/features/ordering", () => ({
   useCustomerOrderRealtime: mocks.realtime,
 }));
 import { useCustomerSession } from "../useCustomerSession";
@@ -86,6 +86,33 @@ afterEach(() => {
 });
 
 describe("useCustomerSession exhaustive", () => {
+  it.each([true, false])(
+    "polls for missed order updates when realtime connected=%s",
+    async (connected) => {
+      mocks.realtime.mockReturnValue(connected);
+      mocks.loadPersistedOrderId.mockReturnValue("o1");
+      mocks.getCustomerOrder.mockResolvedValue({ id: "o1", status: "OPEN" });
+      const { result, unmount } = renderSessionHook();
+      await waitFor(() => expect(result.current.placedOrder?.id).toBe("o1"));
+      const callsBefore = mocks.getCustomerOrder.mock.calls.length;
+      mocks.getCustomerOrder.mockResolvedValue({
+        id: "o1",
+        status: "BILL_REQUESTED",
+      });
+      // No realtime event is delivered, including while the socket says connected.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_100);
+      });
+      await waitFor(() =>
+        expect(result.current.placedOrder?.status).toBe("BILL_REQUESTED"),
+      );
+      expect(mocks.getCustomerOrder.mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      );
+      expect(result.current.live).toBe(connected);
+      unmount();
+    },
+  );
   it("shows QR error when no token exists", async () => {
     history.replaceState({}, "", "/");
     mocks.getCustomerStorageScope.mockReturnValue(null);
@@ -285,10 +312,10 @@ describe("useCustomerSession exhaustive", () => {
     mocks.createCustomerRequest.mockRejectedValueOnce("x");
     await act(async () => result.current.requestHelp("CALL_WAITER" as any));
     expect(result.current.requestMessage).toBe("Could not send request");
-    act(() => onOrder({ id: "rt" }));
+    await act(() => onOrder({ id: "rt" }));
     expect(result.current.placedOrder?.id).toBe("rt");
     const calls = mocks.getCustomerMenu.mock.calls.length;
-    act(() => onMenu());
+    await act(() => onMenu());
     await waitFor(() =>
       expect(mocks.getCustomerMenu.mock.calls.length).toBeGreaterThan(calls),
     );

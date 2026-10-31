@@ -1,13 +1,13 @@
-import { createCustomersApi } from "@pos/api-client";
+import { createCustomersApi, type LoyaltyCustomerDto } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import type { LoyaltyCustomer } from "@pos/types";
 
 const customersApi = createCustomersApi(apiClient);
 
 export const searchCustomers = async (
   query: string,
-): Promise<LoyaltyCustomer[]> => {
-  const customers = await customersApi.search();
+  signal?: AbortSignal,
+): Promise<LoyaltyCustomerDto[]> => {
+  const customers = await customersApi.search(signal);
   const needle = query.trim().toLowerCase();
   return customers
     .filter((customer) =>

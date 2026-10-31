@@ -26,3 +26,5 @@ export * from "./customer-order-submission.schema";
 export * from "./tax.schema";
 
 export * from "./inventory-deduction-job.schema";
+
+export * from "./payment-collection-request.schema";

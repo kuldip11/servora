@@ -1,43 +1,24 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
-import type { PriceRule } from "@pos/types";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import {
+  useDeletePerCoverPriceRule,
+  usePerCoverPriceRules,
+  useSavePerCoverPriceRule,
+} from "@/features/menu/hooks/useBuffetPricing";
 
 export const BuffetPricingSection = () => {
   const [tier, setTier] = useState<"" | "ADULT" | "CHILD">("");
   const [price, setPrice] = useState("");
-  const key = ["menu", "per-cover-price-rules"];
-  const rulesQuery = useQuery<PriceRule[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listPriceRulesFor<PriceRule>(),
-  });
+  const rulesQuery = usePerCoverPriceRules();
   const rules = (rulesQuery.data ?? []).filter((rule) => rule.isPerCover);
-  const save = useMutation({
-    mutationFn: () =>
-      menuApi.createPriceRule<PriceRule>({
-        isPerCover: true,
-        coverTier: tier || null,
-        price: Number(price),
-        priority: 0,
-      }),
-    onSuccess: async () => {
-      setPrice("");
-      await queryClient.invalidateQueries({ queryKey: key });
-      notifySuccess("Per-cover rate saved");
-    },
-    onError: (error) => notifyError(error, "Failed to save per-cover rate"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removePriceRule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to remove per-cover rate"),
-  });
+  const save = useSavePerCoverPriceRule();
+  const remove = useDeletePerCoverPriceRule();
   return (
     <section className="space-y-4">
       <div>
@@ -65,18 +46,16 @@ export const BuffetPricingSection = () => {
         />
       ) : null}
       <div className="grid max-w-xl grid-cols-2 gap-2">
-        <label className="text-sm font-medium text-text-primary">
-          Cover tier
-          <select
-            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            value={tier}
-            onChange={(event) => setTier(event.target.value as typeof tier)}
-          >
-            <option value="">Any cover</option>
-            <option value="ADULT">Adult</option>
-            <option value="CHILD">Child</option>
-          </select>
-        </label>
+        <Select
+          label="Cover tier"
+          value={tier}
+          onChange={(value) => setTier(value as typeof tier)}
+          options={[
+            { value: "", label: "Any cover" },
+            { value: "ADULT", label: "Adult" },
+            { value: "CHILD", label: "Child" },
+          ]}
+        />
         <Input
           label="Rate per cover"
           required
@@ -95,7 +74,12 @@ export const BuffetPricingSection = () => {
             (rulesQuery.isError && !rulesQuery.data)
           }
           loading={save.isPending}
-          onClick={() => save.mutate()}
+          onClick={() =>
+            save.mutate(
+              { tier, price: Number(price) },
+              { onSuccess: () => setPrice("") },
+            )
+          }
         >
           Add rate
         </Button>

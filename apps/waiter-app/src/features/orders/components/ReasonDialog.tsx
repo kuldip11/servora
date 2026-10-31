@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { CancellationReason } from "@pos/types";
+import type { CancellationReasonDto as CancellationReason } from "@pos/api-client";
 import {
   Button,
   Input,
   Modal,
   QueryErrorState,
-  SelectMenu,
+  Select,
   StaleDataBanner,
 } from "@pos/ui";
 
@@ -55,7 +55,7 @@ export const ReasonDialog = ({
             onRetry={onRetryReasons}
           />
         ) : null}
-        <SelectMenu
+        <Select
           label="Reason"
           value={reasonId}
           onChange={setReasonId}

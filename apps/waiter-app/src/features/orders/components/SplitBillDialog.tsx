@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { extractApiError } from "@pos/api-client";
-import { Button, FormErrorSummary, Input, Modal, SelectMenu } from "@pos/ui";
-import type { Order } from "@pos/types";
-import {
-  splitOrderBill,
-  splitOrderBillByItems,
-  splitOrderBillBySeat,
-} from "@/features/orders/api/orders";
+import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
+import type { OrderDto as Order } from "@pos/api-client";
+import { useSplitOrderBill } from "@/features/orders/hooks/useOrderActions";
 
 type SplitMode = "EVEN" | "ITEM" | "SEAT";
 type SharedStrategy = "EVEN_SPLIT" | "MANUAL";
@@ -43,41 +38,7 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
     );
   }, [items, open]);
 
-  const splitBill = useMutation({
-    mutationFn: ({
-      billCount,
-      allocations,
-    }: {
-      billCount: number;
-      allocations?: Array<{ label: string; orderItemIds: string[] }>;
-    }) =>
-      allocations
-        ? splitOrderBillByItems(orderId, allocations)
-        : splitOrderBill(orderId, billCount),
-    onSuccess: onClose,
-  });
-  const splitBySeat = useMutation({
-    mutationFn: (strategy: SharedStrategy) =>
-      splitOrderBillBySeat(orderId, strategy),
-    onSuccess: (result) => {
-      if (result.status !== "MANUAL_REQUIRED") {
-        onClose();
-        return;
-      }
-      const mapping: Record<string, number> = {};
-      result.allocations.forEach((allocation, index) =>
-        allocation.orderItemIds.forEach((id) => {
-          mapping[id] = index;
-        }),
-      );
-      result.sharedItemIds.forEach((id, index) => {
-        mapping[id] = index % result.allocations.length;
-      });
-      setItemBills(mapping);
-      setWays(String(result.allocations.length));
-      setMode("ITEM");
-    },
-  });
+  const { splitBill, splitBySeat } = useSplitOrderBill(orderId, onClose);
 
   const clearErrors = () => {
     splitBill.reset();
@@ -86,7 +47,26 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
 
   const submit = () => {
     if (mode === "SEAT") {
-      splitBySeat.mutate(sharedStrategy);
+      splitBySeat.mutate(sharedStrategy, {
+        onSuccess: (result) => {
+          if (result.status !== "MANUAL_REQUIRED") {
+            onClose();
+            return;
+          }
+          const mapping: Record<string, number> = {};
+          result.allocations.forEach((allocation, index) =>
+            allocation.orderItemIds.forEach((id) => {
+              mapping[id] = index;
+            }),
+          );
+          result.sharedItemIds.forEach((id, index) => {
+            mapping[id] = index % result.allocations.length;
+          });
+          setItemBills(mapping);
+          setWays(String(result.allocations.length));
+          setMode("ITEM");
+        },
+      });
       return;
     }
     const billCount = Number(ways);
@@ -113,7 +93,7 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
   return (
     <Modal open={open} onClose={onClose} title="Split bill">
       <div className="space-y-4">
-        <SelectMenu
+        <Select
           label="Split mode"
           value={mode}
           onChange={(value) => {
@@ -141,7 +121,7 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
           />
         )}
         {mode === "SEAT" && (
-          <SelectMenu
+          <Select
             label="Shared items"
             value={sharedStrategy}
             onChange={(value) => {
@@ -163,7 +143,7 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
                 className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-sm"
               >
                 {item.quantity}× {item.menuItemName}
-                <SelectMenu
+                <Select
                   aria-label={`Bill for ${item.menuItemName}`}
                   className="w-28 rounded-xl"
                   value={String(itemBills[item.id] ?? 0)}

@@ -1,5 +1,10 @@
 import { voidDomainRequest } from "./shared";
-import type { CustomerGroup, LoyaltyCustomer } from "@pos/types";
+import type {
+  CustomerGroupResponse,
+  CustomerRequestResponse,
+  LoyaltyCustomerRequest,
+  LoyaltyCustomerResponse,
+} from "@pos/contracts";
 import {
   getDomainData,
   patchDomainData,
@@ -7,12 +12,10 @@ import {
   type DomainHttpClient,
 } from "./shared";
 
-export interface CreateLoyaltyCustomerInput {
-  name: string;
-  phone?: string;
-  email?: string;
-  loyaltyTierId?: string;
-}
+export type LoyaltyCustomerDto = LoyaltyCustomerResponse;
+export type CustomerGroupDto = CustomerGroupResponse;
+export type CustomerRequestDto = CustomerRequestResponse;
+export type CreateLoyaltyCustomerInput = LoyaltyCustomerRequest;
 
 export interface CustomerGroupInput {
   name: string;
@@ -22,14 +25,18 @@ export interface CustomerGroupInput {
 
 export const createCustomersApi = (client: DomainHttpClient) => {
   return {
-    list(): Promise<LoyaltyCustomer[]> {
-      return getDomainData<LoyaltyCustomer[]>(client, "/loyalty/customers");
+    list(): Promise<LoyaltyCustomerDto[]> {
+      return getDomainData<LoyaltyCustomerDto[]>(client, "/loyalty/customers");
     },
-    search(): Promise<LoyaltyCustomer[]> {
-      return getDomainData<LoyaltyCustomer[]>(client, "/loyalty/customers");
+    search(signal?: AbortSignal): Promise<LoyaltyCustomerDto[]> {
+      return getDomainData<LoyaltyCustomerDto[]>(
+        client,
+        "/loyalty/customers",
+        signal ? { signal } : undefined,
+      );
     },
-    create(input: CreateLoyaltyCustomerInput): Promise<LoyaltyCustomer> {
-      return postDomainData<LoyaltyCustomer>(
+    create(input: CreateLoyaltyCustomerInput): Promise<LoyaltyCustomerDto> {
+      return postDomainData<LoyaltyCustomerDto>(
         client,
         "/loyalty/customers",
         input,
@@ -38,21 +45,32 @@ export const createCustomersApi = (client: DomainHttpClient) => {
     assignTier(
       id: string,
       loyaltyTierId: string | null,
-    ): Promise<LoyaltyCustomer> {
-      return patchDomainData<LoyaltyCustomer>(
+    ): Promise<LoyaltyCustomerDto> {
+      return patchDomainData<LoyaltyCustomerDto>(
         client,
         `/loyalty/customers/${id}`,
         { loyaltyTierId },
       );
     },
-    listGroups(): Promise<CustomerGroup[]> {
-      return getDomainData<CustomerGroup[]>(client, "/customer-groups");
+    listGroups(signal?: AbortSignal): Promise<CustomerGroupDto[]> {
+      return getDomainData<CustomerGroupDto[]>(
+        client,
+        "/customer-groups",
+        signal ? { signal } : undefined,
+      );
     },
-    createGroup(input: CustomerGroupInput): Promise<CustomerGroup> {
-      return postDomainData<CustomerGroup>(client, "/customer-groups", input);
+    createGroup(input: CustomerGroupInput): Promise<CustomerGroupDto> {
+      return postDomainData<CustomerGroupDto>(
+        client,
+        "/customer-groups",
+        input,
+      );
     },
-    updateGroup(id: string, input: CustomerGroupInput): Promise<CustomerGroup> {
-      return patchDomainData<CustomerGroup>(
+    updateGroup(
+      id: string,
+      input: CustomerGroupInput,
+    ): Promise<CustomerGroupDto> {
+      return patchDomainData<CustomerGroupDto>(
         client,
         `/customer-groups/${id}`,
         input,
@@ -61,13 +79,19 @@ export const createCustomersApi = (client: DomainHttpClient) => {
     deleteGroup(id: string): Promise<void> {
       return voidDomainRequest(client.delete(`/customer-groups/${id}`));
     },
-    resolveRequest(id: string): Promise<void> {
-      return voidDomainRequest(
-        client.patch(`/customer/requests/${id}`, { status: "RESOLVED" }),
+    resolveRequest(id: string): Promise<CustomerRequestDto> {
+      return patchDomainData<CustomerRequestDto>(
+        client,
+        `/customer/requests/${id}`,
+        { status: "RESOLVED" },
       );
     },
-    listRequests<T>(): Promise<T[]> {
-      return getDomainData<T[]>(client, "/customer/requests");
+    listRequests(signal?: AbortSignal): Promise<CustomerRequestDto[]> {
+      return getDomainData<CustomerRequestDto[]>(
+        client,
+        "/customer/requests",
+        signal ? { signal } : undefined,
+      );
     },
   };
 };

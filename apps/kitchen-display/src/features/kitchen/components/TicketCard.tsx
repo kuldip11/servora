@@ -1,6 +1,9 @@
 import { memo } from "react";
 import { Card } from "@pos/ui";
-import type { KitchenTicket, KitchenTicketStatus } from "@pos/types";
+import type {
+  KitchenTicketDto as KitchenTicket,
+  KitchenTicketUpdateStatus,
+} from "@pos/api-client";
 import { STATUS_CONFIG } from "@/features/kitchen/constants";
 import { isUrgent, voidUrgency } from "@/features/kitchen/utils/ticket";
 import { TicketHeader } from "./TicketHeader";
@@ -9,7 +12,7 @@ import { TicketFooter } from "./TicketFooter";
 
 interface Props {
   ticket: KitchenTicket;
-  onUpdateStatus: (id: string, status: KitchenTicketStatus) => void;
+  onUpdateStatus: (id: string, status: KitchenTicketUpdateStatus) => void;
   isUpdating: boolean;
 }
 

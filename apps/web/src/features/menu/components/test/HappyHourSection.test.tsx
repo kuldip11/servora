@@ -1,20 +1,21 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invalidateQueries, api, customers } = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
+const { api } = vi.hoisted(() => ({
   api: {
     createLoyaltyTier: vi.fn(),
     removeLoyaltyTier: vi.fn(),
     listLoyaltyTiers: vi.fn(),
     createHappyHourRule: vi.fn(),
   },
-  customers: { list: vi.fn(), create: vi.fn(), assignTier: vi.fn() },
 }));
-let queryData: unknown[] = [];
-
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
+  extractApiError: (error: any) =>
+    error?.response?.data?.error?.message ?? "Request failed",
+}));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -24,10 +25,20 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...props} />
     </label>
   ),
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
     <label>
       {label}
-      <select aria-label={props["aria-label"] ?? label} {...props}>
+      <select
+        aria-label={props["aria-label"] ?? label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((option: any) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -37,31 +48,26 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@pos/api-client", () => ({
-  createMenuApi: () => api,
-  createCustomersApi: () => customers,
-  extractApiError: (error: any) =>
-    error?.response?.data?.error?.message ?? "Request failed",
-}));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: [{ id: "cat1", name: "Food" }] }),
 }));
 vi.mock("@/features/menu/hooks/useMenus", () => ({
   useMenus: () => ({ data: [{ id: "menu1", name: "Dinner" }] }),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries }),
-  useQuery: ({ queryKey }: any) => ({
-    data: queryKey[1] === "tiers" ? queryData[0] : queryData[1],
-  }),
-  useMutation: (config: any) => ({
+vi.mock("@/features/menu/hooks/useCreateHappyHourRule", () => ({
+  useCreateHappyHourRule: () => ({
     isPending: false,
-    mutate: (arg?: any) => {
-      Promise.resolve()
-        .then(() => config.mutationFn(arg))
-        .then((value) => config.onSuccess?.(value))
-        .catch((error) => config.onError?.(error));
+    mutate: (
+      input: Record<string, unknown>,
+      options?: {
+        onSuccess?: (rows: unknown[]) => void;
+        onError?: (error: unknown) => void;
+      },
+    ) => {
+      Promise.resolve(api.createHappyHourRule(input))
+        .then((rows) => options?.onSuccess?.(rows))
+        .catch((error) => options?.onError?.(error));
     },
   }),
 }));
@@ -71,7 +77,6 @@ import { HappyHourSection } from "../HappyHourSection";
 describe("HappyHourSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    queryData = [[], []];
     api.createHappyHourRule.mockResolvedValue([{}, {}]);
   });
 

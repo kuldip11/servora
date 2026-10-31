@@ -1,6 +1,6 @@
 import { MapPin, Plus } from "lucide-react";
 import { Button, Card } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { useUpdateOrderStatus } from "@/features/orders/hooks/useUpdateOrderStatus";
 
 type UpdateStatusMutation = ReturnType<typeof useUpdateOrderStatus>;

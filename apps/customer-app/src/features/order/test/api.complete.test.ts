@@ -14,8 +14,8 @@ beforeEach(() => {
     "00000000-0000-4000-8000-000000000000",
   );
 });
-it("covers all order API wrappers", () => {
-  createCustomerOrder("s", { notes: "n" });
+it("covers all order API wrappers", async () => {
+  await createCustomerOrder("s", { notes: "n" });
   expect(request).toHaveBeenCalledWith(
     "/api/customer/orders",
     expect.objectContaining({
@@ -26,14 +26,21 @@ it("covers all order API wrappers", () => {
     }),
     "s",
   );
-  getCustomerOrder("s", "o");
-  checkoutCustomerOrder("s", "o");
-  initiateTakeawayPayment("s", "o");
-  verifyTakeawayPayment("s", {
+  await getCustomerOrder("s", "o");
+  const signal = new AbortController().signal;
+  await getCustomerOrder("s", "o", signal);
+  expect(request).toHaveBeenLastCalledWith(
+    "/api/customer/orders/o",
+    { signal },
+    "s",
+  );
+  await checkoutCustomerOrder("s", "o");
+  await initiateTakeawayPayment("s", "o");
+  await verifyTakeawayPayment("s", {
     orderId: "o",
     razorpayOrderId: "r1",
     razorpayPaymentId: "r2",
     razorpaySignature: "r3",
   });
-  expect(request).toHaveBeenCalledTimes(5);
+  expect(request).toHaveBeenCalledTimes(6);
 });

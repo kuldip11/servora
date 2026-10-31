@@ -26,29 +26,39 @@ vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: mocks.invalidate },
 }));
 vi.mock("@/features/staff/query-keys", () => ({
-  roleKeys: { list: () => ["roles"] },
+  roleKeys: {
+    list: () => ["roles"],
+    permissions: (roleId: string | null) => ["roles", "permissions", roleId],
+  },
 }));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   KeyRound: () => null,
   Plus: () => null,
   Shield: () => null,
   Trash2: () => null,
 }));
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: any) => options,
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: (options: any) => {
+    const optionsRef = React.useRef(options);
+    optionsRef.current = options;
     const [state, setState] = React.useState<any>({
       data: undefined,
       isLoading: Boolean(options.enabled),
       isError: false,
       isFetching: false,
     });
+    const enabled = Boolean(options.enabled);
     const key = JSON.stringify(options.queryKey);
     const run = React.useCallback(async () => {
-      if (!options.enabled) return;
+      const currentOptions = optionsRef.current;
+      if (!enabled) return;
       setState((current: any) => ({
         ...current,
         isLoading: current.data === undefined,
@@ -56,7 +66,10 @@ vi.mock("@tanstack/react-query", () => ({
         isError: false,
       }));
       try {
-        const data = await options.queryFn();
+        const data = await currentOptions.queryFn({
+          queryKey: JSON.parse(key),
+          signal: new AbortController().signal,
+        });
         setState({ data, isLoading: false, isError: false, isFetching: false });
       } catch {
         setState((current: any) => ({
@@ -66,7 +79,7 @@ vi.mock("@tanstack/react-query", () => ({
           isFetching: false,
         }));
       }
-    }, [options.enabled, key]);
+    }, [enabled, key]);
     React.useEffect(() => {
       void run();
     }, [run]);
@@ -86,7 +99,8 @@ vi.mock("@tanstack/react-query", () => ({
     },
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (
@@ -119,7 +133,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, value, onChange, options }: any) => (
     <label>
       {label}
-      <select aria-label={label} value={value} onChange={onChange}>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}

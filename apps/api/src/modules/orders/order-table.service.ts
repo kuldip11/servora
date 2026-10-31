@@ -1,8 +1,12 @@
-import type { KitchenTicket, Order, RestaurantTable } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { eventBus } from "@/lib/event-bus";
+import {
+  toRealtimeKitchenTicketPayload,
+  toRealtimeOrderPayload,
+} from "@/modules/realtime/realtime.mapper";
 import { ticketRepository } from "@/modules/kitchen-tickets/ticket.repository";
 import { tableRepository } from "@/modules/tables/table.repository";
+import { toTableResponse } from "@/modules/tables/table.mapper";
 import {
   assertOrderResourceAccess,
   requireOrdersPermission,
@@ -78,7 +82,7 @@ export const orderTableService = {
       eventBus.publish(
         {
           type: "table.updated",
-          payload: transferred.oldTable as unknown as RestaurantTable,
+          payload: toTableResponse(transferred.oldTable),
         },
         auth.tenantId,
         order.branchId,
@@ -86,13 +90,13 @@ export const orderTableService = {
       eventBus.publish(
         {
           type: "table.updated",
-          payload: transferred.newTable as unknown as RestaurantTable,
+          payload: toTableResponse(transferred.newTable),
         },
         auth.tenantId,
         order.branchId,
       ),
       eventBus.publish(
-        { type: "order.updated", payload: fullOrder as unknown as Order },
+        { type: "order.updated", payload: toRealtimeOrderPayload(fullOrder) },
         auth.tenantId,
         order.branchId,
       ),
@@ -108,7 +112,7 @@ export const orderTableService = {
         await eventBus.publish(
           {
             type: "kitchen.ticket.updated",
-            payload: detailed as unknown as KitchenTicket,
+            payload: toRealtimeKitchenTicketPayload(detailed),
           },
           auth.tenantId,
           order.branchId,
@@ -151,12 +155,12 @@ export const orderTableService = {
     ]);
     await Promise.all([
       eventBus.publish(
-        { type: "order.updated", payload: source as unknown as Order },
+        { type: "order.updated", payload: toRealtimeOrderPayload(source) },
         auth.tenantId,
         auth.branchId,
       ),
       eventBus.publish(
-        { type: "order.updated", payload: target as unknown as Order },
+        { type: "order.updated", payload: toRealtimeOrderPayload(target) },
         auth.tenantId,
         auth.branchId,
       ),

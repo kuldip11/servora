@@ -43,6 +43,47 @@ export default function Pricing() {
           </div>
         ))}
       </div>
+      <section className="mt-14 space-y-6" aria-labelledby="quote-heading">
+        <h2 id="quote-heading" className="text-2xl font-semibold">
+          What to include in your pricing conversation
+        </h2>
+        <p>
+          Tell us how many locations you operate, how orders reach the kitchen,
+          and which teams need access. Your discussion can cover POS and
+          billing, guest QR ordering, kitchen displays, inventory, reporting and
+          branch management.
+        </p>
+        <h3 className="text-xl font-semibold">For one restaurant</h3>
+        <p>
+          Walk through a typical service: taking an order, sending it to the
+          kitchen, changing items and settling the bill. Bring your menu
+          structure and existing device or printer requirements.
+        </p>
+        <h3 className="text-xl font-semibold">For restaurant groups</h3>
+        <p>
+          Discuss shared menus, branch-specific availability, staff access and
+          reporting across locations. Include the rollout order for your
+          branches and any migration requirements.
+        </p>
+        <h3 className="text-xl font-semibold">Before agreeing a quote</h3>
+        <p>
+          Ask the team to confirm included capabilities, setup and training,
+          support arrangements, compatible hardware, payment-provider charges
+          and any recurring or one-time costs. These details should be agreed in
+          your proposal.
+        </p>
+        <p>
+          Want to see the workflow first?{" "}
+          <a className="text-[var(--primary)] underline" href="/book-a-demo">
+            Book a restaurant software demo
+          </a>{" "}
+          or{" "}
+          <a className="text-[var(--primary)] underline" href="/product">
+            explore the product capabilities
+          </a>
+          .
+        </p>
+      </section>
     </section>
   );
 }

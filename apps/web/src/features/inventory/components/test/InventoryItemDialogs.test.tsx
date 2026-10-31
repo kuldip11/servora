@@ -11,7 +11,8 @@ vi.mock("@/features/inventory/hooks/useUpdateInventoryStock", () => ({
     isPending: false,
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: () => null,
   Modal: ({ open, title, children }: any) =>
     open ? (
@@ -36,7 +37,12 @@ vi.mock("@pos/ui", () => ({
     ({ label, options = [], ...p }, ref) => (
       <label>
         {label}
-        <select aria-label={label} ref={ref} {...p}>
+        <select
+          aria-label={label}
+          ref={ref}
+          {...p}
+          onChange={(event) => p.onChange?.(event.target.value)}
+        >
           {options.map((o: any) => (
             <option key={o.value} value={o.value}>
               {o.label}

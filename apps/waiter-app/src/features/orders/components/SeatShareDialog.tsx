@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { extractApiError } from "@pos/api-client";
 import { Button, FormErrorSummary, Input, Modal } from "@pos/ui";
-import { setOrderItemSeatShares } from "@/features/orders/api/orders";
+import { useSetOrderItemSeatShares } from "@/features/orders/hooks/useOrderActions";
 
 type SeatShare = { seatLabel: string; shareRatio: number };
 type SeatShareDraft = {
@@ -36,7 +35,6 @@ export const SeatShareDialog = ({
   initialShares,
   onClose,
 }: Props) => {
-  const queryClient = useQueryClient();
   const [shares, setShares] = useState<SeatShareDraft[]>([]);
 
   useEffect(() => {
@@ -50,19 +48,7 @@ export const SeatShareDialog = ({
     );
   }, [initialShares, open]);
 
-  const save = useMutation({
-    mutationFn: ({
-      selectedItemId,
-      nextShares,
-    }: {
-      selectedItemId: string;
-      nextShares: SeatShare[];
-    }) => setOrderItemSeatShares(orderId, selectedItemId, nextShares),
-    onSuccess: () => {
-      void queryClient.invalidateQueries();
-      onClose();
-    },
-  });
+  const save = useSetOrderItemSeatShares(orderId, onClose);
 
   const updateShares = (
     updater: (current: SeatShareDraft[]) => SeatShareDraft[],

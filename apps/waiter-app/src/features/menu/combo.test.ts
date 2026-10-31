@@ -12,7 +12,7 @@ const combo = (overrides: Partial<WaiterCombo> = {}): WaiterCombo => ({
   name: "Meal",
   description: null,
   pricePolicy: "FIXED",
-  fixedPrice: "10",
+  fixedPrice: 10,
   percentOff: null,
   status: "ACTIVE",
   slots: [
@@ -23,8 +23,8 @@ const combo = (overrides: Partial<WaiterCombo> = {}): WaiterCombo => ({
       maxSelections: 2,
       sortOrder: 0,
       options: [
-        { id: "base", menuItemId: "item-1", variantId: null, upcharge: "1" },
-        { id: "large", menuItemId: "item-1", variantId: "v1", upcharge: "0.5" },
+        { id: "base", menuItemId: "item-1", variantId: null, upcharge: 1 },
+        { id: "large", menuItemId: "item-1", variantId: "v1", upcharge: 0.5 },
       ],
     },
   ],
@@ -58,7 +58,7 @@ describe("waiter combo helpers", () => {
         combo: combo({
           pricePolicy: "PERCENT_OFF_SUM",
           fixedPrice: null,
-          percentOff: "25",
+          percentOff: 25,
         }),
         quantity: 1,
       }),
@@ -78,7 +78,7 @@ describe("waiter combo helpers", () => {
         combo: combo({
           pricePolicy: "PERCENT_OFF_SUM",
           fixedPrice: null,
-          percentOff: "0",
+          percentOff: 0,
         }),
         quantity: 1,
         selections: [

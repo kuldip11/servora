@@ -2,18 +2,16 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCustomerRequest,
-  getCustomerOrder,
   type CustomerOrder,
   type CustomerRequestType,
 } from "@/api";
-import { getCustomerStorageScope } from "@/features/cart/persistence";
-import { useCustomerOrderRealtime } from "@/features/ordering/useCustomerOrderRealtime";
-import {
-  orderQueryKey,
-  useCustomerBootstrap,
-} from "@/features/session/useCustomerBootstrap";
+import { getCustomerStorageScope } from "@/features/cart";
+import { useCustomerOrderRealtime } from "@/features/ordering";
+import { useCustomerBootstrap } from "@/features/session/useCustomerBootstrap";
 import { useCustomerPersistence } from "@/features/session/useCustomerPersistence";
 import { extractApiError } from "@pos/api-client";
+import { customerKeys } from "@/features/session/query/customer.keys";
+import { customerOrderQuery } from "@/features/session/query/customer.queries";
 
 export type { CustomerSessionState } from "@/features/session/useCustomerBootstrap";
 
@@ -39,6 +37,9 @@ export const useCustomerSession = () => {
     queryClient,
   });
 
+  const { placedOrderId, setPlacedOrderId, setLocalError } = persistence;
+  const { refetch: refetchBootstrap } = bootstrapQuery;
+
   const setPlacedOrder = useCallback(
     (
       value:
@@ -46,66 +47,74 @@ export const useCustomerSession = () => {
         | null
         | ((current: CustomerOrder | null) => CustomerOrder | null),
     ) => {
-      const current = persistence.placedOrderId
+      const current = placedOrderId
         ? (queryClient.getQueryData<CustomerOrder>(
-            orderQueryKey(session?.token, persistence.placedOrderId),
+            customerKeys.order(storageScope, session?.token, placedOrderId),
           ) ?? null)
         : null;
       const next = typeof value === "function" ? value(current) : value;
 
       if (!next) {
-        persistence.setPlacedOrderId(null);
+        setPlacedOrderId(null);
         return;
       }
 
-      persistence.setPlacedOrderId(next.id);
+      setPlacedOrderId(next.id);
       if (session?.token) {
-        queryClient.setQueryData(orderQueryKey(session.token, next.id), next);
+        queryClient.setQueryData(
+          customerKeys.order(storageScope, session.token, next.id),
+          next,
+        );
       }
     },
-    [persistence, queryClient, session?.token],
+    [
+      placedOrderId,
+      setPlacedOrderId,
+      queryClient,
+      session?.token,
+      storageScope,
+    ],
   );
 
   const handleRealtimeOrder = useCallback(
     (order: CustomerOrder) => {
-      persistence.setPlacedOrderId(order.id);
+      setPlacedOrderId(order.id);
       if (session?.token) {
-        queryClient.setQueryData(orderQueryKey(session.token, order.id), order);
+        queryClient.setQueryData(
+          customerKeys.order(storageScope, session.token, order.id),
+          order,
+        );
       }
     },
-    [persistence, queryClient, session?.token],
+    [setPlacedOrderId, queryClient, session?.token, storageScope],
   );
   const handleRealtimeMenuAvailability = useCallback(() => {
-    void bootstrapQuery.refetch();
-  }, [bootstrapQuery]);
+    void refetchBootstrap();
+  }, [refetchBootstrap]);
 
   const live = useCustomerOrderRealtime(
     session?.token,
-    persistence.placedOrderId ?? undefined,
+    placedOrderId ?? undefined,
     handleRealtimeOrder,
     handleRealtimeMenuAvailability,
   );
 
   const orderQuery = useQuery({
-    queryKey: orderQueryKey(
+    ...customerOrderQuery(
+      storageScope,
       session?.token,
-      persistence.placedOrderId ?? undefined,
+      placedOrderId ?? undefined,
     ),
-    queryFn: () => getCustomerOrder(session!.token, persistence.placedOrderId!),
-    enabled: Boolean(session && persistence.placedOrderId),
     initialData: () =>
-      persistence.placedOrderId
+      placedOrderId
         ? queryClient.getQueryData<CustomerOrder>(
-            orderQueryKey(session?.token, persistence.placedOrderId),
+            customerKeys.order(storageScope, session?.token, placedOrderId),
           )
         : undefined,
-    staleTime: 15_000,
-    refetchInterval: live ? false : 15_000,
-    retry: false,
   });
   const placedOrder = orderQuery.data ?? null;
   const activeOrderError =
-    persistence.placedOrderId && orderQuery.error
+    placedOrderId && orderQuery.error
       ? extractApiError(orderQuery.error, "Unable to refresh your order status")
       : null;
 
@@ -137,9 +146,9 @@ export const useCustomerSession = () => {
   );
 
   const retryBootstrap = useCallback(() => {
-    persistence.setLocalError(null);
-    void bootstrapQuery.refetch();
-  }, [bootstrapQuery, persistence]);
+    setLocalError(null);
+    void refetchBootstrap();
+  }, [refetchBootstrap, setLocalError]);
 
   const retryActiveOrder = useCallback(() => {
     void orderQuery.refetch();
@@ -170,7 +179,7 @@ export const useCustomerSession = () => {
     loading: isActionLoading || (Boolean(qrToken) && bootstrapQuery.isPending),
     setLoading: setIsActionLoading,
     error: persistence.localError ?? bootstrapError ?? missingQrError,
-    setError: persistence.setLocalError,
+    setError: setLocalError,
     requestBusy: requestMutation.isPending,
     requestMessage,
     storageScope,

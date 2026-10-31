@@ -12,6 +12,9 @@
   "peerDependencies": {
     "react": "^19.0.0"
   },
+  "dependencies": {
+    "@pos/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "typescript": "^5.4.5",

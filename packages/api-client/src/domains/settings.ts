@@ -6,14 +6,27 @@ import {
 
 export const createSettingsApi = (client: DomainHttpClient) => {
   return {
-    tenants<T>(): Promise<Array<{ tenant: T }>> {
-      return getDomainData<Array<{ tenant: T }>>(client, "/tenants");
+    tenants(signal?: AbortSignal): Promise<AvailableTenantResponse[]> {
+      return getDomainData<AvailableTenantResponse[]>(
+        client,
+        "/tenants",
+        signal ? { signal } : undefined,
+      );
     },
-    updateTenant<T>(
+    updateTenant(
       tenantId: string,
-      patch: Record<string, unknown>,
-    ): Promise<T> {
-      return patchDomainData<T>(client, `/tenants/${tenantId}`, patch);
+      patch: UpdateTenantRequest,
+    ): Promise<TenantResponse> {
+      return patchDomainData<TenantResponse>(
+        client,
+        `/tenants/${tenantId}`,
+        patch,
+      );
     },
   };
 };
+import type {
+  AvailableTenantResponse,
+  TenantResponse,
+  UpdateTenantRequest,
+} from "@pos/contracts";

@@ -1,42 +1,18 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Badge, Button, Card, toast } from "@pos/ui";
-import { createAvailabilityApi } from "@pos/api-client";
-import { DIFFERENTIATORS_SELECT_CLASS } from "@/features/differentiators/constants";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { Badge, Button, Card, Select, toast } from "@pos/ui";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useDifferentiatorAvailability } from "@/features/differentiators/hooks/useDifferentiators";
 import { useRealtimeEvent } from "@/shared/lib/realtime";
-
-type AvailabilityRow = {
-  entityType: "ITEM" | "VARIANT" | "MODIFIER_OPTION";
-  entityId: string;
-  menuItemId: string;
-  name: string;
-  status: string;
-  reason: string;
-  cause: string;
-  branchId: string;
-  branchName?: string;
-  channel: string;
-  fulfillmentType: string;
-};
-
-const availabilityApi = createAvailabilityApi(apiClient);
 
 export const AvailabilityPanel = () => {
   const [channel, setChannel] = useState("UNSCOPED");
   const [fulfillment, setFulfillment] = useState("UNSCOPED");
   const [cause, setCause] = useState("");
-  const availabilityQuery = useQuery({
-    queryKey: ["differentiators", "availability"],
-    queryFn: () =>
-      availabilityApi.dashboard<{ rows: AvailabilityRow[] }>({
-        channel,
-        fulfillmentType: fulfillment,
-        ...(cause.trim() ? { cause: cause.trim() } : {}),
-      }),
-    retry: false,
-    refetchOnMount: false,
-  });
+  const availabilityQuery = useDifferentiatorAvailability(
+    channel,
+    fulfillment,
+    cause,
+  );
 
   useRealtimeEvent("menu.availability.updated", () => {
     void availabilityQuery.refetch();
@@ -72,55 +48,52 @@ export const AvailabilityPanel = () => {
             only aggregates its output.
           </p>
         </div>
-        <Button loading={availabilityQuery.isFetching} onClick={refresh}>
+        <Button
+          loading={availabilityQuery.isFetching}
+          onClick={() => void refresh()}
+        >
           Refresh
         </Button>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <label className="text-sm font-medium text-text-primary">
-          Channel
-          <select
-            className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-            value={channel}
-            onChange={(event) => setChannel(event.target.value)}
-          >
-            <option value="UNSCOPED">All channels</option>
-            <option value="STAFF">Staff</option>
-            <option value="CUSTOMER_QR">Customer QR</option>
-          </select>
-        </label>
-        <label className="text-sm font-medium text-text-primary">
-          Fulfillment
-          <select
-            className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-            value={fulfillment}
-            onChange={(event) => setFulfillment(event.target.value)}
-          >
-            <option value="UNSCOPED">All fulfillment types</option>
-            <option value="DINE_IN">Dine in</option>
-            <option value="TAKEAWAY">Takeaway</option>
-            <option value="DELIVERY">Delivery</option>
-            <option value="ONLINE">Online</option>
-          </select>
-        </label>
-        <label className="text-sm font-medium text-text-primary">
-          Cause
-          <select
-            className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-            value={cause}
-            onChange={(event) => setCause(event.target.value)}
-          >
-            <option value="">All causes</option>
-            <option value="MANUAL_OVERRIDE">Manual override</option>
-            <option value="MANUAL_COUNT">Manual count</option>
-            <option value="RECIPE_DRIVEN">Recipe / inventory</option>
-            <option value="SCHEDULE">Schedule</option>
-            <option value="CHANNEL_OVERRIDE">Channel override</option>
-            <option value="BRANCH_OVERRIDE">Branch override</option>
-            <option value="COMPUTED_STATUS">Computed variant status</option>
-            <option value="BASE_STATUS">Base status</option>
-          </select>
-        </label>
+        <Select
+          label="Channel"
+          value={channel}
+          onChange={setChannel}
+          options={[
+            { value: "UNSCOPED", label: "All channels" },
+            { value: "STAFF", label: "Staff" },
+            { value: "CUSTOMER_QR", label: "Customer QR" },
+          ]}
+        />
+        <Select
+          label="Fulfillment"
+          value={fulfillment}
+          onChange={setFulfillment}
+          options={[
+            { value: "UNSCOPED", label: "All fulfillment types" },
+            { value: "DINE_IN", label: "Dine in" },
+            { value: "TAKEAWAY", label: "Takeaway" },
+            { value: "DELIVERY", label: "Delivery" },
+            { value: "ONLINE", label: "Online" },
+          ]}
+        />
+        <Select
+          label="Cause"
+          value={cause}
+          onChange={setCause}
+          options={[
+            { value: "", label: "All causes" },
+            { value: "MANUAL_OVERRIDE", label: "Manual override" },
+            { value: "MANUAL_COUNT", label: "Manual count" },
+            { value: "RECIPE_DRIVEN", label: "Recipe / inventory" },
+            { value: "SCHEDULE", label: "Schedule" },
+            { value: "CHANNEL_OVERRIDE", label: "Channel override" },
+            { value: "BRANCH_OVERRIDE", label: "Branch override" },
+            { value: "COMPUTED_STATUS", label: "Computed variant status" },
+            { value: "BASE_STATUS", label: "Base status" },
+          ]}
+        />
       </div>
       <div className="mt-4 space-y-3">
         {rows.length ? (

@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createSettingsApi: () => ({
     tenants: mocks.tenants,
     updateTenant: mocks.update,
@@ -21,8 +22,12 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("lucide-react", () => ({ ReceiptText: () => null }));
-vi.mock("@pos/ui", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
+  ReceiptText: () => null,
+}));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Card: ({ children }: any) => <section>{children}</section>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
@@ -38,7 +43,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, options = [], ...props }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...props}>
+      <select
+        aria-label={label}
+        {...props}
+        onChange={(event) => props.onChange?.(event.target.value)}
+      >
         {options.map((option: any) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -48,12 +57,16 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  queryOptions: (options: any) => options,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useQuery: ({ queryFn }: any) => {
     const [data, setData] = React.useState<any>();
+    const queryFnRef = React.useRef(queryFn);
     React.useEffect(() => {
-      void queryFn()
+      void queryFnRef
+        .current({ signal: new AbortController().signal })
         .then(setData)
         .catch(() => {});
     }, []);
@@ -61,12 +74,14 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async () => {
+    mutate: async (value?: any, callbacks?: any) => {
       try {
-        const output = await options.mutationFn();
-        options.onSuccess?.(output);
+        const output = await options.mutationFn(value);
+        options.onSuccess?.(output, value);
+        callbacks?.onSuccess?.(output, value);
       } catch (error) {
-        options.onError?.(error);
+        options.onError?.(error, value);
+        callbacks?.onError?.(error, value);
       }
     },
   }),

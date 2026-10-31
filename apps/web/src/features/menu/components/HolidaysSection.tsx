@@ -112,7 +112,10 @@ export const HolidaysSection = () => {
         ))}
       </div>
 
-      <form onSubmit={submit} className="space-y-3 max-w-xl">
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="space-y-3 max-w-xl"
+      >
         <FormErrorSummary messages={formErrorMessages} />
         <div className="flex items-end gap-2">
           <Input

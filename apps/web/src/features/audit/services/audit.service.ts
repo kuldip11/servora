@@ -1,32 +1,18 @@
-import { createAuditApi } from "@pos/api-client";
+import {
+  createAuditApi,
+  type AuditEntryDto,
+  type MenuHistoryEntryDto,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
 const auditApi = createAuditApi(apiClient);
 
-export interface AuditEntry {
-  id: string;
-  action: string;
-  entity: string;
-  entityId: string | null;
-  metadata: string | null;
-  createdAt: string;
-  userId: string | null;
-  userName: string | null;
-}
-
-export interface MenuHistoryEntry {
-  id: string;
-  entityType: string;
-  entityId: string;
-  changeType: string;
-  diff: Record<string, unknown>;
-  changedBy: string | null;
-  changedAt: string;
-}
+export type AuditEntry = AuditEntryDto;
+export type MenuHistoryEntry = MenuHistoryEntryDto;
 
 export const auditService = {
   async list(limit = 50, before?: string): Promise<AuditEntry[]> {
-    return auditApi.list<AuditEntry[]>({ limit, before });
+    return auditApi.list({ limit, before });
   },
   async menuHistory(
     filters: {
@@ -37,6 +23,6 @@ export const auditService = {
       before?: string;
     } = {},
   ): Promise<MenuHistoryEntry[]> {
-    return auditApi.menuHistory<MenuHistoryEntry[]>(filters);
+    return auditApi.menuHistory(filters);
   },
 };

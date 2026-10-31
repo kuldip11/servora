@@ -1,8 +1,12 @@
-import { createOrdersApi, type OrdersListFilters } from "@pos/api-client";
+import {
+  createOrdersApi,
+  type OrdersListFilters,
+  OrderDto as Order,
+} from "@pos/api-client";
 import type { CreateOrderInput as ValidatedCreateOrderInput } from "@pos/validation";
 import { apiClient } from "@/shared/lib/api-client";
-import type { Order } from "@pos/types";
 import type { CartItem } from "@/features/orders/utils/cartTypes";
+import type { OrderExplanation } from "@/features/orders/types/order-explanation.types";
 
 export type CreateOrderInput = ValidatedCreateOrderInput;
 export type { OrdersListFilters };
@@ -38,6 +42,22 @@ export const toCartItemPayload = (item: CartItem): CartItemPayload => {
     })),
   };
 };
+export const buildCreateOrderInput = ({
+  type,
+  tableId,
+  notes,
+  items,
+}: {
+  type: string;
+  tableId: string;
+  notes: string;
+  items: CartItem[];
+}): CreateOrderInput => ({
+  type: type as CreateOrderInput["type"],
+  ...(tableId && { tableId }),
+  ...(notes && { notes }),
+  items: items.map(toCartItemPayload),
+});
 
 export const ordersService = {
   list: ordersApi.list,
@@ -67,4 +87,14 @@ export const ordersService = {
   compItem: ordersApi.compItem,
   transferTable: ordersApi.transferTable,
   mergeOrders: ordersApi.merge,
+  explain(orderId: string, signal?: AbortSignal): Promise<OrderExplanation> {
+    return ordersApi.explain(orderId, signal);
+  },
+  setItemSeatShares(
+    orderId: string,
+    itemId: string,
+    shares: Array<{ seatLabel: string; shareRatio: number }>,
+  ) {
+    return ordersApi.setItemSeatShares(orderId, itemId, shares);
+  },
 };

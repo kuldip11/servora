@@ -2,8 +2,8 @@ import { ClipboardList, Home, Plus } from "lucide-react";
 import { type ReactNode } from "react";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getWaiterName } from "@/features/auth";
-import { useMyBranch } from "@/features/menu/hooks/useMyBranch";
-import { useWaiterAttention } from "@/features/orders/hooks/useWaiterAttention";
+import { useMyBranch } from "@/features/menu/public/branch";
+import { useWaiterAttention } from "@/features/orders/public/attention";
 import { useConnectionStatus } from "@/shared/lib/realtime";
 
 export interface AppLayoutProps {
@@ -50,7 +50,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         <button
           type="button"
           aria-label="Open profile"
-          onClick={() => navigate({ to: "/profile" })}
+          onClick={() => void navigate({ to: "/profile" })}
           className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-primary-surface text-sm font-medium text-primary"
         >
           {initials}
@@ -67,7 +67,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       >
         <button
           type="button"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => void navigate({ to: "/" })}
           aria-current={isHome ? "page" : undefined}
           className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isHome ? "text-primary" : "text-text-secondary"}`}
         >
@@ -76,7 +76,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </button>
         <button
           type="button"
-          onClick={() => navigate({ to: "/orders" })}
+          onClick={() => void navigate({ to: "/orders" })}
           aria-current={isOrders ? "page" : undefined}
           className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isOrders ? "text-primary" : "text-text-secondary"}`}
         >
@@ -85,7 +85,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </button>
         <button
           type="button"
-          onClick={() => navigate({ to: "/menu" })}
+          onClick={() => void navigate({ to: "/menu" })}
           aria-label="Create new order"
           aria-current={isMenu ? "page" : undefined}
           className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${isMenu ? "text-primary" : "text-text-secondary"}`}

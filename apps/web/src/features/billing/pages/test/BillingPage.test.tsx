@@ -13,35 +13,15 @@ const mocks = vi.hoisted(() => ({
   queryData: [] as unknown[],
 }));
 
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrdersPage: mocks.orders,
 }));
 vi.mock("@/features/billing/hooks/useCollectPayment", () => ({
   useCollectPayment: () => ({ mutate: mocks.payMutate, isPending: false }),
 }));
-vi.mock("@/shared/auth/permissions", () => ({
-  usePermissions: () => ({ has: mocks.has }),
-}));
-vi.mock("@/features/billing/utils/print-bills", () => ({
-  printBills: mocks.printBills,
-}));
-vi.mock("@/features/billing/services/billing.service", () => ({
-  billingService: {
-    getOrderBills: vi.fn(async () => []),
-    splitOrder: mocks.splitOrder,
-    splitOrderByItems: mocks.splitItems,
-    splitOrderBySeat: mocks.splitSeat,
-  },
-}));
-vi.mock("@/shared/lib/query-client", () => ({
-  queryClient: { invalidateQueries: vi.fn() },
-}));
-vi.mock("@/shared/lib/notify", () => ({
-  notifyError: vi.fn(),
-  notifySuccess: vi.fn(),
-}));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({
+vi.mock("@/features/billing/hooks/useOrderBills", () => ({
+  useOrderBills: () => ({
     data: mocks.queryData,
     isLoading: false,
     isError: false,
@@ -49,17 +29,32 @@ vi.mock("@tanstack/react-query", () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-  useMutation: (options: any) => ({
-    mutate: (vars: any) => {
-      try {
-        const result = options.mutationFn(vars);
-        options.onSuccess?.(result ?? { status: "DONE" });
-      } catch (error) {
-        options.onError?.(error);
-      }
+}));
+vi.mock("@/features/billing/hooks/useSplitBill", () => ({
+  useSplitBill: () => ({
+    mutate: (vars: any, options?: any) => {
+      const result = vars.allocations
+        ? mocks.splitItems(vars.orderId, vars.allocations)
+        : mocks.splitOrder(vars.orderId, vars.splitWays);
+      options?.onSuccess?.(result ?? { status: "DONE" });
     },
     isPending: false,
   }),
+}));
+vi.mock("@/features/billing/hooks/useSplitBillBySeat", () => ({
+  useSplitBillBySeat: () => ({
+    mutate: (vars: any, options?: any) => {
+      const result = mocks.splitSeat(vars.orderId, vars.strategy);
+      options?.onSuccess?.(result ?? { status: "DONE" });
+    },
+    isPending: false,
+  }),
+}));
+vi.mock("@/shared/auth/permissions", () => ({
+  usePermissions: () => ({ has: mocks.has }),
+}));
+vi.mock("@/features/billing/utils/print-bills", () => ({
+  printBills: mocks.printBills,
 }));
 vi.mock("@pos/validation", () => ({
   createPaymentSchema: {
@@ -72,7 +67,8 @@ vi.mock("@pos/validation", () => ({
           },
   },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Button: ({ children, onClick, disabled }: any) => (
     <button disabled={disabled} onClick={onClick}>
@@ -111,7 +107,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, value, onChange, children, options = [] }: any) => (
     <label>
       {label}
-      <select aria-label={label} value={value} onChange={onChange}>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
         {children ??
           options.map((option: any) => (
             <option key={option.value} value={option.value}>

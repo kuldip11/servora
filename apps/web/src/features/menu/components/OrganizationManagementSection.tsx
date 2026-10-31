@@ -1,87 +1,47 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
-import type { CustomerLoyaltyTier, PriceRule } from "@pos/types";
-import { createMenuApi, createOrganizationsApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const organizationsApi = createOrganizationsApi(apiClient);
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
 import { usePermissions } from "@/shared/auth/permissions";
 import { useOrganizationDefaultsFormState } from "@/features/menu/hooks/useOrganizationDefaultsFormState";
+import {
+  useCreateOrganizationLoyaltyTier,
+  useCreateOrganizationMenu,
+  useCreateOrganizationPriceRule,
+  useDeleteOrganizationLoyaltyTier,
+  useDeleteOrganizationMenu,
+  useDeleteOrganizationPriceRule,
+  useManagedOrganizations,
+  useOrganizationLoyaltyTiers,
+  useOrganizationMenus,
+  useOrganizationPriceRules,
+  useOrganizationTenants,
+  useUpdateOrganizationMenu,
+} from "@/features/menu/hooks/useOrganizationManagement";
 
-interface OrgMembership {
-  organizationId: string;
-  organization: { id: string; name: string };
-}
-interface OrgMenu {
-  id: string;
-  name: string;
-  status: "DRAFT" | "PUBLISHED";
-  isDefault: boolean;
-  organizationItems: Array<{
-    id: string;
-    itemSku: string;
-    categoryName: string | null;
-  }>;
-}
-interface OrganizationTenantSummary {
-  id: string;
-  name: string;
-  slug?: string;
-  isActive?: boolean;
-}
+import { OrganizationMenuPanel } from "@/features/menu/components/organization-management/OrganizationMenuPanel";
+import { OrganizationPriceRulesPanel } from "@/features/menu/components/organization-management/OrganizationPriceRulesPanel";
+import { OrganizationLoyaltyPanel } from "@/features/menu/components/organization-management/OrganizationLoyaltyPanel";
 
 export const OrganizationManagementSection = () => {
   const { has } = usePermissions();
   const canManage = has("organization:manage");
-  const membershipsQuery = useQuery<OrgMembership[]>({
-    queryKey: ["organizations"],
-    queryFn: () => organizationsApi.list<OrgMembership>(),
-    enabled: canManage,
-  });
-  const memberships = membershipsQuery.data ?? [];
-  const [selectedOrgId, setSelectedOrgId] = useState("");
-  const organizationId =
-    selectedOrgId ||
-    memberships[0]?.organizationId ||
-    memberships[0]?.organization?.id ||
-    "";
-  const organization = useMemo(
-    () =>
-      memberships.find(
-        (entry) =>
-          (entry.organizationId || entry.organization.id) === organizationId,
-      )?.organization,
-    [memberships, organizationId],
+  const organizationsQuery = useManagedOrganizations(canManage);
+  const organizations = useMemo(
+    () => organizationsQuery.data ?? [],
+    [organizationsQuery.data],
   );
-  const menusKey = ["organizations", organizationId, "menus"];
-  const rulesKey = ["organizations", organizationId, "price-rules"];
-  const loyaltyKey = ["organizations", organizationId, "loyalty-tiers"];
-  const tenantsQuery = useQuery<OrganizationTenantSummary[]>({
-    queryKey: ["organizations", organizationId, "tenants"],
-    queryFn: () =>
-      organizationsApi.tenants<OrganizationTenantSummary>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
-  const menusQuery = useQuery<OrgMenu[]>({
-    queryKey: menusKey,
-    queryFn: () => organizationsApi.menus<OrgMenu>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
-  const rulesQuery = useQuery<PriceRule[]>({
-    queryKey: rulesKey,
-    queryFn: () => menuApi.listPriceRulesFor<PriceRule>({ organizationId }),
-    enabled: !!organizationId && canManage,
-  });
-  const loyaltyTiersQuery = useQuery<CustomerLoyaltyTier[]>({
-    queryKey: loyaltyKey,
-    queryFn: () =>
-      organizationsApi.loyaltyTiers<CustomerLoyaltyTier>(organizationId),
-    enabled: !!organizationId && canManage,
-  });
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const organizationId = selectedOrgId || organizations[0]?.id || "";
+  const organization = useMemo(
+    () => organizations.find((entry) => entry.id === organizationId),
+    [organizations, organizationId],
+  );
+  const tenantsQuery = useOrganizationTenants(organizationId, canManage);
+  const menusQuery = useOrganizationMenus(organizationId, canManage);
+  const rulesQuery = useOrganizationPriceRules(organizationId, canManage);
+  const loyaltyTiersQuery = useOrganizationLoyaltyTiers(
+    organizationId,
+    canManage,
+  );
   const tenants = tenantsQuery.data ?? [];
   const menus = menusQuery.data ?? [];
   const rules = rulesQuery.data ?? [];
@@ -120,91 +80,13 @@ export const OrganizationManagementSection = () => {
     resetLoyalty,
   } = useOrganizationDefaultsFormState();
 
-  const createMenu = useMutation({
-    mutationFn: () =>
-      organizationsApi.createMenu<OrgMenu>(organizationId, {
-        name: menuName.trim(),
-        status: menuPublished ? "PUBLISHED" : "DRAFT",
-        isDefault: menuDefault,
-        items: menuSkus
-          .split(/[,\n]/)
-          .map((value) => value.trim())
-          .filter(Boolean)
-          .map((itemSku, index) => ({ itemSku, sortOrder: index })),
-      }),
-    onSuccess: async () => {
-      resetMenu();
-      await queryClient.invalidateQueries({ queryKey: menusKey });
-      notifySuccess("Organization menu created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization menu"),
-  });
-  const toggleMenu = useMutation({
-    mutationFn: ({
-      menuId,
-      status,
-    }: {
-      menuId: string;
-      status: "DRAFT" | "PUBLISHED";
-    }) =>
-      organizationsApi.updateMenu<OrgMenu>(organizationId, menuId, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to update organization menu"),
-  });
-  const deleteMenu = useMutation({
-    mutationFn: (menuId: string) =>
-      organizationsApi.removeMenu(organizationId, menuId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: menusKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to delete organization menu"),
-  });
-  const createRule = useMutation({
-    mutationFn: () =>
-      menuApi.createPriceRule<PriceRule>({
-        organizationId,
-        menuItemSku: ruleSku.trim(),
-        price: Number(rulePrice),
-        priority: 0,
-      }),
-    onSuccess: async () => {
-      resetRule();
-      await queryClient.invalidateQueries({ queryKey: rulesKey });
-      notifySuccess("Organization price rule created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization price rule"),
-  });
-  const deleteRule = useMutation({
-    mutationFn: (id: string) => menuApi.removePriceRule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rulesKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to remove organization price rule"),
-  });
-  const createLoyaltyTier = useMutation({
-    mutationFn: () =>
-      organizationsApi.createLoyaltyTier<CustomerLoyaltyTier>(organizationId, {
-        name: loyaltyName.trim(),
-        ...(loyaltyMode === "PERCENT"
-          ? { discountPercent: Number(loyaltyValue) }
-          : { discountFixed: Number(loyaltyValue) }),
-      }),
-    onSuccess: async () => {
-      resetLoyalty();
-      await queryClient.invalidateQueries({ queryKey: loyaltyKey });
-      notifySuccess("Organization loyalty tier created");
-    },
-    onError: (error) =>
-      notifyError(error, "Failed to create organization loyalty tier"),
-  });
-  const deleteLoyaltyTier = useMutation({
-    mutationFn: (id: string) =>
-      organizationsApi.removeLoyaltyTier(organizationId, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: loyaltyKey }),
-    onError: (error) =>
-      notifyError(error, "Failed to remove organization loyalty tier"),
-  });
+  const createMenu = useCreateOrganizationMenu(organizationId);
+  const toggleMenu = useUpdateOrganizationMenu(organizationId);
+  const deleteMenu = useDeleteOrganizationMenu(organizationId);
+  const createRule = useCreateOrganizationPriceRule(organizationId);
+  const deleteRule = useDeleteOrganizationPriceRule(organizationId);
+  const createLoyaltyTier = useCreateOrganizationLoyaltyTier(organizationId);
+  const deleteLoyaltyTier = useDeleteOrganizationLoyaltyTier(organizationId);
 
   if (!canManage)
     return (
@@ -218,16 +100,16 @@ export const OrganizationManagementSection = () => {
         </p>
       </section>
     );
-  if (membershipsQuery.isError && !membershipsQuery.data)
+  if (organizationsQuery.isError && !organizationsQuery.data)
     return (
       <QueryErrorState
         title="Unable to load organizations"
-        description="Organization memberships could not be loaded. Retry before managing organization defaults."
-        onRetry={() => void membershipsQuery.refetch()}
-        isRetrying={membershipsQuery.isFetching}
+        description="Organizations could not be loaded. Retry before managing organization defaults."
+        onRetry={() => void organizationsQuery.refetch()}
+        isRetrying={organizationsQuery.isFetching}
       />
     );
-  if (!memberships.length)
+  if (!organizations.length)
     return (
       <section>
         <h2 className="font-semibold text-text-primary">
@@ -241,11 +123,11 @@ export const OrganizationManagementSection = () => {
 
   return (
     <section className="space-y-5">
-      {membershipsQuery.isError && membershipsQuery.data ? (
+      {organizationsQuery.isError && organizationsQuery.data ? (
         <StaleDataBanner
-          message="Organization memberships could not be refreshed. Showing cached memberships."
-          onRetry={() => void membershipsQuery.refetch()}
-          isRetrying={membershipsQuery.isFetching}
+          message="Organizations could not be refreshed. Showing cached organizations."
+          onRetry={() => void organizationsQuery.refetch()}
+          isRetrying={organizationsQuery.isFetching}
         />
       ) : null}
       {organizationDataFailed ? (
@@ -276,246 +158,91 @@ export const OrganizationManagementSection = () => {
         disabled={organizationDataFailed || organizationDataStale}
         className="contents"
       >
-        {memberships.length > 1 && (
-          <label className="block max-w-sm text-sm font-medium text-text-primary">
-            Organization
-            <select
-              className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
-              value={organizationId}
-              onChange={(event) => setSelectedOrgId(event.target.value)}
-            >
-              {memberships.map((entry) => (
-                <option
-                  key={entry.organizationId || entry.organization.id}
-                  value={entry.organizationId || entry.organization.id}
-                >
-                  {entry.organization.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        {organizations.length > 1 && (
+          <Select
+            label="Organization"
+            value={organizationId}
+            onChange={setSelectedOrgId}
+            containerClassName="max-w-sm"
+            options={organizations.map((entry) => ({
+              value: entry.id,
+              label: entry.name,
+            }))}
+          />
         )}
         <p className="text-xs text-text-secondary">
           {organization?.name ?? "Organization"} · {tenants.length} member
           tenant(s)
         </p>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <div className="space-y-3 rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold text-text-primary">
-              Inherited menu
-            </h3>
-            <Input
-              label="Menu name"
-              value={menuName}
-              onChange={(event) => setField("menuName", event.target.value)}
-            />
-            <label className="block text-sm font-medium text-text-primary">
-              Tenant item SKUs
-              <textarea
-                className="mt-1.5 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                value={menuSkus}
-                onChange={(event) => setField("menuSkus", event.target.value)}
-                placeholder="PIZZA-MARGHERITA, DRINK-COLA"
-              />
-            </label>
-            <div className="flex gap-4 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={menuDefault}
-                  onChange={(event) =>
-                    setField("menuDefault", event.target.checked)
-                  }
-                />
-                Default
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={menuPublished}
-                  onChange={(event) =>
-                    setField("menuPublished", event.target.checked)
-                  }
-                />
-                Publish now
-              </label>
-            </div>
-            <Button
-              type="button"
-              disabled={!menuName.trim() || !menuSkus.trim()}
-              loading={createMenu.isPending}
-              onClick={() => createMenu.mutate()}
-            >
-              Create organization menu
-            </Button>
-            {menus.map((menu) => (
-              <div
-                key={menu.id}
-                className="rounded bg-surface-secondary p-3 text-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-text-primary">
-                    {menu.name} · {menu.status}
-                    {menu.isDefault ? " · Default" : ""}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="text-primary"
-                      onClick={() =>
-                        toggleMenu.mutate({
-                          menuId: menu.id,
-                          status:
-                            menu.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
-                        })
-                      }
-                    >
-                      {menu.status === "PUBLISHED" ? "Draft" : "Publish"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-danger"
-                      onClick={() => deleteMenu.mutate(menu.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  {menu.organizationItems
-                    .map((item) => item.itemSku)
-                    .join(", ") || "No SKUs"}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-3 rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold text-text-primary">
-              Inherited SKU prices
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                label="Menu item SKU"
-                value={ruleSku}
-                onChange={(event) => setField("ruleSku", event.target.value)}
-              />
-              <Input
-                label="Price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={rulePrice}
-                onChange={(event) => setField("rulePrice", event.target.value)}
-              />
-            </div>
-            <Button
-              type="button"
-              disabled={!ruleSku.trim() || !rulePrice}
-              loading={createRule.isPending}
-              onClick={() => createRule.mutate()}
-            >
-              Create organization price
-            </Button>
-            {rules
-              .filter((rule) => !rule.isPerCover)
-              .map((rule) => (
-                <div
-                  key={rule.id}
-                  className="flex items-center justify-between rounded bg-surface-secondary px-3 py-2 text-sm"
-                >
-                  <span>
-                    {rule.menuItemSku ?? "General"} · ₹
-                    {Number(rule.price ?? 0).toFixed(2)}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-danger"
-                    onClick={() => deleteRule.mutate(rule.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-          </div>
-          <div className="space-y-3 rounded-lg border border-border p-4 xl:col-span-2">
-            <h3 className="text-sm font-semibold text-text-primary">
-              Organization loyalty tiers
-            </h3>
-            <p className="text-xs text-text-secondary">
-              Customers linked by the shared organization identity receive these
-              tiers at every sibling tenant. Tenant-local tiers remain local and
-              take no schema migration.
-            </p>
-            <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
-              <Input
-                label="Tier name"
-                value={loyaltyName}
-                onChange={(event) =>
-                  setField("loyaltyName", event.target.value)
-                }
-              />
-              <label className="text-sm font-medium text-text-primary">
-                Discount type
-                <select
-                  className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2"
-                  value={loyaltyMode}
-                  onChange={(event) =>
-                    setField(
-                      "loyaltyMode",
-                      event.target.value as "PERCENT" | "FIXED",
-                    )
-                  }
-                >
-                  <option value="PERCENT">Percent</option>
-                  <option value="FIXED">Fixed amount</option>
-                </select>
-              </label>
-              <Input
-                label={loyaltyMode === "PERCENT" ? "Percent" : "Amount"}
-                type="number"
-                min="0.01"
-                max={loyaltyMode === "PERCENT" ? "100" : undefined}
-                step="0.01"
-                value={loyaltyValue}
-                onChange={(event) =>
-                  setField("loyaltyValue", event.target.value)
-                }
-              />
-              <Button
-                type="button"
-                disabled={
-                  !loyaltyName.trim() ||
-                  Number(loyaltyValue) <= 0 ||
-                  (loyaltyMode === "PERCENT" && Number(loyaltyValue) > 100)
-                }
-                loading={createLoyaltyTier.isPending}
-                onClick={() => createLoyaltyTier.mutate()}
-              >
-                Create tier
-              </Button>
-            </div>
-            {loyaltyTiers.map((tier) => (
-              <div
-                key={tier.id}
-                className="flex items-center justify-between rounded bg-surface-secondary px-3 py-2 text-sm"
-              >
-                <span className="text-text-primary">
-                  {tier.name} ·{" "}
-                  {tier.discountPercent !== null
-                    ? `${Number(tier.discountPercent)}% off`
-                    : `₹${Number(tier.discountFixed ?? 0).toFixed(2)} off`}{" "}
-                  · organization-wide
-                </span>
-                <button
-                  type="button"
-                  className="text-danger"
-                  onClick={() => deleteLoyaltyTier.mutate(tier.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
+          <OrganizationMenuPanel
+            menuName={menuName}
+            menuSkus={menuSkus}
+            menuDefault={menuDefault}
+            menuPublished={menuPublished}
+            menus={menus}
+            creating={createMenu.isPending}
+            onFieldChange={(field, value) => setField(field, value)}
+            onCreate={() =>
+              createMenu.mutate(
+                {
+                  name: menuName.trim(),
+                  status: menuPublished ? "PUBLISHED" : "DRAFT",
+                  isDefault: menuDefault,
+                  items: menuSkus
+                    .split(/[,\n]/)
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+                    .map((itemSku, index) => ({ itemSku, sortOrder: index })),
+                },
+                { onSuccess: resetMenu },
+              )
+            }
+            onToggle={(menu) =>
+              toggleMenu.mutate({
+                menuId: menu.id,
+                status: menu.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
+              })
+            }
+            onDelete={(id) => deleteMenu.mutate(id)}
+          />
+          <OrganizationPriceRulesPanel
+            ruleSku={ruleSku}
+            rulePrice={rulePrice}
+            rules={rules}
+            creating={createRule.isPending}
+            onSkuChange={(value) => setField("ruleSku", value)}
+            onPriceChange={(value) => setField("rulePrice", value)}
+            onCreate={() =>
+              createRule.mutate(
+                { menuItemSku: ruleSku.trim(), price: Number(rulePrice) },
+                { onSuccess: resetRule },
+              )
+            }
+            onDelete={(id) => deleteRule.mutate(id)}
+          />
+          <OrganizationLoyaltyPanel
+            loyaltyName={loyaltyName}
+            loyaltyMode={loyaltyMode}
+            loyaltyValue={loyaltyValue}
+            tiers={loyaltyTiers}
+            creating={createLoyaltyTier.isPending}
+            onNameChange={(value) => setField("loyaltyName", value)}
+            onModeChange={(value) => setField("loyaltyMode", value)}
+            onValueChange={(value) => setField("loyaltyValue", value)}
+            onCreate={() =>
+              createLoyaltyTier.mutate(
+                {
+                  name: loyaltyName.trim(),
+                  ...(loyaltyMode === "PERCENT"
+                    ? { discountPercent: Number(loyaltyValue) }
+                    : { discountFixed: Number(loyaltyValue) }),
+                },
+                { onSuccess: resetLoyalty },
+              )
+            }
+            onDelete={(id) => deleteLoyaltyTier.mutate(id)}
+          />
         </div>
       </fieldset>
     </section>

@@ -4,7 +4,7 @@ import { LoginForm } from "@/features/auth/components/LoginForm";
 import { BranchSelector } from "@/features/auth/components/BranchSelector";
 import { MembershipSelector } from "@/features/auth/components/MembershipSelector";
 
-interface Props {
+export interface Props {
   onLogin: () => void;
 }
 export const LoginPage = ({ onLogin }: Props) => {

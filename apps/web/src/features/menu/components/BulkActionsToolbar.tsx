@@ -123,7 +123,6 @@ export const BulkActionsToolbar = ({
         </div>
       </div>
 
-      {}
       <Modal
         open={panel === "status"}
         onClose={() => setPanel(null)}
@@ -135,7 +134,7 @@ export const BulkActionsToolbar = ({
             label="New status"
             value={status}
             options={MENU_ITEM_STATUS_OPTIONS}
-            onChange={(e) => setStatus(e.target.value as MenuItemStatus)}
+            onChange={(e) => setStatus(e as MenuItemStatus)}
           />
           <Input
             label="Reason (optional)"
@@ -166,7 +165,6 @@ export const BulkActionsToolbar = ({
         </div>
       </Modal>
 
-      {}
       <Modal
         open={panel === "category"}
         onClose={() => setPanel(null)}
@@ -181,7 +179,7 @@ export const BulkActionsToolbar = ({
               { value: "", label: "Select a category…" },
               ...categories.map((c) => ({ value: c.id, label: c.name })),
             ]}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => setCategoryId(e)}
           />
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setPanel(null)}>
@@ -203,7 +201,6 @@ export const BulkActionsToolbar = ({
         </div>
       </Modal>
 
-      {}
       <Modal
         open={panel === "tags"}
         onClose={() => setPanel(null)}
@@ -219,9 +216,7 @@ export const BulkActionsToolbar = ({
               { value: "remove", label: "Remove these tags" },
               { value: "replace", label: "Replace all tags with these" },
             ]}
-            onChange={(e) =>
-              setTagMode(e.target.value as "add" | "remove" | "replace")
-            }
+            onChange={(e) => setTagMode(e as "add" | "remove" | "replace")}
           />
           {!tags.length ? (
             <p className="text-xs text-text-disabled">
@@ -266,7 +261,6 @@ export const BulkActionsToolbar = ({
         </div>
       </Modal>
 
-      {}
       <Modal
         open={panel === "price"}
         onClose={() => setPanel(null)}
@@ -282,9 +276,7 @@ export const BulkActionsToolbar = ({
               { value: "decrease", label: "Decrease by %" },
               { value: "set", label: "Set to a fixed price (₹)" },
             ]}
-            onChange={(e) =>
-              setPriceMode(e.target.value as "set" | "increase" | "decrease")
-            }
+            onChange={(e) => setPriceMode(e as "set" | "increase" | "decrease")}
           />
           <Input
             label={priceMode === "set" ? "New price (₹)" : "Percentage"}
@@ -319,7 +311,6 @@ export const BulkActionsToolbar = ({
         </div>
       </Modal>
 
-      {}
       <Modal
         open={panel === "delete"}
         onClose={() => setPanel(null)}

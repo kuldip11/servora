@@ -4,8 +4,7 @@ import { Modal } from "@pos/ui";
 import { ALL_ORDER_TYPES } from "@/features/menu/constants";
 import { CustomerBillingOptions } from "@/features/menu/components/order-options/CustomerBillingOptions";
 import { OrderTableSelector } from "@/features/menu/components/order-options/OrderTableSelector";
-import type { LoyaltyCustomer } from "@pos/types";
-import type { RestaurantTableDto } from "@pos/api-client";
+import type { LoyaltyCustomerDto, RestaurantTableDto } from "@pos/api-client";
 
 interface Props {
   availableOrderTypes: typeof ALL_ORDER_TYPES;
@@ -20,7 +19,7 @@ interface Props {
   onClearCustomer: () => void;
   customerSearch: string;
   onCustomerSearchChange: (value: string) => void;
-  customerResults: LoyaltyCustomer[] | undefined;
+  customerResults: LoyaltyCustomerDto[] | undefined;
   onSelectCustomer: (id: string, name: string) => void;
   customerGroups: Array<{ id: string; name: string }>;
   customerGroupId: string;

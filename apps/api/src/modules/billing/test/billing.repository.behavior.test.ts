@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { tx, db } = vi.hoisted(() => {
   const tx = {
+    execute: vi.fn(),
     query: {
+      paymentCollectionRequests: { findFirst: vi.fn() },
       orders: { findFirst: vi.fn(), findMany: vi.fn() },
       bills: { findFirst: vi.fn(), findMany: vi.fn() },
       orderItems: { findFirst: vi.fn(), findMany: vi.fn() },
@@ -78,6 +81,7 @@ beforeEach(() => {
   tx.query.orderItems.findMany.mockResolvedValue(items);
   tx.query.orderItems.findFirst.mockResolvedValue(items[0]);
   tx.query.payments.findFirst.mockResolvedValue(undefined);
+  tx.query.paymentCollectionRequests.findFirst.mockResolvedValue(undefined);
   tx.delete.mockImplementation(() => deleteChain());
   db.query.orders.findFirst.mockResolvedValue(order);
   db.query.bills.findMany.mockResolvedValue([]);
@@ -86,6 +90,226 @@ beforeEach(() => {
 });
 
 describe("billing repository coverage", () => {
+  it("rejects branchless repository writes before entering a transaction", async () => {
+    const base = { orderId: "o1", tenantId: "t1", branchId: null };
+    const operations = [
+      () =>
+        billingRepository.recordPayment({
+          ...base,
+          method: "CASH",
+          amount: 1,
+          changedBy: "u1",
+        }),
+      () =>
+        billingRepository.recordRefund({
+          paymentId: "p1",
+          tenantId: "t1",
+          branchId: null,
+          amount: 1,
+          reason: "x",
+          processedBy: "u1",
+        }),
+      () => billingRepository.splitOrderEvenly({ ...base, ways: 2 }),
+      () => billingRepository.splitOrderByItems({ ...base, allocations: [] }),
+      () => billingRepository.splitOrderByShares({ ...base, allocations: [] }),
+      () =>
+        billingRepository.replaceSeatShares({
+          ...base,
+          orderItemId: "i1",
+          shares: [],
+        }),
+    ];
+    for (const operation of operations)
+      await expect(operation()).rejects.toThrow("Billing branch access denied");
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a merged billing order in another branch before any mutation", async () => {
+    tx.query.orders.findFirst
+      .mockResolvedValueOnce({ ...order, mergedIntoOrderId: "parent" })
+      .mockResolvedValueOnce({ ...order, id: "parent", branchId: "other" });
+    await expect(
+      billingRepository.recordPayment({
+        orderId: "o1",
+        tenantId: "t1",
+        branchId: "br1",
+        method: "CASH",
+        amount: 1,
+        changedBy: "u1",
+      }),
+    ).rejects.toThrow("Billing branch access denied");
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("checks the resolved refund branch inside the transaction before changing payment state", async () => {
+    tx.select.mockReturnValueOnce({
+      from: () => ({
+        innerJoin: () => ({
+          where: vi.fn().mockResolvedValue([
+            {
+              payment: { id: "p1", status: "SUCCESS", amount: "10.00" },
+              orderBranchId: "other",
+            },
+          ]),
+        }),
+      }),
+    });
+    await expect(
+      billingRepository.recordRefund({
+        paymentId: "p1",
+        tenantId: "t1",
+        branchId: "br1",
+        amount: 1,
+        reason: "x",
+        processedBy: "u1",
+      }),
+    ).rejects.toThrow("Billing branch access denied");
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("does not read bills or balances until the canonical order lock is acquired", async () => {
+    let release!: () => void;
+    tx.execute.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    tx.query.bills.findMany.mockResolvedValueOnce([{ id: "b1" }, { id: "b2" }]);
+    const result = billingRepository.recordPayment({
+      orderId: "o1",
+      tenantId: "t1",
+      branchId: "br1",
+      method: "CASH",
+      amount: 1,
+      changedBy: "u1",
+    });
+    await vi.waitFor(() => expect(tx.execute).toHaveBeenCalledOnce());
+    expect(tx.query.bills.findMany).not.toHaveBeenCalled();
+    expect(tx.select).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+    release();
+    await expect(result).resolves.toEqual({ status: "bill_required" });
+  });
+
+  it("persists a new request's association with its payment in the transaction", async () => {
+    tx.query.bills.findMany.mockResolvedValue([
+      { id: "b1", totalAmount: "21.50" },
+    ]);
+    const requestValues = vi.fn().mockResolvedValue(undefined);
+    tx.insert
+      .mockReturnValueOnce(
+        valuesChain([
+          { id: "p-new", billId: "b1", amount: "5.00", status: "SUCCESS" },
+        ]),
+      )
+      .mockReturnValueOnce({ values: requestValues });
+    tx.select.mockImplementation(() => ({
+      from: () => ({
+        where: () =>
+          Object.assign(Promise.resolve([{ total: "0" }]), {
+            groupBy: () => Promise.resolve([{ billId: "b1", total: "5.00" }]),
+          }),
+      }),
+    }));
+    await expect(
+      billingRepository.recordPayment({
+        orderId: "o1",
+        billId: "b1",
+        tenantId: "t1",
+        branchId: "br1",
+        method: "CASH",
+        amount: 5,
+        changedBy: "u1",
+        idempotencyKey: "request-new",
+      }),
+    ).resolves.toMatchObject({ status: "ok", payment: { id: "p-new" } });
+    expect(requestValues).toHaveBeenCalledWith({
+      orderId: "o1",
+      requestKey: "request-new",
+      paymentId: "p-new",
+      requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
+
+  it("rejects even a one-cent overpayment against the locked balance", async () => {
+    tx.query.bills.findMany.mockResolvedValue([
+      { id: "b1", totalAmount: "21.50" },
+    ]);
+    tx.select.mockReturnValueOnce({
+      from: () => ({ where: () => Promise.resolve([{ total: "16.50" }]) }),
+    });
+    await expect(
+      billingRepository.recordPayment({
+        orderId: "o1",
+        billId: "b1",
+        tenantId: "t1",
+        branchId: "br1",
+        method: "CASH",
+        amount: 5.01,
+        changedBy: "u1",
+      }),
+    ).resolves.toEqual({ status: "payment_exceeds_due", dueAmount: 5 });
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it("replays the original payment without another insert and rejects changed retry details", async () => {
+    const fingerprint = createHash("sha256")
+      .update(
+        JSON.stringify({
+          billId: "b1",
+          amount: "5.00",
+          method: "CASH",
+          reference: null,
+        }),
+      )
+      .digest("hex");
+    const previous = {
+      id: "p1",
+      billId: "b1",
+      amount: "5.00",
+      status: "SUCCESS",
+      requestFingerprint: fingerprint,
+    };
+    tx.query.paymentCollectionRequests.findFirst.mockResolvedValue({
+      paymentId: "p1",
+      requestFingerprint: fingerprint,
+    });
+    tx.query.payments.findFirst.mockResolvedValue(previous);
+    tx.query.bills.findMany.mockResolvedValue([
+      { id: "b1", totalAmount: "21.50" },
+    ]);
+    tx.select.mockImplementation(() => ({
+      from: () => ({
+        where: () =>
+          Object.assign(Promise.resolve([{ total: "5.00" }]), {
+            groupBy: () => Promise.resolve([{ billId: "b1", total: "5.00" }]),
+          }),
+      }),
+    }));
+    const input = {
+      orderId: "o1",
+      billId: "b1",
+      tenantId: "t1",
+      branchId: "br1",
+      method: "CASH" as const,
+      amount: 5,
+      changedBy: "u1",
+      idempotencyKey: "request-1",
+    };
+    await expect(billingRepository.recordPayment(input)).resolves.toMatchObject(
+      { status: "ok", payment: previous, replayed: true },
+    );
+    await expect(
+      billingRepository.recordPayment({ ...input, amount: 6 }),
+    ).resolves.toEqual({ status: "idempotency_conflict" });
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
   it("covers even split missing, paid, too-many and successful replacement", async () => {
     tx.query.orders.findFirst.mockResolvedValueOnce(undefined);
     await expect(
@@ -104,6 +328,7 @@ describe("billing repository coverage", () => {
         ways: 2,
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "already_paid" });
 
@@ -114,6 +339,7 @@ describe("billing repository coverage", () => {
         ways: 2,
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({ status: "too_many_bills" });
 
@@ -127,6 +353,7 @@ describe("billing repository coverage", () => {
         ways: 2,
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toMatchObject({
       status: "ok",
@@ -136,7 +363,12 @@ describe("billing repository coverage", () => {
   });
 
   it("covers item allocation validation and successful item split", async () => {
-    const base = { orderId: "o1", tenantId: "t1", branchId: null };
+    const base = {
+      orderId: "o1",
+      tenantId: "t1",
+      branchId: null,
+      tenantWide: true,
+    };
     await expect(
       billingRepository.splitOrderByItems({
         ...base,
@@ -166,6 +398,7 @@ describe("billing repository coverage", () => {
       orderItemId: "i1",
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
       shares: [] as Array<{ seatLabel: string; shareRatio: number }>,
     };
     tx.query.orders.findFirst.mockResolvedValueOnce(undefined);
@@ -195,7 +428,12 @@ describe("billing repository coverage", () => {
   });
 
   it("covers fractional split validation and success", async () => {
-    const base = { orderId: "o1", tenantId: "t1", branchId: null };
+    const base = {
+      orderId: "o1",
+      tenantId: "t1",
+      branchId: null,
+      tenantWide: true,
+    };
     await expect(
       billingRepository.splitOrderByShares({
         ...base,
@@ -227,6 +465,7 @@ describe("billing repository coverage", () => {
         orderId: "o1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toBeUndefined();
 
@@ -255,6 +494,7 @@ describe("billing repository coverage", () => {
         orderId: "o1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toEqual({ orderBranchId: "br1", items });
   });
@@ -284,6 +524,7 @@ describe("billing repository coverage", () => {
       processedBy: "u1",
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
     };
     await expect(billingRepository.recordRefund(input)).resolves.toEqual({
       status: "not_refundable",
@@ -321,6 +562,7 @@ describe("billing repository coverage", () => {
         billId: "b1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toBeUndefined();
 
@@ -345,6 +587,7 @@ describe("billing repository coverage", () => {
         billId: "b1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
       }),
     ).resolves.toEqual({
       bill: { id: "b1", payments: [] },
@@ -359,6 +602,7 @@ describe("billing repository coverage", () => {
       amount: 5,
       tenantId: "t1",
       branchId: null,
+      tenantWide: true,
       changedBy: "u1",
     };
     tx.query.orders.findFirst
@@ -507,7 +751,12 @@ describe("billing repository coverage", () => {
   });
 
   it("covers paid and combo-allocation failures for item and share splitting", async () => {
-    const base = { orderId: "o1", tenantId: "t1", branchId: null };
+    const base = {
+      orderId: "o1",
+      tenantId: "t1",
+      branchId: null,
+      tenantWide: true,
+    };
     tx.query.payments.findFirst.mockResolvedValueOnce({ id: "p1" });
     await expect(
       billingRepository.splitOrderByItems({ ...base, allocations: [] }),
@@ -561,6 +810,7 @@ describe("billing repository coverage", () => {
         orderId: "o1",
         tenantId: "t1",
         branchId: null,
+        tenantWide: true,
         allocations: [
           { label: "A", itemShares: [{ orderItemId: "i1", shareRatio: 1 }] },
           { label: "B", itemShares: [{ orderItemId: "i2", shareRatio: 1 }] },

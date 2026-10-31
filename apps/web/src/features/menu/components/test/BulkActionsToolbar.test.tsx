@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
@@ -23,7 +22,8 @@ vi.mock("@/features/menu/hooks/useBulkAdjustPrice", () => ({
 vi.mock("@/features/menu/hooks/useBulkDeleteItems", () => ({
   useBulkDeleteItems: () => ({ isPending: false, mutate: m.del }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -37,7 +37,11 @@ vi.mock("@pos/ui", () => ({
   Select: ({ label, options = [], onChange, ...p }: any) => (
     <label>
       {label}
-      <select aria-label={label} onChange={onChange} {...p}>
+      <select
+        aria-label={label}
+        onChange={(event) => onChange?.(event.target.value)}
+        {...p}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}

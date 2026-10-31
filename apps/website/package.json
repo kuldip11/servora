@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
-    "build": "node scripts/validate-production-env.mjs && next build",
+    "build": "NODE_ENV=production node scripts/validate-production-env.mjs && next build",
     "validate:production-env": "node scripts/validate-production-env.mjs",
     "start": "next start --port 3001",
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'app/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'content/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}'",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e:production": "WEBSITE_E2E_MODE=production playwright test"
   },
   "dependencies": {
     "next": "^15.5.7",

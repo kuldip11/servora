@@ -7,7 +7,7 @@ import {
   Table,
   type Column,
 } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { formatCurrency } from "@/shared/utils";
 
 export const InventoryTable = ({

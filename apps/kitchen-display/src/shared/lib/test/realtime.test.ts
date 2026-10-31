@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@pos/realtime", () => ({
   createRealtimeClient: mocks.createRealtimeClient,
+  isRealtimeEnvelope: vi.fn(() => true),
   useRealtime: mocks.useRealtime,
   useRealtimeEvent: mocks.useRealtimeEvent,
   useRealtimeConnection: mocks.useRealtimeConnection,

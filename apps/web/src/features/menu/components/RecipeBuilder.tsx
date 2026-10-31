@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, X, AlertTriangle, CheckCircle2 } from "lucide-react";
-import {
-  FieldErrorText,
-  FormErrorSummary,
-  QueryErrorState,
-  StaleDataBanner,
-} from "@pos/ui";
+import { Plus } from "lucide-react";
+import { FormErrorSummary, QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { notifyError } from "@/shared/lib/notify";
-import { useInventoryItems } from "@/features/inventory/hooks/useInventoryItems";
+import { useInventoryItems } from "@/features/inventory";
 import { useMenuItemRecipe } from "@/features/menu/hooks/useMenuItemRecipe";
 import { useSaveRecipe } from "@/features/menu/hooks/useSaveRecipe";
 import { useSubRecipes } from "@/features/menu/hooks/useSubRecipes";
@@ -16,16 +11,8 @@ import {
   type RecipeDraftRow,
   validateRecipeRows,
 } from "@/features/menu/helpers/recipe-form";
-import type { InventoryItem, InventoryUnit, MenuItem } from "@pos/types";
-
-const UNIT_OPTIONS: { value: InventoryUnit; label: string }[] = [
-  { value: "KG", label: "kg" },
-  { value: "GRAMS", label: "g" },
-  { value: "LITERS", label: "L" },
-  { value: "ML", label: "ml" },
-  { value: "PIECES", label: "pcs" },
-  { value: "PACKETS", label: "packets" },
-];
+import type { MenuItem } from "@pos/types";
+import { RecipeRowEditor } from "@/features/menu/components/RecipeRowEditor";
 
 export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
   const itemId = item.id;
@@ -195,13 +182,6 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
     );
   }
 
-  const invMap = new Map<string, InventoryItem>(
-    (inventoryItems ?? []).map((inventoryItem) => [
-      inventoryItem.id,
-      inventoryItem,
-    ]),
-  );
-
   return (
     <div className="space-y-2">
       <div className="mb-1.5 flex items-center justify-between">
@@ -283,11 +263,6 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
             </div>
           ) : null}
           {rows.map((row, index) => {
-            const inventoryItem = invMap.get(row.inventoryItemId);
-            const short =
-              row.sourceType === "inventory" &&
-              inventoryItem &&
-              Number(row.quantity || "0") > inventoryItem.currentStock;
             const quantityError =
               formErrors.fieldErrors[`ingredients.${index}.quantity`] ??
               formErrors.clientError(
@@ -316,255 +291,22 @@ export const RecipeBuilder = ({ item }: { item: MenuItem }) => {
               );
 
             return (
-              <div
+              <RecipeRowEditor
                 key={row.clientKey}
-                className="space-y-2 rounded-lg border border-border p-3"
-              >
-                <div className="grid gap-2 md:grid-cols-[8rem_1fr_8rem_7rem_auto]">
-                  <select
-                    value={row.sourceType}
-                    aria-required="true"
-                    aria-label={`Source type for recipe row ${index + 1}`}
-                    onChange={(event) => {
-                      const sourceType = event.target
-                        .value as RecipeDraftRow["sourceType"];
-                      const firstInventory = inventoryItems?.[0];
-                      const firstSubRecipe = subRecipes?.[0];
-                      updateRow(index, {
-                        sourceType,
-                        inventoryItemId:
-                          sourceType === "inventory"
-                            ? (firstInventory?.id ?? "")
-                            : "",
-                        subRecipeId:
-                          sourceType === "sub-recipe"
-                            ? (firstSubRecipe?.id ?? "")
-                            : "",
-                        unit:
-                          sourceType === "inventory"
-                            ? (firstInventory?.unit ?? row.unit)
-                            : (firstSubRecipe?.yieldUnit ?? row.unit),
-                      });
-                    }}
-                    className="rounded-md border border-border bg-surface px-2 py-2 text-sm"
-                  >
-                    <option value="inventory">Raw item</option>
-                    <option value="sub-recipe">Sub-recipe</option>
-                  </select>
-                  <div>
-                    {row.sourceType === "inventory" ? (
-                      <select
-                        value={row.inventoryItemId}
-                        aria-required="true"
-                        aria-label={`Ingredient for recipe row ${index + 1}`}
-                        aria-invalid={sourceError ? true : undefined}
-                        onBlur={() =>
-                          formErrors.touchField(`${row.clientKey}.source`)
-                        }
-                        onChange={(event) => {
-                          const next = inventoryItems?.find(
-                            (candidate) => candidate.id === event.target.value,
-                          );
-                          updateRow(index, {
-                            inventoryItemId: event.target.value,
-                            ...(next ? { unit: next.unit } : {}),
-                          });
-                        }}
-                        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                      >
-                        {(inventoryItems ?? []).map((source) => (
-                          <option key={source.id} value={source.id}>
-                            {source.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <select
-                        value={row.subRecipeId}
-                        aria-required="true"
-                        aria-label={`Sub-recipe for recipe row ${index + 1}`}
-                        aria-invalid={sourceError ? true : undefined}
-                        onBlur={() =>
-                          formErrors.touchField(`${row.clientKey}.source`)
-                        }
-                        onChange={(event) => {
-                          const next = subRecipes?.find(
-                            (candidate) => candidate.id === event.target.value,
-                          );
-                          updateRow(index, {
-                            subRecipeId: event.target.value,
-                            ...(next ? { unit: next.yieldUnit } : {}),
-                          });
-                        }}
-                        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                      >
-                        {(subRecipes ?? []).map((source) => (
-                          <option key={source.id} value={source.id}>
-                            {source.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <FieldErrorText message={sourceError} />
-                  </div>
-                  <div>
-                    <input
-                      type="number"
-                      aria-required="true"
-                      min="0.001"
-                      step="0.001"
-                      value={row.quantity}
-                      aria-invalid={quantityError ? true : undefined}
-                      onBlur={() =>
-                        formErrors.touchField(`${row.clientKey}.quantity`)
-                      }
-                      onChange={(event) =>
-                        updateRow(index, { quantity: event.target.value })
-                      }
-                      aria-label={`Quantity for recipe row ${index + 1}`}
-                      className="w-full rounded-md border border-border px-2 py-2 text-sm"
-                    />
-                    <FieldErrorText message={quantityError} />
-                  </div>
-                  <select
-                    value={row.unit}
-                    aria-required="true"
-                    aria-label={`Unit for recipe row ${index + 1}`}
-                    onChange={(event) =>
-                      updateRow(index, {
-                        unit: event.target.value as InventoryUnit,
-                      })
-                    }
-                    className="rounded-md border border-border bg-surface px-2 py-2 text-sm"
-                  >
-                    {UNIT_OPTIONS.map((unit) => (
-                      <option key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeRow(index)}
-                    aria-label={`Remove recipe row ${index + 1}`}
-                    className="p-2 text-text-disabled hover:text-danger"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="grid items-center gap-2 md:grid-cols-[8rem_1fr_8rem_auto_auto]">
-                  <select
-                    value={row.scopeType}
-                    aria-required="true"
-                    aria-label={`Scope for recipe row ${index + 1}`}
-                    aria-invalid={scopeError ? true : undefined}
-                    onBlur={() =>
-                      formErrors.touchField(`${row.clientKey}.scope`)
-                    }
-                    onChange={(event) =>
-                      updateRow(index, {
-                        scopeType: event.target
-                          .value as RecipeDraftRow["scopeType"],
-                        variantId:
-                          event.target.value === "variant"
-                            ? (item.variants[0]?.id ?? "")
-                            : "",
-                        modifierOptionId:
-                          event.target.value === "modifier"
-                            ? (modifierOptions[0]?.id ?? "")
-                            : "",
-                      })
-                    }
-                    className="rounded-md border border-border bg-surface px-2 py-2 text-xs"
-                  >
-                    <option value="base">Base item</option>
-                    {item.variants.length ? (
-                      <option value="variant">Variant</option>
-                    ) : null}
-                    {modifierOptions.length ? (
-                      <option value="modifier">Modifier</option>
-                    ) : null}
-                  </select>
-                  <div>
-                    {row.scopeType === "variant" ? (
-                      <select
-                        value={row.variantId}
-                        aria-required="true"
-                        aria-label={`Variant for recipe row ${index + 1}`}
-                        onChange={(event) =>
-                          updateRow(index, { variantId: event.target.value })
-                        }
-                        className="w-full rounded-md border border-border bg-surface px-2 py-2 text-xs"
-                      >
-                        {item.variants.map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {variant.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : row.scopeType === "modifier" ? (
-                      <select
-                        value={row.modifierOptionId}
-                        aria-required="true"
-                        aria-label={`Modifier option for recipe row ${index + 1}`}
-                        onChange={(event) =>
-                          updateRow(index, {
-                            modifierOptionId: event.target.value,
-                          })
-                        }
-                        className="w-full rounded-md border border-border bg-surface px-2 py-2 text-xs"
-                      >
-                        {modifierOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.groupName} · {option.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-xs text-text-disabled">
-                        Applies to every order of this item
-                      </span>
-                    )}
-                    <FieldErrorText message={scopeError} />
-                  </div>
-                  <label className="text-xs">
-                    <span>Yield %</span>
-                    <input
-                      type="number"
-                      min="0.01"
-                      max="100"
-                      step="0.01"
-                      value={row.yieldPercent}
-                      placeholder="100"
-                      aria-invalid={yieldError ? true : undefined}
-                      onBlur={() =>
-                        formErrors.touchField(`${row.clientKey}.yieldPercent`)
-                      }
-                      onChange={(event) =>
-                        updateRow(index, { yieldPercent: event.target.value })
-                      }
-                      className="ml-1 w-16 rounded border border-border px-1.5 py-1"
-                    />
-                    <FieldErrorText message={yieldError} />
-                  </label>
-                  <label className="flex items-center gap-1 text-xs text-text-secondary">
-                    <input
-                      type="checkbox"
-                      checked={row.isOptional}
-                      onChange={(event) =>
-                        updateRow(index, { isOptional: event.target.checked })
-                      }
-                    />{" "}
-                    optional
-                  </label>
-                  {!row.isOptional &&
-                    (short ? (
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    ))}
-                </div>
-              </div>
+                row={row}
+                index={index}
+                item={item}
+                inventoryItems={inventoryItems ?? []}
+                subRecipes={subRecipes ?? []}
+                modifierOptions={modifierOptions}
+                quantityError={quantityError}
+                yieldError={yieldError}
+                sourceError={sourceError}
+                scopeError={scopeError}
+                onTouch={formErrors.touchField}
+                onUpdate={(patch) => updateRow(index, patch)}
+                onRemove={() => removeRow(index)}
+              />
             );
           })}
         </div>

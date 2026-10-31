@@ -98,3 +98,7 @@ export type CreateInventoryItemRequest = Static<
   typeof createInventoryItemBodySchema
 >;
 export type UpdateStockRequest = Static<typeof updateStockBodySchema>;
+export type LogWasteRequest = Static<typeof logWasteBodySchema>;
+export type CreateWasteReasonRequest = Static<
+  typeof createWasteReasonBodySchema
+>;

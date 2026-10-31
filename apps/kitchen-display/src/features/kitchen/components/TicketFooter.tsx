@@ -1,7 +1,7 @@
-import type { KitchenTicketStatus } from "@pos/types";
+import type { KitchenTicketUpdateStatus } from "@pos/api-client";
 
 interface Props {
-  next: KitchenTicketStatus | null;
+  next: KitchenTicketUpdateStatus | null;
   nextLabel: string | null;
   btnClass: string;
   isUpdating: boolean;

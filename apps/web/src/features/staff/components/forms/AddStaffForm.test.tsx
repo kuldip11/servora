@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddStaffForm } from "./AddStaffForm";
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: () => null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
@@ -13,10 +14,15 @@ vi.mock("@pos/ui", () => ({
       <input {...props} />
     </label>
   ),
-  Select: ({ label, options, ...props }: any) => (
+  Select: ({ label, options, value, onChange, ...props }: any) => (
     <label>
       {label}
-      <select {...props}>
+      <select
+        {...props}
+        aria-label={label}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+      >
         {options.map((option: any) => (
           <option key={option.value} value={option.value}>
             {option.label}

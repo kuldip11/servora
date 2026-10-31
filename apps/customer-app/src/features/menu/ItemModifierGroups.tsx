@@ -2,7 +2,7 @@ import { Minus, Plus } from "lucide-react";
 import { IconButton } from "@pos/ui";
 
 import type { CustomerMenuItem } from "@/api";
-import type { SelectedOption } from "@/features/cart/pricing";
+import type { SelectedOption } from "@/features/cart";
 import { formatMoney } from "@/shared/utils/money";
 
 type Zone = "LEFT" | "RIGHT" | "WHOLE";

@@ -18,9 +18,16 @@ describe("website SEO adapter", () => {
     });
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
 
-    // Images are intentionally owned by Next.js file-based metadata.
-    expect(metadata.openGraph?.images).toBeUndefined();
-    expect(metadata.twitter?.images).toBeUndefined();
+    expect(metadata.openGraph?.images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: "/opengraph-image.png" }),
+      ]),
+    );
+    expect(metadata.twitter?.images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: "/twitter-image.png" }),
+      ]),
+    );
   });
 
   it("keeps utility pages noindex and out of canonical metadata", () => {

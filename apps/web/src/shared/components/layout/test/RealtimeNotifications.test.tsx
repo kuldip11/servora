@@ -1,4 +1,3 @@
-import React from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
@@ -6,14 +5,27 @@ const h = vi.hoisted(() => ({
   toast: vi.fn(),
   invalidate: vi.fn(),
 }));
-vi.mock("@pos/ui", () => ({ toast: h.toast }));
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  toast: h.toast,
+}));
 vi.mock("@/shared/lib/realtime", () => ({
   useRealtimeEvent: (name: string, cb: (e: any) => void) => {
     h.handlers.set(name, cb);
   },
 }));
-vi.mock("@/shared/lib/query-client", () => ({
-  queryClient: { invalidateQueries: h.invalidate },
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+}));
+
+vi.mock("@/features/menu/public/query-keys", () => ({
+  menuKeys: { categories: () => ["menu", "current", "categories"] },
+}));
+vi.mock("@/features/analytics/public/query-keys", () => ({
+  analyticsKeys: { dashboard: () => ["analytics", "current", "dashboard"] },
+}));
+vi.mock("@/features/inventory/public/query-keys", () => ({
+  inventoryKeys: { items: () => ["inventory", "current", "items"] },
 }));
 import { RealtimeNotifications } from "../RealtimeNotifications";
 describe("RealtimeNotifications", () => {
@@ -43,6 +55,15 @@ describe("RealtimeNotifications", () => {
     });
     expect(h.toast).toHaveBeenCalledTimes(3);
     expect(h.invalidate).toHaveBeenCalledTimes(3);
+    expect(h.invalidate).toHaveBeenNthCalledWith(1, {
+      queryKey: ["menu", "current", "categories"],
+    });
+    expect(h.invalidate).toHaveBeenNthCalledWith(2, {
+      queryKey: ["analytics", "current", "dashboard"],
+    });
+    expect(h.invalidate).toHaveBeenNthCalledWith(3, {
+      queryKey: ["inventory", "current", "items"],
+    });
     unmount();
   });
 });

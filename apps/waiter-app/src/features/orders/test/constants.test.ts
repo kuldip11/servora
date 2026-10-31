@@ -9,8 +9,15 @@ import {
 
 describe("orders constants", () => {
   it("builds stable query keys and polling intervals", () => {
-    expect(orderKeys.all).toEqual(["orders"]);
-    expect(orderKeys.detail("o1")).toEqual(["order", "o1"]);
+    const scope = ["t1", "b1"] as const;
+    expect(orderKeys.all(scope)).toEqual(["waiter-orders", "t1", "b1"]);
+    expect(orderKeys.detail(scope, "o1")).toEqual([
+      "waiter-orders",
+      "t1",
+      "b1",
+      "detail",
+      "o1",
+    ]);
     expect(ORDERS_POLL_INTERVAL_MS).toBe(15_000);
     expect(ORDER_DETAIL_POLL_INTERVAL_MS).toBe(10_000);
   });

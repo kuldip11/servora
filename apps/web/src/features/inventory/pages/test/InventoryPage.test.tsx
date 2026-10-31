@@ -25,10 +25,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: mocks.branches.current }),
 }));
-vi.mock("@/features/inventory/hooks/useInventoryItems", () => ({
+vi.mock("@/features/inventory", () => ({
   useInventoryItems: () => mocks.items.current,
   useLowStockItems: () => mocks.low.current,
 }));
@@ -64,7 +64,8 @@ vi.mock("@/features/inventory/hooks/useLogInventoryWaste", () => ({
   }),
 }));
 vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Plus: () => null,
   AlertTriangle: () => null,
   Package: () => null,
@@ -72,7 +73,8 @@ vi.mock("lucide-react", () => ({
   History: () => null,
   MoreHorizontal: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
@@ -95,21 +97,6 @@ vi.mock("@pos/ui", () => ({
         {label ?? props["aria-label"]}
         <input ref={ref} aria-label={props["aria-label"] ?? label} {...props} />
         {hint ? <span>{hint}</span> : null}
-        {error ? <span>{error}</span> : null}
-      </label>
-    ),
-  ),
-  Select: React.forwardRef<HTMLSelectElement, any>(
-    ({ label, options = [], error, ...props }, ref) => (
-      <label>
-        {label}
-        <select ref={ref} aria-label={label} {...props}>
-          {options.map((o: any) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
         {error ? <span>{error}</span> : null}
       </label>
     ),
@@ -155,15 +142,21 @@ vi.mock("@pos/ui", () => ({
       <button onClick={onClear}>clear-search</button>
     </div>
   ),
-  SelectMenu: ({ value, onChange, ...props }: any) => (
-    <select
-      aria-label={props["aria-label"]}
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">All</option>
-      <option value="low">Low</option>
-    </select>
+  Select: ({ label, options = [], value, onChange, ...props }: any) => (
+    <label>
+      {label}
+      <select
+        aria-label={props["aria-label"] ?? label}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((option: any) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   ),
   Pagination: ({ page, pageCount, onPageChange, onPageSizeChange }: any) => (
     <div>
@@ -368,7 +361,7 @@ describe("InventoryPage coverage", () => {
       ),
     );
     const wasteOptions = mocks.waste.mock.calls.at(-1)?.[1];
-    act(() => wasteOptions.onSuccess());
+    await act(() => wasteOptions.onSuccess());
     fireEvent.click(screen.getAllByRole("button", { name: "Log waste" })[0]!);
     fireEvent.change(screen.getByLabelText("New waste reason"), {
       target: { value: "Prep trim" },
@@ -392,7 +385,7 @@ describe("InventoryPage coverage", () => {
     expect(screen.getByText("Modifier option")).toBeTruthy();
     expect(screen.getByText("Auto 86")).toBeTruthy();
   });
-  it("covers aggregate grouping and empty states", () => {
+  it("covers aggregate grouping and empty states", async () => {
     useAuthStore.setState({ branchId: "all" });
     mocks.items.current = {
       data: { items: [item, item2], pagination: { total: 2 } },
@@ -450,7 +443,7 @@ describe("InventoryPage coverage", () => {
     ).toBeTruthy();
   });
 
-  it("covers aggregate page-size reset and missing branches list", () => {
+  it("covers aggregate page-size reset and missing branches list", async () => {
     useAuthStore.setState({ branchId: "all" });
     mocks.branches.current = undefined as any;
     mocks.items.current = {
@@ -464,7 +457,7 @@ describe("InventoryPage coverage", () => {
       screen.getByRole("heading", { name: "Add Inventory Item" }),
     ).toBeTruthy();
   });
-  it("does not turn failed inventory or low-stock reads into healthy empty values", () => {
+  it("does not turn failed inventory or low-stock reads into healthy empty values", async () => {
     mocks.items.current = {
       data: undefined,
       isLoading: false,

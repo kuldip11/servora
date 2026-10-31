@@ -1,4 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeKitchenTicketPayload: (
+    value: Record<string, unknown>,
+    context?: { customerSessionId?: string | null },
+  ) => ({
+    ...value,
+    ...(context?.customerSessionId
+      ? { customerSessionId: context.customerSessionId }
+      : {}),
+  }),
+}));
 const {
   getQueue,
   findById,

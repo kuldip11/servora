@@ -5,7 +5,6 @@ export * from "./common";
 export * from "./inventory";
 export * from "./menu";
 export * from "./orders";
-export * from "./realtime";
 export * from "./staff";
 export * from "./tables";
 

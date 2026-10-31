@@ -1,4 +1,5 @@
-import type { KitchenTicket, OrderItemFulfillmentType } from "@pos/types";
+import type { OrderItemFulfillmentType } from "@pos/types";
+import type { OrderKitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 import {
   Card,
@@ -231,7 +232,6 @@ export const TicketGroup = ({
       )}
       {ticket.status === "READY" && onMarkServed && (
         <div className="px-4 py-3 border-t border-divider">
-          {}
           <Button
             onClick={() => onMarkServed(ticket.id)}
             disabled={isUpdating}

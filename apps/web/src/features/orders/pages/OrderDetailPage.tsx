@@ -17,7 +17,7 @@ import { useUpdateTicketStatus } from "@/features/orders/hooks/useUpdateTicketSt
 import { useVoidOrderItem } from "@/features/orders/hooks/useVoidOrderItem";
 import { useCompOrderItem } from "@/features/orders/hooks/useCompOrderItem";
 import { usePermissions } from "@/shared/auth/permissions";
-import { useCancellationReasons } from "@/features/orders/hooks/useCancellationReasons";
+import { useCancellationReasons } from "@/features/orders";
 import { ReasonDialog } from "@/features/orders/components/ReasonDialog";
 import {
   ManagerApprovalDialog,

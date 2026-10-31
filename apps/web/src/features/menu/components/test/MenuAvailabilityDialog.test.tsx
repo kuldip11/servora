@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn() }));
@@ -8,7 +7,8 @@ vi.mock("@/features/menu/hooks/useMenus", () => ({
 vi.mock("../MenuScheduleEditor", () => ({
   MenuScheduleEditor: ({ menuId }: any) => <div>schedule:{menuId}</div>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages }: any) =>
     messages?.length ? <div role="alert">{messages.join(" ")}</div> : null,
   QueryErrorState: ({ title, onRetry }: any) => (

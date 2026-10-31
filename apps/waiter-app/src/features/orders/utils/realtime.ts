@@ -9,14 +9,42 @@ export const shouldApplyRealtime = (
   );
 };
 
-export const mergeRealtimeTicket = <
-  T extends { id: string; updatedAt?: string },
->(
+interface RealtimeTicketPatch {
+  id: string;
+  status:
+    "PENDING_PAYMENT" | "FIRED" | "PREPARING" | "READY" | "SERVED" | "HELD";
+  notes: string | null;
+  courseId: string | null;
+  course?: {
+    id: string;
+    orderId: string;
+    courseNumber: number;
+    name: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  firedAt: string | null;
+  readyAt: string | null;
+  servedAt: string | null;
+  updatedAt: string;
+}
+
+export const mergeRealtimeTicket = <T extends RealtimeTicketPatch>(
   tickets: T[],
-  incoming: T,
-) =>
+  incoming: RealtimeTicketPatch,
+): T[] =>
   tickets.map((ticket) =>
     ticket.id === incoming.id && shouldApplyRealtime(ticket, incoming)
-      ? incoming
+      ? {
+          ...ticket,
+          status: incoming.status,
+          notes: incoming.notes,
+          courseId: incoming.courseId,
+          course: incoming.course ?? ticket.course,
+          firedAt: incoming.firedAt,
+          readyAt: incoming.readyAt,
+          servedAt: incoming.servedAt,
+          updatedAt: incoming.updatedAt,
+        }
       : ticket,
   );

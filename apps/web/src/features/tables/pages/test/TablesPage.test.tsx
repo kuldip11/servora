@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   regen: vi.fn(),
   transfer: vi.fn(),
   merge: vi.fn(),
-  getTakeaway: vi.fn(),
+  takeaway: { current: {} as any },
   regenTakeaway: vi.fn(),
   invalidate: vi.fn(),
   success: vi.fn(),
@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({
     data: mocks.branches.current,
     isError: false,
@@ -37,7 +37,7 @@ vi.mock("@/features/branches/hooks/useBranches", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/tables/hooks/useTables", () => ({
+vi.mock("@/features/tables", () => ({
   useTables: () => mocks.tables.current,
 }));
 vi.mock("@/features/tables/hooks/useTablesRealtimeSync", () => ({
@@ -58,25 +58,25 @@ vi.mock("@/features/tables/hooks/useDeleteTable", () => ({
 vi.mock("@/features/tables/hooks/useRegenerateTableQr", () => ({
   useRegenerateTableQr: () => ({ mutate: mocks.regen, isPending: false }),
 }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
-  useOrders: () => mocks.orders.current,
+vi.mock("@/features/tables/hooks/useTakeawayQr", () => ({
+  useTakeawayQr: () => mocks.takeaway.current,
 }));
-vi.mock("@/features/orders/hooks/useTransferTable", () => ({
-  useTransferTable: () => ({ mutate: mocks.transfer, isPending: false }),
-}));
-vi.mock("@pos/api-client", () => ({
-  createTablesApi: () => ({
-    getTakeawayQr: mocks.getTakeaway,
-    regenerateTakeawayQr: mocks.regenTakeaway,
+vi.mock("@/features/tables/hooks/useRegenerateTakeawayQr", () => ({
+  useRegenerateTakeawayQr: () => ({
+    mutate: mocks.regenTakeaway,
+    isPending: false,
   }),
+}));
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
+  useOrders: () => mocks.orders.current,
+  useTransferTable: () => ({ mutate: mocks.transfer, isPending: false }),
+  useMergeOrders: () => ({ mutate: mocks.merge, isPending: false }),
 }));
 vi.mock("@/shared/lib/api-client", () => ({
   apiClient: {},
   extractApiError: (error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
-}));
-vi.mock("@/features/orders/services/orders.service", () => ({
-  ordersService: { mergeOrders: mocks.merge },
 }));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: mocks.invalidate },
@@ -85,24 +85,12 @@ vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useMutation: (options: any) => ({
-    isPending: false,
-    mutate: async (value: any) => {
-      try {
-        const out = await options.mutationFn(value);
-        options.onSuccess?.(out);
-      } catch (e) {
-        options.onError?.(e);
-      }
-    },
-  }),
-}));
 vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
 vi.mock("qrcode.react", () => ({
   QRCodeSVG: ({ value }: any) => <div>qr-{value}</div>,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Plus: () => null,
   Table2: () => null,
   Users: () => null,
@@ -142,7 +130,8 @@ vi.mock("@/features/tables/components/TableFormModal", () => ({
       </div>
     ) : null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -187,26 +176,15 @@ vi.mock("@pos/ui", () => ({
   Select: ({ options = [], value, onChange, ...props }: any) => (
     <select
       aria-label={props["aria-label"] ?? `status-${value}`}
-      value={value}
-      onChange={onChange}
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value)}
       disabled={props.disabled}
     >
-      {options.map((o: any) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
+      {options.map((option: any) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
         </option>
       ))}
-    </select>
-  ),
-  SelectMenu: ({ value, onChange, ...props }: any) => (
-    <select
-      aria-label={props["aria-label"]}
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">All</option>
-      <option value="Hall">Hall</option>
-      <option value="Patio">Patio</option>
     </select>
   ),
   SearchInput: ({ value, onChange, onClear, ...props }: any) => (
@@ -294,19 +272,23 @@ describe("TablesPage coverage", () => {
       isFetching: false,
       refetch: vi.fn(),
     };
-    mocks.getTakeaway.mockResolvedValue({
-      branchId: "b1",
-      branchName: "Central",
-      enabled: true,
-      token: "take1",
-    });
-    mocks.regenTakeaway.mockResolvedValue({
-      branchId: "b1",
-      branchName: "Central",
-      enabled: true,
-      token: "take2",
-    });
-    mocks.merge.mockResolvedValue({});
+    mocks.takeaway.current = {
+      data: {
+        branchId: "b1",
+        branchName: "Central",
+        enabled: true,
+        token: "take1",
+      },
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue({
+        data: {
+          branchId: "b1",
+          branchName: "Central",
+          enabled: true,
+          token: "take1",
+        },
+      }),
+    };
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -360,7 +342,7 @@ describe("TablesPage coverage", () => {
     ).toBeTruthy();
     expect(screen.getByText(/qr-/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Regenerate/ }));
-    await waitFor(() => expect(mocks.regenTakeaway).toHaveBeenCalledWith("b1"));
+    await waitFor(() => expect(mocks.regenTakeaway).toHaveBeenCalledWith());
     fireEvent.click(screen.getByRole("button", { name: "Transfer" }));
     expect(screen.getByRole("heading", { name: "Transfer A1" })).toBeTruthy();
     const selects = screen.getAllByRole("combobox");
@@ -380,17 +362,21 @@ describe("TablesPage coverage", () => {
       expect.any(Object),
     );
     const transferOptions = mocks.transfer.mock.calls.at(-1)?.[1];
-    act(() => transferOptions.onSuccess());
+    await act(() => transferOptions.onSuccess());
     fireEvent.click(screen.getByRole("button", { name: "Merge" }));
     expect(screen.getByRole("heading", { name: "Merge A1" })).toBeTruthy();
     fireEvent.change(screen.getAllByRole("combobox").at(-1)!, {
       target: { value: "o2" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Merge tables" }));
-    await waitFor(() => expect(mocks.merge).toHaveBeenCalledWith("o1", "o2"));
-    expect(mocks.success).toHaveBeenCalledWith("Tables merged for billing");
+    expect(mocks.merge).toHaveBeenCalledWith(
+      { sourceOrderId: "o1", targetOrderId: "o2" },
+      expect.any(Object),
+    );
+    const mergeOptions = mocks.merge.mock.calls.at(-1)?.[1];
+    await act(() => mergeOptions.onSuccess());
   });
-  it("covers aggregate grouping, loading and empty filtered states", () => {
+  it("covers aggregate grouping, loading and empty filtered states", async () => {
     useAuthStore.setState({ branchId: "all" });
     const { rerender } = render(<TablesPage />);
     expect(screen.getByText("Central")).toBeTruthy();
@@ -428,32 +414,42 @@ describe("TablesPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: "clear-search" }));
     fireEvent.click(screen.getByRole("button", { name: /All 3/ }));
 
-    mocks.getTakeaway.mockRejectedValueOnce(new Error("load"));
+    mocks.takeaway.current = {
+      data: undefined,
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue({ data: undefined }),
+    };
+    baseView.rerender(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: /Takeaway QR/ }));
     await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Unable to load takeaway QR",
-      ),
+      expect(mocks.takeaway.current.refetch).toHaveBeenCalled(),
     );
-    mocks.getTakeaway.mockResolvedValueOnce({
-      branchId: "b1",
-      branchName: "Central",
-      enabled: false,
-      token: "off",
-    });
+    expect(screen.queryByRole("heading", { name: /Takeaway QR/ })).toBeNull();
+
+    mocks.takeaway.current = {
+      data: {
+        branchId: "b1",
+        branchName: "Central",
+        enabled: false,
+        token: "off",
+      },
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue({
+        data: {
+          branchId: "b1",
+          branchName: "Central",
+          enabled: false,
+          token: "off",
+        },
+      }),
+    };
+    baseView.rerender(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: /Takeaway QR/ }));
     expect(
       await screen.findByText(/Takeaway ordering is disabled/),
     ).toBeTruthy();
-    mocks.regenTakeaway.mockRejectedValueOnce(new Error("regen"));
     fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Unable to regenerate takeaway QR",
-      ),
-    );
+    expect(mocks.regenTakeaway).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "modal-x" }));
 
     baseView.unmount();
@@ -494,7 +490,7 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByRole("button", { name: "Merge" })).toBeNull();
   });
 
-  it("shows a load error instead of a false empty table state", () => {
+  it("shows a load error instead of a false empty table state", async () => {
     mocks.tables.current = {
       data: undefined,
       isLoading: false,
@@ -510,7 +506,7 @@ describe("TablesPage coverage", () => {
     expect(screen.queryByText("No tables yet")).toBeNull();
   });
 
-  it("blocks transfer and merge while open orders are unavailable", () => {
+  it("blocks transfer and merge while open orders are unavailable", async () => {
     mocks.orders.current = {
       data: undefined,
       isSuccess: false,
@@ -532,19 +528,19 @@ describe("TablesPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add Table/ }));
     fireEvent.click(screen.getByRole("button", { name: "submit-add" }));
     const addOptions = mocks.add.mock.calls.at(-1)?.[1];
-    act(() => addOptions.onSuccess());
+    await act(() => addOptions.onSuccess());
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "add-table" })).toBeNull(),
     );
     fireEvent.click(screen.getAllByLabelText("Edit table")[1]!);
     fireEvent.click(screen.getByRole("button", { name: "submit-edit" }));
     const updateOptions = mocks.update.mock.calls.at(-1)?.[1];
-    act(() => updateOptions.onSuccess());
+    await act(() => updateOptions.onSuccess());
 
     fireEvent.click(screen.getAllByLabelText("Show table QR code")[1]!);
     fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
     const regenOptions = mocks.regen.mock.calls.at(-1)?.[1];
-    act(() => regenOptions.onSuccess({ ...t2, publicQrToken: "new-q" }));
+    await act(() => regenOptions.onSuccess({ ...t2, publicQrToken: "new-q" }));
     expect(screen.getAllByText(/new-q/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "modal-x" }));
 
@@ -579,18 +575,15 @@ describe("TablesPage coverage", () => {
       isFetching: false,
       refetch: vi.fn(),
     };
-    mocks.merge.mockRejectedValueOnce(new Error("merge failed"));
     render(<TablesPage />);
     fireEvent.click(screen.getByRole("button", { name: "Merge" }));
     fireEvent.change(screen.getAllByRole("combobox").at(-1)!, {
       target: { value: "order-long-12345678" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Merge tables" }));
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Unable to merge tables",
-      ),
+    expect(mocks.merge).toHaveBeenCalledWith(
+      { sourceOrderId: "o1", targetOrderId: "order-long-12345678" },
+      expect.any(Object),
     );
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 

@@ -8,7 +8,7 @@ Servora is a pre-production, multi-tenant restaurant operating platform built as
 
 ## Product roadmap
 
-Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). The maintained system design is documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), and frontend engineering expectations are documented in [`docs/FRONTEND_ENGINEERING.md`](./docs/FRONTEND_ENGINEERING.md). API contract hardening is tracked in [`docs/API_CONTRACT_HARDENING_PLAN.md`](./docs/API_CONTRACT_HARDENING_PLAN.md) with status in [`docs/API_CONTRACT_HARDENING_STATUS.md`](./docs/API_CONTRACT_HARDENING_STATUS.md).
+Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). The maintained system design is documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), and frontend engineering expectations are documented in [`docs/FRONTEND_ENGINEERING.md`](./docs/FRONTEND_ENGINEERING.md). Repository-wide quality remediation is tracked in [`docs/CODE_QUALITY_ARCHITECTURE_STATUS.md`](./docs/CODE_QUALITY_ARCHITECTURE_STATUS.md). API contract hardening is tracked in [`docs/API_CONTRACT_HARDENING_PLAN.md`](./docs/API_CONTRACT_HARDENING_PLAN.md) with status in [`docs/API_CONTRACT_HARDENING_STATUS.md`](./docs/API_CONTRACT_HARDENING_STATUS.md).
 
 ## Applications
 
@@ -136,11 +136,12 @@ Migration integrity is verified by the repository's migration verification tooli
 Run the main quality gates before accepting a change:
 
 ```bash
-bun run typecheck
-bun run lint
-bun run test
-bun run build
+bun run verify:quality
 ```
+
+`verify:quality` mirrors the CI quality sequence: formatting, lint, cleanup
+conventions and boundaries, dead-code and broad-mock audits, generated
+contracts, typechecking, tests, and production builds.
 
 Additional verification:
 

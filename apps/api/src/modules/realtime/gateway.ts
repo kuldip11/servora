@@ -15,7 +15,7 @@ import { REALTIME_AUTH_TIMEOUT_MS } from "./constants";
 import { Value } from "@sinclair/typebox/value";
 import {
   customerRealtimeAuthMessageSchema,
-  realtimeEnvelopeSchema,
+  isRealtimeEnvelope,
   staffRealtimeAuthMessageSchema,
   type RealtimeEnvelope,
 } from "@pos/contracts";
@@ -88,7 +88,7 @@ const parseRealtimeEnvelope = (
   message: string,
 ): RealtimeEnvelope | undefined => {
   const parsed = parseJsonMessage(message);
-  return Value.Check(realtimeEnvelopeSchema, parsed) ? parsed : undefined;
+  return isRealtimeEnvelope(parsed) ? parsed : undefined;
 };
 
 const customerSessionIdFromEvent = (
@@ -100,9 +100,7 @@ const customerSessionIdFromEvent = (
   )
     return event.payload?.customerSessionId;
   if (event.type === "order.created" || event.type === "order.updated")
-    return (
-      event.payload?.customerSessionId ?? event.payload?.customerSession?.id
-    );
+    return event.payload.customerSessionId;
   return undefined;
 };
 
@@ -221,7 +219,7 @@ export const startRealtimeRedisSubscription = async (): Promise<void> => {
       REDIS_CHANNELS.TABLE_EVENTS,
     );
 
-    subscriber.on("message", (channel, message) => {
+    subscriber.on("message", (_channel, message) => {
       try {
         const event = parseRealtimeEnvelope(message);
         if (!event) throw new Error("Invalid realtime event envelope");

@@ -64,3 +64,11 @@ export const invalidBillAllocation = (reason: string): DomainRuleError => {
     { reason },
   );
 };
+
+export const paymentIdempotencyConflict = (): DomainRuleError =>
+  new DomainRuleError(
+    "This payment request key was already used with different payment details",
+    {
+      reason: "PAYMENT_IDEMPOTENCY_CONFLICT",
+    },
+  );

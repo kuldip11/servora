@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +37,13 @@ vi.mock("@tanstack/react-router", () => {
   };
 });
 
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    cancelQueries: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(),
+  }),
+}));
+
 vi.mock("lucide-react", () => ({
   Home: () => <span>HomeIcon</span>,
   ClipboardList: () => <span>OrdersIcon</span>,
@@ -55,7 +61,7 @@ vi.mock("@/features/auth", () => ({
   restoreSession: mocks.restoreSession,
 }));
 
-vi.mock("@/features/home/pages/HomePage", () => ({
+vi.mock("@/features/home/public/HomePage", () => ({
   HomePage: ({ onNewOrder, onViewOrders, onSelectOrder }: any) => (
     <div>
       <button onClick={onNewOrder}>Home new order</button>
@@ -65,13 +71,23 @@ vi.mock("@/features/home/pages/HomePage", () => ({
   ),
 }));
 
-vi.mock("@/features/orders/pages/OrdersPage", () => ({
+vi.mock("@/features/orders/public/OrdersPage", () => ({
   OrdersPage: ({ onSelectOrder }: any) => (
     <button onClick={() => onSelectOrder("o-list")}>Select list order</button>
   ),
 }));
 
-vi.mock("@/features/menu", () => ({
+vi.mock("@/features/orders/public/OrderDetailPage", () => ({
+  OrderDetailPage: ({ orderId, onBack, onAddItems }: any) => (
+    <div>
+      <span>Detail {orderId}</span>
+      <button onClick={onBack}>Detail back</button>
+      <button onClick={() => onAddItems(orderId)}>Detail add items</button>
+    </div>
+  ),
+}));
+
+vi.mock("@/features/menu/public/MenuPage", () => ({
   MenuPage: ({ existingOrderId, onBack, onOrderPlaced }: any) => (
     <div>
       <span>Menu {existingOrderId ?? "new"}</span>
@@ -83,17 +99,7 @@ vi.mock("@/features/menu", () => ({
   ),
 }));
 
-vi.mock("@/features/orders/pages/OrderDetailPage", () => ({
-  OrderDetailPage: ({ orderId, onBack, onAddItems }: any) => (
-    <div>
-      <span>Detail {orderId}</span>
-      <button onClick={onBack}>Detail back</button>
-      <button onClick={() => onAddItems(orderId)}>Detail add items</button>
-    </div>
-  ),
-}));
-
-vi.mock("@/features/profile/pages/ProfilePage", () => ({
+vi.mock("@/features/profile/public/ProfilePage", () => ({
   ProfilePage: ({ waiterName, onBack, onLogout }: any) => (
     <div>
       <span>Profile {waiterName}</span>
@@ -103,13 +109,13 @@ vi.mock("@/features/profile/pages/ProfilePage", () => ({
   ),
 }));
 
-vi.mock("@/features/orders/hooks/useWaiterAttention", () => ({
-  useWaiterAttention: mocks.attention,
-}));
 vi.mock("@/shared/lib/realtime", () => ({
   useConnectionStatus: () => mocks.connected,
 }));
-vi.mock("@/features/menu/hooks/useMyBranch", () => ({
+vi.mock("@/features/orders/public/attention", () => ({
+  useWaiterAttention: mocks.attention,
+}));
+vi.mock("@/features/menu/public/branch", () => ({
   useMyBranch: () => ({ data: mocks.branch }),
 }));
 

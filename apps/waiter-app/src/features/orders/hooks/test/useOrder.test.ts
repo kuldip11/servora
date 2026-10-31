@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { queryConfigs, realtimeHandlers, qc, api } = vi.hoisted(() => ({
   queryConfigs: [] as any[],
   realtimeHandlers: new Map<string, Function[]>(),
-  qc: { setQueryData: vi.fn() },
+  qc: { setQueryData: vi.fn(), invalidateQueries: vi.fn() },
   api: { fetchOrder: vi.fn() },
 }));
 vi.mock("@tanstack/react-query", () => ({
@@ -22,9 +22,6 @@ vi.mock("@/shared/lib/realtime", () => ({
   },
 }));
 vi.mock("@/features/orders/utils/realtime", () => ({
-  shouldApplyRealtime: vi.fn(
-    (current: any) => !current || current.version !== 99,
-  ),
   mergeRealtimeTicket: vi.fn((current: any[], ticket: any) => [
     ...current,
     ticket,
@@ -56,13 +53,15 @@ describe("useOrder", () => {
     for (const name of ["order.updated", "order.created"])
       handlers(name)[0]!({ payload: order });
     handlers("kitchen.ticket.updated")[0]!({ payload: ticket });
+    expect(qc.invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(qc.invalidateQueries).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: expect.arrayContaining(["o1"]) }),
+    );
     const updaters = qc.setQueryData.mock.calls
       .map((call) => call[1])
       .filter((value) => typeof value === "function");
-    expect(updaters[0](undefined)).toEqual(order);
-    expect(updaters[0]({ version: 99 })).toEqual({ version: 99 });
-    expect(updaters.at(-1)(order).kitchenTickets).toHaveLength(1);
-    expect(updaters.at(-1)(undefined)).toBeUndefined();
+    expect(updaters[0](order).kitchenTickets).toHaveLength(1);
+    expect(updaters[0](undefined)).toBeUndefined();
   });
 
   it("disables fetching for a missing order id and ignores unrelated ticket events", () => {

@@ -4,11 +4,11 @@ import {
   Input,
   Modal,
   QueryErrorState,
-  SelectMenu,
+  Select,
   StaleDataBanner,
 } from "@pos/ui";
-import { useTables } from "@/features/menu/hooks/useTables";
-import { useTransferTable } from "@/features/orders/hooks/useTransferTable";
+import { useTables } from "@/features/menu";
+import { useTransferTable } from "@/features/orders";
 import { extractApiError } from "@pos/api-client";
 
 interface Props {
@@ -57,7 +57,7 @@ export const TransferTableDialog = ({
             onRetry={() => void tablesQuery.refetch()}
           />
         ) : (
-          <SelectMenu
+          <Select
             label="Destination"
             placeholder="Select an available table"
             value={destinationTableId || undefined}

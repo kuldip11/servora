@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@pos/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -45,7 +44,7 @@ vi.mock("./shared/lib/notify", () => ({
   notifySuccess: vi.fn(),
 }));
 
-vi.mock("./features/auth/services/auth.service", () => ({
+vi.mock("./shared/auth/auth.service", () => ({
   authService: {
     login: vi.fn(),
     signup: vi.fn(),
@@ -98,21 +97,6 @@ vi.mock("./features/orders/hooks/useAddOrderItems", () => ({
 
 vi.mock("./features/branches/hooks/useBranches", () => ({
   useBranches: () => ({ data: [], isLoading: false }),
-}));
-vi.mock("./features/branches/hooks/useCreateBranch", () => ({
-  useCreateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/hooks/useUpdateBranch", () => ({
-  useUpdateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/hooks/useDeactivateBranch", () => ({
-  useDeactivateBranch: () => ({ mutate: vi.fn(), isPending: false }),
-}));
-vi.mock("./features/branches/components/BranchCard", () => ({
-  BranchCard: () => <div>BranchCard</div>,
-}));
-vi.mock("./features/branches/components/BranchFormModal", () => ({
-  BranchFormModal: () => <div>BranchFormModal</div>,
 }));
 
 vi.mock("./features/inventory/hooks/useInventoryItems", () => ({
@@ -260,7 +244,6 @@ describe("page rendering coverage", () => {
   it("renders dashboard and operational pages with empty states", async () => {
     const modules = await Promise.all([
       import("./features/analytics/pages/DashboardPage"),
-      import("./features/branches/pages/BranchesPage"),
       import("./features/inventory/pages/InventoryPage"),
       import("./features/staff/pages/StaffPage"),
       import("./features/billing/pages/BillingPage"),
@@ -271,6 +254,6 @@ describe("page rendering coverage", () => {
       const cleanup = renderPage(Object.values(m)[0] as React.ComponentType);
       cleanup();
     }
-    expect(modules).toHaveLength(7);
+    expect(modules).toHaveLength(6);
   });
 });

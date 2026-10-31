@@ -1,5 +1,5 @@
 import { Modal } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { AddInventoryItemForm } from "./forms/AddInventoryItemForm";
 import { UpdateInventoryStockForm } from "./forms/UpdateInventoryStockForm";
 

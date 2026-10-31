@@ -21,10 +21,12 @@ vi.mock("@/features/menu/hooks/useMenuTags", () => ({
 vi.mock("@/features/menu/hooks/useMenuAllergens", () => ({
   useMenuAllergens: () => ({ data: m.allergens }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: m.categories }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   FormErrorSummary: ({ messages = [] }: any) =>
     messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _l, ...p }: any) => (
@@ -45,10 +47,25 @@ vi.mock("@pos/ui", () => ({
     </label>
   )),
   Select: React.forwardRef(
-    ({ label, options = [], error, ...p }: any, ref: any) => (
+    (
+      {
+        label,
+        options = [],
+        error,
+        onChange,
+        containerClassName: _containerClassName,
+        ...p
+      }: any,
+      ref: any,
+    ) => (
       <label>
         {label}
-        <select ref={ref} aria-label={label} {...p}>
+        <select
+          ref={ref}
+          aria-label={label}
+          {...p}
+          onChange={(event) => onChange?.(event.target.value)}
+        >
           {options.map((o: any) => (
             <option key={o.value} value={o.value}>
               {o.label}

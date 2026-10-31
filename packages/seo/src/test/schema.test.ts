@@ -33,3 +33,11 @@ describe("schema builders", () => {
     expect(schema.itemListElement.map((item) => item.position)).toEqual([1, 2]);
   });
 });
+
+it("safely serializes script delimiters without changing data", async () => {
+  const { serializeJsonLd } = await import("../schema");
+  const value = { name: '</script><script>alert("x")</script>' };
+  const serialized = serializeJsonLd(value);
+  expect(serialized).not.toContain("<");
+  expect(JSON.parse(serialized)).toEqual(value);
+});

@@ -2,9 +2,8 @@ import { memo, useState } from "react";
 import { BottomSheet } from "@pos/ui";
 
 import type { CustomerMenuItem } from "@/api";
-import { validateItemConfiguration } from "@/features/cart/configuration";
-import type { SelectedOption } from "@/features/cart/pricing";
-import { getLineSubtotal } from "@/features/cart/pricing";
+import { validateItemConfiguration, getLineSubtotal } from "@/features/cart";
+import type { SelectedOption } from "@/features/cart";
 import { ItemCustomizationFooter } from "@/features/menu/ItemCustomizationFooter";
 import { ItemCustomizationOverview } from "@/features/menu/ItemCustomizationOverview";
 import { ItemModifierGroups } from "@/features/menu/ItemModifierGroups";

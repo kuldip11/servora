@@ -1,4 +1,4 @@
-import type { CustomerCombo, CustomerMenuItem } from "@/features/menu/api";
+import type { CustomerCombo, CustomerMenuItem } from "@/features/menu";
 
 export type CustomerComboSelection = {
   slotId: string;

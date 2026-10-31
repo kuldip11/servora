@@ -1,53 +1,9 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Badge, Button, Card, toast } from "@pos/ui";
-import { createOrdersApi } from "@pos/api-client";
 import { DIFFERENTIATORS_INPUT_CLASS } from "@/features/differentiators/constants";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useExplainDifferentiatorOrder } from "@/features/differentiators/hooks/useDifferentiators";
 import { formatCurrency } from "@/shared/utils/format";
-
-const ordersApi = createOrdersApi(apiClient);
-
-type Explanation = {
-  orderId: string;
-  asOf: string;
-  completeHistory: boolean;
-  historyNotice: string;
-  totals: {
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    serviceChargeAmount: number;
-    roundingAdjustment: number;
-    totalAmount: number;
-  };
-  lines: Array<{
-    orderItemId: string;
-    name: string;
-    historicalEvidenceComplete: boolean;
-    availabilityAtOrder?: {
-      effectiveStatus: string;
-      reason?: string | null;
-      cause: string;
-      channel: string;
-      fulfillmentType: string;
-    } | null;
-    pricingReplay: {
-      priceSource?: { description: string } | null;
-      baseResolvedUnitPrice: number;
-      variantDelta: number;
-      modifierDelta: number;
-      comboDelta: number;
-      promotionDelta: number;
-      loyaltyDelta: number;
-      persistedSubtotal: number;
-      matchesSnapshot: boolean;
-    };
-    authoritativePricingReplay?: { matchesSnapshot: boolean } | null;
-    authoritativeAvailabilityReplay?: { matchesSnapshot: boolean } | null;
-    trace: Array<{ stage: string; explanation: string }>;
-  }>;
-};
 
 const Adjustment = ({ label, value }: { label: string; value: number }) => {
   if (!value) return null;
@@ -64,11 +20,7 @@ const Adjustment = ({ label, value }: { label: string; value: number }) => {
 
 export const OrderExplainPanel = () => {
   const [orderId, setOrderId] = useState("");
-  const explainMutation = useMutation({
-    mutationFn: (id: string) => ordersApi.explain<Explanation>(id),
-    onError: (error) =>
-      toast({ title: extractApiError(error), tone: "danger" }),
-  });
+  const explainMutation = useExplainDifferentiatorOrder();
 
   const explanation = explainMutation.data;
 
@@ -91,7 +43,12 @@ export const OrderExplainPanel = () => {
           <Button
             loading={explainMutation.isPending}
             disabled={!orderId.trim()}
-            onClick={() => explainMutation.mutate(orderId.trim())}
+            onClick={() =>
+              explainMutation.mutate(orderId.trim(), {
+                onError: (error) =>
+                  toast({ title: extractApiError(error), tone: "danger" }),
+              })
+            }
           >
             Explain
           </Button>

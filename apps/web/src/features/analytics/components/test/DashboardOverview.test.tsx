@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,7 +8,8 @@ vi.mock("@/features/analytics/hooks/useDashboardStats", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: any) => <a href={String(to)}>{children}</a>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children }: any) => <div>{children}</div>,
   Card: ({ children }: any) => <section>{children}</section>,
   StatCard: ({ title, value }: any) => (
@@ -38,7 +38,7 @@ describe("DashboardOverview", () => {
   });
   it("owns loading and retry states", () => {
     state.query = { ...state.query, isLoading: true, isError: true };
-    render(<DashboardOverview scopeLabel="Selected branch" />);
+    render(<DashboardOverview />);
     expect(screen.getAllByText("loading-card")).toHaveLength(4);
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(state.refetch).toHaveBeenCalled();
@@ -56,7 +56,7 @@ describe("DashboardOverview", () => {
         cancelledOrdersToday: 1,
       },
     };
-    render(<DashboardOverview scopeLabel="Selected branch" />);
+    render(<DashboardOverview />);
     expect(screen.getByText("Operations need attention")).toBeTruthy();
     expect(screen.getByText("Orders today")).toBeTruthy();
     expect(screen.getByText("Low stock")).toBeTruthy();
@@ -74,7 +74,7 @@ describe("DashboardOverview", () => {
         cancelledOrdersToday: 0,
       },
     };
-    render(<DashboardOverview scopeLabel="Selected branch" />);
+    render(<DashboardOverview />);
     expect(screen.getByText("Operations look clear")).toBeTruthy();
   });
 });

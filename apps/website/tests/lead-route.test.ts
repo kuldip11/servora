@@ -4,6 +4,7 @@ import { POST } from "@/app/api/lead/route";
 describe("POST /api/lead", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    vi.stubEnv("LEAD_TRUST_PROXY_HEADERS", "true");
     vi.stubEnv("LEAD_WEBHOOK_URL", "https://example.test/lead");
     vi.stubGlobal(
       "fetch",

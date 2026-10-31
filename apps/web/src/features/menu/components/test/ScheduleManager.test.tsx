@@ -1,6 +1,6 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   schedules: [] as any[],
@@ -107,11 +107,9 @@ describe("ScheduleManager coverage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Add schedule/ }));
-    const typeSelect = screen.getAllByRole("combobox")[0]!;
-    fireEvent.change(typeSelect, { target: { value: "WEEKLY" } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[1]!, { target: { value: "5" } });
-    fireEvent.change(selects.at(-1)!, { target: { value: "OUT_OF_STOCK" } });
+    chooseSelectOption("Schedule type", "One day a week");
+    chooseSelectOption("Day of week", "Fri");
+    chooseSelectOption("Status during this window", "Out of Stock");
     fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
     expect(h.create).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -123,9 +121,7 @@ describe("ScheduleManager coverage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Add schedule/ }));
-    fireEvent.change(screen.getAllByRole("combobox")[0]!, {
-      target: { value: "SPECIFIC_DATE" },
-    });
+    chooseSelectOption("Schedule type", "Specific date range");
     fireEvent.change(screen.getByLabelText("Start date"), {
       target: { value: "2026-10-01" },
     });
@@ -143,9 +139,7 @@ describe("ScheduleManager coverage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Add schedule/ }));
-    fireEvent.change(screen.getAllByRole("combobox")[0]!, {
-      target: { value: "HOLIDAY" },
-    });
+    chooseSelectOption("Schedule type", "Holiday");
     expect(
       (
         screen.getByRole("button", {

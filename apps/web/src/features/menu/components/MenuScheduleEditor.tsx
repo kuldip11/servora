@@ -1,12 +1,16 @@
 import { useReducer } from "react";
-import { Button, Input, QueryErrorState, StaleDataBanner } from "@pos/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError } from "@/shared/lib/notify";
-
-const menuApi = createMenuApi(apiClient);
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import {
+  useCreateMenuSchedule,
+  useMenuSchedules,
+  useRemoveMenuSchedule,
+} from "@/features/menu/hooks/useMenuSchedules";
 
 interface MenuScheduleRow {
   id: string;
@@ -19,7 +23,7 @@ interface MenuScheduleRow {
 }
 
 interface ScheduleDraft {
-  scheduleType: string;
+  scheduleType: MenuScheduleRow["scheduleType"];
   startTime: string;
   endTime: string;
   dayOfWeek: number;
@@ -54,40 +58,10 @@ const reducer = (
 
 export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
   const [draft, dispatch] = useReducer(reducer, initialDraft);
-  const key = ["menus", menuId, "schedules"];
-  const schedulesQuery = useQuery<MenuScheduleRow[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listMenuSchedules<MenuScheduleRow>(menuId),
-  });
-  const schedules = schedulesQuery.data ?? [];
-  const add = useMutation({
-    mutationFn: () =>
-      menuApi.createMenuSchedule<MenuScheduleRow>(menuId, {
-        scheduleType: draft.scheduleType,
-        ...(draft.scheduleType === "DAILY" || draft.scheduleType === "WEEKLY"
-          ? { startTime: draft.startTime, endTime: draft.endTime }
-          : {}),
-        ...(draft.scheduleType === "WEEKLY"
-          ? { dayOfWeek: draft.dayOfWeek }
-          : {}),
-        ...(draft.scheduleType === "SPECIFIC_DATE"
-          ? {
-              startDate: draft.startDate,
-              endDate: draft.endDate || draft.startDate,
-            }
-          : {}),
-        ...(draft.scheduleType === "HOLIDAY"
-          ? { holidayName: draft.holidayName }
-          : {}),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to add menu schedule"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removeMenuSchedule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-    onError: (error) => notifyError(error, "Failed to remove menu schedule"),
-  });
+  const schedulesQuery = useMenuSchedules(menuId);
+  const schedules = (schedulesQuery.data ?? []) as MenuScheduleRow[];
+  const add = useCreateMenuSchedule(menuId);
+  const remove = useRemoveMenuSchedule(menuId);
 
   const setField = <K extends keyof ScheduleDraft>(
     field: K,
@@ -145,37 +119,32 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
         </div>
       ))}
       <div className="space-y-2 rounded border border-border p-2">
-        <select
+        <Select
           aria-label="Menu schedule type"
           value={draft.scheduleType}
-          onChange={(event) => setField("scheduleType", event.target.value)}
-          className="w-full rounded border border-border px-2 py-1"
-        >
-          <option value="DAILY">Every day</option>
-          <option value="WEEKLY">Weekly</option>
-          <option value="SPECIFIC_DATE">Date range</option>
-          <option value="HOLIDAY">Holiday</option>
-        </select>
+          onChange={(value) =>
+            setField("scheduleType", value as MenuScheduleRow["scheduleType"])
+          }
+          options={[
+            { value: "DAILY", label: "Every day" },
+            { value: "WEEKLY", label: "Weekly" },
+            { value: "SPECIFIC_DATE", label: "Date range" },
+            { value: "HOLIDAY", label: "Holiday" },
+          ]}
+        />
         {(draft.scheduleType === "DAILY" ||
           draft.scheduleType === "WEEKLY") && (
           <div className="flex items-center gap-2">
             {draft.scheduleType === "WEEKLY" && (
-              <select
+              <Select
                 aria-label="Day of week"
-                value={draft.dayOfWeek}
-                onChange={(event) =>
-                  setField("dayOfWeek", Number(event.target.value))
-                }
-                className="rounded border border-border px-2 py-1"
-              >
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day, index) => (
-                    <option key={day} value={index}>
-                      {day}
-                    </option>
-                  ),
+                value={String(draft.dayOfWeek)}
+                onChange={(value) => setField("dayOfWeek", Number(value))}
+                options={["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (day, index) => ({ value: String(index), label: day }),
                 )}
-              </select>
+                containerClassName="min-w-28"
+              />
             )}
             <input
               aria-label="Menu start time"
@@ -226,7 +195,27 @@ export const MenuScheduleEditor = ({ menuId }: { menuId: string }) => {
           variant="secondary"
           loading={add.isPending}
           disabled={add.isPending || invalidDraft || schedulesQuery.isError}
-          onClick={() => add.mutate()}
+          onClick={() =>
+            add.mutate({
+              scheduleType: draft.scheduleType,
+              ...(draft.scheduleType === "DAILY" ||
+              draft.scheduleType === "WEEKLY"
+                ? { startTime: draft.startTime, endTime: draft.endTime }
+                : {}),
+              ...(draft.scheduleType === "WEEKLY"
+                ? { dayOfWeek: draft.dayOfWeek }
+                : {}),
+              ...(draft.scheduleType === "SPECIFIC_DATE"
+                ? {
+                    startDate: draft.startDate,
+                    endDate: draft.endDate || draft.startDate,
+                  }
+                : {}),
+              ...(draft.scheduleType === "HOLIDAY"
+                ? { holidayName: draft.holidayName }
+                : {}),
+            })
+          }
         >
           Add window
         </Button>

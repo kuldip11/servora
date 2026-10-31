@@ -1,4 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+  toRealtimeKitchenTicketPayload: (value: unknown) => value,
+}));
+vi.mock("@/modules/tables/table.mapper", () => ({
+  toTableResponse: (value: unknown) => value,
+}));
 const {
   findById,
   findMany,

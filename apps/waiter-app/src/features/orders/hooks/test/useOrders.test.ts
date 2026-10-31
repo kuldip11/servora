@@ -10,6 +10,7 @@ const { queryConfigs, infiniteConfigs, realtimeHandlers, qc, api } = vi.hoisted(
   }),
 );
 vi.mock("@tanstack/react-query", () => ({
+  keepPreviousData: vi.fn((previous) => previous),
   useQueryClient: () => qc,
   useQuery: (config: any) => {
     queryConfigs.push(config);
@@ -67,6 +68,7 @@ describe("useOrders", () => {
     queryConfigs.length = 0;
     qc.setQueryData.mockClear();
     useOrdersPage(filters);
+    expect(queryConfigs.at(-1)!.placeholderData).toBeTypeOf("function");
     await queryConfigs.at(-1)!.queryFn();
     handlers("order.created")[0]!({ payload: order });
     handlers("order.updated")[0]!({ payload: order });

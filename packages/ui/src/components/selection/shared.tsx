@@ -86,7 +86,7 @@ export const useVirtualRows = (
       el.removeEventListener("scroll", onScroll);
       resizeObserver.disconnect();
     };
-  }, [containerRef.current]);
+  }, [containerRef]);
 
   const totalHeight = count * ROW_HEIGHT;
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
@@ -282,18 +282,25 @@ export const useActiveRow = (
   rows: Row[],
   onCommit: (rowIndex: number) => void,
 ) => {
-  const selectable = optionRowIndices(rows).filter((i) => {
-    const r = rows[i];
-    return r?.kind === "option" && !r.option.disabled;
+  const selectable = optionRowIndices(rows).filter((index) => {
+    const row = rows[index];
+    return row?.kind === "option" && !row.option.disabled;
   });
+  const selectableKey = selectable.join(",");
   const [activeRowIndex, setActiveRowIndex] = useState<number>(
     selectable[0] ?? -1,
   );
 
   useEffect(() => {
-    if (!selectable.includes(activeRowIndex))
-      setActiveRowIndex(selectable[0] ?? -1);
-  }, [rows.length]);
+    const currentSelectable = selectableKey
+      ? selectableKey.split(",").map(Number)
+      : [];
+    setActiveRowIndex((current) =>
+      currentSelectable.includes(current)
+        ? current
+        : (currentSelectable[0] ?? -1),
+    );
+  }, [selectableKey]);
 
   function move(dir: 1 | -1) {
     if (selectable.length === 0) return;

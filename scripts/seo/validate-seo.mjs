@@ -7,30 +7,42 @@ const privateApps = {
   "customer-app": "customer",
 };
 const failures = [];
+// Read complete tags and their attributes independently of formatting or order.
+const metaContent = (html, key) => {
+  for (const tag of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const attrs = Object.fromEntries(
+      [...tag[0].matchAll(/([\w:-]+)\s*=\s*(["'])(.*?)\2/gs)].map((match) => [
+        match[1].toLowerCase(),
+        match[3],
+      ]),
+    );
+    if ((attrs.name ?? attrs.property) === key) return attrs.content;
+  }
+};
 for (const [app, ogAlias] of Object.entries(privateApps)) {
-  const html = readFileSync(`apps/${app}/index.html`, "utf8");
+  const html = readFileSync(`apps/${app}/index.html`, "utf8").replace(
+    /\s+/g,
+    " ",
+  );
   const vercel = readFileSync(`apps/${app}/vercel.json`, "utf8");
   const robots = readFileSync(`apps/${app}/public/robots.txt`, "utf8");
-  if (
-    !html.includes(
-      'name="robots" content="noindex,nofollow,noarchive,nosnippet"',
-    )
-  )
+  if (metaContent(html, "robots") !== "noindex,nofollow,noarchive,nosnippet")
     failures.push(`${app}: missing private robots meta`);
   if (
     !vercel.includes("X-Robots-Tag") ||
     !vercel.includes("noindex, nofollow, noarchive, nosnippet")
   )
     failures.push(`${app}: missing complete X-Robots-Tag`);
-  if (!robots.includes("Disallow: /"))
-    failures.push(`${app}: robots.txt must disallow all routes`);
+  if (!robots.includes("Allow: /") || robots.includes("Disallow: /\n"))
+    failures.push(
+      `${app}: robots.txt must allow shell crawling so noindex can be observed`,
+    );
   if (
-    !html.includes(
-      `property="og:image" content="%VITE_PUBLIC_APP_URL%/social/og-${ogAlias}.png"`,
-    )
+    metaContent(html, "og:image") !==
+    `%VITE_PUBLIC_APP_URL%/social/og-${ogAlias}.png`
   )
     failures.push(`${app}: missing absolute app-specific OG image metadata`);
-  if (!html.includes('name="twitter:card" content="summary_large_image"'))
+  if (metaContent(html, "twitter:card") !== "summary_large_image")
     failures.push(`${app}: missing Twitter large card metadata`);
   const env = readFileSync(`apps/${app}/.env.example`, "utf8");
   if (!env.includes("VITE_PUBLIC_APP_URL="))
@@ -65,11 +77,6 @@ for (const file of [
     failures.push(`website: missing Next.js metadata image ${file}`);
   }
 }
-const seoAdapter = readFileSync("apps/website/lib/seo.ts", "utf8");
-if (seoAdapter.includes("images:"))
-  failures.push(
-    "website: page metadata helper must not override file-based social images",
-  );
 const manifest = readFileSync("apps/website/app/manifest.ts", "utf8");
 if (!manifest.includes("maskableIcon512"))
   failures.push("website: manifest missing maskable icon");

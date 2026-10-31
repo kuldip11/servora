@@ -1,9 +1,11 @@
 import type { TransportInput } from "../types";
 import { voidDomainRequest } from "./shared";
-import type { CancellationReason, Order } from "@pos/types";
 import type {
+  CancellationReasonResponse,
   CreateOrderRequest,
   FireTicketRequest,
+  OrderExplainResponse,
+  OrderResponse,
   UpdateOrderStatusRequest,
   UpdateKitchenTicketStatusRequest,
 } from "@pos/contracts";
@@ -15,6 +17,11 @@ import {
   type DomainHttpClient,
   type PaginatedResult,
 } from "./shared";
+
+export type OrderDto = OrderResponse;
+export type OrderKitchenTicketDto = OrderResponse["kitchenTickets"][number];
+export type CancellationReasonDto = CancellationReasonResponse;
+export type OrderExplanationDto = OrderExplainResponse;
 
 export interface OrdersListFilters {
   status?: string;
@@ -35,7 +42,10 @@ export interface OrderAdjustmentReason {
 
 export const createOrdersApi = (client: DomainHttpClient) => {
   return {
-    list(filters: OrdersListFilters = {}): Promise<PaginatedResult<Order>> {
+    list(
+      filters: OrdersListFilters = {},
+      signal?: AbortSignal,
+    ): Promise<PaginatedResult<OrderDto>> {
       const params: Record<string, string> = {};
       if (filters.status) params["status"] = filters.status;
       if (filters.type) params["type"] = filters.type;
@@ -46,25 +56,40 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       if (filters.sortBy) params["sortBy"] = filters.sortBy;
       if (filters.sortDirection)
         params["sortDirection"] = filters.sortDirection;
-      return getPaginatedDomainData<Order>(client, "/orders", { params });
+      return getPaginatedDomainData<OrderDto>(client, "/orders", {
+        params,
+        ...(signal ? { signal } : {}),
+      });
     },
-    get(orderId: string): Promise<Order> {
-      return getDomainData<Order>(client, `/orders/${orderId}`);
+    get(orderId: string, signal?: AbortSignal): Promise<OrderDto> {
+      return getDomainData<OrderDto>(
+        client,
+        `/orders/${orderId}`,
+        signal ? { signal } : undefined,
+      );
     },
-    create(input: TransportInput<CreateOrderRequest>): Promise<Order> {
-      return postDomainData<Order>(client, "/orders", input);
+    create(input: TransportInput<CreateOrderRequest>): Promise<OrderDto> {
+      return postDomainData<OrderDto>(client, "/orders", input);
     },
     addItems(
       orderId: string,
       input: TransportInput<FireTicketRequest>,
-    ): Promise<Order> {
-      return postDomainData<Order>(client, `/orders/${orderId}/items`, input);
+    ): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
+        client,
+        `/orders/${orderId}/items`,
+        input,
+      );
     },
     updateStatus(
       orderId: string,
       input: TransportInput<UpdateOrderStatusRequest>,
-    ): Promise<Order> {
-      return patchDomainData<Order>(client, `/orders/${orderId}/status`, input);
+    ): Promise<OrderDto> {
+      return patchDomainData<OrderDto>(
+        client,
+        `/orders/${orderId}/status`,
+        input,
+      );
     },
     updateTicketStatus(
       ticketId: string,
@@ -79,15 +104,15 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       orderItemId: string,
       reason: string,
       alsoCompOriginal = true,
-    ): Promise<Order> {
-      return postDomainData<Order>(
+    ): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
         client,
         `/orders/${orderId}/items/${orderItemId}/refire`,
         { reason, alsoCompOriginal },
       );
     },
-    refillItem(orderId: string, orderItemId: string): Promise<Order> {
-      return postDomainData<Order>(
+    refillItem(orderId: string, orderItemId: string): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
         client,
         `/orders/${orderId}/items/${orderItemId}/refill`,
       );
@@ -96,8 +121,8 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       orderId: string,
       orderItemId: string,
       reason: OrderAdjustmentReason,
-    ): Promise<Order> {
-      return postDomainData<Order>(
+    ): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
         client,
         `/orders/${orderId}/items/${orderItemId}/void`,
         reason,
@@ -107,8 +132,8 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       orderId: string,
       orderItemId: string,
       reason: OrderAdjustmentReason,
-    ): Promise<Order> {
-      return postDomainData<Order>(
+    ): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
         client,
         `/orders/${orderId}/items/${orderItemId}/comp`,
         reason,
@@ -118,8 +143,8 @@ export const createOrdersApi = (client: DomainHttpClient) => {
       orderId: string,
       newTableId: string,
       reason?: string,
-    ): Promise<Order> {
-      return postDomainData<Order>(
+    ): Promise<OrderDto> {
+      return postDomainData<OrderDto>(
         client,
         `/orders/${orderId}/transfer-table`,
         {
@@ -133,11 +158,16 @@ export const createOrdersApi = (client: DomainHttpClient) => {
         client.post(`/orders/${sourceOrderId}/merge`, { targetOrderId }),
       );
     },
-    listCancellationReasons(): Promise<CancellationReason[]> {
-      return getDomainData<CancellationReason[]>(
+    listCancellationReasons(
+      signal?: AbortSignal,
+    ): Promise<CancellationReasonDto[]> {
+      return getDomainData<CancellationReasonDto[]>(
         client,
         "/orders/cancellation-reasons",
-        { params: { activeOnly: "true" } },
+        {
+          params: { activeOnly: "true" },
+          ...(signal ? { signal } : {}),
+        },
       );
     },
     setItemSeatShares(
@@ -151,14 +181,17 @@ export const createOrdersApi = (client: DomainHttpClient) => {
         }),
       );
     },
-    listAllCancellationReasons(): Promise<CancellationReason[]> {
-      return getDomainData<CancellationReason[]>(
+    listAllCancellationReasons(
+      signal?: AbortSignal,
+    ): Promise<CancellationReasonDto[]> {
+      return getDomainData<CancellationReasonDto[]>(
         client,
         "/orders/cancellation-reasons",
+        signal ? { signal } : undefined,
       );
     },
-    createCancellationReason(label: string): Promise<CancellationReason> {
-      return postDomainData<CancellationReason>(
+    createCancellationReason(label: string): Promise<CancellationReasonDto> {
+      return postDomainData<CancellationReasonDto>(
         client,
         "/orders/cancellation-reasons",
         { label },
@@ -167,15 +200,22 @@ export const createOrdersApi = (client: DomainHttpClient) => {
     updateCancellationReason(
       id: string,
       patch: Record<string, unknown>,
-    ): Promise<CancellationReason> {
-      return patchDomainData<CancellationReason>(
+    ): Promise<CancellationReasonDto> {
+      return patchDomainData<CancellationReasonDto>(
         client,
         `/orders/cancellation-reasons/${id}`,
         patch,
       );
     },
-    explain<T>(orderId: string): Promise<T> {
-      return getDomainData<T>(client, `/orders/${orderId}/explain`);
+    explain(
+      orderId: string,
+      signal?: AbortSignal,
+    ): Promise<OrderExplanationDto> {
+      return getDomainData<OrderExplanationDto>(
+        client,
+        `/orders/${orderId}/explain`,
+        signal ? { signal } : undefined,
+      );
     },
   };
 };

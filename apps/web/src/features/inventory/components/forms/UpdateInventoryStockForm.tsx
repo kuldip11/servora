@@ -5,7 +5,7 @@ import {
   type UpdateInventoryStockInput,
 } from "@pos/validation";
 import { Button, FormErrorSummary, Input, Select } from "@pos/ui";
-import type { InventoryItem } from "@pos/types";
+import type { InventoryItemDto as InventoryItem } from "@pos/api-client";
 import { INVENTORY_TRANSACTION_OPTIONS } from "@/features/inventory/constants";
 import { useUpdateInventoryStock } from "@/features/inventory/hooks/useUpdateInventoryStock";
 import { mapStockUpdateFormToRequest } from "@/features/inventory/helpers/inventory-form.mapper";
@@ -58,13 +58,26 @@ export const UpdateInventoryStockForm = ({
   });
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={(event) => void submit(event)} className="space-y-4">
       <Select
         label="Transaction Type"
         required
         options={INVENTORY_TRANSACTION_OPTIONS}
         error={form.formState.errors.transactionType?.message}
-        {...form.register("transactionType")}
+        value={form.watch("transactionType")}
+        onChange={(value) =>
+          form.setValue(
+            "transactionType",
+            value as UpdateInventoryStockInput["transactionType"],
+            { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+          )
+        }
+        onBlur={() =>
+          form.setValue("transactionType", form.getValues("transactionType"), {
+            shouldTouch: true,
+            shouldValidate: true,
+          })
+        }
       />
       <Input
         label="Quantity"

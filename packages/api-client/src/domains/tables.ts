@@ -1,5 +1,11 @@
 import { voidDomainRequest } from "./shared";
-import type { TableStatus } from "@pos/types";
+import type {
+  BranchTakeawayQrResponse,
+  CreateTableRequest,
+  TableResponse,
+  TableStatusContract,
+  UpdateTableRequest,
+} from "@pos/contracts";
 import {
   getDomainData,
   patchDomainData,
@@ -7,51 +13,33 @@ import {
   type DomainHttpClient,
 } from "./shared";
 
-export interface RestaurantTableDto {
-  id: string;
-  branchId: string;
-  name: string;
-  capacity: number;
-  section: string | null;
-  status: TableStatus;
-  isActive: boolean;
-  publicQrToken: string;
-  branch?: { id: string; name: string };
-}
-
-export interface TakeawayQrDto {
-  branchId: string;
-  branchName: string;
-  enabled: boolean;
-  token: string;
-}
-
-export interface TableInput {
-  name: string;
-  capacity?: number;
-  section?: string;
-  branchId?: string;
-}
+export type RestaurantTableDto = TableResponse;
+export type TakeawayQrDto = BranchTakeawayQrResponse;
+export type TableInput = CreateTableRequest;
 
 export const createTablesApi = (client: DomainHttpClient) => {
   return {
-    list(): Promise<RestaurantTableDto[]> {
-      return getDomainData<RestaurantTableDto[]>(client, "/tables");
+    list(signal?: AbortSignal): Promise<RestaurantTableDto[]> {
+      return getDomainData<RestaurantTableDto[]>(
+        client,
+        "/tables",
+        signal ? { signal } : undefined,
+      );
     },
     create(input: TableInput): Promise<RestaurantTableDto> {
       return postDomainData<RestaurantTableDto>(client, "/tables", input);
     },
-    update(
-      id: string,
-      input: Omit<TableInput, "branchId">,
-    ): Promise<RestaurantTableDto> {
+    update(id: string, input: UpdateTableRequest): Promise<RestaurantTableDto> {
       return patchDomainData<RestaurantTableDto>(
         client,
         `/tables/${id}`,
         input,
       );
     },
-    updateStatus(id: string, status: string): Promise<RestaurantTableDto> {
+    updateStatus(
+      id: string,
+      status: TableStatusContract,
+    ): Promise<RestaurantTableDto> {
       return patchDomainData<RestaurantTableDto>(
         client,
         `/tables/${id}/status`,
@@ -67,10 +55,14 @@ export const createTablesApi = (client: DomainHttpClient) => {
         `/tables/${id}/qr/regenerate`,
       );
     },
-    getTakeawayQr(branchId: string): Promise<TakeawayQrDto> {
+    getTakeawayQr(
+      branchId: string,
+      signal?: AbortSignal,
+    ): Promise<TakeawayQrDto> {
       return getDomainData<TakeawayQrDto>(
         client,
         `/branches/${branchId}/takeaway-qr`,
+        signal ? { signal } : undefined,
       );
     },
     regenerateTakeawayQr(branchId: string): Promise<TakeawayQrDto> {

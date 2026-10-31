@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Modal } from "@pos/ui";
-import type { Order } from "@pos/types";
-import { useTransferTable } from "@/features/orders/hooks/useTransferTable";
-import { ordersService } from "@/features/orders/services/orders.service";
+import { Button, Input, Modal, Select } from "@pos/ui";
+import type { OrderDto as Order } from "@pos/api-client";
+import { useMergeOrders, useTransferTable } from "@/features/orders";
 import type { RestaurantTable } from "@/features/tables/types";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
 
 export const TransferTableDialog = ({
   source,
@@ -34,27 +30,21 @@ export const TransferTableDialog = ({
   return (
     <Modal open onClose={close} title={`Transfer ${source.name}`}>
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-text-primary">
-          Destination
-          <select
-            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
-            value={destinationId}
-            onChange={(event) => setDestinationId(event.target.value)}
-          >
-            <option value="">Select an available table</option>
-            {tables
+        <Select
+          label="Destination"
+          value={destinationId}
+          onChange={setDestinationId}
+          options={[
+            { value: "", label: "Select an available table" },
+            ...tables
               .filter(
                 (table) =>
                   table.status === "AVAILABLE" &&
                   table.branchId === source.branchId,
               )
-              .map((table) => (
-                <option key={table.id} value={table.id}>
-                  {table.name}
-                </option>
-              ))}
-          </select>
-        </label>
+              .map((table) => ({ value: table.id, label: table.name })),
+          ]}
+        />
         <Input
           label="Reason (optional)"
           value={reason}
@@ -104,37 +94,20 @@ export const MergeTableDialog = ({
   onClose: () => void;
 }) => {
   const [targetOrderId, setTargetOrderId] = useState("");
-  const mergeMutation = useMutation({
-    mutationFn: ({
-      sourceOrderId,
-      targetOrderId,
-    }: {
-      sourceOrderId: string;
-      targetOrderId: string;
-    }) => ordersService.mergeOrders(sourceOrderId, targetOrderId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      notifySuccess("Tables merged for billing");
-      setTargetOrderId("");
-      onClose();
-    },
-    onError: (error) => notifyError(error, "Unable to merge tables"),
-  });
+  const mergeMutation = useMergeOrders();
   if (!source) return null;
   const sourceOrder = openOrders.find((order) => order.tableId === source.id);
 
   return (
     <Modal open onClose={onClose} title={`Merge ${source.name}`}>
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-text-primary">
-          Merge billing into
-          <select
-            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2"
-            value={targetOrderId}
-            onChange={(event) => setTargetOrderId(event.target.value)}
-          >
-            <option value="">Select another occupied table</option>
-            {openOrders
+        <Select
+          label="Merge billing into"
+          value={targetOrderId}
+          onChange={setTargetOrderId}
+          options={[
+            { value: "", label: "Select another occupied table" },
+            ...openOrders
               .filter(
                 (order) =>
                   order.tableId !== source.id && !order.mergedIntoOrderId,
@@ -143,14 +116,13 @@ export const MergeTableDialog = ({
                 const table = tables.find(
                   (candidate) => candidate.id === order.tableId,
                 );
-                return (
-                  <option key={order.id} value={order.id}>
-                    {table?.name ?? `Order ${order.id.slice(-8)}`}
-                  </option>
-                );
-              })}
-          </select>
-        </label>
+                return {
+                  value: order.id,
+                  label: table?.name ?? `Order ${order.id.slice(-8)}`,
+                };
+              }),
+          ]}
+        />
         <p className="text-xs text-text-secondary">
           Kitchen tickets remain separate. The orders will share one combined
           bill.
@@ -164,10 +136,18 @@ export const MergeTableDialog = ({
             loading={mergeMutation.isPending}
             onClick={() => {
               if (sourceOrder) {
-                mergeMutation.mutate({
-                  sourceOrderId: sourceOrder.id,
-                  targetOrderId,
-                });
+                mergeMutation.mutate(
+                  {
+                    sourceOrderId: sourceOrder.id,
+                    targetOrderId,
+                  },
+                  {
+                    onSuccess: () => {
+                      setTargetOrderId("");
+                      onClose();
+                    },
+                  },
+                );
               }
             }}
           >

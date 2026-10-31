@@ -1,5 +1,5 @@
 import type { ModifierGroup } from "@pos/types";
-import { QueryErrorState, StaleDataBanner } from "@pos/ui";
+import { QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
 import {
   useItemStationRoutes,
   useKitchenStations,
@@ -43,32 +43,27 @@ export const StationRoutingEditor = ({
       (candidate) => candidate.modifierOptionId === (modifierOptionId ?? null),
     );
     return (
-      <label
-        className="grid gap-1 text-xs text-text-secondary"
+      <Select
         key={modifierOptionId ?? "default"}
-      >
-        {label}
-        <select
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-          value={route?.stationId ?? ""}
-          disabled={
-            stationsQuery.isError || routesQuery.isError || setRoute.isPending
-          }
-          onChange={(event) =>
-            setRoute.mutate({
-              stationId: event.target.value || null,
-              ...(modifierOptionId ? { modifierOptionId } : {}),
-            })
-          }
-        >
-          <option value="">No station</option>
-          {stations.map((station) => (
-            <option key={station.id} value={station.id}>
-              {station.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        label={label}
+        value={route?.stationId ?? ""}
+        disabled={
+          stationsQuery.isError || routesQuery.isError || setRoute.isPending
+        }
+        onChange={(stationId) =>
+          setRoute.mutate({
+            stationId: stationId || null,
+            ...(modifierOptionId ? { modifierOptionId } : {}),
+          })
+        }
+        options={[
+          { value: "", label: "No station" },
+          ...stations.map((station) => ({
+            value: station.id,
+            label: station.name,
+          })),
+        ]}
+      />
     );
   };
 

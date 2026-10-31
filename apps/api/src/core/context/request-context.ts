@@ -10,21 +10,21 @@ export interface RequestContext {
   ip?: string;
 }
 
-export const requestContextPlugin = () =>
+export const requestContextPlugin = (now: () => number = Date.now) =>
   new Elysia({ name: "request-context" })
     .derive({ as: "global" }, ({ headers, request, server }) => {
       const directIp = server?.requestIP(request)?.address;
       return {
         requestContext: {
           requestId: randomUUID(),
-          startTime: Date.now(),
+          startTime: now(),
           userAgent: headers["user-agent"],
           ip: resolveClientIp(headers, directIp, env.TRUST_PROXY_HOPS),
         } as RequestContext,
       };
     })
     .onAfterHandle({ as: "global" }, ({ set, requestContext }) => {
-      const duration = Date.now() - requestContext.startTime;
+      const duration = now() - requestContext.startTime;
       set.headers["x-request-id"] = requestContext.requestId;
       set.headers["x-response-time"] = `${duration}ms`;
     });

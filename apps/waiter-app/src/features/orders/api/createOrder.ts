@@ -1,5 +1,5 @@
 import { createOrdersApi } from "@pos/api-client";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import type { AddOrderItemInput } from "./orders";
 import { createOrderSchema } from "@pos/validation";
 import { apiClient } from "@/shared/lib/api-client";

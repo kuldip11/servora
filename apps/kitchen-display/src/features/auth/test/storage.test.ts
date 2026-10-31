@@ -5,7 +5,7 @@ import {
   logout,
   saveContext,
   saveTokens,
-} from "@/features/auth/storage";
+} from "@/shared/auth/storage";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 
 describe("storage", () => {

@@ -1,6 +1,6 @@
 import { CheckCircle2, RotateCcw } from "lucide-react";
 import { Button, Card, StatusBadge } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 import { useUpdateTicketStatus } from "@/features/orders/hooks/useUpdateTicketStatus";
 import { useVoidOrderItem } from "@/features/orders/hooks/useVoidOrderItem";

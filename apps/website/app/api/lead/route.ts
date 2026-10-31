@@ -1,37 +1,26 @@
+import { isIP } from "node:net";
+import { createLeadLimiter } from "@/lib/lead-limiter";
 import { websiteLogger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 8;
-const requestLog = new Map<string, number[]>();
+const limiter = createLeadLimiter(WINDOW_MS, MAX_REQUESTS_PER_WINDOW, 10_000);
 
 const clientKey = (request: Request) => {
-  const forwarded = request.headers.get("x-forwarded-for");
-  return (
-    forwarded?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
-};
-
-const isRateLimited = (key: string) => {
-  const now = Date.now();
-  const recent = (requestLog.get(key) ?? []).filter(
-    (time) => now - time < WINDOW_MS,
-  );
-  if (recent.length >= MAX_REQUESTS_PER_WINDOW) {
-    requestLog.set(key, recent);
-    return true;
-  }
-  recent.push(now);
-  requestLog.set(key, recent);
-  return false;
+  // Enable only when ingress overwrites these headers with a verified address.
+  if (process.env.LEAD_TRUST_PROXY_HEADERS !== "true") return "unknown";
+  const address =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    "";
+  return isIP(address) ? address : "unknown";
 };
 
 export const POST = async (request: Request) => {
   try {
-    if (isRateLimited(clientKey(request))) {
+    if (limiter.isRateLimited(clientKey(request))) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
         { status: 429, headers: { "Retry-After": "600" } },

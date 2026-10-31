@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ branchId: "b1" }));
@@ -23,7 +22,8 @@ vi.mock("@/features/analytics/components/ActiveOrdersPanel", () => ({
 vi.mock("@/features/analytics/components/DashboardQuickActions", () => ({
   DashboardQuickActions: () => <div>quick-actions</div>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Page: ({ children }: any) => <main>{children}</main>,
   PageHeader: ({ title, actions }: any) => (
     <header>

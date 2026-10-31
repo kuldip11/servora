@@ -13,7 +13,7 @@ import {
 } from "@/features/menu/components/TemplatesSection";
 import { ExportMenu } from "@/features/menu/components/ExportMenu";
 import { ImportWizard } from "@/features/menu/components/ImportWizard";
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useMenuCategories } from "@/features/menu";
 import { useMenuTags } from "@/features/menu/hooks/useMenuTags";
 import { useToggleItemAvailability } from "@/features/menu/hooks/useToggleItemAvailability";
 import { useDeleteMenuItem } from "@/features/menu/hooks/useDeleteMenuItem";

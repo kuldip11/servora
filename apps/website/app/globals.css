@@ -2344,3 +2344,25 @@ body {
     border-radius: 14px;
   }
 }
+
+/* Keep the table motif within the product area when the hero stacks. */
+@media (max-width: 1100px) {
+  .hero .table-field {
+    width: auto;
+    height: 100%;
+    aspect-ratio: 1;
+    top: 50%;
+  }
+}
+.header-actions > .action {
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  .brand {
+    font-size: 22px;
+    gap: 6px;
+  }
+  .header-actions {
+    gap: 6px;
+  }
+}

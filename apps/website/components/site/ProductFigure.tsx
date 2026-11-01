@@ -4,11 +4,11 @@ import { useRef } from "react";
 import { Expand, X } from "lucide-react";
 import type { Capture } from "@/content/product";
 const dimensions: Record<Capture, [number, number]> = {
-  pos: [1160, 720],
-  kitchen: [1160, 600],
-  waiter: [440, 600],
-  customer: [440, 600],
-  billing: [580, 600],
+  pos: [1160, 485],
+  kitchen: [1160, 393],
+  waiter: [440, 378],
+  customer: [440, 398],
+  billing: [580, 251],
 };
 export function ProductFigure({
   kind,

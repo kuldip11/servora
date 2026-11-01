@@ -2,7 +2,7 @@
  "version": 1,
  "at": "2026-10-31T21:59:14.177Z",
  "seed": 685276820,
- "redraws": 0,
+ "redraws": 1,
  "input": {
   "brief": "Servora restaurant POS: one shared restaurant order connects the table, the floor, the kitchen and management; a table is the subject-specific motif; authentic interfaces are the proof; a warm confident hospitality identity with clear product category and a readable demonstration",
   "sector": "saas",
@@ -99,43 +99,43 @@
   ]
  },
  "type": {
-  "id": "chillax-semibold",
-  "name": "Chillax",
+  "id": "roundo-soft",
+  "name": "Roundo",
   "class": "rounded-friendly",
   "display": {
-   "family": "Chillax",
+   "family": "Roundo",
    "source": "fontshare",
-   "slug": "chillax",
+   "slug": "roundo",
    "weights": [
-    600
-   ],
-   "italic": false,
-   "settings": "weight 600 · tracking -0.03em · leading 1.0 · sentence case",
-   "css": "<link rel=\"preconnect\" href=\"https://api.fontshare.com\">\n<link rel=\"preconnect\" href=\"https://cdn.fontshare.com\" crossorigin>\n<link href=\"https://api.fontshare.com/v2/css?f[]=chillax@400,500,600&display=swap\" rel=\"stylesheet\">"
-  },
-  "text": {
-   "family": "Chillax",
-   "source": "fontshare",
-   "slug": "chillax",
-   "weights": [
-    400,
     500
    ],
    "italic": false,
-   "settings": "400 for body, 500 for emphasis · leading 1.5 · tracking 0",
-   "css": "<link rel=\"preconnect\" href=\"https://api.fontshare.com\">\n<link rel=\"preconnect\" href=\"https://cdn.fontshare.com\" crossorigin>\n<link href=\"https://api.fontshare.com/v2/css?f[]=chillax@400,500,600&display=swap\" rel=\"stylesheet\">"
+   "settings": "weight 500 · tracking -0.025em · leading 1.05 · sentence case; colour the type to its section instead of black",
+   "css": "<link rel=\"preconnect\" href=\"https://api.fontshare.com\">\n<link rel=\"preconnect\" href=\"https://cdn.fontshare.com\" crossorigin>\n<link href=\"https://api.fontshare.com/v2/css?f[]=roundo@400,500,600&display=swap\" rel=\"stylesheet\">"
+  },
+  "text": {
+   "family": "Roundo",
+   "source": "fontshare",
+   "slug": "roundo",
+   "weights": [
+    400,
+    600
+   ],
+   "italic": false,
+   "settings": "400 for body, 600 for emphasis · leading 1.5 · tracking 0",
+   "css": "<link rel=\"preconnect\" href=\"https://api.fontshare.com\">\n<link rel=\"preconnect\" href=\"https://cdn.fontshare.com\" crossorigin>\n<link href=\"https://api.fontshare.com/v2/css?f[]=roundo@400,500,600&display=swap\" rel=\"stylesheet\">"
   },
   "standsInFor": [
-   "SF Pro Rounded",
+   "Ease",
    "Open Runde"
   ],
-  "note": "A soft geometric sans with wide round letters and relaxed joins, warm at semibold and easy at text size. Suits consumer apps, community products, cafes and small friendly brands.",
+  "note": "A rounded geometric sans at medium weight and a generous text size, gentle without looking childish. Suits wellness, home goods, family apps and everyday money tools.",
   "seenIn": [
-   "opl-uncle-rudy",
-   "opl-mat"
+   "opl-anidachi",
+   "opl-billow"
   ],
   "links": [
-   "https://api.fontshare.com/v2/css?f[]=chillax@400,500,600&display=swap"
+   "https://api.fontshare.com/v2/css?f[]=roundo@400,500,600&display=swap"
   ],
   "scale": {
    "step-small": "clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem)",

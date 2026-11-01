@@ -10,46 +10,47 @@ export type WebsitePageSeo = {
 
 export const websitePageSeo = {
   home: {
-    title:
-      "Restaurant Management Software for POS, QR Ordering & Kitchens | Servora",
+    title: "Restaurant POS for a shared view of service | Servora",
     description:
-      "Connect guest ordering, front of house, kitchen execution, billing and business control with Servora's restaurant operating platform.",
+      "Connect restaurant orders, kitchen preparation, floor service and management. Explore Servora's real product views and try the local workflow playground.",
     path: "/",
-    ogTitle: "Every order. Every team. One flow.",
+    ogTitle: "Restaurant POS. One shared shift.",
     absoluteTitle: true,
   },
   product: {
-    title: "Product",
+    title: "Restaurant POS and operations workspaces",
     description:
-      "Explore the connected restaurant operations capabilities in Servora.",
+      "Explore Servora's POS, kitchen, waiter and guest ordering workspaces, with the menu, billing and management controls behind restaurant service.",
     path: "/product",
-    ogTitle: "Restaurant operations, connected end to end.",
+    ogTitle: "A place for every part of service.",
   },
   apps: {
-    title: "Servora Apps",
+    title: "Open your Servora application",
     description:
-      "Open the Servora management, kitchen, waiter and customer applications from one place.",
+      "Open the management, kitchen, waiter or customer application for your restaurant. Guest ordering requires restaurant QR and session context.",
     path: "/apps",
-    ogTitle: "One platform. The right workspace for every team.",
+    ogTitle: "Open your restaurant workspace.",
   },
   pricing: {
-    title: "Pricing",
+    title: "Discuss your restaurant setup and pricing",
     description:
-      "Talk to Servora about the right setup for your restaurant operation.",
+      "Discuss your restaurant workflow, workspaces, branches and requirements with Servora. Confirm scope, configuration and commercial terms for your setup.",
     path: "/pricing",
-    ogTitle: "A setup that fits your restaurant.",
+    ogTitle: "Start with your restaurant.",
   },
   demo: {
-    title: "Book a Demo",
-    description: "Request a Servora product walkthrough for your restaurant.",
+    title: "Request a restaurant product walkthrough",
+    description:
+      "Request a Servora walkthrough focused on your restaurant's ordering, kitchen, floor and management needs. Tell the team what you want to explore.",
     path: "/book-a-demo",
-    ogTitle: "See Servora in your restaurant workflow.",
+    ogTitle: "See your service in Servora.",
   },
   contact: {
-    title: "Contact",
-    description: "Contact the Servora team about your restaurant operation.",
+    title: "Contact the Servora team",
+    description:
+      "Contact Servora about a restaurant setup, product question or support enquiry. Share your context and the workflow you would like to discuss.",
     path: "/contact",
-    ogTitle: "Let’s talk about your restaurant operation.",
+    ogTitle: "What's on your table?",
   },
   login: {
     title: "Sign in",

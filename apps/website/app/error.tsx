@@ -14,7 +14,7 @@ export default function Error({
     websiteLogger.error("website.application_error", error);
   }, [error]);
   return (
-    <main className="mx-auto max-w-xl px-6 py-24 text-center">
+    <section className="container recovery-page">
       <h1 className="text-4xl font-bold">Something went wrong</h1>
       <p className="mt-4 text-[var(--text-secondary)]">
         We couldn’t load this page. Please try again.
@@ -25,6 +25,6 @@ export default function Error({
       >
         Try again
       </button>
-    </main>
+    </section>
   );
 }

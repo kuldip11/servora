@@ -31,7 +31,6 @@ const dishes = [
     category: "Drinks",
   },
 ];
-const extraPrices = { "Extra cheese": 50, "Chilli oil": 20 };
 export function calculateBill(lines: Line[], discount = false) {
   const subtotal = lines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
@@ -93,9 +92,16 @@ export function WorkflowDemo() {
   const [request, setRequest] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const bill = calculateBill(cart, discount);
+  const extraPrices: Record<string, number> =
+    selected.id === "cooler"
+      ? { "Extra mint": 10, "Less ice": 0 }
+      : selected.id === "bowl"
+        ? { "Extra paneer": 60, "Chilli oil": 20 }
+        : { "Extra cheese": 50, "Chilli oil": 20 };
+  const sizeUpgrade = selected.id === "cooler" ? 40 : 140;
   const unitPrice =
     selected.price +
-    (large ? 140 : 0) +
+    (large ? sizeUpgrade : 0) +
     extras.reduce(
       (sum, name) => sum + (extraPrices[name as keyof typeof extraPrices] ?? 0),
       0,
@@ -408,7 +414,7 @@ export function WorkflowDemo() {
                       checked={large}
                       onChange={(event) => setLarge(event.target.checked)}
                     />
-                    Large portion · +{money(140)}
+                    Large portion · +{money(sizeUpgrade)}
                   </label>
                   <fieldset>
                     <legend>Extras</legend>

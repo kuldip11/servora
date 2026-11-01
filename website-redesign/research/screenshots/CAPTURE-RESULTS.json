@@ -1,0 +1,162 @@
+[
+  {
+    "name": "toast",
+    "url": "https://pos.toasttab.com/",
+    "finalUrl": "https://pos.toasttab.com/",
+    "width": 1440,
+    "status": 403,
+    "title": "Just a moment..."
+  },
+  {
+    "name": "toast",
+    "url": "https://pos.toasttab.com/",
+    "finalUrl": "https://pos.toasttab.com/",
+    "width": 390,
+    "status": 403,
+    "title": "Just a moment..."
+  },
+  {
+    "name": "square",
+    "url": "https://squareup.com/us/en/point-of-sale/restaurants",
+    "finalUrl": "https://squareup.com/us/en/point-of-sale/restaurants",
+    "width": 1440,
+    "status": 200,
+    "title": "Restaurant POS System and Software | Square"
+  },
+  {
+    "name": "square",
+    "url": "https://squareup.com/us/en/point-of-sale/restaurants",
+    "finalUrl": "https://squareup.com/us/en/point-of-sale/restaurants",
+    "width": 390,
+    "status": 200,
+    "title": "Restaurant POS System and Software | Square"
+  },
+  {
+    "name": "lightspeed",
+    "url": "https://www.lightspeedhq.com/pos/restaurant/",
+    "finalUrl": "https://www.lightspeedhq.com/pos/restaurant/",
+    "width": 1440,
+    "status": 200,
+    "title": "Restaurant POS System - Lightspeed"
+  },
+  {
+    "name": "lightspeed",
+    "url": "https://www.lightspeedhq.com/pos/restaurant/",
+    "finalUrl": "https://www.lightspeedhq.com/pos/restaurant/",
+    "width": 390,
+    "status": 200,
+    "title": "Restaurant POS System - Lightspeed"
+  },
+  {
+    "name": "touchbistro",
+    "url": "https://www.touchbistro.com/",
+    "finalUrl": "https://www.touchbistro.com/",
+    "width": 1440,
+    "status": 200,
+    "title": "TouchBistro: POS & Restaurant Management System"
+  },
+  {
+    "name": "touchbistro",
+    "url": "https://www.touchbistro.com/",
+    "finalUrl": "https://www.touchbistro.com/",
+    "width": 390,
+    "status": 200,
+    "title": "TouchBistro: POS & Restaurant Management System"
+  },
+  {
+    "name": "clover",
+    "url": "https://www.clover.com/pos-solutions/restaurant",
+    "finalUrl": "https://www.clover.com/pos-solutions/restaurant",
+    "width": 1440,
+    "status": 200,
+    "title": "Restaurant POS System & Software - POS for Restaurants"
+  },
+  {
+    "name": "clover",
+    "url": "https://www.clover.com/pos-solutions/restaurant",
+    "finalUrl": "https://www.clover.com/pos-solutions/restaurant",
+    "width": 390,
+    "status": 200,
+    "title": "Restaurant POS System & Software - POS for Restaurants"
+  },
+  {
+    "name": "spoton",
+    "url": "https://www.spoton.com/",
+    "finalUrl": "https://www.spoton.com/",
+    "width": 1440,
+    "status": 200,
+    "title": "Restaurant Technology | SpotOn"
+  },
+  {
+    "name": "spoton",
+    "url": "https://www.spoton.com/",
+    "finalUrl": "https://www.spoton.com/",
+    "width": 390,
+    "status": 200,
+    "title": "Restaurant Technology | SpotOn"
+  },
+  {
+    "name": "restroworks",
+    "url": "https://www.restroworks.com/",
+    "finalUrl": "https://www.restroworks.com/",
+    "width": 1440,
+    "status": 200,
+    "title": "Restaurant Management Platform | Restroworks"
+  },
+  {
+    "name": "restroworks",
+    "url": "https://www.restroworks.com/",
+    "finalUrl": "https://www.restroworks.com/",
+    "width": 390,
+    "status": 200,
+    "title": "Restaurant Management Platform | Restroworks"
+  },
+  {
+    "name": "petpooja",
+    "url": "https://www.petpooja.com/",
+    "finalUrl": "https://www.petpooja.com/",
+    "width": 1440,
+    "status": 200,
+    "title": "Software for Small and Medium Businesses | Petpooja"
+  },
+  {
+    "name": "petpooja",
+    "url": "https://www.petpooja.com/",
+    "finalUrl": "https://www.petpooja.com/",
+    "width": 390,
+    "status": 200,
+    "title": "Software for Small and Medium Businesses | Petpooja"
+  },
+  {
+    "name": "gofrugal",
+    "url": "https://www.gofrugal.com/restaurant/",
+    "finalUrl": "https://www.gofrugal.com/restaurant/",
+    "width": 1440,
+    "status": 200,
+    "title": "Best Restaurant Management Software for 2026 - Gofrugal"
+  },
+  {
+    "name": "gofrugal",
+    "url": "https://www.gofrugal.com/restaurant/",
+    "finalUrl": "https://www.gofrugal.com/restaurant/",
+    "width": 390,
+    "status": 200,
+    "title": "Best Restaurant Management Software for 2026 - Gofrugal"
+  },
+  {
+    "name": "urbanpiper",
+    "url": "https://www.urbanpiper.com/",
+    "finalUrl": "https://www.urbanpiper.com/us",
+    "width": 1440,
+    "status": 200,
+    "title": "UrbanPiper: POS Integrations To Manage Online Orders"
+  },
+  {
+    "name": "urbanpiper",
+    "url": "https://www.urbanpiper.com/",
+    "finalUrl": "https://www.urbanpiper.com/us",
+    "width": 390,
+    "status": 200,
+    "title": "UrbanPiper: POS Integrations To Manage Online Orders"
+  }
+]

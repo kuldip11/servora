@@ -1569,7 +1569,7 @@ ol {
     gap: 8px;
   }
   .demo-workspace-selector button {
-    font-size: 12px;
+    font-size: 13px;
     padding: 12px 9px;
   }
   .demo-context {
@@ -1580,10 +1580,10 @@ ol {
     font-size: 14px;
   }
   .demo-context p {
-    font-size: 12px;
+    font-size: 13px;
   }
   .demo-context > button {
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
   }
   .demo-live {
@@ -1597,7 +1597,7 @@ ol {
     gap: 7px;
   }
   .demo-controls button {
-    font-size: 12px;
+    font-size: 13px;
     padding: 10px 12px;
   }
   .demo-guest-content {
@@ -1803,12 +1803,12 @@ ol {
     gap: 8px;
   }
   .header-actions > .action {
-    font-size: 12px;
-    min-height: 42px;
+    font-size: 13px;
+    min-height: 44px;
     padding: 11px 15px;
   }
   .menu-toggle {
-    min-width: 38px;
+    min-width: 44px;
   }
   .hero {
     padding-top: 15px;
@@ -1859,11 +1859,11 @@ ol {
     object-position: right top;
   }
   .product-figure figcaption {
-    font-size: 12px;
+    font-size: 13px;
     padding: 13px 16px;
   }
   .figure-zoom {
-    font-size: 12px;
+    font-size: 13px;
     padding: 7px 10px;
     right: 9px;
     bottom: 9px;
@@ -2264,8 +2264,8 @@ ol {
     height: 25px;
   }
   .header-actions > .action {
-    font-size: 11px;
-    padding: 10px 12px;
+    font-size: 13px;
+    padding: 10px 8px;
   }
   .header-inner {
     gap: 8px;
@@ -2292,7 +2292,7 @@ ol {
     padding: 20px;
   }
   .workspace-tabs > button {
-    font-size: 12px;
+    font-size: 13px;
   }
   .app-launcher article {
     padding: 22px;

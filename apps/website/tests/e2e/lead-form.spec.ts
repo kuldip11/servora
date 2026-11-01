@@ -37,7 +37,7 @@ test("demo enquiry keeps input after delivery failure and reports successful ret
     exact: true,
   });
   await submit.click();
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.locator("form").getByRole("alert")).toHaveText(
     "Delivery unavailable. Please retry.",
   );
   await expect(

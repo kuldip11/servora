@@ -6,7 +6,7 @@ const require = createRequire(
 const sharp = createRequire(require.resolve("next/package.json"))("sharp");
 const root = new URL("../../apps/website/", import.meta.url);
 const mark =
-  '<circle cx="128" cy="128" r="58" fill="none" stroke="white" stroke-width="14"/><path d="M105 30h46M105 226h46M30 105v46M226 105v46" stroke="white" stroke-width="14" stroke-linecap="round"/>';
+  '<circle cx="128" cy="128" r="58" fill="white"/><path d="M105 30h46M105 226h46M30 105v46M226 105v46" stroke="white" stroke-width="14" stroke-linecap="round"/>';
 const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" rx="52" fill="#1f2de6"/>${mark}</svg>`;
 await writeFile(new URL("public/favicon.svg", root), icon);
 for (const [name, size] of [

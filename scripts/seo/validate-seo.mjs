@@ -77,6 +77,11 @@ for (const file of [
     failures.push(`website: missing Next.js metadata image ${file}`);
   }
 }
+const seoAdapter = readFileSync("apps/website/lib/seo.ts", "utf8");
+if (seoAdapter.includes("images:"))
+  failures.push(
+    "website: page metadata helper must not override file-based social images",
+  );
 const manifest = readFileSync("apps/website/app/manifest.ts", "utf8");
 if (!manifest.includes("maskableIcon512"))
   failures.push("website: manifest missing maskable icon");

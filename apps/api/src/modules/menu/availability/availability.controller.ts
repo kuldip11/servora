@@ -1,3 +1,4 @@
+import { InternalError } from "@/core/errors";
 import type { AuthContext } from "@/core/auth";
 import { successResponse, createdResponse } from "@/core/response";
 import { requirePermission } from "@/core/auth";
@@ -12,6 +13,17 @@ import {
 import { writeAudit } from "@/core/audit";
 import { menuChangeLog } from "@/modules/menu/change-log/menu-change-log";
 import { branchRepository } from "@/modules/branches/branch.repository";
+import {
+  toAvailabilityBranchOverrideResponse,
+  toAvailabilityDashboardResponse,
+  toAvailabilityChannelOverrideResponse,
+  toAvailabilityHolidayResponse,
+  toAvailabilityItemStateResponse,
+  toAvailabilityScheduleResponse,
+  toAvailabilityStockCountResponse,
+  toAvailabilityVariantOverrideResponse,
+  toEffectiveAvailabilityItemResponse,
+} from "./availability.mapper";
 
 export const availabilityController = {
   async dashboard(
@@ -45,13 +57,15 @@ export const availabilityController = {
     const branchNames = new Map(
       branches.map((branch) => [branch.id, branch.name] as const),
     );
-    return successResponse({
-      ...dashboard,
-      rows: dashboard.rows.map((row) => {
-        const branchId = typeof row.branchId === "string" ? row.branchId : "";
-        return { ...row, branchName: branchNames.get(branchId) ?? branchId };
+    return successResponse(
+      toAvailabilityDashboardResponse({
+        ...dashboard,
+        rows: dashboard.rows.map((row) => {
+          const branchId = typeof row.branchId === "string" ? row.branchId : "";
+          return { ...row, branchName: branchNames.get(branchId) ?? branchId };
+        }),
       }),
-    });
+    );
   },
   async setStockCount(
     auth: AuthContext,
@@ -89,7 +103,7 @@ export const availabilityController = {
       entityId: input.variantId ?? itemId,
       metadata: { itemId, count: input.count },
     });
-    return successResponse(result);
+    return successResponse(toAvailabilityStockCountResponse(result));
   },
   async setVariantOverride(
     auth: AuthContext,
@@ -106,11 +120,13 @@ export const availabilityController = {
     },
   ) {
     return successResponse(
-      await availabilityService.setVariantOverride(
-        auth.tenantId,
-        variantId,
-        input.status,
-        input.reason ?? null,
+      toAvailabilityVariantOverrideResponse(
+        await availabilityService.setVariantOverride(
+          auth.tenantId,
+          variantId,
+          input.status,
+          input.reason ?? null,
+        ),
       ),
     );
   },
@@ -119,7 +135,7 @@ export const availabilityController = {
       auth.tenantId,
       itemId,
     );
-    return successResponse(schedules);
+    return successResponse(schedules.map(toAvailabilityScheduleResponse));
   },
 
   async createSchedule(
@@ -139,7 +155,7 @@ export const availabilityController = {
       "CREATED",
       input,
     );
-    return createdResponse(schedule);
+    return createdResponse(toAvailabilityScheduleResponse(schedule));
   },
 
   async updateSchedule(
@@ -159,7 +175,7 @@ export const availabilityController = {
       "UPDATED",
       input,
     );
-    return successResponse(schedule);
+    return successResponse(toAvailabilityScheduleResponse(schedule));
   },
 
   async deleteSchedule(auth: AuthContext, scheduleId: string) {
@@ -196,7 +212,7 @@ export const availabilityController = {
       year ? parseInt(year, 10) : undefined,
       region,
     );
-    return successResponse(holidays);
+    return successResponse(holidays.map(toAvailabilityHolidayResponse));
   },
 
   async createHoliday(
@@ -207,12 +223,12 @@ export const availabilityController = {
       auth.tenantId,
       data,
     );
-    if (!holiday) throw new Error("Holiday could not be created");
+    if (!holiday) throw new InternalError("Holiday could not be created");
     await menuChangeLog.record(auth, "AVAILABILITY", holiday.id, "CREATED", {
       kind: "HOLIDAY",
       ...data,
     });
-    return successResponse(holiday);
+    return successResponse(toAvailabilityHolidayResponse(holiday));
   },
 
   async updateHoliday(
@@ -233,7 +249,7 @@ export const availabilityController = {
       kind: "HOLIDAY",
       ...data,
     });
-    return successResponse(holiday);
+    return successResponse(toAvailabilityHolidayResponse(holiday));
   },
 
   async deleteHoliday(auth: AuthContext, holidayId: string) {
@@ -252,7 +268,7 @@ export const availabilityController = {
       branchId,
       { channel: "UNSCOPED", fulfillmentType: "UNSCOPED", asOf },
     );
-    return successResponse(result);
+    return successResponse(toEffectiveAvailabilityItemResponse(result));
   },
 
   async setManualOverride(
@@ -282,7 +298,7 @@ export const availabilityController = {
       entityId: itemId,
       metadata: { status: input.status, reason: input.reason.trim() },
     });
-    return successResponse(item);
+    return successResponse(toAvailabilityItemStateResponse(item));
   },
 
   async clearManualOverride(auth: AuthContext, itemId: string) {
@@ -303,7 +319,7 @@ export const availabilityController = {
       entity: "menu_item",
       entityId: itemId,
     });
-    return successResponse(item);
+    return successResponse(toAvailabilityItemStateResponse(item));
   },
 
   async upsertOverride(
@@ -323,7 +339,7 @@ export const availabilityController = {
       branchId,
       ...input,
     });
-    return successResponse(override);
+    return successResponse(toAvailabilityBranchOverrideResponse(override));
   },
 
   async deleteOverride(auth: AuthContext, itemId: string, branchId: string) {
@@ -340,11 +356,13 @@ export const availabilityController = {
       auth.tenantId,
       itemId,
     );
-    return successResponse(overrides);
+    return successResponse(overrides.map(toAvailabilityBranchOverrideResponse));
   },
   async listChannelOverrides(auth: AuthContext, itemId: string) {
     return successResponse(
-      await availabilityService.listChannelOverrides(auth.tenantId, itemId),
+      (
+        await availabilityService.listChannelOverrides(auth.tenantId, itemId)
+      ).map(toAvailabilityChannelOverrideResponse),
     );
   },
   async upsertChannelOverride(
@@ -353,10 +371,12 @@ export const availabilityController = {
     input: UpsertChannelOverrideInput,
   ) {
     return successResponse(
-      await availabilityService.upsertChannelOverride(
-        auth.tenantId,
-        itemId,
-        input,
+      toAvailabilityChannelOverrideResponse(
+        await availabilityService.upsertChannelOverride(
+          auth.tenantId,
+          itemId,
+          input,
+        ),
       ),
     );
   },

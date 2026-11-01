@@ -1,6 +1,6 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   schema: vi.fn(),
@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   categories: [] as any[],
   omitOptionQuantity: false,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Plus: () => null,
   Minus: () => null,
   Trash2: () => null,
@@ -16,10 +17,12 @@ vi.mock("lucide-react", () => ({
 vi.mock("@/shared/utils/format", () => ({
   formatCurrency: (v: number) => `₹${v}`,
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories }),
 }));
-vi.mock("@/features/orders/hooks/useAddOrderItems", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useAddOrderItems: () => ({ mutate: mocks.mutate, isPending: false }),
 }));
 vi.mock("@/features/orders/hooks/useCourseSequencingEnabled", () => ({
@@ -46,7 +49,8 @@ vi.mock("@/features/orders/utils/cartTypes", () => ({
   cartItemKey: (x: any) =>
     `${x.menuItemId}:${x.variantId ?? ""}:${(x.modifiers ?? []).map((m: any) => m.optionId).join(",")}`,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div role="dialog">
@@ -158,7 +162,7 @@ describe("AddItemsModal coverage", () => {
       target: { value: "rush" },
     });
     fireEvent.click(screen.getByLabelText(/Assign this round to a course/));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "3" } });
+    chooseSelectOption("Course", "Course 3");
     mocks.schema.mockReturnValueOnce({
       success: false,
       error: { issues: [{ message: "Bad item" }] },

@@ -1,13 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const mocks = vi.hoisted(() => ({
   transfer: { mutate: vi.fn(), isPending: false },
 }));
-vi.mock("@/features/orders/hooks/useTransferTable", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useTransferTable: () => mocks.transfer,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div>
@@ -45,7 +48,7 @@ describe("TransferTableDialog", () => {
         onClose={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
+    chooseSelectOption("Destination", "Table 2");
     fireEvent.change(screen.getByLabelText("Reason (optional)"), {
       target: { value: "Move" },
     });

@@ -1,60 +1,51 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, GitBranch, Plus, Store } from "lucide-react";
-import { Button, Card, Page, PageHeader, Spinner } from "@pos/ui";
+import { Plus } from "lucide-react";
+import {
+  Button,
+  Card,
+  Page,
+  PageHeader,
+  QueryErrorState,
+  Spinner,
+  StaleDataBanner,
+} from "@pos/ui";
 import type { OrganizationSummary, Tenant, Branch } from "@pos/types";
-import { businessService } from "@/features/business/services/business.service";
 import { OrganizationModal } from "@/features/business/components/forms/OrganizationModal";
 import { FranchiseModal } from "@/features/business/components/forms/FranchiseModal";
 import { BranchModal } from "@/features/business/components/forms/BranchModal";
-import { authService } from "@/features/auth/services/auth.service";
 import { useAuthStore } from "@/store/auth";
+import {
+  useBusinessHierarchy,
+  useRefreshBusiness,
+} from "@/features/business/hooks/useBusiness";
 import { usePermissions } from "@/shared/auth/permissions";
 import { BusinessOnboardingCard } from "@/features/business/components/BusinessOnboardingCard";
+import { extractApiError } from "@/shared/lib/api-client";
 import {
   BusinessEntityDetails,
   type BusinessBranch,
 } from "@/features/business/components/BusinessEntityDetails";
-
-const businessKeys = { all: ["business"] as const };
-type BusinessData = {
-  organizations: OrganizationSummary[];
-  franchises: Tenant[];
-};
-
-type SelectedEntity =
-  | { type: "organization"; id: string }
-  | { type: "franchise"; id: string }
-  | { type: "branch"; id: string };
+import {
+  BusinessStructureTree,
+  type SelectedBusinessEntity,
+} from "@/features/business/components/page/BusinessStructureTree";
 
 export const BusinessPage = () => {
-  const queryClient = useQueryClient();
   const { has } = usePermissions();
   const { memberships, membershipId, user } = useAuthStore();
   const [organizationModal, setOrganizationModal] = useState(false);
   const [franchiseModal, setFranchiseModal] = useState(false);
   const [branchModal, setBranchModal] = useState(false);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
-  const [selectedEntity, setSelectedEntity] = useState<SelectedEntity | null>(
-    null,
-  );
+  const [selectedEntity, setSelectedEntity] =
+    useState<SelectedBusinessEntity | null>(null);
   const [editingOrganization, setEditingOrganization] =
     useState<OrganizationSummary | null>(null);
   const [editingFranchise, setEditingFranchise] = useState<Tenant | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
-  const query = useQuery({
-    queryKey: businessKeys.all,
-    queryFn: async (): Promise<BusinessData> => {
-      const organizations = await businessService.organizations();
-      const franchiseGroups = await Promise.all(
-        organizations.map((organization) =>
-          businessService.franchises(organization.id).catch(() => []),
-        ),
-      );
-      return { organizations, franchises: franchiseGroups.flat() };
-    },
-  });
+  const query = useBusinessHierarchy();
+  const refresh = useRefreshBusiness();
 
   const activeMembership = memberships.find(
     (item) => item.membershipId === membershipId,
@@ -69,6 +60,12 @@ export const BusinessPage = () => {
     })),
   );
   const data = query.data ?? { organizations: [], franchises: [] };
+  const branchesByTenant = new Map<string, BusinessBranch[]>();
+  for (const branch of branches) {
+    const tenantBranches = branchesByTenant.get(branch.tenantId) ?? [];
+    tenantBranches.push(branch);
+    branchesByTenant.set(branch.tenantId, tenantBranches);
+  }
   const onboardingStep = !data.organizations.length
     ? 1
     : !data.franchises.length
@@ -85,7 +82,7 @@ export const BusinessPage = () => {
     if (!selectedEntity && data.organizations[0]) {
       setSelectedEntity({ type: "organization", id: data.organizations[0].id });
     }
-  }, [data.organizations, selectedOrganizationId]);
+  }, [data.organizations, selectedEntity, selectedOrganizationId]);
 
   useEffect(() => {
     if (!selectedEntity) return;
@@ -113,17 +110,13 @@ export const BusinessPage = () => {
     selectedEntity?.type === "branch"
       ? branches.find((item) => item.id === selectedEntity.id)
       : undefined;
-
-  const refresh = async () => {
-    const nextMemberships = await authService.memberships();
-    useAuthStore.getState().setContext({
-      membershipId: useAuthStore.getState().membershipId,
-      franchiseId: useAuthStore.getState().franchiseId,
-      branchId: useAuthStore.getState().branchId,
-      memberships: nextMemberships,
-    });
-    await queryClient.invalidateQueries({ queryKey: businessKeys.all });
-  };
+  const branchFranchise = data.franchises.find(
+    (item) =>
+      item.id ===
+      (selectedFranchise?.id ??
+        selectedBranch?.tenantId ??
+        activeMembership?.tenant.id),
+  );
 
   if (query.isLoading)
     return (
@@ -131,6 +124,26 @@ export const BusinessPage = () => {
         <Spinner className="h-7 w-7" />
       </div>
     );
+
+  if (query.isError && query.data === undefined) {
+    return (
+      <Page>
+        <PageHeader
+          title="Business"
+          description="Manage your Organization → Franchise → Branch hierarchy and operational status."
+        />
+        <QueryErrorState
+          title="Unable to load business structure"
+          description={extractApiError(
+            query.error,
+            "Your business structure could not be loaded. Retry before creating or changing business entities.",
+          )}
+          isRetrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      </Page>
+    );
+  }
 
   return (
     <Page>
@@ -155,6 +168,14 @@ export const BusinessPage = () => {
         }
       />
 
+      {query.isError ? (
+        <StaleDataBanner
+          message="Business structure refresh failed — showing the latest data available."
+          isRetrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+
       {onboarding && (
         <BusinessOnboardingCard
           onboardingStep={onboardingStep}
@@ -169,86 +190,16 @@ export const BusinessPage = () => {
 
       {!!data.organizations.length && (
         <div className="grid min-h-[560px] gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <Card padding="none" className="overflow-hidden">
-            <div className="border-b border-divider px-4 py-4">
-              <p className="text-sm font-semibold">Business structure</p>
-              <p className="mt-1 text-xs text-text-secondary">
-                Select an entity to view or manage it.
-              </p>
-            </div>
-            <div className="max-h-[680px] overflow-y-auto p-2">
-              {data.organizations.map((organization) => {
-                const organizationFranchises = data.franchises.filter(
-                  (franchise) => franchise.organizationId === organization.id,
-                );
-                return (
-                  <div key={organization.id} className="mb-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedEntity({
-                          type: "organization",
-                          id: organization.id,
-                        });
-                        setSelectedOrganizationId(organization.id);
-                      }}
-                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors ${selectedEntity?.type === "organization" && selectedEntity.id === organization.id ? "bg-primary-surface text-primary" : "hover:bg-surface-secondary"}`}
-                    >
-                      <Building2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{organization.name}</span>
-                    </button>
-                    <div className="ml-5 border-l border-divider pl-2">
-                      {organizationFranchises.map((franchise) => {
-                        const membership = memberships.find(
-                          (item) => item.tenant.id === franchise.id,
-                        );
-                        return (
-                          <div key={franchise.id}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedEntity({
-                                  type: "franchise",
-                                  id: franchise.id,
-                                });
-                                setSelectedOrganizationId(organization.id);
-                              }}
-                              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${selectedEntity?.type === "franchise" && selectedEntity.id === franchise.id ? "bg-primary-surface font-semibold text-primary" : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"}`}
-                            >
-                              <Store className="h-4 w-4 shrink-0" />
-                              <span className="truncate">
-                                {franchise.displayName || franchise.name}
-                              </span>
-                            </button>
-                            <div className="ml-5 space-y-0.5 border-l border-divider pl-2">
-                              {(membership?.branches ?? []).map((branch) => (
-                                <button
-                                  key={branch.id}
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedEntity({
-                                      type: "branch",
-                                      id: branch.id,
-                                    })
-                                  }
-                                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${selectedEntity?.type === "branch" && selectedEntity.id === branch.id ? "bg-primary-surface font-semibold text-primary" : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"}`}
-                                >
-                                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="truncate">
-                                    {branch.name}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
+          <BusinessStructureTree
+            organizations={data.organizations}
+            franchises={data.franchises}
+            branchesByTenant={branchesByTenant}
+            selectedEntity={selectedEntity}
+            onSelect={(entity, organizationId) => {
+              setSelectedEntity(entity);
+              if (organizationId) setSelectedOrganizationId(organizationId);
+            }}
+          />
 
           <Card className="min-w-0">
             <BusinessEntityDetails
@@ -334,7 +285,7 @@ export const BusinessPage = () => {
       <BranchModal
         open={branchModal}
         branch={editingBranch}
-        currency={activeMembership?.tenant.defaultCurrency || "INR"}
+        currency={branchFranchise?.defaultCurrency || "INR"}
         onClose={() => {
           setBranchModal(false);
           setEditingBranch(null);

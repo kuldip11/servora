@@ -1,3 +1,4 @@
+import type { CreateTableRequest, UpdateTableRequest } from "@pos/contracts";
 import type { TableStatus } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { tableRepository } from "./table.repository";
@@ -17,19 +18,8 @@ import {
   resolveTableBranch,
 } from "./tables-authorization";
 
-export interface CreateTableInput {
-  name: string;
-  capacity?: number | undefined;
-  section?: string | undefined;
-  branchId?: string | undefined;
-}
-
-export interface UpdateTableInput {
-  name?: string | undefined;
-  capacity?: number | undefined;
-  section?: string | undefined;
-  status?: TableStatus | undefined;
-}
+export type CreateTableInput = CreateTableRequest;
+export type UpdateTableInput = UpdateTableRequest;
 
 export const tableService = {
   async list(auth: AuthContext) {

@@ -547,6 +547,27 @@
       "when": 1788201000077,
       "tag": "0077_create_inventory_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1788201000078,
+      "tag": "0078_create_inventory_deduction_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793468194539,
+      "tag": "0079_create_payment_collection_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793541843140,
+      "tag": "0080_create_order_graph_indexes",
+      "breakpoints": true
     }
   ]
 }

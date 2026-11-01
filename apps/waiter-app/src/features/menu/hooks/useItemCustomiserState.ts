@@ -10,7 +10,7 @@ type ItemCustomiserState = {
   selections: Record<string, SelectedModifier[]>;
   chefNotes: string;
   seatLabel: string;
-  course: number;
+  course: 1 | 2 | 3;
   quantity: number;
   weightQuantity: string;
   manualPrice: string;
@@ -38,7 +38,7 @@ type ItemCustomiserAction =
     }
   | { type: "chefNotesChanged"; value: string }
   | { type: "seatLabelChanged"; value: string }
-  | { type: "courseChanged"; value: number }
+  | { type: "courseChanged"; value: 1 | 2 | 3 }
   | { type: "quantityChanged"; value: number }
   | { type: "weightQuantityChanged"; value: string }
   | { type: "manualPriceChanged"; value: string }
@@ -135,7 +135,7 @@ const buildInitialState = (
     selections,
     chefNotes: existingCartItem?.chefNotes ?? "",
     seatLabel: existingCartItem?.seatLabel ?? "",
-    course: existingCartItem?.course ?? 1,
+    course: (existingCartItem?.course as 1 | 2 | 3 | undefined) ?? 1,
     quantity: existingCartItem?.quantity ?? 1,
     weightQuantity:
       existingCartItem?.weightQuantity != null
@@ -183,7 +183,8 @@ export const useItemCustomiserState = (
       dispatch({ type: "chefNotesChanged", value }),
     changeSeatLabel: (value: string) =>
       dispatch({ type: "seatLabelChanged", value }),
-    changeCourse: (value: number) => dispatch({ type: "courseChanged", value }),
+    changeCourse: (value: 1 | 2 | 3) =>
+      dispatch({ type: "courseChanged", value }),
     changeQuantity: (value: number) =>
       dispatch({ type: "quantityChanged", value }),
     changeWeightQuantity: (value: string) =>

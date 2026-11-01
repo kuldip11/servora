@@ -1,17 +1,30 @@
-import { createAnalyticsApi } from "@pos/api-client";
+import {
+  createAnalyticsApi,
+  type AnalyticsCostMarginRowDto,
+  type AnalyticsDashboardDto,
+  type AnalyticsMenuEngineeringRowDto,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
 
 const analyticsApi = createAnalyticsApi(apiClient);
-import type { CostMarginRow, DashboardStats } from "@pos/types";
+export type MenuEngineeringRow = AnalyticsMenuEngineeringRowDto;
 
 export const analyticsService = {
-  async dashboard(): Promise<DashboardStats> {
-    return analyticsApi.dashboard<DashboardStats>();
+  async dashboard(signal?: AbortSignal): Promise<AnalyticsDashboardDto> {
+    return analyticsApi.dashboard(signal);
   },
 
-  async costMargin(categoryId?: string): Promise<CostMarginRow[]> {
-    return analyticsApi.costMargin<CostMarginRow[]>(
-      categoryId ? { categoryId } : {},
-    );
+  async costMargin(
+    categoryId?: string,
+    signal?: AbortSignal,
+  ): Promise<AnalyticsCostMarginRowDto[]> {
+    return analyticsApi.costMargin(categoryId ? { categoryId } : {}, signal);
+  },
+
+  async menuEngineering(
+    windowDays: number,
+    signal?: AbortSignal,
+  ): Promise<MenuEngineeringRow[]> {
+    return analyticsApi.menuEngineering(windowDays, signal);
   },
 };

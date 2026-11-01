@@ -8,7 +8,7 @@ Servora is a pre-production, multi-tenant restaurant operating platform built as
 
 ## Product roadmap
 
-Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). Security findings, remediation history, and remaining production-certification work are tracked in [`SECURITY_AUDIT.md`](./SECURITY_AUDIT.md). The Menu subsystem audit, verified capabilities, fixes, and remaining UX gaps are tracked in [`MENU_FEATURE_AUDIT.md`](./MENU_FEATURE_AUDIT.md). The next planned implementation workstream for Business management, Profile, context persistence, and Order round operations is documented in [`BUSINESS_PROFILE_ORDER_OPERATIONS_PLAN.md`](./BUSINESS_PROFILE_ORDER_OPERATIONS_PLAN.md).
+Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PRODUCT_FEATURE_ROADMAP.md). The maintained system design is documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), and frontend engineering expectations are documented in [`docs/FRONTEND_ENGINEERING.md`](./docs/FRONTEND_ENGINEERING.md). Repository-wide quality remediation is tracked in [`docs/CODE_QUALITY_ARCHITECTURE_STATUS.md`](./docs/CODE_QUALITY_ARCHITECTURE_STATUS.md). API contract hardening is tracked in [`docs/API_CONTRACT_HARDENING_PLAN.md`](./docs/API_CONTRACT_HARDENING_PLAN.md) with status in [`docs/API_CONTRACT_HARDENING_STATUS.md`](./docs/API_CONTRACT_HARDENING_STATUS.md).
 
 ## Applications
 
@@ -25,9 +25,10 @@ Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PR
 
 - `@pos/api-client` — shared HTTP client and authentication refresh handling.
 - `@pos/config` — shared application configuration.
+- `@pos/observability` — shared browser Web Vitals and runtime telemetry primitives.
 - `@pos/realtime` — shared realtime client/hooks.
 - `@pos/types` — shared domain TypeScript types.
-- `@pos/ui` — shared React UI system.
+- `@pos/ui` — shared React UI system; component catalog and contribution rules live in [`packages/ui/README.md`](./packages/ui/README.md).
 - `@pos/validation` — shared validation schemas.
 
 ## Core stack
@@ -44,6 +45,10 @@ Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PR
 - **Tests:** Vitest + Playwright
 - **Monorepo:** Turborepo + Bun workspaces
 
+## Frontend production engineering
+
+The POS/admin app includes a permission-aware command palette (`Ctrl+K`) for fast navigation. All operational React apps emit sampled Core Web Vitals and runtime failure telemetry through `@pos/observability` to the first-party API collector. Production Vite builds are checked against JavaScript bundle budgets with `bun run verify:frontend-performance`.
+
 ## Repository structure
 
 ```text
@@ -58,20 +63,21 @@ Future product opportunities are captured in [`PRODUCT_FEATURE_ROADMAP.md`](./PR
 ├── packages/
 │   ├── api-client/
 │   ├── config/
+│   ├── observability/
 │   ├── realtime/
 │   ├── types/
 │   ├── ui/
 │   └── validation/
+├── docs/
+│   ├── ARCHITECTURE.md
+│   └── FRONTEND_ENGINEERING.md
 ├── scripts/
 ├── docker/
 ├── docker-compose.yml
 ├── package.json
 ├── bun.lock
 ├── README.md
-├── PRODUCT_FEATURE_ROADMAP.md
-├── SECURITY_AUDIT.md
-├── MENU_FEATURE_AUDIT.md
-└── BUSINESS_PROFILE_ORDER_OPERATIONS_PLAN.md
+└── PRODUCT_FEATURE_ROADMAP.md
 ```
 
 ## Local setup
@@ -105,11 +111,15 @@ bun run db:reset
 bun run db:migrate
 ```
 
-Optional development data:
+Optional development/demo data:
 
 ```bash
-bun run db:seed
+bun run demo:seed -- --preset=small
+bun run demo:reset
+bun run demo:seed -- --preset=demo
 ```
+
+`bun run db:seed` defaults to the small preset. See [demo data audit and usage](docs/DEMO_DATA_AUDIT.md) for dataset sizes, credentials, reproducible dates and reset boundaries.
 
 Start all applications:
 
@@ -119,7 +129,7 @@ bun run dev
 
 ## Database state
 
-The current pre-v1 repository contains **78 ordered SQL migrations, `0000` through `0077`**.
+The current pre-v1 repository contains **81 ordered SQL migrations, `0000` through `0080`**.
 
 Because Servora has not been released and has no production data, schema changes should continue to target the clean intended v1 model rather than adding compatibility backfills or phased migration machinery for historical production states that do not exist.
 
@@ -130,11 +140,12 @@ Migration integrity is verified by the repository's migration verification tooli
 Run the main quality gates before accepting a change:
 
 ```bash
-bun run typecheck
-bun run lint
-bun run test
-bun run build
+bun run verify:quality
 ```
+
+`verify:quality` mirrors the CI quality sequence: formatting, lint, cleanup
+conventions and boundaries, dead-code and broad-mock audits, generated
+contracts, typechecking, tests, and production builds.
 
 Additional verification:
 
@@ -144,6 +155,7 @@ bun run test:e2e
 bun run test:a11y
 bun run verify:migrations
 bun run audit:rbac
+bun run verify:frontend-performance
 ```
 
 For the broad release baseline:
@@ -172,10 +184,33 @@ Static/source verifiers are architecture guards only. They do not replace TypeSc
 
 The active repository intentionally keeps only active, maintained Markdown documents:
 
-- `README.md` — project entry point, architecture conventions, setup, and verification commands.
-- `PRODUCT_FEATURE_ROADMAP.md` — product ideas reserved for later prioritization.
-- `SECURITY_AUDIT.md` — security findings, remediation status, and production-certification follow-up.
-- `MENU_FEATURE_AUDIT.md` — Menu capability matrix, confirmed fixes, UX gaps, and Menu production-certification follow-up.
-- `BUSINESS_PROFILE_ORDER_OPERATIONS_PLAN.md` — planned next workstream covering `/business`, onboarding, context persistence, `/profile`, and management-role Order round operations. This document describes future work and is not an implementation-status claim.
+- `README.md` — project entry point, setup, architecture conventions, and verification commands.
+- `PRODUCT_FEATURE_ROADMAP.md` — product opportunities and prioritization context.
+- `docs/ARCHITECTURE.md` — maintained system boundaries, data flow, tenancy, realtime, reliability, observability, and CI architecture.
+- `docs/FRONTEND_ENGINEERING.md` — frontend performance, accessibility, authorization, explainability, and observability standards.
 
 Historical engineering reviews, implementation-status reports, phase plans, runbooks, completion notes, and audit commentary are not retained in the active source tree. Operational runbook content that becomes necessary for production should be represented by executable scripts/configuration or reintroduced only when it is an active release requirement.
+
+## Senior frontend engineering workflows
+
+Additional engineering workflows introduced for the portfolio-grade Servora implementation:
+
+```bash
+# Component system documentation
+bun run storybook
+bun run storybook:build
+
+# Generate typed OpenAPI method/path contracts from a running API
+bun run contracts:generate
+
+# Frontend bundle budgets
+bun run verify:frontend-performance
+
+# Generate/update visual regression baselines
+cd apps/web && bun run test:visual:update
+
+# Check existing visual baselines
+cd apps/web && bun run test:visual
+```
+
+See `docs/JOB_IMPACT_IMPLEMENTATION_STATUS.md` for the implementation status and validation notes.

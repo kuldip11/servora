@@ -18,7 +18,14 @@ describe("metricsRouter", () => {
       }),
     );
     expect(response.status).toBe(404);
-    expect(await response.text()).toBe("Not Found");
+    expect(await response.json()).toMatchObject({
+      success: false,
+      error: {
+        code: "ROUTE_NOT_FOUND",
+        message: "The requested API endpoint was not found.",
+        retryable: false,
+      },
+    });
   });
 
   it("returns Prometheus text for the exact bearer token", async () => {

@@ -1,6 +1,8 @@
 import {
   createApiClient,
   extractApiError,
+  extractApiFieldErrors,
+  toApiClientError,
   type TokenStorageAdapter,
 } from "@pos/api-client";
 import { useAuthStore } from "@/store/auth";
@@ -26,4 +28,4 @@ export const apiClient = createApiClient({
   onRefreshFailure: () => webStorageAdapter.clear(),
 });
 
-export { extractApiError };
+export { extractApiError, extractApiFieldErrors, toApiClientError };

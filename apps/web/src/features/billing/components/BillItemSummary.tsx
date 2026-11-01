@@ -1,4 +1,4 @@
-import type { Bill } from "@pos/types";
+import type { BillDto as Bill } from "@pos/api-client";
 
 type BillAssignment = NonNullable<Bill["itemAssignments"]>[number];
 

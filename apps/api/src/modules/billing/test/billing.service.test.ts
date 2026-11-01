@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+}));
+vi.mock("@/modules/tables/table.mapper", () => ({
+  toTableResponse: (value: unknown) => value,
+}));
+
 const mocks = vi.hoisted(() => ({
   recordPayment: vi.fn(),
   splitOrderEvenly: vi.fn(),
@@ -131,6 +138,70 @@ describe("billing service", () => {
     ).rejects.toThrow();
   });
 
+  it("rejects every branchless scoped write before calling repositories", async () => {
+    const auth = { ...baseAuth, branchId: null };
+    const operations = [
+      () =>
+        billingService.createPayment(auth, {
+          orderId: "o1",
+          method: "CASH",
+          amount: 10,
+        }),
+      () =>
+        billingService.createRefund(auth, {
+          paymentId: "p1",
+          amount: 1,
+          reason: "x",
+        }),
+      () => billingService.splitOrder(auth, "o1", 2),
+      () =>
+        billingService.splitOrderByItems(auth, "o1", [
+          { orderItemIds: ["oi1"] },
+        ]),
+      () => billingService.splitOrderBySeat(auth, "o1", "EVEN_SPLIT"),
+      () =>
+        billingService.setItemSeatShares(auth, "o1", "oi1", [
+          { seatLabel: "1", shareRatio: 1 },
+        ]),
+    ];
+    for (const operation of operations) {
+      await expect(operation()).rejects.toThrow("Billing branch access denied");
+    }
+    for (const method of [
+      mocks.recordPayment,
+      mocks.recordRefund,
+      mocks.splitOrderEvenly,
+      mocks.splitOrderByItems,
+      mocks.findActiveItemsForSeatSplit,
+      mocks.splitOrderByShares,
+      mocks.replaceSeatShares,
+      mocks.writeAudit,
+      mocks.publish,
+    ]) {
+      expect(method).not.toHaveBeenCalled();
+    }
+  });
+
+  it("preserves explicit tenant-wide payment and refund access", async () => {
+    const auth = { ...baseAuth, branchId: null, tenantWide: true };
+    await billingService.createPayment(auth, {
+      orderId: "o1",
+      method: "CASH",
+      amount: 10,
+    });
+    await billingService.createRefund(auth, {
+      paymentId: "p1",
+      amount: 1,
+      reason: "x",
+    });
+    expect(mocks.recordPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ branchId: null, tenantWide: true }),
+    );
+    expect(mocks.recordRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ branchId: null, tenantWide: true }),
+    );
+  });
+
   it("maps every payment repository outcome", async () => {
     const input = {
       orderId: "o1",
@@ -157,6 +228,33 @@ describe("billing service", () => {
       billingService.createPayment(baseAuth, input),
     ).rejects.toMatchObject({
       details: { reason: "PAYMENT_AMOUNT_EXCEEDS_DUE" },
+    });
+  });
+
+  it("returns a replay without duplicating audit/events and rejects a conflicting request key", async () => {
+    mocks.recordPayment.mockResolvedValueOnce(paymentOk({ replayed: true }));
+    await expect(
+      billingService.createPayment(baseAuth, {
+        orderId: "o1",
+        method: "CASH",
+        amount: 10,
+        idempotencyKey: "request-1",
+      }),
+    ).resolves.toMatchObject({ payment: { id: "p1" } });
+    expect(mocks.writeAudit).not.toHaveBeenCalled();
+    expect(mocks.publish).not.toHaveBeenCalled();
+    mocks.recordPayment.mockResolvedValueOnce({
+      status: "idempotency_conflict",
+    });
+    await expect(
+      billingService.createPayment(baseAuth, {
+        orderId: "o1",
+        method: "CASH",
+        amount: 20,
+        idempotencyKey: "request-1",
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: "PAYMENT_IDEMPOTENCY_CONFLICT" },
     });
   });
 

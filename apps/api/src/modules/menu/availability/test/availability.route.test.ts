@@ -82,6 +82,7 @@ describe("availability.route routes", () => {
         region: "IN",
       },
       body: { status: "ACTIVE" },
+      set: {},
     };
 
     const cases: Array<[string, string, keyof typeof controller]> = [

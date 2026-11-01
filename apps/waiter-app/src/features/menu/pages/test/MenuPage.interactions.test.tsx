@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +15,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
   useQuery: ({ queryKey }: any) => {
     const key = JSON.stringify(queryKey);
-    if (key.includes('"menus","active"'))
+    if (key.includes('"active"'))
       return {
         data: [
           {
@@ -30,7 +29,7 @@ vi.mock("@tanstack/react-query", () => ({
       };
     if (key.includes("tenant-settings"))
       return { data: { courseSequencingEnabled: true } };
-    if (key.includes("menu-combos"))
+    if (key.includes('"combos"'))
       return {
         data: [
           {
@@ -50,13 +49,13 @@ vi.mock("@tanstack/react-query", () => ({
           },
         ],
       };
-    if (key.includes("menu-promotions"))
+    if (key.includes('"promotions"'))
       return {
         data: [{ id: "p1", name: "Promo", couponCode: null, isActive: true }],
       };
     if (key.includes("customer-groups"))
       return { data: [{ id: "g1", name: "VIP" }] };
-    if (key.includes("menu-price-rules"))
+    if (key.includes('"price-rules"'))
       return {
         data: [{ id: "r1", isPerCover: true, coverTier: "ADULT", price: 50 }],
       };
@@ -83,7 +82,7 @@ vi.mock("@pos/ui", () => ({
   IconButton: ({ onClick, "aria-label": label }: any) => (
     <button aria-label={label} onClick={onClick} />
   ),
-  SelectMenu: ({ label, onChange, options = [] }: any) => (
+  Select: ({ label, onChange, options = [] }: any) => (
     <button
       onClick={() => onChange(options[1]?.value ?? options[0]?.value ?? "")}
     >
@@ -97,13 +96,13 @@ vi.mock("@/shared/lib/realtime", () => ({
   useRealtimeEvent: (_event: string, callback: () => void) =>
     mocks.realtime.push(callback),
 }));
-vi.mock("@/features/orders/hooks/useCreateOrder", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCreateOrder: () => ({ isPending: false, mutate: mocks.createMutate }),
-}));
-vi.mock("@/features/orders/hooks/useAddOrderItems", () => ({
   useAddOrderItems: () => ({ isPending: false, mutate: mocks.addMutate }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({
     isLoading: false,
     data: [
@@ -131,8 +130,9 @@ vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
       },
     ],
   }),
-}));
-vi.mock("@/features/menu/hooks/useMyBranch", () => ({
+  useTables: () => ({
+    data: [{ id: "t1", name: "Table 1", status: "AVAILABLE" }],
+  }),
   useMyBranch: () => ({
     data: {
       id: "b1",
@@ -143,16 +143,13 @@ vi.mock("@/features/menu/hooks/useMyBranch", () => ({
     },
   }),
 }));
-vi.mock("@/features/menu/hooks/useTables", () => ({
-  useTables: () => ({
-    data: [{ id: "t1", name: "Table 1", status: "AVAILABLE" }],
-  }),
-}));
+// useTables is overridden in the shared partial feature mock above.
 vi.mock("@/features/menu/hooks/useCustomerSearch", () => ({
   useCustomerSearch: () => ({ data: [{ id: "cust1", name: "Ada" }] }),
 }));
 vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({}),
   createCustomersApi: () => ({}),
   createAuthApi: () => ({}),
@@ -282,31 +279,38 @@ vi.mock("@/features/menu/components/ComboCustomiser", () => ({
     </div>
   ),
 }));
-vi.mock("@/features/menu/components/CartSummary", () => ({
-  CartSummary: (props: any) => (
+vi.mock("@/features/menu/components/CartSummary", () => {
+  const MockCart = (props: any) => (
     <div>
-      <button onClick={props.onSubmit}>submit-order</button>
-      <button onClick={() => props.onCourseModeChange(true)}>course-on</button>
-      <button onClick={() => props.onCourseModeChange(false)}>
+      <button onClick={props.checkout.submit}>submit-order</button>
+      <button onClick={() => props.courses.setEnabled(true)}>course-on</button>
+      <button onClick={() => props.courses.setEnabled(false)}>
         course-off
       </button>
-      <button onClick={() => props.onRoundCourseNumberChange(2)}>
+      <button onClick={() => props.courses.setRoundNumber?.(2)}>
         round-course
       </button>
-      <button onClick={() => props.onUpdateCourse("m1||||", 2)}>
+      <button onClick={() => props.courses.updateItem?.("m1||||", 2)}>
         item-course
       </button>
-      <button onClick={() => props.onUpdateComboCourse("combo1|slot1:m1", 2)}>
+      <button onClick={() => props.courses.updateCombo?.("combo1|slot1:m1", 2)}>
         combo-course
       </button>
-      <button onClick={() => props.onOrderNotesChange("notes")}>notes</button>
-      <button onClick={() => props.onCouponCodeChange("SAVE")}>coupon</button>
-      <button onClick={() => props.onTogglePromotion("p1")}>promo</button>
-      <button onClick={() => props.onUpdateQty("m1||||", -1)}>cart-dec</button>
-      <button onClick={props.onClose}>close-cart</button>
+      <button onClick={() => props.checkout.setNotes("notes")}>notes</button>
+      <button onClick={() => props.checkout.setCouponCode("SAVE")}>
+        coupon
+      </button>
+      <button onClick={() => props.checkout.togglePromotion("p1")}>
+        promo
+      </button>
+      <button onClick={() => props.actions.updateQty("m1||||", -1)}>
+        cart-dec
+      </button>
+      <button onClick={props.checkout.close}>close-cart</button>
     </div>
-  ),
-}));
+  );
+  return { NewOrderCartSummary: MockCart, AddRoundCartSummary: MockCart };
+});
 
 import { MenuPage } from "@/features/menu/pages/MenuPage";
 

@@ -1,6 +1,11 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+  toRealtimeKitchenTicketPayload: (value: unknown) => value,
+}));
+
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   findOrder: vi.fn(),
@@ -29,7 +34,7 @@ vi.mock("@/modules/orders/order.repository", () => ({
 }));
 vi.mock("@/lib/event-bus", () => ({ eventBus: { publish: mocks.publish } }));
 vi.mock("@/modules/inventory/inventory.service", () => ({
-  inventoryService: { deductForOrderItems: mocks.deduct },
+  inventoryService: { deductForOrderItemsWithRetry: mocks.deduct },
 }));
 vi.mock("@/db", () => ({
   db: {
@@ -447,9 +452,7 @@ describe("customerPaymentService coverage", () => {
       razorpaySignature: validSignature(),
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Inventory deduction failed after takeaway payment",
-      "o1",
-      expect.any(Error),
+      expect.stringContaining("customer_payment.inventory_deduction_failed"),
     );
     consoleSpy.mockRestore();
   });
@@ -560,13 +563,13 @@ describe("customerPaymentService coverage", () => {
   });
 
   it("gets only an order belonging to the customer session", async () => {
-    mocks.findOrder.mockResolvedValueOnce(null);
+    mocks.orderRepositoryFindById.mockResolvedValueOnce(null);
     await expect(
       customerPaymentService.getOrder("tok", "missing"),
     ).rejects.toThrow("Order does not belong to this customer session");
 
     const order = { ...baseOrder, id: "o2" };
-    mocks.findOrder.mockResolvedValueOnce(order);
+    mocks.orderRepositoryFindById.mockResolvedValueOnce(order);
     await expect(customerPaymentService.getOrder("tok", "o2")).resolves.toBe(
       order,
     );

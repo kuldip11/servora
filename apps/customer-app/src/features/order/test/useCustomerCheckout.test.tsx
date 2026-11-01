@@ -9,7 +9,7 @@ const { api, clearPersistedCart } = vi.hoisted(() => ({
   clearPersistedCart: vi.fn(),
 }));
 vi.mock("@/api", () => api);
-vi.mock("@/features/cart/persistence", () => ({ clearPersistedCart }));
+vi.mock("@/features/cart", () => ({ clearPersistedCart }));
 import { useCustomerCheckout } from "../useCustomerCheckout";
 const session = (mode: "DINE_IN" | "TAKEAWAY" = "DINE_IN") =>
   ({

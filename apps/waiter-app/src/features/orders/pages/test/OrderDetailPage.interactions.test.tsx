@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,12 +30,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  useQueryClient: () => ({
+    invalidateQueries: mocks.invalidate,
+    setQueryData: vi.fn(),
+  }),
   useQuery: ({ queryKey }: any) => {
     const key = JSON.stringify(queryKey);
     if (key.includes("cancellation-reasons"))
       return { data: [{ id: "r1", label: "Mistake" }] };
-    if (key.includes("merge-candidates"))
+    if (key.includes('"ACTIVE"'))
       return {
         data: [
           { id: "o1", status: "OPEN", type: "DINE_IN" },
@@ -53,9 +55,10 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: (config: any) => ({
     isPending: false,
+    reset: vi.fn(),
     mutate: (variables: any, options?: any) => {
       const result = config.mutationFn(variables);
-      Promise.resolve(result).then((value) => {
+      void Promise.resolve(result).then((value) => {
         config.onSuccess?.(value);
         options?.onSuccess?.(value);
       });
@@ -64,6 +67,8 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@pos/ui", () => ({
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   Spinner: () => <span>spinner</span>,
   IconButton: ({ onClick, "aria-label": label }: any) => (
     <button aria-label={label} onClick={onClick} />
@@ -87,12 +92,7 @@ vi.mock("@pos/ui", () => ({
         {children}
       </section>
     ) : null,
-  SelectMenu: ({
-    label,
-    onChange,
-    options = [],
-    "aria-label": ariaLabel,
-  }: any) => (
+  Select: ({ label, onChange, options = [], "aria-label": ariaLabel }: any) => (
     <label>
       {label}
       <select
@@ -128,10 +128,10 @@ vi.mock("@/features/orders/hooks/useUpdateTicketStatus", () => ({
 vi.mock("@/features/orders/hooks/useLineAdjustments", () => ({
   useLineAdjustments: () => ({ isPending: false, mutate: mocks.lineAdjust }),
 }));
-vi.mock("@/features/orders/hooks/useTransferTable", () => ({
+vi.mock("@/features/orders", () => ({
   useTransferTable: () => ({ isPending: false, mutate: mocks.transfer }),
 }));
-vi.mock("@/features/menu/hooks/useTables", () => ({
+vi.mock("@/features/menu", () => ({
   useTables: () => ({
     data: [
       { id: "table1", name: "Table 1", status: "OCCUPIED", capacity: 4 },
@@ -140,9 +140,17 @@ vi.mock("@/features/menu/hooks/useTables", () => ({
     ],
   }),
 }));
-vi.mock("@/features/auth/storage", () => ({ hasPermission: () => true }));
+vi.mock("@/shared/auth/storage", () => ({ hasPermission: () => true }));
 vi.mock("@pos/api-client", () => ({
   extractApiError: (e: any) => String(e?.message ?? e),
+  toApiClientError: (e: any) => ({
+    code:
+      e?.message === "Manager approval required"
+        ? "MANAGER_APPROVAL_REQUIRED"
+        : "UNEXPECTED_ERROR",
+    message: String(e?.message ?? e),
+    retryable: false,
+  }),
 }));
 vi.mock("@/features/orders/api/orders", () => ({
   fetchCancellationReasons: vi.fn(),

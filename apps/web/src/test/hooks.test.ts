@@ -10,14 +10,26 @@ const { invalidateQueries, setQueryData, notifySuccess, notifyError } =
   }));
 
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    invalidateQueries,
+    setQueryData,
+    clear: vi.fn(),
+    cancelQueries: vi.fn(),
+  }),
   useMutation: vi.fn((config: unknown) => config),
+  useInfiniteQuery: vi.fn((config: unknown) => config),
   useQuery: vi.fn((config: unknown) => config),
   queryOptions: vi.fn((config: unknown) => config),
   keepPreviousData: vi.fn((previousData: unknown) => previousData),
 }));
 
 vi.mock("@/shared/lib/query-client", () => ({
-  queryClient: { invalidateQueries, setQueryData, clear: vi.fn() },
+  queryClient: {
+    invalidateQueries,
+    setQueryData,
+    clear: vi.fn(),
+    cancelQueries: vi.fn(),
+  },
 }));
 
 vi.mock("@/shared/lib/notify", () => ({ notifySuccess, notifyError }));
@@ -36,6 +48,11 @@ vi.mock("@/shared/lib/api-client", () => {
       delete: response,
     },
     extractApiError: (e: unknown) => e,
+    toApiClientError: (e: unknown) => ({
+      code: "INTERNAL_ERROR",
+      message: e instanceof Error ? e.message : "An unexpected error occurred.",
+      retryable: false,
+    }),
   };
 });
 

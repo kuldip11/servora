@@ -7,6 +7,7 @@ const realtime = vi.hoisted(() => ({
   createRealtimeClient: vi.fn((_config: RealtimeClientConfig) => ({
     reconnect: vi.fn(),
   })),
+  isRealtimeEnvelope: vi.fn(() => true),
   useRealtime: vi.fn(),
   useRealtimeEvent: vi.fn(),
   useRealtimeConnection: vi.fn(() => true),

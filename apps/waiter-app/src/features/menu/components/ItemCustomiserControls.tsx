@@ -9,6 +9,7 @@ export const ItemCustomiserControls = ({
   onWeightQuantity,
   manualPrice,
   onManualPrice,
+  onPricingBlur,
   variantId,
   onVariant,
   zoned,
@@ -22,6 +23,7 @@ export const ItemCustomiserControls = ({
   onWeightQuantity: (value: string) => void;
   manualPrice: string;
   onManualPrice: (value: string) => void;
+  onPricingBlur: () => void;
   variantId: string;
   onVariant: (value: string) => void;
   zoned: boolean;
@@ -60,6 +62,7 @@ export const ItemCustomiserControls = ({
           min="0.001"
           step="0.001"
           value={weightQuantity}
+          onBlur={onPricingBlur}
           onChange={(e) => onWeightQuantity(e.target.value)}
           placeholder={`Enter weight in ${item.weightUnit ?? "configured unit"}`}
         />
@@ -75,6 +78,7 @@ export const ItemCustomiserControls = ({
           max={item.openPriceMax ?? undefined}
           step="0.01"
           value={manualPrice}
+          onBlur={onPricingBlur}
           onChange={(e) => onManualPrice(e.target.value)}
           placeholder={`${item.openPriceMin != null ? `Min ₹${item.openPriceMin}` : "Enter price"}${item.openPriceMax != null ? ` · Max ₹${item.openPriceMax}` : ""}`}
         />

@@ -28,12 +28,24 @@ describe("tickets api", () => {
     expect(mocks.get).toHaveBeenLastCalledWith("/kitchen-tickets", {
       params: { stationId: "grill" },
     });
+
+    const signal = new AbortController().signal;
+    await fetchKitchenTickets("grill", signal);
+    expect(mocks.get).toHaveBeenLastCalledWith("/kitchen-tickets", {
+      params: { stationId: "grill" },
+      signal,
+    });
   });
 
   it("fetches kitchen stations", async () => {
     mocks.get.mockResolvedValue({ data: { data: [{ id: "s1" }] } });
     await expect(fetchKitchenStations()).resolves.toEqual([{ id: "s1" }]);
     expect(mocks.get).toHaveBeenCalledWith("/kitchen-tickets/stations");
+    const signal = new AbortController().signal;
+    await fetchKitchenStations(signal);
+    expect(mocks.get).toHaveBeenLastCalledWith("/kitchen-tickets/stations", {
+      signal,
+    });
   });
 
   it("updates status", async () => {

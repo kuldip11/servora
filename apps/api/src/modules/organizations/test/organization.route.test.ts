@@ -68,6 +68,7 @@ describe("organization routes coverage", () => {
       auth,
       params: { id: "o1" },
       body: { name: "G", discountPercent: 10 },
+      set: {},
     });
     await r("PATCH", "/:id/loyalty-tiers/:tierId").handler({
       auth,
@@ -83,6 +84,7 @@ describe("organization routes coverage", () => {
       auth,
       params: { id: "o1" },
       body: { name: "M", items: [] },
+      set: {},
     });
     await r("PATCH", "/:id/menus/:menuId").handler({
       auth,

@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const dashboard = vi.hoisted(() => vi.fn());
@@ -12,7 +14,7 @@ vi.mock("../../../store/auth", () => ({
 import { dashboardStatsQuery } from "@/features/analytics/query-options";
 
 describe("dashboardStatsQuery", () => {
-  it("returns the dashboard query definition with the default interval", () => {
+  it("returns the dashboard query definition with the default interval", async () => {
     const query = dashboardStatsQuery();
 
     expect(query.queryKey).toEqual([
@@ -22,11 +24,12 @@ describe("dashboardStatsQuery", () => {
       "br-1",
       "dashboard",
     ]);
-    expect(query.queryFn).toBe(dashboard);
+    await query.queryFn?.({ signal } as never);
+    expect(dashboard).toHaveBeenCalledWith(signal);
     expect(query.refetchInterval).toBe(30_000);
   });
 
-  it("allows disabling or changing the refetch interval", () => {
+  it("allows disabling or changing the refetch interval", async () => {
     expect(dashboardStatsQuery(false).refetchInterval).toBe(false);
     expect(dashboardStatsQuery(5_000).refetchInterval).toBe(5_000);
   });

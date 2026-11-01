@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { Card } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { StatusBadge } from "./StatusBadge";
 
 interface Props {

@@ -1,23 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, toast } from "@pos/ui";
-import { createAnalyticsApi } from "@pos/api-client";
-import { DIFFERENTIATORS_SELECT_CLASS } from "@/features/differentiators/constants";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
+import { useMemo, useState } from "react";
+import { Badge, Card, QueryErrorState, Select, StaleDataBanner } from "@pos/ui";
+import { extractApiError } from "@/shared/lib/api-client";
+import { useDifferentiatorEngineering } from "@/features/differentiators/hooks/useDifferentiators";
+import type { EngineeringQuadrant } from "@/features/differentiators/services/differentiators.service";
 
-type EngineeringQuadrant = "STAR" | "PUZZLE" | "PLOWHORSE" | "DOG";
 type EngineeringSort = "margin" | "volume" | "name";
-type EngineeringRow = {
-  menuItemId: string;
-  menuItemName: string;
-  variantName: string | null;
-  margin: number;
-  salesVolume: number;
-  quadrant: EngineeringQuadrant;
-  recommendation: string;
-};
-
-const analyticsApi = createAnalyticsApi(apiClient);
 
 export const EngineeringPanel = () => {
   const [windowDays, setWindowDays] = useState("90");
@@ -25,18 +12,7 @@ export const EngineeringPanel = () => {
     "ALL" | EngineeringQuadrant
   >("ALL");
   const [sort, setSort] = useState<EngineeringSort>("volume");
-  const engineeringQuery = useQuery({
-    queryKey: ["differentiators", "engineering", windowDays],
-    queryFn: () =>
-      analyticsApi.menuEngineering<EngineeringRow[]>(Number(windowDays)),
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (engineeringQuery.error) {
-      toast({ title: extractApiError(engineeringQuery.error), tone: "danger" });
-    }
-  }, [engineeringQuery.error]);
+  const engineeringQuery = useDifferentiatorEngineering(windowDays);
 
   const visibleRows = useMemo(() => {
     const rows =
@@ -46,7 +22,8 @@ export const EngineeringPanel = () => {
             (row) => row.quadrant === quadrantFilter,
           );
     return rows.sort((a, b) => {
-      if (sort === "margin") return b.margin - a.margin;
+      if (sort === "margin")
+        return (b.margin ?? -Infinity) - (a.margin ?? -Infinity);
       if (sort === "volume") return b.salesVolume - a.salesVolume;
       return (
         a.menuItemName.localeCompare(b.menuItemName) ||
@@ -59,83 +36,95 @@ export const EngineeringPanel = () => {
     <div className="space-y-4">
       <Card>
         <div className="grid gap-3 md:grid-cols-3">
-          <label className="text-sm font-medium text-text-primary">
-            Analysis window
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={windowDays}
-              onChange={(event) => setWindowDays(event.target.value)}
-            >
-              <option value="30">Last 30 days</option>
-              <option value="60">Last 60 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="180">Last 180 days</option>
-              <option value="365">Last 365 days</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Quadrant
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={quadrantFilter}
-              onChange={(event) =>
-                setQuadrantFilter(
-                  event.target.value as "ALL" | EngineeringQuadrant,
-                )
-              }
-            >
-              <option value="ALL">All quadrants</option>
-              <option value="STAR">Stars</option>
-              <option value="PUZZLE">Puzzles</option>
-              <option value="PLOWHORSE">Plowhorses</option>
-              <option value="DOG">Dogs</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-text-primary">
-            Sort by
-            <select
-              className={`mt-1 w-full ${DIFFERENTIATORS_SELECT_CLASS}`}
-              value={sort}
-              onChange={(event) =>
-                setSort(event.target.value as EngineeringSort)
-              }
-            >
-              <option value="volume">Sales volume</option>
-              <option value="margin">Margin</option>
-              <option value="name">Name</option>
-            </select>
-          </label>
+          <Select
+            label="Analysis window"
+            value={windowDays}
+            onChange={setWindowDays}
+            options={[
+              { value: "30", label: "Last 30 days" },
+              { value: "60", label: "Last 60 days" },
+              { value: "90", label: "Last 90 days" },
+              { value: "180", label: "Last 180 days" },
+              { value: "365", label: "Last 365 days" },
+            ]}
+          />
+          <Select
+            label="Quadrant"
+            value={quadrantFilter}
+            onChange={(value) =>
+              setQuadrantFilter(value as "ALL" | EngineeringQuadrant)
+            }
+            options={[
+              { value: "ALL", label: "All quadrants" },
+              { value: "STAR", label: "Stars" },
+              { value: "PUZZLE", label: "Puzzles" },
+              { value: "PLOWHORSE", label: "Plowhorses" },
+              { value: "DOG", label: "Dogs" },
+            ]}
+          />
+          <Select
+            label="Sort by"
+            value={sort}
+            onChange={(value) => setSort(value as EngineeringSort)}
+            options={[
+              { value: "volume", label: "Sales volume" },
+              { value: "margin", label: "Margin" },
+              { value: "name", label: "Name" },
+            ]}
+          />
         </div>
       </Card>
-      <div className="grid gap-3 md:grid-cols-2">
-        {visibleRows.map((row) => (
-          <Card key={`${row.menuItemId}:${row.variantName ?? ""}`}>
-            <div className="flex justify-between gap-3">
-              <strong>
-                {row.menuItemName}
-                {row.variantName ? ` — ${row.variantName}` : ""}
-              </strong>
-              <Badge
-                variant={
-                  row.quadrant === "STAR"
-                    ? "success"
-                    : row.quadrant === "DOG"
-                      ? "danger"
-                      : "warning"
-                }
-              >
-                {row.quadrant}
-              </Badge>
-            </div>
-            <p className="mt-2 text-sm">
-              {row.salesVolume} sold · margin ₹{row.margin.toFixed(2)}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {row.recommendation}
-            </p>
-          </Card>
-        ))}
-      </div>
+      {engineeringQuery.isError && engineeringQuery.data !== undefined ? (
+        <StaleDataBanner
+          message="Menu engineering refresh failed — showing the latest analysis available."
+          isRetrying={engineeringQuery.isFetching}
+          onRetry={() => void engineeringQuery.refetch()}
+        />
+      ) : null}
+      {engineeringQuery.isError && engineeringQuery.data === undefined ? (
+        <QueryErrorState
+          title="Unable to load menu engineering"
+          description={extractApiError(
+            engineeringQuery.error,
+            "Menu engineering analysis could not be loaded.",
+          )}
+          isRetrying={engineeringQuery.isFetching}
+          onRetry={() => void engineeringQuery.refetch()}
+        />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {visibleRows.map((row) => (
+            <Card key={`${row.menuItemId}:${row.variantName ?? ""}`}>
+              <div className="flex justify-between gap-3">
+                <strong>
+                  {row.menuItemName}
+                  {row.variantName ? ` — ${row.variantName}` : ""}
+                </strong>
+                <Badge
+                  variant={
+                    row.quadrant === "STAR"
+                      ? "success"
+                      : row.quadrant === "DOG"
+                        ? "danger"
+                        : "warning"
+                  }
+                >
+                  {row.quadrant}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm">
+                {row.salesVolume} sold · margin{" "}
+                {row.margin === null
+                  ? "unavailable"
+                  : `₹${row.margin.toFixed(2)}`}
+              </p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {row.recommendation}
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

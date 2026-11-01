@@ -1,21 +1,23 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  approve: vi.fn(),
+  mutateAsync: vi.fn(),
   toast: vi.fn(),
   extract: vi.fn(),
 }));
 
+vi.mock("@/features/orders/hooks/useRequestManagerApproval", () => ({
+  useRequestManagerApproval: () => ({
+    mutateAsync: mocks.mutateAsync,
+    isPending: false,
+  }),
+}));
 vi.mock("@/shared/lib/api-client", () => ({
-  apiClient: {},
   extractApiError: mocks.extract,
 }));
-vi.mock("@pos/api-client", () => ({
-  createApprovalsApi: () => ({ requestManagerApproval: mocks.approve }),
-}));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div role="dialog">
@@ -40,7 +42,7 @@ import { ManagerApprovalDialog } from "../ManagerApprovalDialog";
 describe("ManagerApprovalDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.approve.mockResolvedValue({ token: "tok" });
+    mocks.mutateAsync.mockResolvedValue({ token: "tok" });
     mocks.extract.mockReturnValue("approval failed");
   });
 
@@ -70,7 +72,7 @@ describe("ManagerApprovalDialog", () => {
     });
     fireEvent.click(button);
     await waitFor(() =>
-      expect(mocks.approve).toHaveBeenCalledWith(
+      expect(mocks.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           actionType: "VOID",
           managerEmail: "boss@x.com",
@@ -79,7 +81,7 @@ describe("ManagerApprovalDialog", () => {
     );
     expect(approved).toHaveBeenCalledWith("tok");
 
-    mocks.approve.mockRejectedValueOnce(new Error("bad"));
+    mocks.mutateAsync.mockRejectedValueOnce(new Error("bad"));
     rerender(
       <ManagerApprovalDialog
         open
@@ -120,6 +122,6 @@ describe("ManagerApprovalDialog", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Approve and continue" }),
     );
-    expect(mocks.approve).toHaveBeenCalledTimes(2);
+    expect(mocks.mutateAsync).toHaveBeenCalledTimes(2);
   });
 });

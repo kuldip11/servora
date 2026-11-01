@@ -1,0 +1,61 @@
+# Servora Documentation Index
+
+## Maintained architecture and implementation documents
+
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system architecture, tenancy, realtime, reliability, and data-flow boundaries.
+- [`CODE_QUALITY_ARCHITECTURE_STATUS.md`](./CODE_QUALITY_ARCHITECTURE_STATUS.md) — verified progress and remaining work for repository-wide code-quality and architecture remediation.
+- [`FRONTEND_ENGINEERING.md`](./FRONTEND_ENGINEERING.md) — frontend engineering, performance, accessibility, authorization, observability, and UI standards.
+- [`API_ERROR_CONTRACT.md`](./API_ERROR_CONTRACT.md) — standardized frontend-friendly API error contract and failure-path rules.
+- [`API_CONTRACT_HARDENING_PLAN.md`](./API_CONTRACT_HARDENING_PLAN.md) — detailed production-hardening plan for request schemas, response DTOs, runtime validation, OpenAPI, generated clients, webhooks, and realtime contracts.
+- [`API_CONTRACT_HARDENING_STATUS.md`](./API_CONTRACT_HARDENING_STATUS.md) — master status tracker and phase gates for the contract-hardening initiative.
+- [`API_CONTRACT_MODULE_MATRIX.md`](./API_CONTRACT_MODULE_MATRIX.md) — route-file-by-route-file migration checklist for all current HTTP contract surfaces.
+- [`JOB_IMPACT_IMPLEMENTATION_STATUS.md`](./JOB_IMPACT_IMPLEMENTATION_STATUS.md) — status of the senior-frontend/job-impact improvement work.
+- [`UI_ERROR_HANDLING_PLAN.md`](./UI_ERROR_HANDLING_PLAN.md) — repository-wide UI error handling, form validation, query/mutation failure UX, stale-data, accessibility, and recovery plan.
+- [`UI_ERROR_HANDLING_STATUS.md`](./UI_ERROR_HANDLING_STATUS.md) — master status tracker, form matrix, critical query matrix, mutation checklist, and release gates for UI error handling.
+- [`TANSTACK_QUERY_REMEDIATION_PLAN.md`](./TANSTACK_QUERY_REMEDIATION_PLAN.md) — production-hardening plan for TanStack Query architecture, cache identity, tenant/branch isolation, feature structure, invalidation, polling, retries, cancellation, and cross-app rollout.
+- [`TANSTACK_QUERY_REMEDIATION_STATUS.md`](./TANSTACK_QUERY_REMEDIATION_STATUS.md) — master TanStack Query implementation tracker, domain matrix, acceptance tests, and quality gates.
+
+## Agent workflow
+
+When an AI agent continues API contract work, it should read these files in order:
+
+1. `API_ERROR_CONTRACT.md`
+2. `API_CONTRACT_HARDENING_PLAN.md`
+3. `API_CONTRACT_HARDENING_STATUS.md`
+4. `API_CONTRACT_MODULE_MATRIX.md`
+5. the relevant API module source/tests
+
+After completing a task, the agent must update the status tracker and module matrix before finishing.
+
+For UI error-handling/form-validation work, read these files in order:
+
+1. `API_ERROR_CONTRACT.md`
+2. `FRONTEND_ENGINEERING.md`
+3. `UI_ERROR_HANDLING_PLAN.md`
+4. `UI_ERROR_HANDLING_STATUS.md`
+5. the relevant app/module source and tests
+
+For every UI remediation task, agents must also apply the clean-component architecture section in `UI_ERROR_HANDLING_PLAN.md` and satisfy the architecture acceptance checklist in `UI_ERROR_HANDLING_STATUS.md`. Error handling must not be implemented by moving raw API/error logic into page/form JSX.
+
+After completing a UI error-handling task, update `UI_ERROR_HANDLING_STATUS.md` before finishing.
+
+For TanStack Query remediation work, read these files in order:
+
+1. `ARCHITECTURE.md`
+2. `FRONTEND_ENGINEERING.md`
+3. `TANSTACK_QUERY_REMEDIATION_PLAN.md`
+4. `TANSTACK_QUERY_REMEDIATION_STATUS.md`
+5. the relevant feature source/tests
+
+Use the required `api/`, `query/`, `hooks/`, `components/`, `pages/` feature structure. Treat WebSocket/realtime as unverified until separately tested. Update `TANSTACK_QUERY_REMEDIATION_STATUS.md` after every completed implementation slice.
+
+## UI error-handling implementation checkpoint
+
+`UI_ERROR_HANDLING_STATUS.md` is the source of truth for implementation progress. The 2026-09-18 checkpoint records completed P0 safety work, false-empty query remediation, shared error primitives, and the forms already converted to the unified client-validation + inline backend-field-error contract. Items with implementation present but focused verification still pending remain `IN_PROGRESS`.
+
+## Active engineering programs
+
+- [`CODEBASE_CLEANUP_REFACTOR_PLAN.md`](./CODEBASE_CLEANUP_REFACTOR_PLAN.md) — codebase cleanup, Select consolidation, component decomposition, hygiene, guardrails, and embedded status tracker.
+- [`E2E_TESTING_STRATEGY_PLAN.md`](./E2E_TESTING_STRATEGY_PLAN.md) — layered E2E/system testing strategy, critical cross-app journeys, CI rollout, and embedded status tracker.
+- [`DIFFERENTIATORS_UI_INTEGRATION_PLAN.md`](./DIFFERENTIATORS_UI_INTEGRATION_PLAN.md) — retained Differentiators capability and the required API, authorization, tenancy, UI, and E2E work before production exposure.
+- [`DIFFERENTIATORS_UI_INTEGRATION_PLAN.md`](./DIFFERENTIATORS_UI_INTEGRATION_PLAN.md) — retained Differentiators feature and future production UI/route integration tracker.

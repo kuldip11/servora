@@ -10,3 +10,13 @@ afterEach(() => {
   vi.useRealTimers();
   vi.clearAllTimers();
 });
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+if (!("ResizeObserver" in globalThis)) {
+  Object.assign(globalThis, { ResizeObserver: ResizeObserverMock });
+}

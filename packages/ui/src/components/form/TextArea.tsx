@@ -66,7 +66,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
             if (!isControlled) setUncontrolledValue(e.target.value);
             onChange?.(e);
           }}
-          required={required}
+          aria-required={required || undefined}
           aria-invalid={!!error || undefined}
           aria-describedby={describedBy(hintId, errorId, hint, error)}
           {...props}

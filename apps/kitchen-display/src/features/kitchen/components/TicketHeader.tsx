@@ -1,5 +1,5 @@
 import { StatusBadge, type StatusTone } from "@pos/ui";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { Timer } from "./Timer";
 
 interface Props {
@@ -58,7 +58,6 @@ export const TicketHeader = ({
         </p>
       </div>
       <div className="text-right">
-        {}
         <StatusBadge
           label={statusLabel}
           tone={statusTone}

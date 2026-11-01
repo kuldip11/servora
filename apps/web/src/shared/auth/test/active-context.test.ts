@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ me: vi.fn() }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: { me: h.me },
 }));
 

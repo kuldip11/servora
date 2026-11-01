@@ -33,20 +33,29 @@ vi.mock("../cancellation-reason.service", () => ({
   cancellationReasonService: svc,
 }));
 import { cancellationReasonsRouter } from "../cancellation-reason.route";
+const reason = {
+  id: "00000000-0000-0000-0000-000000000011",
+  tenantId: "00000000-0000-0000-0000-000000000012",
+  label: "Reason",
+  isActive: true,
+  createdAt: new Date("2026-09-05T10:00:00.000Z"),
+  updatedAt: new Date("2026-09-05T10:00:00.000Z"),
+};
+
 describe("cancellation reason routes", () => {
   it("executes list/create/update handlers", async () => {
     const routes = (cancellationReasonsRouter as any).routes;
     const auth = { tenantId: "t1" };
     svc.list.mockResolvedValue([]);
-    svc.create.mockResolvedValue({ id: "r1" });
-    svc.update.mockResolvedValue({ id: "r1" });
+    svc.create.mockResolvedValue(reason);
+    svc.update.mockResolvedValue({ ...reason, isActive: false });
     const find = (m: string, p: string) =>
       routes.find((r: any) => r.method === m && r.path === p).handler;
     await find("GET", "/")({ auth, query: { activeOnly: "true" } });
     expect(svc.list).toHaveBeenCalledWith(auth, true);
     await find("GET", "/")({ auth, query: {} });
     expect(svc.list).toHaveBeenLastCalledWith(auth, false);
-    await find("POST", "/")({ auth, body: { label: "Reason" } });
+    await find("POST", "/")({ auth, body: { label: "Reason" }, set: {} });
     expect(svc.create).toHaveBeenCalledWith(auth, "Reason");
     await find(
       "PATCH",

@@ -1,6 +1,54 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCustomerOrderRealtime } from "../useCustomerOrderRealtime";
+const tenantId = "11111111-1111-4111-8111-111111111111";
+const branchId = "22222222-2222-4222-8222-222222222222";
+const orderId = "33333333-3333-4333-8333-333333333333";
+const now = "2026-09-27T00:00:00.000Z";
+const envelope = (type: string, payload: unknown) => ({
+  type,
+  tenantId,
+  branchId,
+  timestamp: now,
+  payload,
+});
+const orderPayload = {
+  id: orderId,
+  mergedIntoOrderId: null,
+  tenantId,
+  branchId,
+  tableId: null,
+  table: null,
+  customerId: null,
+  customerGroupId: null,
+  status: "OPEN",
+  type: "TAKEAWAY",
+  billingMode: "LINE_ITEMS",
+  coverCount: null,
+  perCoverPriceRuleId: null,
+  perCoverRate: null,
+  subtotal: 10,
+  taxAmount: 1,
+  discountAmount: 0,
+  serviceChargeAmount: 0,
+  roundingAdjustment: 0,
+  totalAmount: 11,
+  notes: null,
+  resolutionAsOf: null,
+  items: [],
+  kitchenTickets: [],
+  statusHistory: [],
+  payments: [],
+  createdAt: now,
+  updatedAt: now,
+};
+const availabilityEnvelope = envelope("menu.availability.updated", {
+  source: "INVENTORY",
+  entityType: "ITEM",
+  entityId: orderId,
+  menuItemId: orderId,
+  computedStatus: "ACTIVE",
+});
 class WS {
   static OPEN = 1;
   static instances: WS[] = [];
@@ -32,70 +80,115 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("customer realtime", () => {
-  it("handles no token, connect, messages, ping, errors, close/reconnect and cleanup", () => {
+  it("handles no token, connect, messages, ping, errors, close/reconnect and cleanup", async () => {
     const onOrder = vi.fn(),
       onMenu = vi.fn();
     const empty = renderHook(() =>
-      useCustomerOrderRealtime(undefined, "o1", onOrder, onMenu),
+      useCustomerOrderRealtime(undefined, orderId, onOrder, onMenu),
     );
     expect(empty.result.current).toBe(false);
     const h = renderHook(() =>
-      useCustomerOrderRealtime("tok", "o1", onOrder, onMenu),
+      useCustomerOrderRealtime("tok", orderId, onOrder, onMenu),
     );
     const s = WS.instances[0]!;
     expect(s.url).toContain("/customer/events");
-    act(() => s.onopen());
+    await act(() => s.onopen());
     expect(s.sent[0]).toContain("auth");
-    act(() => s.onmessage({ data: JSON.stringify({ type: "connected" }) }));
-    expect(h.result.current).toBe(true);
-    act(() => vi.advanceTimersByTime(25000));
-    expect(s.sent).toContain("ping");
-    act(() =>
+    await act(() =>
       s.onmessage({
-        data: JSON.stringify({ type: "order.updated", payload: { id: "o1" } }),
+        data: JSON.stringify({ type: "connected", sessionId: orderId }),
+      }),
+    );
+    expect(h.result.current).toBe(true);
+    await act(() => vi.advanceTimersByTime(25000));
+    expect(s.sent).toContain("ping");
+    await act(() =>
+      s.onmessage({
+        data: JSON.stringify(envelope("order.updated", orderPayload)),
       }),
     );
     expect(onOrder).toHaveBeenCalled();
-    act(() =>
+    await act(() =>
       s.onmessage({
-        data: JSON.stringify({
-          type: "order.updated",
-          payload: { id: "other" },
-        }),
+        data: JSON.stringify(
+          envelope("order.updated", {
+            ...orderPayload,
+            id: "44444444-4444-4444-8444-444444444444",
+          }),
+        ),
       }),
     );
-    act(() =>
+    await act(() =>
       s.onmessage({
-        data: JSON.stringify({ type: "menu.availability.updated" }),
+        data: JSON.stringify(availabilityEnvelope),
       }),
     );
     expect(onMenu).toHaveBeenCalled();
-    act(() => s.onmessage({ data: "bad" }));
-    act(() => s.onerror());
+    await act(() => s.onmessage({ data: "bad" }));
+    await act(() => s.onerror());
     expect(h.result.current).toBe(false);
-    act(() => s.onclose());
-    act(() => vi.advanceTimersByTime(1000));
+    await act(() => s.onclose());
+    await act(() => vi.advanceTimersByTime(1000));
     expect(WS.instances.length).toBeGreaterThan(1);
     h.unmount();
   });
-  it("covers https protocol/default base, capped reconnect and missing optional menu callback", () => {
+  it("keeps the socket through callback rerenders and uses the latest committed handlers", async () => {
+    const firstOrder = vi.fn(),
+      nextOrder = vi.fn(),
+      nextMenu = vi.fn();
+    const h = renderHook(
+      ({
+        onOrder,
+        onMenu,
+      }: {
+        onOrder: typeof firstOrder;
+        onMenu: typeof nextMenu;
+      }) => useCustomerOrderRealtime("token", orderId, onOrder, onMenu),
+      { initialProps: { onOrder: firstOrder, onMenu: vi.fn() } },
+    );
+    const socket = WS.instances[0]!;
+    const close = vi.spyOn(socket, "close");
+    await act(() =>
+      socket.onmessage({
+        data: JSON.stringify({ type: "connected", sessionId: orderId }),
+      }),
+    );
+    h.rerender({ onOrder: nextOrder, onMenu: nextMenu });
+    await act(() =>
+      socket.onmessage({
+        data: JSON.stringify(envelope("order.updated", orderPayload)),
+      }),
+    );
+    await act(() =>
+      socket.onmessage({ data: JSON.stringify(availabilityEnvelope) }),
+    );
+    expect(WS.instances).toHaveLength(1);
+    expect(close).not.toHaveBeenCalled();
+    expect(firstOrder).not.toHaveBeenCalled();
+    expect(nextOrder).toHaveBeenCalledOnce();
+    expect(nextMenu).toHaveBeenCalledOnce();
+    h.unmount();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("covers https protocol/default base, capped reconnect and missing optional menu callback", async () => {
     vi.stubEnv("VITE_WS_URL", "wss://example.com/events");
     const h = renderHook(() =>
       useCustomerOrderRealtime("t", undefined, vi.fn()),
     );
     const s = WS.instances[0]!;
-    act(() =>
+    await act(() =>
       s.onmessage({
-        data: JSON.stringify({ type: "menu.availability.updated" }),
+        data: JSON.stringify(availabilityEnvelope),
       }),
     );
     for (let i = 0; i < 8; i++) {
-      act(() => WS.instances.at(-1)!.onclose());
-      act(() => vi.runOnlyPendingTimers());
+      await act(() => WS.instances.at(-1)!.onclose());
+      await act(() => vi.runOnlyPendingTimers());
     }
     h.unmount();
   });
-  it("executes pending reconnect cleanup when dependencies change", () => {
+  it("executes pending reconnect cleanup when dependencies change", async () => {
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const { rerender, unmount } = renderHook(
       ({ token }: { token: string | undefined }) =>
@@ -103,7 +196,7 @@ describe("customer realtime", () => {
       { initialProps: { token: "t" as string | undefined } },
     );
     const s = WS.instances[0]!;
-    act(() => s.onclose());
+    await act(() => s.onclose());
     expect(vi.getTimerCount()).toBeGreaterThan(0);
     rerender({ token: undefined });
     expect(clearTimeoutSpy).toHaveBeenCalled();
@@ -112,7 +205,7 @@ describe("customer realtime", () => {
 });
 
 describe("customer realtime timer branches", () => {
-  it("clears existing ping and pending reconnect timers", () => {
+  it("clears existing ping and pending reconnect timers", async () => {
     vi.stubEnv("VITE_WS_URL", "ws://example.com/events");
     const onOrder = vi.fn(),
       onMenu = vi.fn();
@@ -120,22 +213,34 @@ describe("customer realtime timer branches", () => {
       useCustomerOrderRealtime("t", "o", onOrder, onMenu),
     );
     const s = WS.instances[0]!;
-    act(() => s.onmessage({ data: JSON.stringify({ type: "connected" }) }));
-    act(() => s.onmessage({ data: JSON.stringify({ type: "connected" }) }));
-    act(() => s.onclose());
+    await act(() =>
+      s.onmessage({
+        data: JSON.stringify({ type: "connected", sessionId: orderId }),
+      }),
+    );
+    await act(() =>
+      s.onmessage({
+        data: JSON.stringify({ type: "connected", sessionId: orderId }),
+      }),
+    );
+    await act(() => s.onclose());
     h.unmount();
-    act(() => vi.runOnlyPendingTimers());
+    await act(() => vi.runOnlyPendingTimers());
   });
-  it("does not ping when socket is not OPEN and ignores duplicate reconnect scheduling", () => {
+  it("does not ping when socket is not OPEN and ignores duplicate reconnect scheduling", async () => {
     vi.stubEnv("VITE_WS_URL", "ws://example.com/events");
     const h = renderHook(() => useCustomerOrderRealtime("t", "o", vi.fn()));
     const s = WS.instances[0]!;
     s.readyState = 0;
-    act(() => s.onmessage({ data: JSON.stringify({ type: "connected" }) }));
-    act(() => vi.advanceTimersByTime(25000));
+    await act(() =>
+      s.onmessage({
+        data: JSON.stringify({ type: "connected", sessionId: orderId }),
+      }),
+    );
+    await act(() => vi.advanceTimersByTime(25000));
     expect(s.sent).not.toContain("ping");
-    act(() => s.onclose());
-    act(() => s.onclose());
+    await act(() => s.onclose());
+    await act(() => s.onclose());
     h.unmount();
   });
 });

@@ -10,11 +10,11 @@ import {
   verifyTakeawayPayment,
   type CustomerOrder,
 } from "@/api";
-import type { ComboCartLine } from "@/features/cart/combo";
-import { clearPersistedCart } from "@/features/cart/persistence";
-import type { CartLine } from "@/features/cart/pricing";
-import type { CustomerSessionState } from "@/features/session/useCustomerSession";
+import type { ComboCartLine, CartLine } from "@/features/cart";
+import { clearPersistedCart } from "@/features/cart";
+import type { CustomerSessionState } from "@/features/session";
 import { createOrderPayload } from "./payload";
+import { extractApiError } from "@pos/api-client";
 
 type UseCustomerCheckoutInput = {
   session: CustomerSessionState | null;
@@ -141,9 +141,7 @@ export const useCustomerCheckout = ({
       if (storageScope) clearPersistedCart(storageScope);
       clearCart();
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Payment was not completed",
-      );
+      setError(extractApiError(error, "Payment was not completed"));
     } finally {
       setLoading(false);
     }
@@ -191,9 +189,7 @@ export const useCustomerCheckout = ({
         setCouponCode("");
         onPlaced();
       } catch (error) {
-        setError(
-          error instanceof Error ? error.message : "Unable to place order",
-        );
+        setError(extractApiError(error, "Unable to place order"));
       } finally {
         setLoading(false);
       }

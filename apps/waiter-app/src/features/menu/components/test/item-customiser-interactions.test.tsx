@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -155,6 +154,8 @@ describe("ItemCustomiser interactions", () => {
         onClose={vi.fn()}
       />,
     );
+    expect(screen.queryByText(/positive weight/)).toBeNull();
+    fireEvent.blur(screen.getByLabelText("Weight (KG)"));
     expect(screen.getByText(/positive weight/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Weight (KG)"), {
       target: { value: "1.5" },
@@ -184,6 +185,8 @@ describe("ItemCustomiser interactions", () => {
         onClose={vi.fn()}
       />,
     );
+    expect(screen.queryByText(/manual price within/)).toBeNull();
+    fireEvent.blur(screen.getByLabelText("Manual price"));
     expect(screen.getByText(/manual price within/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Manual price"), {
       target: { value: "15" },

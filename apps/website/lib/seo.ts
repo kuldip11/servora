@@ -23,7 +23,8 @@ export {
 export const getSiteUrl = () =>
   normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL);
 
-export const getAbsoluteUrl = (path: string) => `${getSiteUrl()}${path}`;
+export const getAbsoluteUrl = (path: string) =>
+  `${getSiteUrl()}${assertCanonicalPath(path)}`;
 
 type PageMetadataInput = {
   title: string;
@@ -50,7 +51,9 @@ export const createPageMetadata = ({
   absoluteTitle = false,
 }: PageMetadataInput): Metadata => {
   assertCanonicalPath(path);
-  const socialTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+  const socialTitle = title.includes(SITE_NAME)
+    ? title
+    : `${title} | ${SITE_NAME}`;
 
   return {
     title: absoluteTitle ? { absolute: title } : title,

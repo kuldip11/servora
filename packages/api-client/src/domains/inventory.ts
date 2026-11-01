@@ -1,27 +1,32 @@
-import { voidDomainRequest } from "./shared";
+import type { TransportInput } from "../types";
 import type {
-  InventoryItem,
-  InventoryRecipeImpact,
-  InventoryTransaction,
-  WasteReason,
-} from "@pos/types";
-import type {
-  CreateInventoryItemInput,
-  UpdateInventoryStockInput,
-} from "@pos/validation";
+  CreateWasteReasonRequest,
+  CreateInventoryItemRequest,
+  InventoryItemResponse,
+  InventoryRecipeImpactResponse,
+  InventoryStockUpdateResponse,
+  InventoryTransactionResponse,
+  LogWasteRequest,
+  UpdateStockRequest,
+  WasteReasonResponse,
+} from "@pos/contracts";
 import {
   getDomainData,
   getPaginatedDomainData,
+  patchDomainData,
   postDomainData,
   type DomainHttpClient,
   type PaginatedResult,
 } from "./shared";
 
-export interface LogWasteInput {
-  quantity: number;
-  wasteReasonId: string;
-  notes?: string;
-}
+export type InventoryItemDto = InventoryItemResponse;
+export type InventoryRecipeImpactDto = InventoryRecipeImpactResponse;
+export type InventoryTransactionDto = InventoryTransactionResponse;
+export type InventoryStockUpdateDto = InventoryStockUpdateResponse;
+export type WasteReasonDto = WasteReasonResponse;
+export type LogWasteInput = LogWasteRequest;
+export type InventoryUnitDto = CreateInventoryItemRequest["unit"];
+export type InventoryTransactionTypeDto = UpdateStockRequest["transactionType"];
 
 export interface InventoryListFilters {
   page?: number;
@@ -34,57 +39,89 @@ export const createInventoryApi = (client: DomainHttpClient) => {
   return {
     list(
       filters: InventoryListFilters = {},
-    ): Promise<PaginatedResult<InventoryItem>> {
+      signal?: AbortSignal,
+    ): Promise<PaginatedResult<InventoryItemDto>> {
       const params: Record<string, string> = {
         page: String(filters.page ?? 1),
         limit: String(filters.limit ?? 25),
       };
       if (filters.search) params["search"] = filters.search;
       if (filters.lowStockOnly) params["lowStockOnly"] = "true";
-      return getPaginatedDomainData<InventoryItem>(client, "/inventory/items", {
-        params,
-      });
+      return getPaginatedDomainData<InventoryItemDto>(
+        client,
+        "/inventory/items",
+        {
+          params,
+          ...(signal ? { signal } : {}),
+        },
+      );
     },
-    lowStock(): Promise<InventoryItem[]> {
-      return getDomainData<InventoryItem[]>(
+    lowStock(signal?: AbortSignal): Promise<InventoryItemDto[]> {
+      return getDomainData<InventoryItemDto[]>(
         client,
         "/inventory/alerts/low-stock",
+        signal ? { signal } : undefined,
       );
     },
-    create(input: CreateInventoryItemInput): Promise<InventoryItem> {
-      return postDomainData<InventoryItem>(client, "/inventory/items", input);
+    create(
+      input: TransportInput<CreateInventoryItemRequest>,
+    ): Promise<InventoryItemDto> {
+      return postDomainData<InventoryItemDto>(
+        client,
+        "/inventory/items",
+        input,
+      );
     },
-    recipeImpact(itemId: string): Promise<InventoryRecipeImpact> {
-      return getDomainData<InventoryRecipeImpact>(
+    recipeImpact(
+      itemId: string,
+      signal?: AbortSignal,
+    ): Promise<InventoryRecipeImpactDto> {
+      return getDomainData<InventoryRecipeImpactDto>(
         client,
         `/inventory/items/${itemId}/recipe-impact`,
+        signal ? { signal } : undefined,
       );
     },
-    transactions(): Promise<InventoryTransaction[]> {
-      return getDomainData<InventoryTransaction[]>(
+    transactions(signal?: AbortSignal): Promise<InventoryTransactionDto[]> {
+      return getDomainData<InventoryTransactionDto[]>(
         client,
         "/inventory/transactions",
+        signal ? { signal } : undefined,
       );
     },
     updateStock(
       itemId: string,
-      input: UpdateInventoryStockInput & { wasteReasonId?: string },
-    ): Promise<void> {
-      return voidDomainRequest(
-        client.patch(`/inventory/items/${itemId}/stock`, input),
+      input: TransportInput<UpdateStockRequest>,
+    ): Promise<InventoryStockUpdateDto> {
+      return patchDomainData<InventoryStockUpdateDto>(
+        client,
+        `/inventory/items/${itemId}/stock`,
+        input,
       );
     },
-    wasteReasons(): Promise<WasteReason[]> {
-      return getDomainData<WasteReason[]>(client, "/inventory/waste-reasons");
+    wasteReasons(signal?: AbortSignal): Promise<WasteReasonDto[]> {
+      return getDomainData<WasteReasonDto[]>(
+        client,
+        "/inventory/waste-reasons",
+        signal ? { signal } : undefined,
+      );
     },
-    createWasteReason(label: string): Promise<WasteReason> {
-      return postDomainData<WasteReason>(client, "/inventory/waste-reasons", {
-        label,
-      });
+    createWasteReason(label: string): Promise<WasteReasonDto> {
+      const input: CreateWasteReasonRequest = { label };
+      return postDomainData<WasteReasonDto>(
+        client,
+        "/inventory/waste-reasons",
+        input,
+      );
     },
-    logWaste(itemId: string, input: LogWasteInput): Promise<void> {
-      return voidDomainRequest(
-        client.post(`/inventory/items/${itemId}/waste`, input),
+    logWaste(
+      itemId: string,
+      input: LogWasteInput,
+    ): Promise<InventoryStockUpdateDto> {
+      return postDomainData<InventoryStockUpdateDto>(
+        client,
+        `/inventory/items/${itemId}/waste`,
+        input,
       );
     },
   };

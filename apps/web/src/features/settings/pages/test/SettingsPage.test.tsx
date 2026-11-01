@@ -16,27 +16,38 @@ vi.mock("@/store/auth", () => ({ useAuthStore: mocks.auth }));
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/orders/hooks/useCancellationReasons", () => ({
+vi.mock("@/features/orders/public/cancellation-reasons", () => ({
   useCancellationReasons: mocks.reasons,
-  cancellationReasonKeys: { all: ["reasons"], active: ["reasons", "active"] },
-}));
-vi.mock("@/features/orders/services/cancellation-reasons.service", () => ({
+  cancellationReasonKeys: {
+    all: () => ["reasons"],
+    active: () => ["reasons", "active"],
+  },
   cancellationReasonsService: { create: mocks.create, update: mocks.update },
+}));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback,
+  toApiClientError: () => ({}),
 }));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: mocks.success,
   notifyError: mocks.error,
 }));
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: (options: any) => ({
     isPending: false,
-    mutate: async (value: any) => {
+    mutate: async (value: any, callbacks?: any) => {
       try {
         const r = await options.mutationFn(value);
-        options.onSuccess?.(r);
+        options.onSuccess?.(r, value);
+        callbacks?.onSuccess?.(r, value);
       } catch (error) {
-        options.onError?.(error);
+        options.onError?.(error, value);
+        callbacks?.onError?.(error, value);
       }
     },
   }),
@@ -52,12 +63,16 @@ vi.mock("@/features/settings/components/KitchenOperationsSettingsCard", () => ({
 vi.mock("@/features/settings/components/ApprovalThresholdSettingsCard", () => ({
   ApprovalThresholdSettingsCard: () => <div>approval-card</div>,
 }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   Building2: () => null,
   Shield: () => null,
   Palette: () => null,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -130,7 +145,7 @@ describe("SettingsPage coverage", () => {
     );
 
     const add = screen.getByRole("button", { name: "Add" });
-    expect(add).toHaveProperty("disabled", true);
+    expect(add).toHaveProperty("disabled", false);
     fireEvent.change(screen.getByLabelText("New reason"), {
       target: { value: "  Guest changed mind  " },
     });
@@ -149,12 +164,7 @@ describe("SettingsPage coverage", () => {
       target: { value: "Bad reason" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Failed to update cancellation reasons",
-      ),
-    );
+    expect((await screen.findByRole("alert")).textContent).toContain("bad");
     unmount();
 
     mocks.has.mockReturnValue(false);

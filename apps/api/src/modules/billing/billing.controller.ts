@@ -4,6 +4,12 @@ import {
   type CreatePaymentInput,
   type CreateRefundInput,
 } from "./billing.service";
+import {
+  toBillResponse,
+  toPaymentCollectionResultResponse,
+  toPaymentRefundResponse,
+  toSeatSplitResultResponse,
+} from "./billing.mapper";
 
 export const billingController = {
   async createPayment(
@@ -11,7 +17,7 @@ export const billingController = {
     input: CreatePaymentInput,
   ) {
     const result = await billingService.createPayment(auth, input);
-    return createdResponse(result);
+    return createdResponse(toPaymentCollectionResultResponse(result));
   },
 
   async createRefund(
@@ -19,7 +25,7 @@ export const billingController = {
     input: CreateRefundInput,
   ) {
     const refund = await billingService.createRefund(auth, input);
-    return createdResponse(refund);
+    return createdResponse(toPaymentRefundResponse(refund));
   },
 
   async getBill(
@@ -27,7 +33,7 @@ export const billingController = {
     billId: string,
   ) {
     const bill = await billingService.getBill(auth, billId);
-    return successResponse(bill);
+    return successResponse(toBillResponse(bill));
   },
   async splitOrder(
     auth: Parameters<typeof billingService.splitOrder>[0],
@@ -35,7 +41,9 @@ export const billingController = {
     ways: number,
   ) {
     return createdResponse(
-      await billingService.splitOrder(auth, orderId, ways),
+      (await billingService.splitOrder(auth, orderId, ways)).map(
+        toBillResponse,
+      ),
     );
   },
   async splitOrderByItems(
@@ -44,7 +52,9 @@ export const billingController = {
     allocations: Array<{ label?: string; orderItemIds: string[] }>,
   ) {
     return createdResponse(
-      await billingService.splitOrderByItems(auth, orderId, allocations),
+      (await billingService.splitOrderByItems(auth, orderId, allocations)).map(
+        toBillResponse,
+      ),
     );
   },
   async splitOrderBySeat(
@@ -53,7 +63,13 @@ export const billingController = {
     sharedItemStrategy: "EVEN_SPLIT" | "MANUAL",
   ) {
     return createdResponse(
-      await billingService.splitOrderBySeat(auth, orderId, sharedItemStrategy),
+      toSeatSplitResultResponse(
+        await billingService.splitOrderBySeat(
+          auth,
+          orderId,
+          sharedItemStrategy,
+        ),
+      ),
     );
   },
   async setItemSeatShares(
@@ -75,6 +91,8 @@ export const billingController = {
     auth: Parameters<typeof billingService.getOrderBills>[0],
     orderId: string,
   ) {
-    return successResponse(await billingService.getOrderBills(auth, orderId));
+    return successResponse(
+      (await billingService.getOrderBills(auth, orderId)).map(toBillResponse),
+    );
   },
 };

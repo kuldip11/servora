@@ -51,7 +51,31 @@ const auth = { tenantId: "t1" } as any;
 describe("kitchen station routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.values(mocks).forEach((fn) => fn.mockResolvedValue({ id: "x" }));
+    const station = {
+      id: "00000000-0000-0000-0000-000000000041",
+      tenantId: "00000000-0000-0000-0000-000000000042",
+      branchId: "00000000-0000-0000-0000-000000000043",
+      name: "Grill",
+      printerIdentifier: null,
+      sortOrder: 0,
+      createdAt: new Date("2026-09-05T10:00:00.000Z"),
+      updatedAt: new Date("2026-09-05T10:00:00.000Z"),
+    };
+    const routing = {
+      id: "00000000-0000-0000-0000-000000000044",
+      menuItemId: "00000000-0000-0000-0000-000000000045",
+      stationId: station.id,
+      modifierOptionId: null,
+      createdAt: new Date("2026-09-05T10:00:00.000Z"),
+      updatedAt: new Date("2026-09-05T10:00:00.000Z"),
+    };
+    mocks.list.mockResolvedValue([station]);
+    mocks.create.mockResolvedValue(station);
+    mocks.update.mockResolvedValue({ ...station, name: "Hot" });
+    mocks.remove.mockResolvedValue(station);
+    mocks.listRoutes.mockResolvedValue([routing]);
+    mocks.setRoute.mockResolvedValue(routing);
+    mocks.removeRoute.mockResolvedValue(routing);
   });
   it("registers all station endpoints", () => {
     expect(
@@ -68,7 +92,11 @@ describe("kitchen station routes", () => {
   });
   it("executes all handlers", async () => {
     await route("GET", "/").handler({ auth, query: { branchId: "b2" } });
-    await route("POST", "/").handler({ auth, body: { name: "Grill" } });
+    await route("POST", "/").handler({
+      auth,
+      body: { name: "Grill" },
+      set: {},
+    });
     await route("PATCH", "/:id").handler({
       auth,
       params: { id: "s1" },

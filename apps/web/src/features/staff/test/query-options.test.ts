@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const listStaff = vi.hoisted(() => vi.fn());
@@ -15,17 +17,18 @@ vi.mock("../../../store/auth", () => ({
 import { rolesListQuery, staffListQuery } from "@/features/staff/query-options";
 
 describe("staff query definitions", () => {
-  it("binds staff to the staff service", () => {
+  it("binds staff to the staff service", async () => {
     const query = staffListQuery();
     expect(query.queryKey).toEqual(["staff", "franchise", "fr-1", "list"]);
-    query.queryFn?.({} as never);
-    expect(listStaff).toHaveBeenCalledWith({});
+    await query.queryFn?.({ signal } as never);
+    expect(listStaff).toHaveBeenCalledWith({}, signal);
   });
 
-  it("uses a longer freshness window for roles", () => {
+  it("uses a longer freshness window for roles", async () => {
     const query = rolesListQuery();
     expect(query.queryKey).toEqual(["roles", "franchise", "fr-1", "list"]);
-    expect(query.queryFn).toBe(listRoles);
+    await query.queryFn?.({ signal } as never);
+    expect(listRoles).toHaveBeenCalledWith(signal);
     expect(query.staleTime).toBe(600_000);
   });
 });

@@ -1,46 +1,29 @@
 import { usePermissions } from "@/shared/auth/permissions";
 import { useEffect, useState } from "react";
-import { Plus, Users, Trash2, UserCheck, UserX, Pencil } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Button,
-  Card,
   Modal,
-  IconButton,
-  StatusBadge,
   Page,
   PageHeader,
-  Pagination,
-  SearchInput,
-  SelectMenu,
-  FilterBar,
-  Table,
-  type Column,
-  type StatusTone,
+  QueryErrorState,
+  StaleDataBanner,
 } from "@pos/ui";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { useStaff } from "@/features/staff/hooks/useStaff";
 import { useRoles } from "@/features/staff/hooks/useRoles";
 import { useAddStaff } from "@/features/staff/hooks/useAddStaff";
 import { useDeleteStaff } from "@/features/staff/hooks/useDeleteStaff";
 import { useUpdateStaffStatus } from "@/features/staff/hooks/useUpdateStaffStatus";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
-import {
-  staffService,
-  type StaffRow,
-} from "@/features/staff/services/staff.service";
-import { staffKeys } from "@/features/staff/query-keys";
+import { notifySuccess } from "@/shared/lib/notify";
+import { useUpdateStaff } from "@/features/staff/hooks/useUpdateStaff";
 import { AddStaffForm } from "@/features/staff/components/forms/AddStaffForm";
 import { EditStaffForm } from "@/features/staff/components/forms/EditStaffForm";
 import { RoleManager } from "@/features/staff/components/roles/RoleManager";
 import { useStaffPageState } from "@/features/staff/hooks/useStaffPageState";
-
-const STATUS_TONES: Record<string, StatusTone> = {
-  ACTIVE: "success",
-  INACTIVE: "neutral",
-  SUSPENDED: "danger",
-};
+import { extractApiError } from "@/shared/lib/api-client";
+import { buildStaffColumns } from "@/features/staff/components/page/staff-columns";
+import { StaffTeamContent } from "@/features/staff/components/page/StaffTeamContent";
 
 export const StaffPage = () => {
   const { has } = usePermissions();
@@ -71,162 +54,46 @@ export const StaffPage = () => {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const { data: staffResult, isLoading } = useStaff({
+  const staffQuery = useStaff({
     page,
     limit: pageSize,
     search: debouncedSearch,
-    status: statusFilter,
+    ...(statusFilter ? { status: statusFilter } : {}),
   });
+  const staffResult = staffQuery.data;
   const staff = staffResult?.items ?? [];
   const staffTotal = staffResult?.pagination.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(staffTotal / pageSize));
-  const { data: rolesData } = useRoles();
-  const { data: branches } = useBranches();
+  const rolesQuery = useRoles();
+  const branchesQuery = useBranches();
+  const rolesData = rolesQuery.data;
+  const branches = branchesQuery.data;
 
   const addMutation = useAddStaff();
   const deleteMutation = useDeleteStaff();
   const updateStatusMutation = useUpdateStaffStatus();
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      input,
-    }: {
-      id: string;
-      input: {
-        firstName: string;
-        lastName: string;
-        roleId: string;
-        branchIds: string[];
-      };
-    }) => staffService.update(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffKeys.list() });
-      notifySuccess("Staff member updated");
-      setEditing(null);
-    },
-    onError: (err) => notifyError(err, "Failed to update staff"),
-  });
+  const updateMutation = useUpdateStaff();
 
-  const columns: Column<StaffRow>[] = [
-    {
-      id: "name",
-      header: "Name",
-      sortable: true,
-      sortValue: (member) =>
-        `${member.firstName ?? ""} ${member.lastName ?? ""}`,
-      cell: (member) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary-surface rounded-full flex items-center justify-center text-xs font-semibold text-primary">
-            {member.firstName?.[0]}
-            {member.lastName?.[0]}
-          </div>
-          <span className="font-medium text-text-primary">
-            {member.firstName} {member.lastName}
-          </span>
-        </div>
-      ),
+  const columns = buildStaffColumns({
+    canUpdate: has("staff:update"),
+    canDeactivate: has("staff:deactivate"),
+    onEdit: setEditing,
+    onStatusChange: (id, status) => updateStatusMutation.mutate({ id, status }),
+    onRemove: (member) => {
+      if (confirm("Remove this staff member?"))
+        deleteMutation.mutate(member.id);
     },
-    {
-      id: "email",
-      header: "Email",
-      cell: (member) => (
-        <span className="text-text-secondary">{member.email}</span>
-      ),
-    },
-    {
-      id: "branch",
-      header: "Branch",
-      cell: (member: StaffRow) => (
-        <span className="text-text-secondary">
-          {member.assignedBranches
-            ?.map((branch) => branch.name)
-            .filter(Boolean)
-            .join(", ") || "—"}
-        </span>
-      ),
-    },
-    {
-      id: "role",
-      header: "Role",
-      cell: (member) =>
-        member.roles?.[0]?.name ? (
-          <StatusBadge tone="info" dot={false} label={member.roles[0].name} />
-        ) : null,
-    },
-    {
-      id: "status",
-      header: "Status",
-      cell: (member) => (
-        <StatusBadge
-          tone={STATUS_TONES[member.status] ?? "neutral"}
-          label={member.status}
-        />
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      align: "right",
-      cell: (member) => (
-        <div className="flex items-center justify-end gap-1">
-          {has("staff:update") && (
-            <IconButton
-              icon={Pencil}
-              size="sm"
-              aria-label="Edit staff member"
-              title="Edit staff member"
-              onClick={() => setEditing(member)}
-            />
-          )}
-          {has("staff:update") &&
-            (member.status === "ACTIVE" ? (
-              <IconButton
-                icon={UserX}
-                size="sm"
-                aria-label="Deactivate"
-                title="Deactivate"
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    id: member.id,
-                    status: "INACTIVE",
-                  })
-                }
-              />
-            ) : (
-              <IconButton
-                icon={UserCheck}
-                size="sm"
-                aria-label="Activate"
-                title="Activate"
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    id: member.id,
-                    status: "ACTIVE",
-                  })
-                }
-              />
-            ))}
-          {has("staff:deactivate") && (
-            <IconButton
-              icon={Trash2}
-              size="sm"
-              aria-label="Remove staff member"
-              onClick={() => {
-                if (confirm("Remove this staff member?"))
-                  deleteMutation.mutate(member.id);
-              }}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
+  });
 
   return (
     <Page>
       <PageHeader
         title="Staff"
-        description={`${staffTotal.toLocaleString()} team members`}
+        description={
+          staffQuery.isError && staffResult === undefined
+            ? "Team data is currently unavailable"
+            : `${staffTotal.toLocaleString()} team members`
+        }
         actions={
           activeTab === "team" &&
           has("staff:create") && (
@@ -237,6 +104,14 @@ export const StaffPage = () => {
           )
         }
       />
+
+      {staffQuery.isError && staffResult !== undefined ? (
+        <StaleDataBanner
+          message="Staff refresh failed — showing the latest team data available."
+          isRetrying={staffQuery.isFetching}
+          onRetry={() => void staffQuery.refetch()}
+        />
+      ) : null}
 
       <div className="flex gap-1 border-b border-border">
         {(["team", "roles"] as const).map((tab) => (
@@ -251,75 +126,56 @@ export const StaffPage = () => {
         ))}
       </div>
 
-      {activeTab === "team" && (
-        <Card padding="sm">
-          <FilterBar
-            onClearAll={search && statusFilter ? clearFilters : undefined}
-          >
-            <SearchInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onClear={() => setSearch("")}
-              placeholder="Search name or email"
-              aria-label="Search staff"
-              className="w-full sm:w-72"
-            />
-            <SelectMenu
-              aria-label="Filter staff by status"
-              valuePrefix="Status"
-              value={statusFilter || undefined}
-              placeholder="All statuses"
-              options={[
-                { value: "", label: "All statuses" },
-                { value: "ACTIVE", label: "Active" },
-                { value: "INACTIVE", label: "Inactive" },
-                { value: "SUSPENDED", label: "Suspended" },
-              ]}
-              onChange={(value) => setStatusFilter(value ?? "")}
-              className="w-44"
-            />
-          </FilterBar>
-        </Card>
-      )}
+      {activeTab === "team" ? (
+        <StaffTeamContent
+          search={search}
+          statusFilter={statusFilter}
+          page={page}
+          pageCount={pageCount}
+          total={staffTotal}
+          pageSize={pageSize}
+          staff={staff}
+          columns={columns}
+          loading={staffQuery.isLoading}
+          errorMessage={
+            staffQuery.isError && staffResult === undefined
+              ? extractApiError(
+                  staffQuery.error,
+                  "Staff could not be loaded. Retry before relying on the team list.",
+                )
+              : undefined
+          }
+          retrying={staffQuery.isFetching}
+          canCreate={has("staff:create")}
+          onSearch={setSearch}
+          onStatusFilter={setStatusFilter}
+          onClearFilters={clearFilters}
+          onAdd={() => setShowAdd(true)}
+          onRetry={() => void staffQuery.refetch()}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      ) : null}
 
-      {activeTab === "team" && (
-        <Card padding="none" className="overflow-hidden">
-          <Table
-            columns={columns}
-            data={staff}
-            getRowId={(member) => member.id}
-            loading={isLoading}
-            maxHeight="min(55vh, 36rem)"
-            emptyIcon={Users}
-            emptyTitle="No staff members"
-            emptyDescription="Add your team to get started."
-            emptyAction={
-              has("staff:create") && (
-                <Button onClick={() => setShowAdd(true)}>
-                  <Plus className="w-4 h-4" /> Add Staff
-                </Button>
-              )
-            }
-          />
-          <Pagination
-            className="border-t border-border p-4"
-            page={page}
-            pageCount={pageCount}
-            totalItems={staffTotal}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        </Card>
-      )}
-
-      {activeTab === "roles" && (
+      {activeTab === "roles" &&
+      rolesQuery.isError &&
+      rolesData === undefined ? (
+        <QueryErrorState
+          title="Unable to load roles"
+          description={extractApiError(
+            rolesQuery.error,
+            "Roles and permissions could not be loaded.",
+          )}
+          isRetrying={rolesQuery.isFetching}
+          onRetry={() => void rolesQuery.refetch()}
+        />
+      ) : activeTab === "roles" ? (
         <RoleManager
           roles={rolesData ?? []}
           canManage={has("roles:create")}
           canManagePermissions={has("roles:assign_permissions")}
         />
-      )}
+      ) : null}
 
       <Modal
         open={showAdd}
@@ -331,9 +187,10 @@ export const StaffPage = () => {
           branches={branches ?? []}
           loading={addMutation.isPending}
           onCancel={() => setShowAdd(false)}
-          onSubmit={(values) =>
-            addMutation.mutate(values, { onSuccess: () => setShowAdd(false) })
-          }
+          onSubmit={async (values) => {
+            await addMutation.mutateAsync(values);
+            setShowAdd(false);
+          }}
         />
       </Modal>
 
@@ -348,9 +205,11 @@ export const StaffPage = () => {
             roles={rolesData ?? []}
             branches={branches ?? []}
             onCancel={() => setEditing(null)}
-            onSubmit={(input) =>
-              updateMutation.mutate({ id: editing.id, input })
-            }
+            onSubmit={async (input) => {
+              await updateMutation.mutateAsync({ id: editing.id, input });
+              notifySuccess("Staff member updated");
+              setEditing(null);
+            }}
             loading={updateMutation.isPending}
           />
         )}

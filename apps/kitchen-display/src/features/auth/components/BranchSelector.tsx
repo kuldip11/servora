@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { Button, toast } from "@pos/ui";
-import type { AvailableMembership } from "@pos/types";
+import type { AvailableMembershipDto as AvailableMembership } from "@pos/api-client";
 export const BranchSelector = ({
   branches,
   onSelect,

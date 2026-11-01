@@ -61,7 +61,7 @@ describe("browser utility hooks", () => {
       await hook.result.download("categories", "xlsx");
     });
     expect(vi.mocked(notifyError)).toHaveBeenCalledWith(
-      undefined,
+      expect.any(Error),
       "Failed to export categories",
     );
     expect(hook.result.downloadingKey).toBeNull();

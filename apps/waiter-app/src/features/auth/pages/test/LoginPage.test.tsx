@@ -1,9 +1,8 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { useLogin } = vi.hoisted(() => ({ useLogin: vi.fn() }));
 vi.mock("../../hooks/useLogin", () => ({ useLogin }));
-import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { LoginPage } from "../LoginPage";
 
 const state = (step: "credentials" | "membership" | "branch") => ({
   step,

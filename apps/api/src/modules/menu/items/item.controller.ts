@@ -1,6 +1,7 @@
 import type { MenuItemStatus } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { successResponse, createdResponse } from "@/core/response";
+import { toMenuItemResponse } from "./item.mapper";
 import {
   itemService,
   type CreateItemInput,
@@ -11,17 +12,17 @@ import {
 export const itemController = {
   async getById(auth: AuthContext, itemId: string) {
     const item = await itemService.getById(auth, itemId);
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async create(auth: AuthContext, input: CreateItemInput) {
     const item = await itemService.create(auth, input);
-    return createdResponse(item);
+    return createdResponse(toMenuItemResponse(item));
   },
 
   async update(auth: AuthContext, itemId: string, input: UpdateItemInput) {
     const item = await itemService.update(auth, itemId, input);
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async remove(auth: AuthContext, itemId: string) {
@@ -35,17 +36,17 @@ export const itemController = {
     input: DuplicateItemInput,
   ) {
     const copy = await itemService.duplicate(auth, itemId, input);
-    return createdResponse(copy);
+    return createdResponse(toMenuItemResponse(copy));
   },
 
   async publish(auth: AuthContext, itemId: string) {
     const item = await itemService.publish(auth, itemId);
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async unpublish(auth: AuthContext, itemId: string) {
     const item = await itemService.unpublish(auth, itemId);
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async updateStatus(
@@ -55,7 +56,7 @@ export const itemController = {
     reason: string | undefined,
   ) {
     const item = await itemService.updateStatus(auth, itemId, status, reason);
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async updateAvailability(
@@ -70,7 +71,7 @@ export const itemController = {
       isAvailable,
       reason,
     );
-    return successResponse(item);
+    return successResponse(toMenuItemResponse(item));
   },
 
   async listByStatus(
@@ -79,6 +80,6 @@ export const itemController = {
     categoryId: string | undefined,
   ) {
     const items = await itemService.listByStatus(auth, [status], categoryId);
-    return successResponse(items);
+    return successResponse(items.map(toMenuItemResponse));
   },
 };

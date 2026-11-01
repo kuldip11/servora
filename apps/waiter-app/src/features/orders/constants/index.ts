@@ -1,7 +1,16 @@
+import type { WaiterQueryScope } from "@/shared/lib/query-scope";
+
 export const orderKeys = {
-  all: ["orders"] as const,
-  list: (filters: object) => ["orders", filters] as const,
-  detail: (id: string) => ["order", id] as const,
+  root: ["waiter-orders"] as const,
+  all: (scope: WaiterQueryScope) => ["waiter-orders", ...scope] as const,
+  lists: (scope: WaiterQueryScope) =>
+    [...orderKeys.all(scope), "list"] as const,
+  list: (scope: WaiterQueryScope, filters: object) =>
+    [...orderKeys.lists(scope), filters] as const,
+  detail: (scope: WaiterQueryScope, id: string) =>
+    [...orderKeys.all(scope), "detail", id] as const,
+  cancellationReasons: (scope: WaiterQueryScope) =>
+    [...orderKeys.all(scope), "cancellation-reasons", "active"] as const,
 };
 
 export const ORDERS_POLL_INTERVAL_MS = 15_000;

@@ -1,36 +1,22 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Select } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import { getErrorMessage } from "@/shared/lib/errors";
 
-const menuApi = createMenuApi(apiClient);
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
+import { useMenuCategories } from "@/features/menu";
 import { useMenus } from "@/features/menu/hooks/useMenus";
-
-const apiErrorMessage = (error: unknown): string | null => {
-  if (!error || typeof error !== "object") return null;
-  const response =
-    "response" in error
-      ? (error as { response?: unknown }).response
-      : undefined;
-  if (!response || typeof response !== "object") return null;
-  const data =
-    "data" in response ? (response as { data?: unknown }).data : undefined;
-  if (!data || typeof data !== "object") return null;
-  const apiError =
-    "error" in data ? (data as { error?: unknown }).error : undefined;
-  if (!apiError || typeof apiError !== "object") return null;
-  const message =
-    "message" in apiError
-      ? (apiError as { message?: unknown }).message
-      : undefined;
-  return typeof message === "string" ? message : null;
-};
+import { useCreateHappyHourRule } from "@/features/menu/hooks/useCreateHappyHourRule";
 
 export const HappyHourSection = () => {
-  const { data: categories = [] } = useMenuCategories();
-  const { data: menus = [] } = useMenus();
+  const categoriesQuery = useMenuCategories();
+  const menusQuery = useMenus();
+  const categories = categoriesQuery.data ?? [];
+  const menus = menusQuery.data ?? [];
   const [scopeType, setScopeType] = useState<"CATEGORY" | "MENU">("CATEGORY");
   const [scopeId, setScopeId] = useState("");
   const [percentOff, setPercentOff] = useState("20");
@@ -49,9 +35,11 @@ export const HappyHourSection = () => {
         }))
       : menus.map((menu) => ({ value: menu.id, label: menu.name }));
 
-  const create = useMutation({
-    mutationFn: async () =>
-      await menuApi.createHappyHourRule<unknown[]>({
+  const create = useCreateHappyHourRule();
+
+  const createHappyHour = () => {
+    create.mutate(
+      {
         ...(scopeType === "CATEGORY"
           ? { categoryId: scopeId }
           : { menuId: scopeId }),
@@ -60,16 +48,19 @@ export const HappyHourSection = () => {
         endTime,
         ...(startDate ? { startDate } : {}),
         ...(endDate ? { endDate } : {}),
-      }),
-    onSuccess: (rows) => {
-      setError(null);
-      setCreatedCount(rows.length);
-    },
-    onError: (err: unknown) => {
-      setCreatedCount(null);
-      setError(apiErrorMessage(err) ?? "Could not create happy-hour rules");
-    },
-  });
+      },
+      {
+        onSuccess: (rows) => {
+          setError(null);
+          setCreatedCount(rows.length);
+        },
+        onError: (err) => {
+          setCreatedCount(null);
+          setError(getErrorMessage(err, "Could not create happy-hour rules"));
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -80,12 +71,43 @@ export const HappyHourSection = () => {
           resolves through PricingPipeline stage 1.
         </p>
       </div>
+      {categoriesQuery.isError &&
+      !categoriesQuery.data &&
+      scopeType === "CATEGORY" ? (
+        <QueryErrorState
+          title="Unable to load categories"
+          description="Categories are required for this happy-hour scope."
+          onRetry={() => void categoriesQuery.refetch()}
+          isRetrying={categoriesQuery.isFetching}
+        />
+      ) : null}
+      {menusQuery.isError && !menusQuery.data && scopeType === "MENU" ? (
+        <QueryErrorState
+          title="Unable to load menus"
+          description="Menus are required for this happy-hour scope."
+          onRetry={() => void menusQuery.refetch()}
+          isRetrying={menusQuery.isFetching}
+        />
+      ) : null}
+      {(categoriesQuery.isError && categoriesQuery.data) ||
+      (menusQuery.isError && menusQuery.data) ? (
+        <StaleDataBanner
+          message="Happy-hour targeting data could not be refreshed. Showing cached options."
+          onRetry={() =>
+            void (scopeType === "CATEGORY"
+              ? categoriesQuery.refetch()
+              : menusQuery.refetch())
+          }
+          isRetrying={categoriesQuery.isFetching || menusQuery.isFetching}
+        />
+      ) : null}
       <div className="grid max-w-4xl gap-3 rounded-xl border border-border p-4 md:grid-cols-3">
         <Select
           label="Scope"
+          required
           value={scopeType}
           onChange={(event) => {
-            setScopeType(event.target.value as "CATEGORY" | "MENU");
+            setScopeType(event as "CATEGORY" | "MENU");
             setScopeId("");
           }}
           options={[
@@ -96,7 +118,7 @@ export const HappyHourSection = () => {
         <Select
           label={scopeType === "CATEGORY" ? "Category" : "Menu"}
           value={scopeId}
-          onChange={(event) => setScopeId(event.target.value)}
+          onChange={(event) => setScopeId(event)}
           options={[
             {
               value: "",
@@ -107,6 +129,7 @@ export const HappyHourSection = () => {
         />
         <Input
           label="Percent off"
+          required
           type="number"
           min={0.01}
           max={100}
@@ -116,12 +139,14 @@ export const HappyHourSection = () => {
         />
         <Input
           label="Starts daily"
+          required
           type="time"
           value={startTime}
           onChange={(event) => setStartTime(event.target.value)}
         />
         <Input
           label="Ends daily"
+          required
           type="time"
           value={endTime}
           onChange={(event) => setEndTime(event.target.value)}
@@ -147,9 +172,14 @@ export const HappyHourSection = () => {
               Number(percentOff) <= 0 ||
               Number(percentOff) > 100 ||
               !startTime ||
-              !endTime
+              !endTime ||
+              endTime <= startTime ||
+              Boolean(startDate && endDate && endDate < startDate) ||
+              (scopeType === "CATEGORY"
+                ? categoriesQuery.isError && !categoriesQuery.data
+                : menusQuery.isError && !menusQuery.data)
             }
-            onClick={() => create.mutate()}
+            onClick={createHappyHour}
           >
             Create happy hour
           </Button>

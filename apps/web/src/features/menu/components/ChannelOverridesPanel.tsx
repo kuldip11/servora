@@ -1,48 +1,37 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-
-interface ChannelOverrideRow {
-  id: string;
-  channel: string;
-  fulfillmentType?: string | null;
-  status?: string | null;
-  isHidden: boolean;
-}
+import type {
+  MenuChannelOverrideDto,
+  MenuItemStatusDto,
+} from "@pos/api-client";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import {
+  useChannelOverrides,
+  useDeleteChannelOverride,
+  useSaveChannelOverride,
+} from "@/features/menu/hooks/useChannelOverrides";
 
 import { FULFILLMENT_TYPES } from "@/features/menu/constants";
 
 export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
-  const [channel, setChannel] = useState("CUSTOMER_QR");
-  const [fulfillmentType, setFulfillmentType] = useState("DELIVERY");
-  const [status, setStatus] = useState("OUT_OF_STOCK");
+  const [channel, setChannel] =
+    useState<MenuChannelOverrideDto["channel"]>("CUSTOMER_QR");
+  const [fulfillmentType, setFulfillmentType] =
+    useState<NonNullable<MenuChannelOverrideDto["fulfillmentType"]>>(
+      "DELIVERY",
+    );
+  const [status, setStatus] = useState<MenuItemStatusDto>("OUT_OF_STOCK");
   const [isHidden, setIsHidden] = useState(false);
   const [reason, setReason] = useState("");
-  const key = ["menu-items", itemId, "channel-overrides"];
-  const { data: overrides = [] } = useQuery<ChannelOverrideRow[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listChannelOverrides<ChannelOverrideRow>(itemId),
-  });
-  const save = useMutation({
-    mutationFn: () =>
-      menuApi.saveChannelOverride<ChannelOverrideRow>(itemId, {
-        channel,
-        fulfillmentType,
-        status,
-        isHidden,
-        availabilityReason: reason || null,
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removeChannelOverride(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-  });
+  const overridesQuery = useChannelOverrides(itemId);
+  const overrides = overridesQuery.data ?? [];
+  const save = useSaveChannelOverride(itemId);
+  const remove = useDeleteChannelOverride(itemId);
   return (
     <div className="space-y-2">
       <span className="text-sm font-medium text-text-primary">
@@ -51,6 +40,21 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
           (overrides this item only for the selected ordering context)
         </span>
       </span>
+      {overridesQuery.isError && !overridesQuery.data ? (
+        <QueryErrorState
+          title="Unable to load channel overrides"
+          description="Existing channel availability could not be loaded. Retry before changing overrides."
+          onRetry={() => void overridesQuery.refetch()}
+          isRetrying={overridesQuery.isFetching}
+        />
+      ) : null}
+      {overridesQuery.isError && overridesQuery.data ? (
+        <StaleDataBanner
+          message="Channel overrides could not be refreshed. Showing cached values; saving is disabled until refreshed."
+          onRetry={() => void overridesQuery.refetch()}
+          isRetrying={overridesQuery.isFetching}
+        />
+      ) : null}
       {overrides.map((override) => (
         <div
           key={override.id}
@@ -70,37 +74,45 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
         </div>
       ))}
       <div className="grid grid-cols-2 gap-2 rounded border border-border p-2">
-        <select
+        <Select
           aria-label="Ordering channel"
           value={channel}
-          onChange={(event) => setChannel(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="STAFF">Staff</option>
-          <option value="CUSTOMER_QR">Customer QR</option>
-        </select>
-        <select
+          onChange={(value) =>
+            setChannel(value as MenuChannelOverrideDto["channel"])
+          }
+          className="text-sm"
+          options={[
+            { value: "STAFF", label: "Staff" },
+            { value: "CUSTOMER_QR", label: "Customer QR" },
+          ]}
+        />
+        <Select
           aria-label="Fulfillment type"
           value={fulfillmentType}
-          onChange={(event) => setFulfillmentType(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          {FULFILLMENT_TYPES.map((type) => (
-            <option key={type}>{type}</option>
-          ))}
-        </select>
-        <select
+          onChange={(value) =>
+            setFulfillmentType(
+              value as NonNullable<MenuChannelOverrideDto["fulfillmentType"]>,
+            )
+          }
+          className="text-sm"
+          options={FULFILLMENT_TYPES.map((type) => ({
+            value: type,
+            label: type,
+          }))}
+        />
+        <Select
           aria-label="Channel status"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="rounded border border-border px-2 py-1.5 text-sm"
-        >
-          <option value="ACTIVE">Active</option>
-          <option value="OUT_OF_STOCK">Out of stock</option>
-          <option value="HIDDEN">Hidden status</option>
-          <option value="SEASONAL">Seasonal</option>
-          <option value="DISCONTINUED">Discontinued</option>
-        </select>
+          onChange={(value) => setStatus(value as MenuItemStatusDto)}
+          className="text-sm"
+          options={[
+            { value: "ACTIVE", label: "Active" },
+            { value: "OUT_OF_STOCK", label: "Out of stock" },
+            { value: "HIDDEN", label: "Hidden status" },
+            { value: "SEASONAL", label: "Seasonal" },
+            { value: "DISCONTINUED", label: "Discontinued" },
+          ]}
+        />
         <Input
           aria-label="Channel override reason"
           value={reason}
@@ -119,7 +131,16 @@ export const ChannelOverridesPanel = ({ itemId }: { itemId: string }) => {
           type="button"
           size="sm"
           loading={save.isPending}
-          onClick={() => save.mutate()}
+          disabled={save.isPending || overridesQuery.isError}
+          onClick={() =>
+            save.mutate({
+              channel,
+              fulfillmentType,
+              status,
+              isHidden,
+              availabilityReason: reason || null,
+            })
+          }
         >
           Save override
         </Button>

@@ -2,7 +2,8 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   SearchInput: ({ value, onChange, onClear, ...props }: any) => (
     <div>
       <input value={value} onChange={onChange} {...props} />
@@ -11,10 +12,14 @@ vi.mock("@pos/ui", () => ({
       </button>
     </div>
   ),
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({ label, options = [], onChange, ...props }: any) => (
     <label>
       {label}
-      <select aria-label={label || "order-type"} {...props}>
+      <select
+        aria-label={label || "order-type"}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}

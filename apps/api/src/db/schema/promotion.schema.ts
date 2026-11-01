@@ -125,6 +125,7 @@ export const promotionRedemptions = pgTable(
     redeemedAt: timestamp("redeemed_at").notNull().defaultNow(),
   },
   (t) => ({
+    orderIdx: index("promotion_redemptions_order_idx").on(t.orderId),
     promotionIdx: index("promotion_redemptions_promotion_idx").on(
       t.promotionId,
       t.redeemedAt,

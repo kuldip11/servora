@@ -1,9 +1,15 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import {
+  auditListQuerySchema,
+  auditLogListResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { requireAuthPlugin, requirePermission } from "@/core/auth";
 import { db } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { successResponse } from "@/core/response";
+import { toAuditLogResponse } from "./audit.mapper";
 
 export const auditRouter = new Elysia({ prefix: "/api/audit" })
   .use(requireAuthPlugin())
@@ -46,15 +52,13 @@ export const auditRouter = new Elysia({ prefix: "/api/audit" })
         .orderBy(desc(auditLogs.createdAt))
         .limit(Math.min(query.limit ?? 50, 100));
 
-      return successResponse(rows);
+      return successResponse(rows.map(toAuditLogResponse));
     },
     {
-      query: t.Object({
-        action: t.Optional(t.String({ maxLength: 100 })),
-        entity: t.Optional(t.String({ maxLength: 100 })),
-        userId: t.Optional(t.String({ format: "uuid" })),
-        before: t.Optional(t.String({ format: "date-time" })),
-        limit: t.Optional(t.Integer({ minimum: 1, maximum: 100 })),
-      }),
+      query: auditListQuerySchema,
+      response: {
+        200: auditLogListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

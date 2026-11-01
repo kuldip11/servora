@@ -1,18 +1,24 @@
 import { useCallback, useMemo, useState } from "react";
-import { Skeleton } from "@pos/ui";
-import { CartView } from "./features/cart/CartView";
-import { useCustomerCart } from "./features/cart/useCustomerCart";
-import { ComboCustomization } from "./features/menu/ComboCustomization";
-import { CustomerMenuView } from "./features/menu/CustomerMenuView";
-import { ItemCustomization } from "./features/menu/ItemCustomization";
-import { OrderStatus } from "./features/ordering/OrderStatus";
-import { useCustomerCheckout } from "./features/order/useCustomerCheckout";
-import { StatusScreen } from "./features/session/StatusScreen";
-import { useCustomerSession } from "./features/session/useCustomerSession";
+import { Skeleton, StaleDataBanner } from "@pos/ui";
+import { CartView, useCustomerCart } from "./features/cart";
+import {
+  ComboCustomization,
+  CustomerMenuView,
+  ItemCustomization,
+} from "./features/menu";
+import { useCustomerCheckout } from "./features/order";
+import { OrderStatus } from "./features/ordering";
+import { StatusScreen, useCustomerSession } from "./features/session";
 
 export type View = "menu" | "cart" | "order";
 
-export const CustomerApp = () => {
+type CustomerSessionResult = ReturnType<typeof useCustomerSession>;
+
+const CustomerExperience = ({
+  customerSession,
+}: {
+  customerSession: CustomerSessionResult;
+}) => {
   const {
     session,
     menu,
@@ -22,6 +28,9 @@ export const CustomerApp = () => {
     setCart,
     placedOrder,
     setPlacedOrder,
+    activeOrderError,
+    activeOrderRefreshing,
+    retryActiveOrder,
     loading,
     setLoading,
     error,
@@ -32,7 +41,7 @@ export const CustomerApp = () => {
     live,
     requestHelp,
     retryBootstrap,
-  } = useCustomerSession();
+  } = customerSession;
   const [view, setView] = useState<View>("menu");
   const [category, setCategory] = useState("Popular");
   const [search, setSearch] = useState("");
@@ -123,21 +132,41 @@ export const CustomerApp = () => {
   }
   if (!session) return null;
 
+  if (activeOrderError && !placedOrder) {
+    return (
+      <StatusScreen
+        title="We can't refresh your order"
+        message={activeOrderError}
+        actionLabel="Try again"
+        onAction={retryActiveOrder}
+      />
+    );
+  }
+
   if (view === "order" && placedOrder) {
     return (
-      <OrderStatus
-        order={placedOrder}
-        mode={session.mode}
-        table={session.table ?? "Takeaway"}
-        estimatedTime={session.estimatedTime}
-        onMenu={handleMenu}
-        live={live}
-        onRequest={requestHelp}
-        requestBusy={requestBusy}
-        requestMessage={requestMessage}
-        onPay={checkout.retryTakeawayPayment}
-        payBusy={loading}
-      />
+      <>
+        {activeOrderError ? (
+          <StaleDataBanner
+            message="Order status could not be refreshed — showing the latest order information available."
+            isRetrying={activeOrderRefreshing}
+            onRetry={retryActiveOrder}
+          />
+        ) : null}
+        <OrderStatus
+          order={placedOrder}
+          mode={session.mode}
+          table={session.table ?? "Takeaway"}
+          estimatedTime={session.estimatedTime}
+          onMenu={handleMenu}
+          live={live}
+          onRequest={(type) => void requestHelp(type)}
+          requestBusy={requestBusy}
+          requestMessage={requestMessage}
+          onPay={() => void checkout.retryTakeawayPayment()}
+          payBusy={loading}
+        />
+      </>
     );
   }
 
@@ -205,7 +234,9 @@ export const CustomerApp = () => {
           onChange={cartState.changeQuantity}
           onComboChange={cartState.changeComboQuantity}
           onEdit={cartState.openCartItem}
-          onPlace={checkout.placeOrder}
+          onPlace={(fulfillmentType) =>
+            void checkout.placeOrder(fulfillmentType)
+          }
           couponCode={checkout.couponCode}
           onCouponCodeChange={checkout.setCouponCode}
           loyaltyPhone={checkout.loyaltyPhone}
@@ -214,5 +245,14 @@ export const CustomerApp = () => {
         />
       )}
     </>
+  );
+};
+
+export const CustomerApp = () => {
+  const customerSession = useCustomerSession();
+  const contextKey = `${customerSession.storageScope ?? "no-scope"}:${customerSession.session?.token ?? "pending"}`;
+
+  return (
+    <CustomerExperience key={contextKey} customerSession={customerSession} />
   );
 };

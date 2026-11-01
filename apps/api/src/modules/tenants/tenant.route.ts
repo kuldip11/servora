@@ -1,35 +1,52 @@
 import { Elysia } from "elysia";
+import {
+  createTenantBodySchema,
+  standardErrorResponseSchemas,
+  tenantCreatedResponseSchema,
+  tenantIdParamsSchema,
+  tenantListResponseSchema,
+  tenantResponseSchema,
+  updateTenantBodySchema,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { tenantController } from "./tenant.controller";
-import {
-  createTenantBody,
-  updateTenantBody,
-  tenantIdParams,
-} from "./tenant.validator";
 
 export const tenantsRouter = new Elysia({ prefix: "/api/tenants" })
   .use(requireAuthPlugin())
-  .get("/", ({ auth }) => tenantController.list(auth))
+  .get("/", ({ auth }) => tenantController.list(auth), {
+    response: {
+      200: tenantListResponseSchema,
+      ...standardErrorResponseSchemas,
+    },
+  })
   .post(
     "/",
     ({ auth, body, set }) => {
       set.status = 201;
       return tenantController.create(auth, body);
     },
-    { body: createTenantBody },
+    {
+      body: createTenantBodySchema,
+      response: {
+        201: tenantCreatedResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/:id",
     ({ auth, params, body }) => tenantController.update(auth, params.id, body),
     {
-      params: tenantIdParams,
-      body: updateTenantBody,
+      params: tenantIdParamsSchema,
+      body: updateTenantBodySchema,
+      response: { 200: tenantResponseSchema, ...standardErrorResponseSchemas },
     },
   )
   .delete(
     "/:id",
     ({ auth, params }) => tenantController.archive(auth, params.id),
     {
-      params: tenantIdParams,
+      params: tenantIdParamsSchema,
+      response: { 200: tenantResponseSchema, ...standardErrorResponseSchemas },
     },
   );

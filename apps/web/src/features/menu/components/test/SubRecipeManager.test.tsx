@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,7 +11,12 @@ const h = vi.hoisted(() => ({
 let inventory: any[] | undefined = [];
 let subs: any[] | undefined = [];
 let pending = false;
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
+  FieldErrorText: ({ message }: any) =>
+    message ? <span>{message}</span> : null,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -23,10 +27,20 @@ vi.mock("@pos/ui", () => ({
       <input aria-label={label} {...p} />
     </label>
   ),
-  Select: ({ label, options = [], ...p }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...p
+  }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...p}>
+      <select
+        aria-label={label}
+        {...p}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -36,31 +50,47 @@ vi.mock("@pos/ui", () => ({
     </label>
   ),
 }));
-vi.mock("@/features/inventory/hooks/useInventoryItems", () => ({
+vi.mock("@/features/inventory", () => ({
   useInventoryItems: () => ({
     data: inventory === undefined ? undefined : { items: inventory },
   }),
-}));
-vi.mock("@/features/menu/hooks/useSubRecipes", () => ({
-  useSubRecipes: () => ({ data: subs }),
-  subRecipeQueryKey: () => ["subrecipes"],
-}));
-vi.mock("@/features/menu/services/menu-sub-recipes.service", () => ({
-  menuSubRecipesService: { create: h.create, remove: h.remove },
 }));
 vi.mock("@/shared/lib/notify", () => ({
   notifyError: h.error,
   notifySuccess: h.success,
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
-  useMutation: (cfg: any) => ({
+vi.mock("@/features/menu/hooks/useSubRecipes", () => ({
+  useSubRecipes: () => ({
+    data: subs,
+    isError: false,
+    isLoading: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  useCreateSubRecipe: () => ({
     isPending: pending,
-    mutate: (arg?: any) =>
+    mutate: (
+      arg?: unknown,
+      callbacks?: {
+        onError?: (error: unknown) => void;
+        onSuccess?: () => void;
+      },
+    ) =>
       Promise.resolve()
-        .then(() => cfg.mutationFn(arg))
-        .then((v) => cfg.onSuccess?.(v))
-        .catch((e) => cfg.onError?.(e)),
+        .then(() => h.create(arg))
+        .then(() => {
+          h.success("Sub-recipe created");
+          callbacks?.onSuccess?.();
+        })
+        .catch((error) => callbacks?.onError?.(error)),
+  }),
+  useDeleteSubRecipe: () => ({
+    isPending: pending,
+    mutate: (arg?: unknown) =>
+      Promise.resolve()
+        .then(() => h.remove(arg))
+        .then(() => h.success("Sub-recipe deleted"))
+        .catch((error) => h.error(error, "Could not delete sub-recipe")),
   }),
 }));
 import { SubRecipeManager } from "../SubRecipeManager";
@@ -132,11 +162,17 @@ describe("SubRecipeManager coverage", () => {
   it("covers sub-recipe source selection and ingredient removal/validation", async () => {
     render(<SubRecipeManager />);
     fireEvent.click(screen.getByRole("button", { name: /New sub-recipe/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Create component" }));
-    expect(h.error).toHaveBeenCalledWith(
-      undefined,
-      expect.stringContaining("Name, positive yield"),
+    const createButton = screen.getByRole("button", {
+      name: "Create component",
+    });
+    expect((createButton as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByLabelText("Name").getAttribute("error")).toBeNull();
+    expect(screen.queryByText("Add at least one ingredient")).toBeNull();
+    fireEvent.click(createButton);
+    expect(screen.getByLabelText("Name").getAttribute("error")).toBe(
+      "Name is required",
     );
+    expect(screen.getByText("Add at least one ingredient")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Add ingredient" }));
     let selects = screen.getAllByRole("combobox");
     fireEvent.change(selects[1]!, { target: { value: "sub" } });

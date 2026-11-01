@@ -1,4 +1,3 @@
-import type { KitchenTicket } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
@@ -7,6 +6,7 @@ import { eventBus } from "@/lib/event-bus";
 import { inventoryService } from "@/modules/inventory/inventory.service";
 import { ticketRepository } from "./ticket.repository";
 import { ticketNotFound } from "./ticket.errors";
+import { toRealtimeKitchenTicketPayload } from "@/modules/realtime/realtime.mapper";
 
 export const publishDetailedTicket = async (
   auth: AuthContext,
@@ -25,12 +25,9 @@ export const publishDetailedTicket = async (
     ),
     columns: { customerSessionId: true },
   });
-  const payload = {
-    ...(detailed as unknown as KitchenTicket),
-    ...(parentOrder?.customerSessionId
-      ? { customerSessionId: parentOrder.customerSessionId }
-      : {}),
-  };
+  const payload = toRealtimeKitchenTicketPayload(detailed, {
+    customerSessionId: parentOrder?.customerSessionId,
+  });
   await eventBus.publish({ type, payload }, auth.tenantId, detailed.branchId, {
     userId: auth.userId,
     requestId: auth.requestId,
@@ -44,7 +41,7 @@ export const deductTicketWhenFired = async (
   ticket: Awaited<ReturnType<typeof ticketRepository.findDetailedById>>,
 ) => {
   if (!ticket) return;
-  await inventoryService.deductForOrderItems(
+  await inventoryService.deductForOrderItemsWithRetry(
     auth.tenantId,
     ticket.branchId,
     ticket.orderId,

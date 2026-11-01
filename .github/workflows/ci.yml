@@ -37,6 +37,17 @@ jobs:
     env:
       DATABASE_URL: postgres://pos_user:pos_password@localhost:5432/restaurant_pos
       REDIS_URL: redis://localhost:6379
+      # Quality builds use reserved fixture endpoints, never production services.
+      # Turbo forwards these variables to the dependent builds run by tests.
+      SERVORA_SEO_TEST_BUILD: "true"
+      VITE_PUBLIC_APP_URL: https://app.servora.ci.invalid
+      NEXT_PUBLIC_SITE_URL: https://servora.ci.invalid
+      NEXT_PUBLIC_APP_SIGNIN_URL: https://app.servora.ci.invalid/login
+      NEXT_PUBLIC_WEB_APP_URL: https://app.servora.ci.invalid
+      NEXT_PUBLIC_KITCHEN_APP_URL: https://kitchen.servora.ci.invalid
+      NEXT_PUBLIC_WAITER_APP_URL: https://waiter.servora.ci.invalid
+      NEXT_PUBLIC_CUSTOMER_APP_URL: https://order.servora.ci.invalid
+      LEAD_WEBHOOK_URL: https://leads.servora.ci.invalid/submit
 
     steps:
       - name: Checkout

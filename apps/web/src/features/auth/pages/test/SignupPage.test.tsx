@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const setAuth = vi.fn();
+  const authState = { setAuth, user: { id: "u1" } };
   const authHook = Object.assign(
-    vi.fn(() => ({ setAuth })),
-    { getState: vi.fn(() => ({ user: { id: "u1" } })) },
+    vi.fn((selector?: (state: typeof authState) => unknown) =>
+      selector ? selector(authState) : authState,
+    ),
+    { getState: vi.fn(() => authState) },
   );
   return {
     login: vi.fn(),
@@ -24,7 +27,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ navigate: mocks.navigate }),
 }));
-vi.mock("@/features/auth/services/auth.service", () => ({
+vi.mock("@/shared/auth/auth.service", () => ({
   authService: {
     login: mocks.login,
     signup: mocks.signup,
@@ -41,14 +44,14 @@ vi.mock("@/shared/auth/default-route", () => ({
 vi.mock("@/shared/lib/api-client", () => ({
   extractApiError: mocks.errorText,
 }));
-vi.mock("@hookform/resolvers/zod", () => ({ zodResolver: () => undefined }));
-vi.mock("@pos/validation", () => ({ loginSchema: {}, signupSchema: {} }));
-vi.mock("lucide-react", () => ({
+vi.mock("lucide-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("lucide-react")>()),
   ChefHat: () => null,
   Eye: () => <span>eye</span>,
   EyeOff: () => <span>eyeoff</span>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -65,6 +68,8 @@ vi.mock("@pos/ui", () => ({
       </label>
     ),
   ),
+  FormErrorSummary: ({ messages }: { messages: string[] }) =>
+    messages.length ? <div role="alert">{messages.join(" ")}</div> : null,
   toast: mocks.toast,
 }));
 
@@ -102,7 +107,11 @@ describe("SignupPage", () => {
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "password1" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    const createButton = screen.getByRole("button", { name: "Create account" });
+    await waitFor(() =>
+      expect((createButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(createButton);
     await waitFor(() =>
       expect(mocks.signup).toHaveBeenCalledWith({
         firstName: "Ada",
@@ -121,15 +130,25 @@ describe("SignupPage", () => {
 
     mocks.signup.mockRejectedValueOnce(new Error("bad"));
     render(<SignupPage />);
+    fireEvent.change(screen.getByLabelText("First name"), {
+      target: { value: "Ada" },
+    });
+    fireEvent.change(screen.getByLabelText("Last name"), {
+      target: { value: "Lovelace" },
+    });
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "bad@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password1" },
+    });
+    const submit = screen.getByRole("button", { name: "Create account" });
     await waitFor(() =>
-      expect(mocks.toast).toHaveBeenCalledWith({
-        title: "Bad credentials",
-        tone: "danger",
-      }),
+      expect((submit as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(submit);
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Bad credentials",
     );
   });
 });

@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +33,8 @@ vi.mock("@/features/menu/services/menu-import.service", async () => {
   };
 });
 vi.mock("@/shared/lib/notify", () => ({ notifyError: h.notifyError }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -99,7 +99,7 @@ describe("ImportWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Excel template/ }));
     await waitFor(() =>
       expect(h.notifyError).toHaveBeenCalledWith(
-        undefined,
+        expect.any(Error),
         "Failed to download template",
       ),
     );
@@ -131,7 +131,7 @@ describe("ImportWizard", () => {
       target: { files: [new File(["x"], "bad.csv")] },
     });
     await waitFor(() =>
-      expect(screen.getByText(/Click to upload/)).toBeTruthy(),
+      expect(screen.queryByText(/Click to upload/)).toBeNull(),
     );
 
     h.validateMutate.mockImplementation((_file: any, opts: any) =>

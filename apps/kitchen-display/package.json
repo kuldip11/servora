@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "node ../../scripts/seo/validate-app-origin.mjs && tsc && vite build",
+    "build": "NODE_ENV=production node ../../scripts/seo/validate-app-origin.mjs && tsc && vite build",
     "preview": "vite preview --port 5174",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -30,7 +30,8 @@
     "@pos/ui": "workspace:*",
     "@pos/api-client": "workspace:*",
     "@pos/realtime": "workspace:*",
-    "@pos/validation": "workspace:*"
+    "@pos/validation": "workspace:*",
+    "@pos/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

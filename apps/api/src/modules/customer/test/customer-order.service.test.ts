@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/modules/realtime/realtime.mapper", () => ({
+  toRealtimeOrderPayload: (value: unknown) => value,
+  toRealtimeKitchenTicketPayload: (value: unknown) => value,
+}));
+vi.mock("@/modules/tables/table.mapper", () => ({
+  toTableResponse: (value: unknown) => value,
+}));
+
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   findOpenOrderBySession: vi.fn(),
@@ -54,7 +62,7 @@ vi.mock("@/modules/menu/availability/availability.service", () => ({
 vi.mock("@/modules/inventory/inventory.service", () => ({
   inventoryService: {
     validateStock: mocks.validateStock,
-    deductForOrderItems: mocks.deduct,
+    deductForOrderItemsWithRetry: mocks.deduct,
   },
 }));
 vi.mock("@/modules/menu/promotions/promotion.repository", () => ({
@@ -183,6 +191,58 @@ describe("customerOrderService coverage", () => {
     await expect(customerOrderService.createOrder("tok", {})).rejects.toThrow(
       "Order requires at least one item or combo",
     );
+  });
+
+  it("validates all membership before starting availability reads", async () => {
+    mocks.price.mockResolvedValueOnce({
+      lines: [line, { ...line, menuItemId: "missing" }],
+    });
+    await expect(
+      customerOrderService.createOrder("tok", {
+        items: [{ menuItemId: "mi1", quantity: 1 }],
+      }),
+    ).rejects.toThrow("not on an active menu");
+    expect(mocks.effectiveItem).not.toHaveBeenCalled();
+    expect(mocks.validateStock).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates availability reads, bounds concurrency and keeps one asOf and all stock quantities", async () => {
+    const lines = Array.from({ length: 9 }, (_, index) => ({
+      ...line,
+      menuItemId: `item-${index % 7}`,
+    }));
+    mocks.price.mockResolvedValueOnce({ lines });
+    mocks.activeItemIds.mockResolvedValueOnce(
+      new Set(lines.map((entry) => entry.menuItemId)),
+    );
+    let running = 0,
+      peak = 0;
+    mocks.effectiveItem.mockImplementation(async () => {
+      running += 1;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      running -= 1;
+      return { effectiveStatus: "ACTIVE", isHidden: false };
+    });
+    await customerOrderService.createOrder("tok", {
+      items: [{ menuItemId: "mi1", quantity: 1 }],
+    });
+    expect(mocks.effectiveItem).toHaveBeenCalledTimes(7);
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(4);
+    const dates = mocks.effectiveItem.mock.calls.map((call) => call[3].asOf);
+    expect(dates.every((date) => date === dates[0])).toBe(true);
+    expect(mocks.validateStock).toHaveBeenCalledWith(
+      "t1",
+      "b1",
+      lines.map((entry) => ({
+        menuItemId: entry.menuItemId,
+        quantity: entry.quantity,
+      })),
+    );
+    mocks.effectiveItem
+      .mockReset()
+      .mockResolvedValue({ effectiveStatus: "ACTIVE", isHidden: false });
   });
 
   it("validates loyalty lookup cardinality and existing-customer conflicts", async () => {
@@ -623,9 +683,7 @@ describe("customerOrderService coverage", () => {
       expect.anything(),
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Inventory deduction failed for customer order",
-      "o1",
-      expect.any(Error),
+      expect.stringContaining("customer_order.inventory_deduction_failed"),
     );
     consoleSpy.mockRestore();
   });

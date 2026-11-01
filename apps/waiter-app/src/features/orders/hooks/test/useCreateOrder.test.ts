@@ -14,6 +14,12 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 vi.mock("@pos/ui", () => ({ toast }));
+vi.mock("@pos/api-client", () => ({
+  extractApiError: (error: any, fallback?: string) =>
+    typeof error?.response?.data?.message === "string"
+      ? error.response.data.message
+      : (fallback ?? "An unexpected error occurred."),
+}));
 vi.mock("@/features/orders/api/createOrder", () => ({ createOrder }));
 import { useCreateOrder } from "../useCreateOrder";
 

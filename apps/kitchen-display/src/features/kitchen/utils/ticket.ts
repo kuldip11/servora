@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { URGENT_THRESHOLD_MS } from "@/features/kitchen/constants";
 
 export const calculateElapsedMs = (firedAt: string | null): number => {

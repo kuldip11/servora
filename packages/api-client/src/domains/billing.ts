@@ -1,47 +1,56 @@
-import { voidDomainRequest } from "./shared";
+import type {
+  BillItemAllocationRequest,
+  BillResponse,
+  CreatePaymentRequest,
+  PaymentCollectionResultResponse,
+  SeatSplitResultResponse,
+} from "@pos/contracts";
 import { getDomainData, postDomainData, type DomainHttpClient } from "./shared";
 
-export interface CollectPaymentInput {
-  orderId: string;
-  billId?: string;
-  method: string;
-  amount: number;
-  reference?: string;
-}
-
-export interface BillItemAllocation {
-  label: string;
-  orderItemIds: string[];
-}
-
-export type SeatSplitResult =
-  | { status: "CREATED"; bills: unknown[] }
-  | {
-      status: "MANUAL_REQUIRED";
-      allocations: BillItemAllocation[];
-      sharedItemIds: string[];
-    };
+export type CollectPaymentInput = CreatePaymentRequest;
+export type BillItemAllocation = BillItemAllocationRequest;
+export type BillDto = BillResponse;
+export type PaymentCollectionResultDto = PaymentCollectionResultResponse;
+export type SeatSplitResult = SeatSplitResultResponse;
 
 export const createBillingApi = (client: DomainHttpClient) => {
   return {
-    collectPayment(input: CollectPaymentInput): Promise<void> {
-      return voidDomainRequest(client.post("/payments", input));
+    collectPayment(
+      input: CollectPaymentInput,
+    ): Promise<PaymentCollectionResultDto> {
+      return postDomainData<PaymentCollectionResultDto>(
+        client,
+        "/payments",
+        input,
+      );
     },
-    getOrderBills<T = unknown[]>(orderId: string): Promise<T> {
-      return getDomainData<T>(client, `/orders/${orderId}/bills`);
+    getOrderBills(orderId: string, signal?: AbortSignal): Promise<BillDto[]> {
+      return getDomainData<BillDto[]>(
+        client,
+        `/orders/${orderId}/bills`,
+        signal ? { signal } : undefined,
+      );
     },
-    splitOrder<T = unknown>(orderId: string, ways: number): Promise<T> {
-      return postDomainData<T>(client, `/orders/${orderId}/bills/split`, {
-        ways,
-      });
+    splitOrder(orderId: string, ways: number): Promise<BillDto[]> {
+      return postDomainData<BillDto[]>(
+        client,
+        `/orders/${orderId}/bills/split`,
+        {
+          ways,
+        },
+      );
     },
-    splitOrderByItems<T = unknown>(
+    splitOrderByItems(
       orderId: string,
       allocations: BillItemAllocation[],
-    ): Promise<T> {
-      return postDomainData<T>(client, `/orders/${orderId}/bills/split-items`, {
-        allocations,
-      });
+    ): Promise<BillDto[]> {
+      return postDomainData<BillDto[]>(
+        client,
+        `/orders/${orderId}/bills/split-items`,
+        {
+          allocations,
+        },
+      );
     },
     splitOrderBySeat(
       orderId: string,

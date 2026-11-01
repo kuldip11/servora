@@ -53,7 +53,11 @@ describe("branch validators", () => {
     ).toBe(true);
   });
   it("validates branch id params and boolean capability fields", () => {
-    expect(Value.Check(branchIdParams, { id: "b1" })).toBe(true);
+    expect(
+      Value.Check(branchIdParams, {
+        id: "00000000-0000-4000-8000-000000000001",
+      }),
+    ).toBe(true);
     expect(Value.Check(branchIdParams, { id: 1 })).toBe(false);
     expect(Value.Check(updateBranchBody, { dineInEnabled: "yes" })).toBe(false);
   });

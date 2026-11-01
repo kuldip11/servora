@@ -1,5 +1,5 @@
 import { BellRing, Check } from "lucide-react";
-import { Badge, Button } from "@pos/ui";
+import { Button } from "@pos/ui";
 import type { CustomerOrder } from "@/api";
 import { formatMoney } from "@/shared/utils/money";
 import { CUSTOMER_ORDER_TICKET_STEPS } from "../constants";
@@ -20,7 +20,9 @@ export const OrderProgressPanel = ({
 }) => {
   const latestStatus = order.kitchenTickets.at(-1)?.status ?? "FIRED";
   const displayStatus =
-    latestStatus === "PENDING_PAYMENT" ? "FIRED" : latestStatus;
+    latestStatus === "PENDING_PAYMENT" || latestStatus === "HELD"
+      ? "FIRED"
+      : latestStatus;
   const activeStep = Math.max(
     0,
     CUSTOMER_ORDER_TICKET_STEPS.indexOf(displayStatus),

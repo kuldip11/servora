@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../../../../shared/lib/api-client", () => ({ apiClient: api }));
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 
 const user = { id: "u1", tenantId: "t1", branchId: "b1" } as any;
 
@@ -51,12 +51,12 @@ describe("authService", () => {
     const data = { accessToken: "a2", expiresIn: 60, user };
     api.post.mockResolvedValue({ data: { data } });
 
-    await expect(authService.refresh({ timeout: 75_000 })).resolves.toEqual(data);
-    expect(api.post).toHaveBeenCalledWith(
-      "/auth/refresh",
-      undefined,
-      { timeout: 75_000 },
+    await expect(authService.refresh({ timeout: 75_000 })).resolves.toEqual(
+      data,
     );
+    expect(api.post).toHaveBeenCalledWith("/auth/refresh", undefined, {
+      timeout: 75_000,
+    });
   });
 
   it("loads organizations and memberships, creates a tenant under an organization, and loads the current user", async () => {

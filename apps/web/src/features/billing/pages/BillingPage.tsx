@@ -9,11 +9,11 @@ import {
   Table,
   type Column,
 } from "@pos/ui";
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 import { PaymentDialog } from "@/features/billing/components/PaymentDialog";
 import { PrintBillsDialog } from "@/features/billing/components/PrintBillsDialog";
 import { SplitBillDialog } from "@/features/billing/components/SplitBillDialog";
-import { useOrdersPage } from "@/features/orders/hooks/useOrders";
+import { useOrdersPage } from "@/features/orders";
 import { usePermissions } from "@/shared/auth/permissions";
 import { formatCurrency, formatTime } from "@/shared/utils/format";
 

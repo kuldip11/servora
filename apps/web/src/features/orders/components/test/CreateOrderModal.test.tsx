@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const mocks = vi.hoisted(() => ({
   branches: [] as Array<Record<string, unknown>>,
@@ -12,31 +13,38 @@ const mocks = vi.hoisted(() => ({
   validationFails: false,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mocks.activeMenus }),
-}));
-vi.mock("@pos/api-client", () => ({
-  createMenuApi: () => ({ listActiveMenus: vi.fn() }),
-}));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/features/branches/hooks/useBranches", () => ({
+vi.mock("@/features/branches", () => ({
   useBranches: () => ({ data: mocks.branches }),
 }));
-vi.mock("@/features/tables/hooks/useTables", () => ({
+vi.mock("@/features/tables", () => ({
   useTables: () => ({ data: mocks.tables }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories }),
+  useActiveMenus: () => ({
+    data: mocks.activeMenus,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
-vi.mock("@/features/orders/hooks/useCreateOrder", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCreateOrder: () => ({ mutate: mocks.createMutate, isPending: false }),
 }));
 vi.mock("@/features/orders/hooks/useCourseSequencingEnabled", () => ({
   useCourseSequencingEnabled: () => mocks.courseAvailable,
 }));
-vi.mock("@/features/orders/services/orders.service", () => ({
-  toCartItemPayload: (item: unknown) => item,
-}));
+vi.mock(
+  "@/features/orders/services/orders.service",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/orders/services/orders.service")
+    >()),
+    toCartItemPayload: (item: unknown) => item,
+  }),
+);
 vi.mock("@/features/orders/utils/cartTypes", () => ({
   cartItemKey: (item: { menuItemId: string }) => item.menuItemId,
 }));
@@ -51,7 +59,8 @@ vi.mock("@pos/validation", () => ({
         : { success: true, data: value },
   },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 }));
 
@@ -282,11 +291,10 @@ describe("CreateOrderModal coverage", () => {
       { id: "m2", name: "Menu 2", memberships: [] },
     ];
     render(<CreateOrderModal onClose={vi.fn()} />);
-    const menu = screen.getByDisplayValue("Menu 1");
-    fireEvent.change(menu, { target: { value: "m2" } });
+    chooseSelectOption("Menu", "Menu 2");
     fireEvent.click(screen.getByText("filter-veg"));
     fireEvent.click(screen.getByText("type-takeaway"));
     expect(screen.getByTestId("picker-type").textContent).toBe("TAKEAWAY");
-    expect(screen.getByTestId("picker-tables").textContent).toBe("true");
+    expect(screen.getByTestId("picker-tables").textContent).toBe("false");
   });
 });

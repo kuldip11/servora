@@ -42,6 +42,11 @@ const steps = [
     command: ["bun", "run", "build"],
   },
   {
+    id: "billing-postgres",
+    label: "Billing PostgreSQL acceptance (explicit test database required)",
+    command: ["bun", "run", "test:billing:postgres"],
+  },
+  {
     id: "unit-tests",
     label: "All workspace unit/integration tests",
     command: ["bun", "run", "test"],

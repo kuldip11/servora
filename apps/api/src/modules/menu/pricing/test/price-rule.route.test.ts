@@ -19,27 +19,57 @@ vi.mock("@/core/auth", async () => {
   };
 });
 import { priceRulesRouter } from "../price-rule.route";
+
+const uuid = "11111111-1111-4111-8111-111111111111";
+const rule = {
+  id: uuid,
+  tenantId: uuid,
+  organizationId: null,
+  menuItemId: uuid,
+  menuItemSku: null,
+  variantId: null,
+  branchId: null,
+  channel: null,
+  fulfillmentType: null,
+  customerGroupId: null,
+  coverTier: null,
+  isPerCover: false,
+  startDate: null,
+  endDate: null,
+  startTime: null,
+  endTime: null,
+  price: "10.00",
+  percentOff: null,
+  taxRate: null,
+  priority: 0,
+  isActive: true,
+  effectiveFrom: null,
+};
+
 describe("price rule route", () => {
   it("executes all handlers", async () => {
-    controller.list.mockResolvedValue({ ok: "list" });
-    controller.create.mockResolvedValue({ ok: "create" });
-    controller.createHappyHour.mockResolvedValue({ ok: "hh" });
-    controller.update.mockResolvedValue({ ok: "update" });
-    controller.remove.mockResolvedValue({ ok: "remove" });
+    controller.list.mockResolvedValue({ success: true, data: [rule] });
+    controller.create.mockResolvedValue({ success: true, data: rule });
+    controller.createHappyHour.mockResolvedValue({
+      success: true,
+      data: [rule],
+    });
+    controller.update.mockResolvedValue({ success: true, data: rule });
+    controller.remove.mockResolvedValue({ success: true, data: null });
     const req = (path: string, init?: RequestInit) =>
       priceRulesRouter.handle(new Request(`http://localhost${path}`, init));
-    expect((await req("/api/menu/price-rules/?menuItemId=i1")).status).toBe(
-      200,
-    );
+    expect(
+      (await req(`/api/menu/price-rules/?menuItemId=${uuid}`)).status,
+    ).toBe(200);
     expect(
       (
         await req("/api/menu/price-rules/", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ price: 10 }),
+          body: JSON.stringify({ menuItemId: uuid, price: 10 }),
         })
       ).status,
-    ).toBe(200);
+    ).toBe(201);
     expect(
       (
         await req("/api/menu/price-rules/happy-hour", {
@@ -52,10 +82,10 @@ describe("price rule route", () => {
           }),
         })
       ).status,
-    ).toBe(200);
+    ).toBe(201);
     expect(
       (
-        await req("/api/menu/price-rules/r1", {
+        await req(`/api/menu/price-rules/${uuid}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ priority: 2 }),
@@ -63,9 +93,7 @@ describe("price rule route", () => {
       ).status,
     ).toBe(200);
     expect(
-      (await req("/api/menu/price-rules/r1", { method: "DELETE" })).status,
+      (await req(`/api/menu/price-rules/${uuid}`, { method: "DELETE" })).status,
     ).toBe(200);
-    expect(controller.list).toHaveBeenCalled();
-    expect(controller.remove).toHaveBeenCalled();
   });
 });

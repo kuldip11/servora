@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { MenuCategory, MenuItem, FoodType } from "@pos/types";
+import type { MenuFulfillmentTypeDto } from "@pos/api-client";
 import { SearchInput, Select } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils/format";
 
@@ -32,14 +33,17 @@ export const MenuPicker = ({
   onItemClick,
   emptyMessage,
 }: {
-  orderType: string;
+  orderType: MenuFulfillmentTypeDto;
   tableId: string;
   tablesEnabled: boolean;
   tables?: { id: string; name: string; status: string }[] | undefined;
   categories?: MenuCategory[] | undefined;
   filter: FoodType | "ALL";
-  onOrderTypeChange: (v: string) => void;
-  availableOrderTypes: readonly { value: string; label: string }[];
+  onOrderTypeChange: (v: MenuFulfillmentTypeDto) => void;
+  availableOrderTypes: readonly {
+    value: MenuFulfillmentTypeDto;
+    label: string;
+  }[];
   onTableChange: (v: string) => void;
   onFilterChange: (v: FoodType | "ALL") => void;
   onItemClick: (item: MenuItem) => void;
@@ -61,7 +65,9 @@ export const MenuPicker = ({
         {availableOrderTypes.length > 1 ? (
           <Select
             value={orderType}
-            onChange={(e) => onOrderTypeChange(e.target.value)}
+            onChange={(value) =>
+              onOrderTypeChange(value as MenuFulfillmentTypeDto)
+            }
             options={availableOrderTypes}
             className="flex-1"
           />
@@ -76,7 +82,7 @@ export const MenuPicker = ({
           <Select
             label="Table (required)"
             value={tableId}
-            onChange={(e) => onTableChange(e.target.value)}
+            onChange={(e) => onTableChange(e)}
             options={[
               { value: "", label: "Select a table…" },
               ...(tables

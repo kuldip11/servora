@@ -50,7 +50,12 @@ describe("inventory validators", () => {
     ).toBe(false);
   });
   it("validates item id params", () => {
-    expect(Value.Check(inventoryItemIdParams, { id: "i1" })).toBe(true);
+    expect(
+      Value.Check(inventoryItemIdParams, {
+        id: "11111111-1111-4111-8111-111111111111",
+      }),
+    ).toBe(true);
+    expect(Value.Check(inventoryItemIdParams, { id: "i1" })).toBe(false);
     expect(Value.Check(inventoryItemIdParams, { id: 1 })).toBe(false);
   });
 });

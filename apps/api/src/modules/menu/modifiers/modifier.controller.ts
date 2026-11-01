@@ -6,16 +6,22 @@ import {
   type UpdateModifierGroupInput,
   type CreateTagInput,
 } from "./modifier.service";
+import {
+  toMenuAllergenResponse,
+  toMenuTagResponse,
+  toModifierGroupResponse,
+  toModifierOptionResponse,
+} from "./modifier.mapper";
 
 export const modifierController = {
   async listGroups(auth: AuthContext) {
     const groups = await modifierService.listGroups(auth);
-    return successResponse(groups);
+    return successResponse(groups.map(toModifierGroupResponse));
   },
 
   async createGroup(auth: AuthContext, input: CreateModifierGroupInput) {
     const group = await modifierService.createGroup(auth, input);
-    return createdResponse(group);
+    return createdResponse(toModifierGroupResponse(group));
   },
 
   async updateGroup(
@@ -24,7 +30,7 @@ export const modifierController = {
     input: UpdateModifierGroupInput,
   ) {
     const group = await modifierService.updateGroup(auth, groupId, input);
-    return successResponse(group);
+    return successResponse(toModifierGroupResponse(group));
   },
 
   async deleteGroup(auth: AuthContext, groupId: string) {
@@ -42,17 +48,17 @@ export const modifierController = {
       optionId,
       isAvailable,
     );
-    return successResponse(option);
+    return successResponse(toModifierOptionResponse(option));
   },
 
   async listTags(auth: AuthContext) {
     const tags = await modifierService.listTags(auth);
-    return successResponse(tags);
+    return successResponse(tags.map(toMenuTagResponse));
   },
 
   async createTag(auth: AuthContext, input: CreateTagInput) {
     const tag = await modifierService.createTag(auth, input);
-    return createdResponse(tag);
+    return createdResponse(toMenuTagResponse(tag));
   },
 
   async deleteTag(auth: AuthContext, tagId: string) {
@@ -62,6 +68,6 @@ export const modifierController = {
 
   async listAllergens(_auth: AuthContext) {
     const allergens = await modifierService.listAllergens();
-    return successResponse(allergens);
+    return successResponse(allergens.map(toMenuAllergenResponse));
   },
 };

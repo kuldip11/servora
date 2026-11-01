@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ForbiddenError } from "@/core/errors";
 import type { Database } from "@/db";
 import {

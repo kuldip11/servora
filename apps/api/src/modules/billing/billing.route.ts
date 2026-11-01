@@ -1,4 +1,14 @@
 import { Elysia } from "elysia";
+import {
+  billResponseSchema,
+  billsResponseSchema,
+  paymentCollectionResponseSchema,
+  paymentRefundResponseSchema,
+  seatSharesResponseSchema,
+  seatSplitResponseSchema,
+  splitBillsResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { billingController } from "./billing.controller";
 import {
@@ -21,7 +31,13 @@ export const billingRouter = new Elysia()
       set.status = 201;
       return billingController.createPayment(auth, body);
     },
-    { body: createPaymentBody },
+    {
+      body: createPaymentBody,
+      response: {
+        201: paymentCollectionResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/api/refunds",
@@ -29,17 +45,29 @@ export const billingRouter = new Elysia()
       set.status = 201;
       return billingController.createRefund(auth, body);
     },
-    { body: createRefundBody },
+    {
+      body: createRefundBody,
+      response: {
+        201: paymentRefundResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .get(
     "/api/bills/:id",
     ({ auth, params }) => billingController.getBill(auth, params.id),
-    { params: billIdParams },
+    {
+      params: billIdParams,
+      response: { 200: billResponseSchema, ...standardErrorResponseSchemas },
+    },
   )
   .get(
     "/api/orders/:id/bills",
     ({ auth, params }) => billingController.getOrderBills(auth, params.id),
-    { params: orderIdParams },
+    {
+      params: orderIdParams,
+      response: { 200: billsResponseSchema, ...standardErrorResponseSchemas },
+    },
   )
   .post(
     "/api/orders/:id/bills/split",
@@ -47,7 +75,14 @@ export const billingRouter = new Elysia()
       set.status = 201;
       return billingController.splitOrder(auth, params.id, body.ways);
     },
-    { params: orderIdParams, body: splitBillBody },
+    {
+      params: orderIdParams,
+      body: splitBillBody,
+      response: {
+        201: splitBillsResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/api/orders/:id/bills/split-items",
@@ -59,7 +94,14 @@ export const billingRouter = new Elysia()
         body.allocations,
       );
     },
-    { params: orderIdParams, body: splitByItemsBody },
+    {
+      params: orderIdParams,
+      body: splitByItemsBody,
+      response: {
+        201: splitBillsResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .put(
     "/api/orders/:id/items/:itemId/seat-shares",
@@ -70,7 +112,14 @@ export const billingRouter = new Elysia()
         params.itemId,
         body.shares,
       ),
-    { params: orderItemSeatShareParams, body: itemSeatSharesBody },
+    {
+      params: orderItemSeatShareParams,
+      body: itemSeatSharesBody,
+      response: {
+        200: seatSharesResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/api/orders/:id/bills/split-seat",
@@ -82,5 +131,12 @@ export const billingRouter = new Elysia()
         body.sharedItemStrategy,
       );
     },
-    { params: orderIdParams, body: splitBySeatBody },
+    {
+      params: orderIdParams,
+      body: splitBySeatBody,
+      response: {
+        201: seatSplitResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   );

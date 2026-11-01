@@ -32,20 +32,29 @@ describe("availability.validator validators", () => {
     expect(Value.Check(createScheduleBody, { scheduleType: "DAILY" })).toBe(
       true,
     );
-    expect(Value.Check(updateScheduleBody, {})).toBe(true);
+    expect(Value.Check(updateScheduleBody, {})).toBe(false);
   });
   it("validates required params and allows optional query/body fields", () => {
     expect(Value.Check(itemIdParams, {})).toBe(false);
-    expect(Value.Check(itemIdParams, { id: "i1" })).toBe(true);
-    expect(Value.Check(scheduleIdParams, { scheduleId: "s1" })).toBe(true);
-    expect(Value.Check(itemBranchParams, { id: "i1", branchId: "b1" })).toBe(
-      true,
-    );
+    expect(
+      Value.Check(itemIdParams, { id: "11111111-1111-4111-8111-111111111111" }),
+    ).toBe(true);
+    expect(
+      Value.Check(scheduleIdParams, {
+        scheduleId: "22222222-2222-4222-8222-222222222222",
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(itemBranchParams, {
+        id: "11111111-1111-4111-8111-111111111111",
+        branchId: "22222222-2222-4222-8222-222222222222",
+      }),
+    ).toBe(true);
     expect(Value.Check(currentStatusQuery, {})).toBe(true);
     expect(Value.Check(holidayQuery, {})).toBe(true);
     expect(Value.Check(createHolidayBody, {})).toBe(false);
-    expect(Value.Check(updateHolidayBody, {})).toBe(true);
+    expect(Value.Check(updateHolidayBody, {})).toBe(false);
     expect(Value.Check(holidayIdParams, {})).toBe(false);
-    expect(Value.Check(upsertOverrideBody, {})).toBe(true);
+    expect(Value.Check(upsertOverrideBody, {})).toBe(false);
   });
 });

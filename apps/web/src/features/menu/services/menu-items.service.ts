@@ -1,25 +1,34 @@
 import {
   createMenuApi,
   type CreateMenuItemInput,
+  type MenuCategoryDto,
+  type MenuItemDto,
+  type MenuItemStatusDto,
   type UpdateMenuItemInput,
 } from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import type { MenuItem, MenuCategory, MenuItemStatus } from "@pos/types";
 
-export type MenuItemFormPayload = CreateMenuItemInput;
+type CreateOnlyNullableFields =
+  "manualStockCount" | "openPriceMin" | "openPriceMax" | "weightUnit";
+
+export type MenuItemFormPayload = Omit<
+  CreateMenuItemInput,
+  CreateOnlyNullableFields
+> &
+  Pick<UpdateMenuItemInput, CreateOnlyNullableFields>;
 
 const menuApi = createMenuApi(apiClient);
 
 export const menuItemsService = {
-  async listCategories(): Promise<MenuCategory[]> {
+  async listCategories(): Promise<MenuCategoryDto[]> {
     return menuApi.listCategories();
   },
 
-  async addCategory(name: string): Promise<MenuCategory> {
+  async addCategory(name: string): Promise<MenuCategoryDto> {
     return menuApi.createCategory(name);
   },
 
-  async renameCategory(id: string, name: string): Promise<MenuCategory> {
+  async renameCategory(id: string, name: string): Promise<MenuCategoryDto> {
     return menuApi.renameCategory(id, name);
   },
 
@@ -28,15 +37,41 @@ export const menuItemsService = {
   },
 
   async saveItem(
-    item: MenuItem | null,
+    item: Pick<MenuItemDto, "id"> | null,
     payload: MenuItemFormPayload,
-  ): Promise<MenuItem> {
-    if (!item) return menuApi.createItem(payload);
+  ): Promise<MenuItemDto> {
+    if (!item) {
+      const {
+        manualStockCount,
+        openPriceMax,
+        openPriceMin,
+        weightUnit,
+        ...fields
+      } = payload;
+      const createPayload: CreateMenuItemInput = {
+        ...fields,
+        ...(manualStockCount != null ? { manualStockCount } : {}),
+        ...(openPriceMax != null ? { openPriceMax } : {}),
+        ...(openPriceMin != null ? { openPriceMin } : {}),
+        ...(weightUnit != null ? { weightUnit } : {}),
+      };
+      return menuApi.createItem(createPayload);
+    }
     const { categoryId: _categoryId, ...updatePayload } = payload;
     return menuApi.updateItem(
       item.id,
       updatePayload satisfies UpdateMenuItemInput,
     );
+  },
+
+  async updateVariantAvailability(
+    id: string,
+    unavailable: boolean,
+  ): Promise<void> {
+    await menuApi.updateVariantAvailability(id, {
+      status: unavailable ? "OUT_OF_STOCK" : null,
+      reason: unavailable ? "Manually 86'd" : null,
+    });
   },
 
   async setManualStockCount(
@@ -49,7 +84,7 @@ export const menuItemsService = {
 
   async setManualAvailabilityOverride(
     id: string,
-    status: MenuItemStatus,
+    status: MenuItemStatusDto,
     reason: string,
   ): Promise<void> {
     await menuApi.setManualAvailabilityOverride(id, status, reason);
@@ -63,7 +98,7 @@ export const menuItemsService = {
     await menuApi.deleteItem(id);
   },
 
-  async duplicateItem(id: string): Promise<MenuItem> {
+  async duplicateItem(id: string): Promise<MenuItemDto> {
     return menuApi.duplicateItem(id);
   },
 
@@ -73,7 +108,7 @@ export const menuItemsService = {
 
   async bulkSetStatus(
     itemIds: string[],
-    status: MenuItemStatus,
+    status: MenuItemStatusDto,
     reason?: string,
   ): Promise<{ updated: number }> {
     return menuApi.bulkSetStatus(itemIds, status, reason);

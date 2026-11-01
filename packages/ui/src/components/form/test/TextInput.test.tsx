@@ -25,4 +25,18 @@ describe("TextInput", () => {
     expect(screen.getByRole("textbox", { name: "Email" })).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent("Invalid");
   });
+  it("marks required fields visually and semantically without marking optional fields", () => {
+    const { rerender } = render(<TextInput label="Name" required />);
+    expect(screen.getByText("*")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: /Name/ })).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+
+    rerender(<TextInput label="Name" />);
+    expect(screen.queryByText("*")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Name" })).not.toHaveAttribute(
+      "aria-required",
+    );
+  });
 });

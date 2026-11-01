@@ -1,15 +1,15 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
-  assignItem: vi.fn(async () => ({})),
-  removeItem: vi.fn(async () => ({})),
+  assignItem: vi.fn(async (_itemId?: string, _change?: unknown) => ({})),
+  removeItem: vi.fn(async (_itemId?: string, _menuId?: string) => ({})),
   invalidate: vi.fn(async () => ({})),
   error: vi.fn(),
   mutateRoute: vi.fn(),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -35,10 +35,20 @@ vi.mock("@pos/ui", () => ({
         {children}
       </div>
     ) : null,
-  Select: ({ label, options = [], ...props }: any) => (
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
     <label>
       {label}
-      <select aria-label={label} {...props}>
+      <select
+        aria-label={label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -67,6 +77,20 @@ vi.mock("@/features/menu/hooks/useMenus", () => ({
       { id: "default", name: "Default", isDefault: true },
       { id: "m2", name: "Dinner", isDefault: false },
     ],
+  }),
+  useUpdateMenuMembership: (itemId: string) => ({
+    isPending: false,
+    mutate: async (
+      change: { menuId: string; categoryId: string | null },
+      callbacks?: any,
+    ) => {
+      if (change.categoryId) {
+        await h.assignItem(itemId, change);
+      } else {
+        await h.removeItem(itemId, change.menuId);
+      }
+      callbacks?.onSuccess?.(undefined, change);
+    },
   }),
 }));
 vi.mock("@/features/menu/services/menus.service", () => ({

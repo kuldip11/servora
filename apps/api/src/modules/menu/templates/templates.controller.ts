@@ -1,16 +1,20 @@
 import type { AuthContext } from "@/core/auth";
 import { successResponse, createdResponse } from "@/core/response";
 import { templatesService } from "./templates.service";
+import {
+  toMenuTemplateApplyResponse,
+  toMenuTemplateResponse,
+} from "./templates.mapper";
 
 export const templatesController = {
   async list(auth: AuthContext) {
     const templates = await templatesService.list(auth);
-    return successResponse(templates);
+    return successResponse(templates.map(toMenuTemplateResponse));
   },
 
   async get(auth: AuthContext, templateId: string) {
     const template = await templatesService.get(auth, templateId);
-    return successResponse(template);
+    return successResponse(toMenuTemplateResponse(template));
   },
 
   async createFromCategory(
@@ -25,7 +29,7 @@ export const templatesController = {
       name,
       description,
     );
-    return createdResponse(template);
+    return createdResponse(toMenuTemplateResponse(template));
   },
 
   async apply(
@@ -34,7 +38,7 @@ export const templatesController = {
     options: { branchId?: string; categoryName?: string },
   ) {
     const result = await templatesService.apply(auth, templateId, options);
-    return createdResponse(result);
+    return createdResponse(toMenuTemplateApplyResponse(result));
   },
 
   async delete(auth: AuthContext, templateId: string) {

@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.useQuery }));
+vi.mock("../../../../shared/lib/query-scope", () => ({
+  getKitchenQueryScope: () => ["tenant-1", "branch-1"],
+}));
 vi.mock("../../api/tickets", () => ({
   fetchKitchenTickets: mocks.fetchKitchenTickets,
   fetchKitchenStations: mocks.fetchKitchenStations,
@@ -15,27 +18,31 @@ vi.mock("../../api/tickets", () => ({
 import {
   useKitchenStations,
   useKitchenTickets,
-  KITCHEN_TICKETS_QUERY_KEY,
-  kitchenTicketsQueryKey,
 } from "@/features/kitchen/hooks/useKitchenTickets";
 import { TICKETS_POLL_INTERVAL_MS } from "@/features/kitchen/constants";
+import { kitchenKeys } from "@/features/kitchen/query/kitchen.keys";
+
+const scope = ["tenant-1", "branch-1"] as const;
 
 describe("useKitchenTickets", () => {
   it("configures ticket query and executes its fetcher", async () => {
     mocks.useQuery.mockReturnValue({});
     expect(useKitchenTickets()).toEqual({});
     const options = mocks.useQuery.mock.calls[0][0];
-    expect(options.queryKey).toEqual(KITCHEN_TICKETS_QUERY_KEY);
+    expect(options.queryKey).toEqual(kitchenKeys.ticketList(scope));
     expect(options.refetchInterval).toBe(TICKETS_POLL_INTERVAL_MS);
     mocks.fetchKitchenTickets.mockResolvedValue([]);
-    await options.queryFn();
-    expect(mocks.fetchKitchenTickets).toHaveBeenCalledWith(undefined);
+    const signal = new AbortController().signal;
+    await options.queryFn({ signal });
+    expect(mocks.fetchKitchenTickets).toHaveBeenCalledWith(undefined, signal);
 
     useKitchenTickets("grill");
     const stationOptions = mocks.useQuery.mock.calls.at(-1)?.[0];
-    expect(stationOptions.queryKey).toEqual(kitchenTicketsQueryKey("grill"));
-    await stationOptions.queryFn();
-    expect(mocks.fetchKitchenTickets).toHaveBeenCalledWith("grill");
+    expect(stationOptions.queryKey).toEqual(
+      kitchenKeys.ticketList(scope, "grill"),
+    );
+    await stationOptions.queryFn({ signal });
+    expect(mocks.fetchKitchenTickets).toHaveBeenCalledWith("grill", signal);
   });
 
   it("configures and executes the stations query", async () => {
@@ -43,7 +50,9 @@ describe("useKitchenTickets", () => {
     mocks.fetchKitchenStations.mockResolvedValue([]);
     useKitchenStations();
     const options = mocks.useQuery.mock.calls.at(-1)?.[0];
-    await options.queryFn();
-    expect(mocks.fetchKitchenStations).toHaveBeenCalledOnce();
+    const signal = new AbortController().signal;
+    await options.queryFn({ signal });
+    expect(options.queryKey).toEqual(kitchenKeys.stations(scope));
+    expect(mocks.fetchKitchenStations).toHaveBeenCalledWith(signal);
   });
 });

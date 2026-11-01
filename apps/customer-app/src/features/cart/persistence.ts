@@ -1,4 +1,4 @@
-import type { CustomerMenuItem } from "@/features/menu/api";
+import type { CustomerMenuItem } from "@/features/menu";
 import type { CartLine, SelectedOption } from "./pricing";
 
 type PersistedSession = {
@@ -37,13 +37,17 @@ function read<T>(storageKey: string): T | null {
 const write = (storageKey: string, value: unknown) => {
   try {
     localStorage.setItem(storageKey, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // Storage can be unavailable (privacy mode/quota); cart persistence is best effort.
+  }
 };
 
 const remove = (storageKey: string) => {
   try {
     localStorage.removeItem(storageKey);
-  } catch {}
+  } catch {
+    // Storage removal is best effort and must not block ordering.
+  }
 };
 
 export const getCustomerStorageScope = (qrToken: string | null) => {

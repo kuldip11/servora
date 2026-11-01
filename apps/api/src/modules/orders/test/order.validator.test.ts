@@ -9,12 +9,15 @@ import {
 } from "@/modules/orders/order.validator";
 
 describe("order validators", () => {
-  const item = { menuItemId: "m1", quantity: 1 };
+  const item = {
+    menuItemId: "00000000-0000-4000-8000-000000000101",
+    quantity: 1,
+  };
   it("accepts valid order creation and rejects invalid type/quantity", () => {
     expect(
       Value.Check(createOrderBody, {
         type: "DINE_IN",
-        tableId: "t1",
+        tableId: "00000000-0000-4000-8000-000000000102",
         items: [item],
       }),
     ).toBe(true);
@@ -32,7 +35,11 @@ describe("order validators", () => {
     expect(Value.Check(updateOrderStatusBody, { status: "PAID" })).toBe(true);
     expect(Value.Check(updateOrderStatusBody, { status: "NOPE" })).toBe(false);
     expect(Value.Check(fireTicketBody, { items: [item] })).toBe(true);
-    expect(Value.Check(orderIdParams, { id: "o1" })).toBe(true);
+    expect(
+      Value.Check(orderIdParams, {
+        id: "00000000-0000-4000-8000-000000000103",
+      }),
+    ).toBe(true);
     expect(Value.Check(orderIdParams, {})).toBe(false);
     expect(
       Value.Check(orderListQuery, {

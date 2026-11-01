@@ -22,7 +22,6 @@ describe("AppError hierarchy", () => {
     expect(error.code).toBe(ErrorCode.VALIDATION_FAILED);
     expect(error.statusCode).toBe(400);
     expect(error.toJSON()).toMatchObject({
-      success: false,
       code: ErrorCode.VALIDATION_FAILED,
       message: "Bad input",
       details: { field: "name" },
@@ -54,11 +53,14 @@ describe("AppError hierarchy", () => {
     }
   });
 
-  it("formats not-found messages with and without ids", () => {
+  it("keeps detailed not-found context internally for logs", () => {
     expect(new NotFoundError("Tenant").message).toBe("Tenant not found");
-    expect(new NotFoundError("Tenant", "abc").message).toBe(
-      "Tenant with id abc not found",
-    );
+    const withId = new NotFoundError("Tenant", "abc");
+    expect(withId.message).toBe("Tenant with id abc not found");
+    expect(withId.details).toMatchObject({
+      resource: "Tenant",
+      resourceId: "abc",
+    });
   });
 
   it("preserves cause on internal errors", () => {

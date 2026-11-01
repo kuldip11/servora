@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption, chooseSelectOptionAt } from "@/test/select";
 
 const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
   () => ({
@@ -11,11 +12,18 @@ const { listCombos, updateCombo, createCombo, removeCombo } = vi.hoisted(
   }),
 );
 
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createMenuApi: () => ({ listCombos, updateCombo, createCombo, removeCombo }),
+  extractApiFieldErrors: (error: unknown) =>
+    (error as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {},
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
     data: [
       {
         id: "category-1",
@@ -94,7 +102,7 @@ describe("CombosSection", () => {
     await screen.findByText("Lunch Combo");
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
-    const name = screen.getByLabelText("Combo name");
+    const name = screen.getByLabelText(/Combo name/);
     fireEvent.change(name, { target: { value: "Dinner Combo" } });
     fireEvent.click(screen.getByRole("button", { name: "Save combo" }));
 
@@ -121,6 +129,7 @@ describe("CombosSection", () => {
     );
   });
 
+  // This multi-step DOM interaction exceeds five seconds under root-suite CPU load.
   it("creates percent combos and covers slot/choice controls, refill, cancel and delete", async () => {
     listCombos.mockResolvedValue([
       {
@@ -156,36 +165,29 @@ describe("CombosSection", () => {
     await screen.findByText("Refill Combo");
     expect(screen.getByText("Refill-enabled")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "Weekend Combo" },
     });
     fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "  Deal  " },
     });
-    fireEvent.change(screen.getByLabelText("Pricing"), {
-      target: { value: "PERCENT_OFF_SUM" },
-    });
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    chooseSelectOption("Pricing", "Percent off components");
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "20" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
-      target: { value: "item-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Variant"), {
-      target: { value: "variant-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
+    chooseSelectOption("Variant", "Half");
     fireEvent.change(screen.getByLabelText("Upcharge"), {
       target: { value: "5" },
     });
     fireEvent.click(screen.getByLabelText("Refill"));
 
     fireEvent.click(screen.getByRole("button", { name: "+ Add choice" }));
-    const choices = screen.getAllByLabelText(/Choice/);
-    fireEvent.change(choices[1]!, { target: { value: "item-1" } });
+    chooseSelectOptionAt("Choice 2", "Chicken Tikka · Mains", 0);
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]!);
 
     fireEvent.click(screen.getByRole("button", { name: "+ Add slot" }));
-    expect(screen.getByLabelText("Slot 2")).toBeTruthy();
+    expect(screen.getByLabelText(/Slot 2/)).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Remove slot" })[1]!);
 
     fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
@@ -215,28 +217,24 @@ describe("CombosSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel edit" }));
     expect(
-      (screen.getByLabelText("Combo name") as HTMLInputElement).value,
+      (screen.getByLabelText(/Combo name/) as HTMLInputElement).value,
     ).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(removeCombo).toHaveBeenCalledWith("combo-2"));
-  });
+  }, 15_000);
 
   it("keeps invalid percent and slot configurations from saving", async () => {
     listCombos.mockResolvedValue([]);
     renderSection();
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "Bad" },
     });
-    fireEvent.change(screen.getByLabelText("Pricing"), {
-      target: { value: "PERCENT_OFF_SUM" },
-    });
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    chooseSelectOption("Pricing", "Percent off components");
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "101" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
-      target: { value: "item-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
     expect(
       (
         screen.getByRole("button", {
@@ -244,10 +242,10 @@ describe("CombosSection", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
-    fireEvent.change(screen.getByLabelText("Percent off"), {
+    fireEvent.change(screen.getByLabelText(/Percent off/), {
       target: { value: "10" },
     });
-    fireEvent.change(screen.getByLabelText("Minimum"), {
+    fireEvent.change(screen.getByLabelText(/Minimum/), {
       target: { value: "2" },
     });
     expect(
@@ -291,21 +289,19 @@ describe("CombosSection", () => {
     removeCombo.mockRejectedValueOnce(new Error("delete failed"));
     renderSection();
     await screen.findByText("Error Combo");
-    fireEvent.change(screen.getByLabelText("Combo name"), {
+    fireEvent.change(screen.getByLabelText(/Combo name/), {
       target: { value: "New Error" },
     });
-    fireEvent.change(screen.getByLabelText("Slot 1"), {
+    fireEvent.change(screen.getByLabelText(/Slot 1/), {
       target: { value: "Entrée" },
     });
-    fireEvent.change(screen.getByLabelText("Minimum"), {
+    fireEvent.change(screen.getByLabelText(/Minimum/), {
       target: { value: "0" },
     });
-    fireEvent.change(screen.getByLabelText("Maximum"), {
+    fireEvent.change(screen.getByLabelText(/Maximum/), {
       target: { value: "2" },
     });
-    fireEvent.change(screen.getByLabelText("Choice 1"), {
-      target: { value: "item-1" },
-    });
+    chooseSelectOption("Choice 1", "Chicken Tikka · Mains");
     fireEvent.click(screen.getByRole("button", { name: "Create combo" }));
     await waitFor(() => expect(createCombo).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -322,14 +318,13 @@ describe("CombosSection", () => {
 
     const slots = screen.getAllByLabelText(/Slot \d/);
     fireEvent.change(slots[0]!, { target: { value: "Primary" } });
-    const minimums = screen.getAllByLabelText("Minimum");
-    const maximums = screen.getAllByLabelText("Maximum");
+    const minimums = screen.getAllByLabelText(/Minimum/);
+    const maximums = screen.getAllByLabelText(/Maximum/);
     fireEvent.change(minimums[0]!, { target: { value: "1" } });
     fireEvent.change(maximums[0]!, { target: { value: "2" } });
 
-    const choices = screen.getAllByLabelText(/Choice \d/);
-    fireEvent.change(choices[0]!, { target: { value: "item-1" } });
-    fireEvent.change(choices[1]!, { target: { value: "item-1" } });
+    chooseSelectOptionAt("Choice 1", "Chicken Tikka · Mains", 0);
+    chooseSelectOptionAt("Choice 2", "Chicken Tikka · Mains", 0);
     const variants = screen.getAllByLabelText("Variant");
     fireEvent.change(variants[0]!, { target: { value: "variant-1" } });
     const upcharges = screen.getAllByLabelText("Upcharge");

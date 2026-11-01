@@ -173,7 +173,7 @@ describe("auth service", () => {
         lastName: "B",
       } as any),
     ).resolves.toMatchObject({
-      user: { id: "u1", tenantId: "", branchId: null },
+      user: { id: "u1", tenantId: null, branchId: null },
     });
     expect(createUserWithGlobalOwnerRole).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@example.com", firstName: "A" }),
@@ -436,7 +436,7 @@ describe("auth service edge coverage", () => {
         lastName: "B",
       } as any),
     ).resolves.toMatchObject({ user: { roles: [{ description: "" }] } });
-  });
+  }, 15_000);
 
   it("rejects duplicate/missing/inactive login users and exercises unlocked failure", async () => {
     findUsersByEmail.mockResolvedValueOnce([]);

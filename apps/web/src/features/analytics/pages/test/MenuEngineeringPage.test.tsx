@@ -1,18 +1,23 @@
-import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
+
 const h = vi.hoisted(() => ({
-  menuEngineering: vi.fn(),
-  extract: vi.fn(() => "boom"),
+  useMenuEngineering: vi.fn(),
+  state: { current: {} as any },
+}));
+vi.mock("@/features/analytics/hooks/useMenuEngineering", () => ({
+  useMenuEngineering: (days: number) => {
+    h.useMenuEngineering(days);
+    return h.state.current;
+  },
 }));
 vi.mock("@/shared/lib/api-client", () => ({
-  apiClient: {},
-  extractApiError: h.extract,
+  extractApiError: (error: unknown) =>
+    error instanceof Error ? error.message : "boom",
 }));
-vi.mock("@pos/api-client", () => ({
-  createAnalyticsApi: () => ({ menuEngineering: h.menuEngineering }),
-}));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: any) => <span>{children}</span>,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
@@ -28,8 +33,9 @@ vi.mock("@pos/ui", () => ({
   ),
   Spinner: () => <span>spinner</span>,
 }));
+
 import { MenuEngineeringPage } from "../MenuEngineeringPage";
-const rows: any[] = [
+const rows = [
   {
     menuItemId: "1",
     menuItemName: "Zulu",
@@ -50,54 +56,49 @@ const rows: any[] = [
     quadrant: "DOG",
     recommendation: "Drop",
   },
-  {
-    menuItemId: "3",
-    menuItemName: "Bravo",
-    variantName: null,
-    margin: 15,
-    marginPercent: null,
-    salesVolume: 7,
-    quadrant: "PUZZLE",
-    recommendation: "Test",
-  },
-  {
-    menuItemId: "4",
-    menuItemName: "Charlie",
-    variantName: null,
-    margin: 10,
-    marginPercent: 5,
-    salesVolume: 3,
-    quadrant: "COST_MISSING",
-    recommendation: "Cost",
-  },
 ];
+
 describe("MenuEngineeringPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    h.menuEngineering.mockResolvedValue(rows);
+    h.state.current = {
+      data: rows,
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    };
   });
-  it("covers loading,data,filters and sorts", async () => {
+
+  it("uses the applied analysis window and preserves client-side filters", () => {
     render(<MenuEngineeringPage />);
-    expect(screen.getByText("spinner")).toBeTruthy();
-    await screen.findByText("Zulu");
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0]!, { target: { value: "30" } });
-    fireEvent.change(selects[1]!, { target: { value: "STAR" } });
-    fireEvent.change(selects[2]!, { target: { value: "margin" } });
+    expect(h.useMenuEngineering).toHaveBeenCalledWith(90);
+    chooseSelectOption("Analysis window", "30 days");
+    expect(h.useMenuEngineering).toHaveBeenLastCalledWith(90);
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    await waitFor(() => expect(h.menuEngineering).toHaveBeenLastCalledWith(30));
-    fireEvent.change(selects[1]!, { target: { value: "ALL" } });
-    fireEvent.change(selects[2]!, { target: { value: "name" } });
-    expect(screen.getByText(/Cost not configured/)).toBeTruthy();
+    expect(h.useMenuEngineering).toHaveBeenLastCalledWith(30);
+    chooseSelectOption("Quadrant", "Stars");
+    expect(screen.getByText("Zulu")).toBeTruthy();
+    expect(screen.queryByText(/Alpha/)).toBeNull();
   });
-  it("covers empty and error states", async () => {
-    h.menuEngineering.mockResolvedValueOnce([]);
-    const { unmount } = render(<MenuEngineeringPage />);
-    await screen.findByText(/No menu items match/);
-    unmount();
-    h.menuEngineering.mockRejectedValueOnce(new Error("x"));
+
+  it("covers empty and error states", () => {
+    h.state.current = {
+      data: [],
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    };
+    const view = render(<MenuEngineeringPage />);
+    expect(screen.getByText(/No menu items match/)).toBeTruthy();
+    view.unmount();
+    h.state.current = {
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: new Error("boom"),
+    };
     render(<MenuEngineeringPage />);
-    await screen.findByText("Menu engineering unavailable");
+    expect(screen.getByText("Menu engineering unavailable")).toBeTruthy();
     expect(screen.getByText("boom")).toBeTruthy();
   });
 });

@@ -7,7 +7,8 @@ export const useInventoryRecipeImpact = (
 ) => {
   return useQuery({
     queryKey: inventoryKeys.impact(inventoryItemId ?? "none"),
-    queryFn: () => inventoryService.recipeImpact(inventoryItemId!),
+    queryFn: ({ signal }) =>
+      inventoryService.recipeImpact(inventoryItemId!, signal),
     enabled: Boolean(inventoryItemId),
   });
 };

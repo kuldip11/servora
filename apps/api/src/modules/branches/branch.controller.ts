@@ -1,38 +1,42 @@
+import type { CreateBranchRequest, UpdateBranchRequest } from "@pos/contracts";
 import type { AuthContext } from "@/core/auth";
-import { successResponse, createdResponse } from "@/core/response";
-import {
-  branchService,
-  type CreateBranchInput,
-  type UpdateBranchInput,
-} from "./branch.service";
+import { createdResponse, successResponse } from "@/core/response";
+import { toBranchResponse, toBranchTakeawayQrResponse } from "./branch.mapper";
+import { branchService } from "./branch.service";
 
 export const branchController = {
   async list(auth: AuthContext) {
     const branches = await branchService.list(auth);
-    return successResponse(branches);
+    return successResponse(branches.map(toBranchResponse));
   },
 
-  async create(auth: AuthContext, input: CreateBranchInput) {
+  async create(auth: AuthContext, input: CreateBranchRequest) {
     const branch = await branchService.create(auth, input);
-    return createdResponse(branch);
+    return createdResponse(toBranchResponse(branch));
   },
 
   async update(
     auth: AuthContext,
     branchId: string,
-    changes: UpdateBranchInput,
+    changes: UpdateBranchRequest,
   ) {
     const updated = await branchService.update(auth, branchId, changes);
-    return successResponse(updated);
+    return successResponse(toBranchResponse(updated));
   },
 
   async getTakeawayQr(auth: AuthContext, branchId: string) {
-    return successResponse(await branchService.getTakeawayQr(auth, branchId));
+    return successResponse(
+      toBranchTakeawayQrResponse(
+        await branchService.getTakeawayQr(auth, branchId),
+      ),
+    );
   },
 
   async regenerateTakeawayQr(auth: AuthContext, branchId: string) {
     return successResponse(
-      await branchService.regenerateTakeawayQr(auth, branchId),
+      toBranchTakeawayQrResponse(
+        await branchService.regenerateTakeawayQr(auth, branchId),
+      ),
     );
   },
 

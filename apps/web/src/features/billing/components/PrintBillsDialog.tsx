@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
-import { Button, Modal, StatusBadge } from "@pos/ui";
-import type { Bill, Order } from "@pos/types";
-import { billingService } from "@/features/billing/services/billing.service";
+import { Button, Modal, QueryErrorState, Spinner, StatusBadge } from "@pos/ui";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 import { printBills } from "@/features/billing/utils/print-bills";
+import { useOrderBills } from "@/features/billing/hooks/useOrderBills";
+import { extractApiError } from "@/shared/lib/api-client";
 import { formatCurrency } from "@/shared/utils/format";
 
 const fallbackBill = (order: Order): Bill => ({
@@ -24,10 +24,18 @@ const fallbackBill = (order: Order): Bill => ({
     id: `preview-${item.id}`,
     billId: `order-${order.id}`,
     orderItemId: item.id,
+    allocationRatio: 1,
     orderItem: {
       menuItemId: item.menuItemId,
       menuItemName: item.menuItemName,
       quantity: item.quantity,
+      taxMode: item.taxMode,
+      comboId: item.comboId,
+      comboGroupId: item.comboGroupId,
+      order: {
+        id: order.id,
+        table: order.table ? { name: order.table.name } : null,
+      },
     },
   })),
 });
@@ -40,13 +48,39 @@ export const PrintBillsDialog = ({
   onClose: () => void;
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const { data: orderBills = [] } = useQuery<Bill[]>({
-    queryKey: ["billing", "order", order?.id],
-    queryFn: () => billingService.getOrderBills(order!.id),
-    enabled: !!order,
-  });
+  const billsQuery = useOrderBills(order?.id, { enabled: !!order });
 
   if (!order) return null;
+
+  if (billsQuery.isLoading) {
+    return (
+      <Modal open title="Preview and print bills" size="md" onClose={onClose}>
+        <div className="flex min-h-48 items-center justify-center">
+          <span role="status" aria-label="Loading bills">
+            <Spinner />
+          </span>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (billsQuery.isError) {
+    return (
+      <Modal open title="Preview and print bills" size="md" onClose={onClose}>
+        <QueryErrorState
+          title="Unable to load bills"
+          description={extractApiError(
+            billsQuery.error,
+            "Bills could not be loaded. Printing is blocked until the latest billing state is available.",
+          )}
+          isRetrying={billsQuery.isFetching}
+          onRetry={() => void billsQuery.refetch()}
+        />
+      </Modal>
+    );
+  }
+
+  const orderBills = billsQuery.data ?? [];
   const printableBills = orderBills.length ? orderBills : [fallbackBill(order)];
 
   return (

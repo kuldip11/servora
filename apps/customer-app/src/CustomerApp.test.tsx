@@ -1,4 +1,3 @@
-import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
@@ -9,6 +8,12 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("@pos/ui", () => ({
   Skeleton: (p: any) => <div data-testid="skeleton" {...p} />,
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div role="status">
+      <span>{message}</span>
+      {onRetry ? <button onClick={onRetry}>retry-stale-order</button> : null}
+    </div>
+  ),
 }));
 vi.mock("./features/session/useCustomerSession", () => ({
   useCustomerSession: () => h.sessionState,
@@ -96,6 +101,9 @@ const defaults = () => {
     setCart: vi.fn(),
     placedOrder: null,
     setPlacedOrder: vi.fn(),
+    activeOrderError: null,
+    activeOrderRefreshing: false,
+    retryActiveOrder: vi.fn(),
     loading: false,
     setLoading: vi.fn(),
     error: null,
@@ -147,13 +155,13 @@ const defaults = () => {
 beforeEach(defaults);
 const actCheckout = () => act(() => h.checkoutArgs.onPlaced());
 describe("CustomerApp", () => {
-  it("renders loading skeleton", () => {
+  it("renders loading skeleton", async () => {
     h.sessionState.session = null;
     h.sessionState.loading = true;
     render(<CustomerApp />);
     expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(5);
   });
-  it("renders error retry and null state", () => {
+  it("renders error retry and null state", async () => {
     h.sessionState.session = null;
     h.sessionState.error = "bad";
     const { rerender } = render(<CustomerApp />);
@@ -163,7 +171,7 @@ describe("CustomerApp", () => {
     rerender(<CustomerApp />);
     expect(document.body.textContent).toBe("");
   });
-  it("covers menu search/cart/back/order/menu and checkout callbacks", () => {
+  it("covers menu search/cart/back/order/menu and checkout callbacks", async () => {
     render(<CustomerApp />);
     expect(screen.getByTestId("menu")).toBeTruthy();
     fireEvent.click(screen.getByText("search"));
@@ -184,7 +192,35 @@ describe("CustomerApp", () => {
     fireEvent.click(screen.getByText("menu"));
     expect(screen.getByTestId("menu")).toBeTruthy();
   });
-  it("covers takeaway fallback and combo/item overlays including editing/variant branch", () => {
+  it("blocks menu ordering when an active order cannot be refreshed and no cached order is available", async () => {
+    h.sessionState.activeOrderError = "Order service unavailable";
+
+    render(<CustomerApp />);
+
+    expect(
+      screen.getByText(/We can't refresh your order:Order service unavailable/),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button"));
+    expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
+  });
+
+  it("keeps a cached active order visible and marks its status stale", async () => {
+    h.sessionState.placedOrder = { id: "order" };
+    h.sessionState.activeOrderError = "Order service unavailable";
+
+    render(<CustomerApp />);
+    fireEvent.click(screen.getByText("order"));
+
+    expect(screen.getByTestId("order")).toBeTruthy();
+    expect(
+      screen.getByText(/Order status could not be refreshed/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "retry-stale-order" }));
+    expect(h.sessionState.retryActiveOrder).toHaveBeenCalled();
+  });
+
+  it("covers takeaway fallback and combo/item overlays including editing/variant branch", async () => {
     h.sessionState.session = { ...session, mode: "TAKEAWAY", table: null };
     h.cartState.selectedCombo = { id: "c" };
     h.cartState.selectedItem = { id: "i" };
@@ -199,16 +235,27 @@ describe("CustomerApp", () => {
     fireEvent.click(screen.getByText("cart"));
     expect(screen.getByTestId("cart")).toBeTruthy();
   });
-  it("covers checkout onPlaced transition and takeaway table fallback", () => {
+  it("covers checkout onPlaced transition and takeaway table fallback", async () => {
     h.sessionState.session = { ...session, table: null };
     h.sessionState.placedOrder = { id: "order" };
     render(<CustomerApp />);
-    actCheckout();
+    await actCheckout();
     expect(screen.getByTestId("order")).toBeTruthy();
     expect(screen.getByTestId("order").textContent).toContain("Takeaway");
   });
+  it("remounts local UI state when the customer session identity changes", async () => {
+    const { rerender } = render(<CustomerApp />);
+    fireEvent.click(screen.getByText("cart"));
+    expect(screen.getByTestId("cart")).toBeTruthy();
+
+    h.sessionState.session = { ...session, token: "replacement-session" };
+    rerender(<CustomerApp />);
+
+    expect(screen.getByTestId("menu")).toBeTruthy();
+    expect(screen.queryByTestId("cart")).toBeNull();
+  });
 });
-it("covers selected item without a variant", () => {
+it("covers selected item without a variant", async () => {
   h.cartState.selectedItem = { id: "i" };
   h.cartState.selectedVariantId = undefined;
   render(<CustomerApp />);

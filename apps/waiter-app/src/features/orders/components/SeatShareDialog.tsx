@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Input, Modal } from "@pos/ui";
-import { setOrderItemSeatShares } from "@/features/orders/api/orders";
+import { extractApiError } from "@pos/api-client";
+import { Button, FormErrorSummary, Input, Modal } from "@pos/ui";
+import { useSetOrderItemSeatShares } from "@/features/orders/hooks/useOrderActions";
 
 type SeatShare = { seatLabel: string; shareRatio: number };
 type SeatShareDraft = {
@@ -35,7 +35,6 @@ export const SeatShareDialog = ({
   initialShares,
   onClose,
 }: Props) => {
-  const queryClient = useQueryClient();
   const [shares, setShares] = useState<SeatShareDraft[]>([]);
 
   useEffect(() => {
@@ -49,19 +48,14 @@ export const SeatShareDialog = ({
     );
   }, [initialShares, open]);
 
-  const save = useMutation({
-    mutationFn: ({
-      selectedItemId,
-      nextShares,
-    }: {
-      selectedItemId: string;
-      nextShares: SeatShare[];
-    }) => setOrderItemSeatShares(orderId, selectedItemId, nextShares),
-    onSuccess: () => {
-      void queryClient.invalidateQueries();
-      onClose();
-    },
-  });
+  const save = useSetOrderItemSeatShares(orderId, onClose);
+
+  const updateShares = (
+    updater: (current: SeatShareDraft[]) => SeatShareDraft[],
+  ) => {
+    setShares(updater);
+    save.reset();
+  };
 
   const total = shares.reduce(
     (sum, share) => sum + Number(share.shareRatio || 0),
@@ -83,7 +77,7 @@ export const SeatShareDialog = ({
               label="Seat"
               value={share.seatLabel}
               onChange={(event) =>
-                setShares((current) =>
+                updateShares((current) =>
                   current.map((value, itemIndex) =>
                     itemIndex === index
                       ? { ...value, seatLabel: event.target.value }
@@ -100,7 +94,7 @@ export const SeatShareDialog = ({
               step="0.01"
               value={share.shareRatio}
               onChange={(event) =>
-                setShares((current) =>
+                updateShares((current) =>
                   current.map((value, itemIndex) =>
                     itemIndex === index
                       ? { ...value, shareRatio: event.target.value }
@@ -112,7 +106,7 @@ export const SeatShareDialog = ({
             <Button
               variant="secondary"
               onClick={() =>
-                setShares((current) =>
+                updateShares((current) =>
                   current.filter((_, itemIndex) => itemIndex !== index),
                 )
               }
@@ -124,7 +118,7 @@ export const SeatShareDialog = ({
         <Button
           variant="secondary"
           onClick={() =>
-            setShares((current) => [
+            updateShares((current) => [
               ...current,
               createDraft(String(current.length + 1), "0"),
             ])
@@ -135,6 +129,14 @@ export const SeatShareDialog = ({
         <p className="text-xs text-text-secondary">
           Ratios must total exactly 1.00.
         </p>
+        <FormErrorSummary
+          title="Could not save seat split"
+          messages={
+            save.error
+              ? [extractApiError(save.error, "Could not save seat sharing.")]
+              : []
+          }
+        />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel

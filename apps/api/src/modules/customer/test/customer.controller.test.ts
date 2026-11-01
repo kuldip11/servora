@@ -15,6 +15,14 @@ vi.mock("@/modules/customer/customer.service", () => ({
   customerService: service,
 }));
 
+vi.mock("@/modules/customer/customer.mapper", () => ({
+  toCustomerSessionResponse: (value: unknown) => value,
+  toCustomerMenuResponse: (value: unknown) => value,
+  toCustomerOrderResponse: (value: unknown) => value,
+  toCustomerCheckoutResponse: (value: unknown) => value,
+  toCustomerTakeawayPaymentResponse: (value: unknown) => value,
+}));
+
 import { customerController } from "@/modules/customer/customer.controller";
 
 describe("customerController", () => {

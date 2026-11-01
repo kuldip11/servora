@@ -1,42 +1,24 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Input } from "@pos/ui";
-import type { PriceRule } from "@pos/types";
-import { createMenuApi } from "@pos/api-client";
-import { apiClient } from "@/shared/lib/api-client";
-
-const menuApi = createMenuApi(apiClient);
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import {
+  Button,
+  Input,
+  QueryErrorState,
+  Select,
+  StaleDataBanner,
+} from "@pos/ui";
+import {
+  useDeletePerCoverPriceRule,
+  usePerCoverPriceRules,
+  useSavePerCoverPriceRule,
+} from "@/features/menu/hooks/useBuffetPricing";
 
 export const BuffetPricingSection = () => {
   const [tier, setTier] = useState<"" | "ADULT" | "CHILD">("");
   const [price, setPrice] = useState("");
-  const key = ["menu", "per-cover-price-rules"];
-  const { data: allRules = [] } = useQuery<PriceRule[]>({
-    queryKey: key,
-    queryFn: () => menuApi.listPriceRulesFor<PriceRule>(),
-  });
-  const rules = allRules.filter((rule) => rule.isPerCover);
-  const save = useMutation({
-    mutationFn: () =>
-      menuApi.createPriceRule<PriceRule>({
-        isPerCover: true,
-        coverTier: tier || null,
-        price: Number(price),
-        priority: 0,
-      }),
-    onSuccess: async () => {
-      setPrice("");
-      await queryClient.invalidateQueries({ queryKey: key });
-      notifySuccess("Per-cover rate saved");
-    },
-    onError: (error) => notifyError(error, "Failed to save per-cover rate"),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => menuApi.removePriceRule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-  });
+  const rulesQuery = usePerCoverPriceRules();
+  const rules = (rulesQuery.data ?? []).filter((rule) => rule.isPerCover);
+  const save = useSavePerCoverPriceRule();
+  const remove = useDeletePerCoverPriceRule();
   return (
     <section className="space-y-4">
       <div>
@@ -48,21 +30,35 @@ export const BuffetPricingSection = () => {
           lines remain kitchen/inventory records and are excluded from billing.
         </p>
       </div>
+      {rulesQuery.isError && !rulesQuery.data ? (
+        <QueryErrorState
+          title="Unable to load per-cover rates"
+          description="Pricing rules could not be loaded. Retry before changing buffet pricing."
+          onRetry={() => void rulesQuery.refetch()}
+          isRetrying={rulesQuery.isFetching}
+        />
+      ) : null}
+      {rulesQuery.isError && rulesQuery.data ? (
+        <StaleDataBanner
+          message="Per-cover rates could not be refreshed. Showing cached pricing."
+          onRetry={() => void rulesQuery.refetch()}
+          isRetrying={rulesQuery.isFetching}
+        />
+      ) : null}
       <div className="grid max-w-xl grid-cols-2 gap-2">
-        <label className="text-sm font-medium text-text-primary">
-          Cover tier
-          <select
-            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-            value={tier}
-            onChange={(event) => setTier(event.target.value as typeof tier)}
-          >
-            <option value="">Any cover</option>
-            <option value="ADULT">Adult</option>
-            <option value="CHILD">Child</option>
-          </select>
-        </label>
+        <Select
+          label="Cover tier"
+          value={tier}
+          onChange={(value) => setTier(value as typeof tier)}
+          options={[
+            { value: "", label: "Any cover" },
+            { value: "ADULT", label: "Adult" },
+            { value: "CHILD", label: "Child" },
+          ]}
+        />
         <Input
           label="Rate per cover"
+          required
           type="number"
           min="0"
           step="0.01"
@@ -71,9 +67,19 @@ export const BuffetPricingSection = () => {
         />
         <Button
           type="button"
-          disabled={!price}
+          disabled={
+            !price ||
+            !Number.isFinite(Number(price)) ||
+            Number(price) < 0 ||
+            (rulesQuery.isError && !rulesQuery.data)
+          }
           loading={save.isPending}
-          onClick={() => save.mutate()}
+          onClick={() =>
+            save.mutate(
+              { tier, price: Number(price) },
+              { onSuccess: () => setPrice("") },
+            )
+          }
         >
           Add rate
         </Button>

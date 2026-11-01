@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 describe("inventory void reversal transaction contract", () => {
   const source = readFileSync(
-    new URL("../../orders/order.repository.ts", import.meta.url),
+    new URL("../../orders/order-adjustment.repository.ts", import.meta.url),
     "utf8",
   );
   const method = source.slice(

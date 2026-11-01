@@ -1,7 +1,9 @@
-import type { Order, OrderStatus, RestaurantTable } from "@pos/types";
+import type { OrderStatus } from "@pos/types";
 import type { AuthContext } from "@/core/auth";
 import { ValidationError } from "@/core/errors";
 import { eventBus } from "@/lib/event-bus";
+import { toTableResponse } from "@/modules/tables/table.mapper";
+import { toRealtimeOrderPayload } from "@/modules/realtime/realtime.mapper";
 import { ticketRepository } from "@/modules/kitchen-tickets/ticket.repository";
 import { tableRepository } from "@/modules/tables/table.repository";
 import { cancellationReasonService } from "./cancellation-reasons/cancellation-reason.service";
@@ -76,7 +78,7 @@ export const orderStatusService = {
         await eventBus.publish(
           {
             type: "table.updated",
-            payload: updatedTable as unknown as RestaurantTable,
+            payload: toTableResponse(updatedTable),
           },
           auth.tenantId,
           order.branchId,
@@ -85,7 +87,7 @@ export const orderStatusService = {
     }
 
     await eventBus.publish(
-      { type: "order.updated", payload: fullOrder as unknown as Order },
+      { type: "order.updated", payload: toRealtimeOrderPayload(fullOrder) },
       auth.tenantId,
       order.branchId,
     );

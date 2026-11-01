@@ -1,6 +1,6 @@
 import type { AuthContext } from "@/core/auth";
 import { requirePermission } from "@/core/auth";
-import { NotFoundError, ValidationError } from "@/core/errors";
+import { InternalError, NotFoundError, ValidationError } from "@/core/errors";
 import { stationRepository } from "./station.repository";
 
 export interface StationInput {
@@ -51,7 +51,8 @@ export const stationService = {
       branchId,
       tenantId: auth.tenantId,
     });
-    if (!created) throw new Error("Kitchen station could not be created");
+    if (!created)
+      throw new InternalError("Kitchen station could not be created");
     return created;
   },
   async update(

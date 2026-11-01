@@ -27,7 +27,7 @@ describe("extractApiError", () => {
 
   it("uses the stable Axios fallback when no response or message is available", () => {
     expect(extractApiError({ isAxiosError: true, message: undefined })).toBe(
-      "Request failed",
+      "The request could not be completed.",
     );
   });
 
@@ -39,7 +39,30 @@ describe("extractApiError", () => {
 
   it("returns a stable fallback for unknown values", () => {
     expect(extractApiError({ reason: "unknown" })).toBe(
-      "An unexpected error occurred",
+      "An unexpected error occurred.",
     );
+  });
+  it("includes request references for support-relevant server errors", () => {
+    expect(
+      extractApiError({
+        code: "INTERNAL_ERROR",
+        message: "Service failed",
+        retryable: true,
+        status: 500,
+        requestId: "req-123",
+      }),
+    ).toBe("Service failed (Reference: req-123)");
+  });
+
+  it("does not expose request references for ordinary client errors", () => {
+    expect(
+      extractApiError({
+        code: "FORBIDDEN",
+        message: "Not allowed",
+        retryable: false,
+        status: 403,
+        requestId: "req-secret",
+      }),
+    ).toBe("Not allowed");
   });
 });

@@ -1,12 +1,17 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import {
+  cancellationReasonIdParamsSchema,
+  cancellationReasonListQuerySchema,
+  cancellationReasonListResponseSchema,
+  cancellationReasonResponseSchema,
+  createCancellationReasonBodySchema,
+  standardErrorResponseSchemas,
+  updateCancellationReasonBodySchema,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { createdResponse, successResponse } from "@/core/response";
+import { toCancellationReasonResponse } from "./cancellation-reason.mapper";
 import { cancellationReasonService } from "./cancellation-reason.service";
-
-const idParams = t.Object({ id: t.String({ format: "uuid" }) });
-const reasonBody = t.Object({
-  label: t.String({ minLength: 1, maxLength: 120 }),
-});
 
 export const cancellationReasonsRouter = new Elysia({
   prefix: "/api/orders/cancellation-reasons",
@@ -16,29 +21,53 @@ export const cancellationReasonsRouter = new Elysia({
     "/",
     async ({ auth, query }) =>
       successResponse(
-        await cancellationReasonService.list(auth, query.activeOnly === "true"),
+        (
+          await cancellationReasonService.list(
+            auth,
+            query.activeOnly === "true",
+          )
+        ).map(toCancellationReasonResponse),
       ),
-    { query: t.Object({ activeOnly: t.Optional(t.String()) }) },
+    {
+      query: cancellationReasonListQuerySchema,
+      response: {
+        200: cancellationReasonListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/",
-    async ({ auth, body }) =>
-      createdResponse(await cancellationReasonService.create(auth, body.label)),
-    { body: reasonBody },
+    async ({ auth, body, set }) => {
+      set.status = 201;
+      return createdResponse(
+        toCancellationReasonResponse(
+          await cancellationReasonService.create(auth, body.label),
+        ),
+      );
+    },
+    {
+      body: createCancellationReasonBodySchema,
+      response: {
+        201: cancellationReasonResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .patch(
     "/:id",
     async ({ auth, params, body }) =>
       successResponse(
-        await cancellationReasonService.update(auth, params.id, body),
+        toCancellationReasonResponse(
+          await cancellationReasonService.update(auth, params.id, body),
+        ),
       ),
     {
-      params: idParams,
-      body: t.Partial(
-        t.Object({
-          label: t.String({ minLength: 1, maxLength: 120 }),
-          isActive: t.Boolean(),
-        }),
-      ),
+      params: cancellationReasonIdParamsSchema,
+      body: updateCancellationReasonBodySchema,
+      response: {
+        200: cancellationReasonResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

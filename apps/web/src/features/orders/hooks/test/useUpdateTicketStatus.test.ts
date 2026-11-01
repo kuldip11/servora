@@ -10,7 +10,10 @@ const notify = vi.hoisted(() => ({
 }));
 const ordersService = vi.hoisted(() => ({ updateTicketStatus: vi.fn() }));
 
-vi.mock("@tanstack/react-query", () => query);
+vi.mock("@tanstack/react-query", () => ({
+  ...query,
+  useQueryClient: () => queryClient,
+}));
 vi.mock("../../../../shared/lib/query-client", () => ({ queryClient }));
 vi.mock("../../../../shared/lib/notify", () => notify);
 vi.mock("../../services/orders.service", () => ({ ordersService }));

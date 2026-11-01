@@ -5,9 +5,8 @@ import { describe, expect, it } from "vitest";
 const menuRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 const writeMethods: Record<string, string[]> = {
-  "items/item.service.ts": [
-    "create",
-    "update",
+  "items/item-write.service.ts": ["create", "update"],
+  "items/item-lifecycle.service.ts": [
     "remove",
     "duplicate",
     "publish",
@@ -24,15 +23,15 @@ const writeMethods: Record<string, string[]> = {
     "remove",
   ],
   "memberships/membership.service.ts": ["assign", "remove"],
-  "pricing/price-rule.service.ts": ["create", "update", "remove"],
-  "modifiers/modifier.service.ts": [
+  "pricing/price-rule-lifecycle.service.ts": ["create", "update", "remove"],
+  "pricing/price-rule-happy-hour.service.ts": ["createHappyHour"],
+  "modifiers/modifier-group.service.ts": [
     "createGroup",
     "updateGroup",
     "deleteGroup",
     "setOptionAvailability",
-    "createTag",
-    "deleteTag",
   ],
+  "modifiers/modifier-catalog.service.ts": ["createTag", "deleteTag"],
   "recipes/recipes.service.ts": ["setItemRecipe"],
   "templates/templates.service.ts": ["createFromCategory", "apply", "delete"],
   "bulk-ops/bulk-ops.service.ts": [
@@ -57,12 +56,24 @@ describe("menu write audit coverage", () => {
         const body = source.slice(start, next < 0 ? source.length : next);
         expect(
           body.includes("menuChangeLog.record") ||
-            body.includes("recordItems("),
+            body.includes("recordItems(") ||
+            body.includes("recordUpdatedItem("),
           `${relativePath}:${method} must record a menu change`,
         ).toBe(true);
       }
     });
   }
+
+  it("item lifecycle audit helper records the delegated menu change", () => {
+    const source = readFileSync(
+      `${menuRoot}/items/item-lifecycle.service.ts`,
+      "utf8",
+    );
+    const start = source.indexOf("const recordUpdatedItem");
+    const end = source.indexOf("\n\nexport const itemLifecycleService", start);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(source.slice(start, end)).toContain("menuChangeLog.record");
+  });
 
   it("availability controller records every authenticated availability write", () => {
     const source = readFileSync(

@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   tags: [{ id: "t1", name: "Spicy" }],
 }));
 
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: mocks.categories, isLoading: false }),
 }));
 vi.mock("@/features/menu/hooks/useMenuTags", () => ({
@@ -26,7 +27,8 @@ vi.mock("@/features/menu/hooks/useSetItemPublished", () => ({
   useSetItemPublished: () => ({ mutate: vi.fn() }),
 }));
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, onClick }: any) => (
     <button onClick={onClick}>{children}</button>
   ),

@@ -1,17 +1,16 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
-import { menuTagsService } from "@/features/menu/services/menu-tags.service";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { menuKeys } from "@/features/menu/query-keys";
+import { menuTagsService } from "@/features/menu/services/menu-tags.service";
+import { notifySuccess } from "@/shared/lib/notify";
 
 export const useAddMenuTag = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color: string }) =>
       menuTagsService.create(name, color),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.tags() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.tags() });
       notifySuccess("Tag created");
     },
-    onError: (err) => notifyError(err, "Failed to create tag"),
   });
 };

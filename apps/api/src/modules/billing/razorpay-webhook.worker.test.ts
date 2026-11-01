@@ -142,8 +142,7 @@ describe("razorpay webhook worker coverage", () => {
       { stage: "worker" },
     );
     expect(errorSpy).toHaveBeenCalledWith(
-      "[Razorpay Worker] Failed event e2",
-      expect.any(Error),
+      expect.stringContaining("razorpay_worker.event_failed"),
     );
 
     stop();
@@ -167,8 +166,7 @@ describe("razorpay webhook worker coverage", () => {
       { stage: "queue" },
     );
     expect(errorSpy).toHaveBeenCalledWith(
-      "[Razorpay Worker] Redis error",
-      expect.any(Error),
+      expect.stringContaining("razorpay_worker.redis_error"),
     );
 
     stop();
@@ -188,15 +186,13 @@ describe("razorpay webhook worker coverage", () => {
     await flush();
 
     expect(errorSpy).toHaveBeenCalledWith(
-      "[Razorpay Worker] Initial recovery scan failed",
-      expect.any(Error),
+      expect.stringContaining("razorpay_worker.initial_recovery_scan_failed"),
     );
 
     await vi.advanceTimersByTimeAsync(30_000);
     await flush();
     expect(errorSpy).toHaveBeenCalledWith(
-      "[Razorpay Worker] Recovery scan failed",
-      expect.any(Error),
+      expect.stringContaining("razorpay_worker.recovery_scan_failed"),
     );
 
     stop();

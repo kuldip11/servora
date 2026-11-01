@@ -26,6 +26,7 @@ interface PromotionFormState {
   rewardQuantity: string;
   rewardDiscountPercent: string;
   stackableWithLoyalty: boolean;
+  isDirty: boolean;
 }
 
 type Action = { patch: Partial<PromotionFormState> };
@@ -52,6 +53,7 @@ const initialState: PromotionFormState = {
   rewardQuantity: "1",
   rewardDiscountPercent: "100",
   stackableWithLoyalty: true,
+  isDirty: false,
 };
 
 const reducer = (
@@ -71,10 +73,10 @@ export const usePromotionFormState = () => {
     ): Dispatch<SetStateAction<PromotionFormState[K]>> =>
     (next) =>
       dispatch({
-        patch: { [key]: resolve(state[key], next) } as Pick<
-          PromotionFormState,
-          K
-        >,
+        patch: {
+          [key]: resolve(state[key], next),
+          isDirty: true,
+        } as Partial<PromotionFormState>,
       });
 
   const beginEdit = (promotion: Promotion) =>
@@ -111,25 +113,18 @@ export const usePromotionFormState = () => {
         rewardQuantity: String(promotion.rewardQuantity ?? 1),
         rewardDiscountPercent: String(promotion.rewardDiscountPercent ?? 100),
         stackableWithLoyalty: promotion.stackableWithLoyalty,
+        isDirty: false,
       },
     });
 
-  const resetAfterSave = () =>
-    dispatch({
-      patch: {
-        editingId: null,
-        name: "",
-        couponCode: "",
-        targetId: "",
-        triggerId: "",
-        rewardId: "",
-      },
-    });
+  const resetAfterSave = () => dispatch({ patch: initialState });
+  const cancelEdit = () => dispatch({ patch: initialState });
 
   return {
     ...state,
     beginEdit,
     resetAfterSave,
+    cancelEdit,
     setEditingId: setter("editingId"),
     setName: setter("name"),
     setRuleType: setter("ruleType"),

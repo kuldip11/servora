@@ -1,4 +1,10 @@
 import { Elysia } from "elysia";
+import {
+  nullSuccessResponseSchema,
+  priceRuleListResponseSchema,
+  priceRuleResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { priceRuleController } from "./price-rule.controller";
 import {
@@ -22,16 +28,38 @@ export const priceRulesRouter = new Elysia({ prefix: "/api/menu/price-rules" })
       ),
     {
       query: listPriceRulesQuery,
+      response: {
+        200: priceRuleListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
-  .post("/", ({ auth, body }) => priceRuleController.create(auth, body), {
-    body: createPriceRuleBody,
-  })
+  .post(
+    "/",
+    ({ auth, body, set }) => {
+      set.status = 201;
+      return priceRuleController.create(auth, body);
+    },
+    {
+      body: createPriceRuleBody,
+      response: {
+        201: priceRuleResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
+  )
   .post(
     "/happy-hour",
-    ({ auth, body }) => priceRuleController.createHappyHour(auth, body),
+    ({ auth, body, set }) => {
+      set.status = 201;
+      return priceRuleController.createHappyHour(auth, body);
+    },
     {
       body: createHappyHourBody,
+      response: {
+        201: priceRuleListResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .patch(
@@ -41,6 +69,10 @@ export const priceRulesRouter = new Elysia({ prefix: "/api/menu/price-rules" })
     {
       params: priceRuleParams,
       body: updatePriceRuleBody,
+      response: {
+        200: priceRuleResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   )
   .delete(
@@ -48,5 +80,9 @@ export const priceRulesRouter = new Elysia({ prefix: "/api/menu/price-rules" })
     ({ auth, params }) => priceRuleController.remove(auth, params.id),
     {
       params: priceRuleParams,
+      response: {
+        200: nullSuccessResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
     },
   );

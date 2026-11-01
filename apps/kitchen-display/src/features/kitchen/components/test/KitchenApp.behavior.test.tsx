@@ -7,8 +7,20 @@ const mocks = vi.hoisted(() => ({
   restoreSession: vi.fn(),
   logoutSession: vi.fn(),
   logout: vi.fn(),
+  cancelQueries: vi.fn(() => Promise.resolve()),
+  clear: vi.fn(),
   loginOnLogin: undefined as (() => void) | undefined,
   boardOnLogout: undefined as (() => void) | undefined,
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    cancelQueries: mocks.cancelQueries,
+    clear: mocks.clear,
+  }),
+}));
+vi.mock("../../../../shared/lib/query-scope", () => ({
+  getKitchenQueryScope: () => ["tenant-1", "branch-1"],
 }));
 
 vi.mock("../../../auth", () => ({
@@ -63,6 +75,8 @@ describe("KitchenApp session flow", () => {
   it("falls back to login when session restoration fails", async () => {
     mocks.restoreSession.mockRejectedValue(new Error("expired"));
     await act(async () => root.render(<KitchenApp />));
+    expect(mocks.cancelQueries).toHaveBeenCalledOnce();
+    expect(mocks.clear).toHaveBeenCalledOnce();
     expect(mocks.logout).toHaveBeenCalled();
     expect(container.textContent).toContain("login-screen");
   });
@@ -75,6 +89,8 @@ describe("KitchenApp session flow", () => {
 
     await act(async () => mocks.boardOnLogout?.());
     expect(mocks.logoutSession).toHaveBeenCalledOnce();
+    expect(mocks.cancelQueries).toHaveBeenCalledOnce();
+    expect(mocks.clear).toHaveBeenCalledOnce();
     expect(mocks.logout).toHaveBeenCalled();
     expect(container.textContent).toContain("login-screen");
 

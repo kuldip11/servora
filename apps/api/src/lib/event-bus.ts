@@ -1,5 +1,10 @@
 import { publisher, REDIS_CHANNELS } from "./redis";
-import type { RealtimeEvent } from "@pos/types";
+import {
+  realtimeEnvelopeSchema,
+  type RealtimeEvent,
+  type RealtimeEnvelope,
+} from "@pos/contracts";
+import { Value } from "@sinclair/typebox/value";
 
 export interface EventPublishContext {
   userId?: string | undefined;
@@ -42,12 +47,16 @@ export const eventBus = {
     branchId?: string,
     context?: EventPublishContext,
   ): Promise<void> {
-    const message = JSON.stringify({
+    const envelope: RealtimeEnvelope = {
       ...event,
       tenantId,
-      branchId,
+      ...(branchId ? { branchId } : {}),
       timestamp: new Date().toISOString(),
-    });
+    };
+    if (!Value.Check(realtimeEnvelopeSchema, envelope)) {
+      throw new Error(`Invalid realtime payload for ${event.type}`);
+    }
+    const message = JSON.stringify(envelope);
 
     let channel: string;
     if (event.type.startsWith("order.")) {

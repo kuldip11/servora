@@ -1,4 +1,4 @@
-import type { Order } from "@pos/types";
+import type { OrderDto as Order } from "@pos/api-client";
 
 export const shortOrderId = (id: string): string => {
   return `#${id.slice(-6).toUpperCase()}`;

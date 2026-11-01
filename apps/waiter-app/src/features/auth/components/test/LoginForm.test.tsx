@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -17,10 +16,10 @@ describe("LoginForm", () => {
         screen.getAllByText(/required|email|password/i).length,
       ).toBeGreaterThan(0),
     );
-    fireEvent.change(screen.getByLabelText("Email"), {
+    fireEvent.change(screen.getByLabelText(/Email/i), {
       target: { value: "a@b.com" },
     });
-    fireEvent.change(screen.getByLabelText("Password"), {
+    fireEvent.change(screen.getByLabelText(/Password/i), {
       target: { value: "password123" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));

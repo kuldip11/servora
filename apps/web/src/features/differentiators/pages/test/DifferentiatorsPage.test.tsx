@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption, chooseSelectOptionAt } from "@/test/select";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +19,8 @@ const mocks = vi.hoisted(() => ({
   realtime: null as null | (() => void),
 }));
 
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
   createAnalyticsApi: () => ({ menuEngineering: mocks.menuEngineering }),
   createApprovalsApi: () => ({ setThreshold: mocks.setThreshold }),
   createAvailabilityApi: () => ({ dashboard: mocks.dashboard }),
@@ -40,7 +42,8 @@ vi.mock("@/shared/lib/realtime", () => ({
     mocks.realtime = callback;
   },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
@@ -55,6 +58,14 @@ vi.mock("@pos/ui", () => ({
       <p>{description}</p>
     </header>
   ),
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <span>{description}</span>
+      <button onClick={onRetry}>Retry</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   toast: mocks.toast,
 }));
 
@@ -135,7 +146,50 @@ describe("DifferentiatorsPage coverage", () => {
       totalAmount: 90,
     });
     mocks.createPromotion.mockResolvedValue({});
-    mocks.explain.mockResolvedValue({ source: "pricing", total: 100 });
+    mocks.explain.mockResolvedValue({
+      orderId: "order-1",
+      asOf: "2026-09-15T12:00:00.000Z",
+      completeHistory: true,
+      historyNotice: "Pricing and availability history verified",
+      totals: {
+        subtotal: 100,
+        discountAmount: 0,
+        taxAmount: 5,
+        serviceChargeAmount: 0,
+        roundingAdjustment: 0,
+        totalAmount: 105,
+      },
+      lines: [
+        {
+          orderItemId: "oi-1",
+          name: "Paneer Tikka",
+          historicalEvidenceComplete: true,
+          availabilityAtOrder: {
+            effectiveStatus: "AVAILABLE",
+            reason: null,
+            cause: "BASE_STATUS",
+            channel: "STAFF",
+            fulfillmentType: "DINE_IN",
+          },
+          pricingReplay: {
+            priceSource: { description: "Menu-item base price" },
+            baseResolvedUnitPrice: 100,
+            variantDelta: 0,
+            modifierDelta: 0,
+            comboDelta: 0,
+            promotionDelta: 0,
+            loyaltyDelta: 0,
+            persistedSubtotal: 100,
+            matchesSnapshot: true,
+          },
+          authoritativePricingReplay: { matchesSnapshot: true },
+          authoritativeAvailabilityReplay: { matchesSnapshot: true },
+          trace: [
+            { stage: "BASE_PRICE", explanation: "Resolved from the menu item" },
+          ],
+        },
+      ],
+    });
     mocks.setThreshold.mockResolvedValue({});
   });
 
@@ -150,15 +204,9 @@ describe("DifferentiatorsPage coverage", () => {
       fulfillmentType: "UNSCOPED",
     });
 
-    fireEvent.change(screen.getByLabelText("Channel"), {
-      target: { value: "STAFF" },
-    });
-    fireEvent.change(screen.getByLabelText("Fulfillment"), {
-      target: { value: "TAKEAWAY" },
-    });
-    fireEvent.change(screen.getByLabelText("Cause"), {
-      target: { value: "RECIPE_DRIVEN" },
-    });
+    chooseSelectOption("Channel", "Staff");
+    chooseSelectOption("Fulfillment", "Takeaway");
+    chooseSelectOption("Cause", "Recipe / inventory");
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     await waitFor(() =>
       expect(mocks.dashboard).toHaveBeenLastCalledWith({
@@ -174,20 +222,12 @@ describe("DifferentiatorsPage coverage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Menu engineering" }));
     expect(await screen.findByText("Paneer")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Analysis window"), {
-      target: { value: "30" },
-    });
+    chooseSelectOption("Analysis window", "Last 30 days");
     await waitFor(() => expect(mocks.menuEngineering).toHaveBeenCalledWith(30));
-    fireEvent.change(screen.getByLabelText("Quadrant"), {
-      target: { value: "DOG" },
-    });
+    chooseSelectOption("Quadrant", "Dogs");
     expect(screen.getByText(/Burger/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Sort by"), {
-      target: { value: "margin" },
-    });
-    fireEvent.change(screen.getByLabelText("Sort by"), {
-      target: { value: "name" },
-    });
+    chooseSelectOption("Sort by", "Margin");
+    chooseSelectOption("Sort by", "Name");
   });
 
   it("explains orders and creates combo and promotion drafts with authoritative previews", async () => {
@@ -200,15 +240,16 @@ describe("DifferentiatorsPage coverage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Explain" }));
     await waitFor(() => expect(mocks.explain).toHaveBeenCalledWith("order-1"));
-    expect(screen.getByText(/pricing/)).toBeTruthy();
+    expect(screen.getByText("Why this price")).toBeTruthy();
+    expect(screen.getByText("Pricing replay matched")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Guided builder" }));
     fireEvent.change(screen.getByPlaceholderText("Lunch combo"), {
       target: { value: "Lunch Combo" },
     });
-    const itemSelects = screen.getAllByLabelText("Menu item");
-    itemSelects.forEach((select) =>
-      fireEvent.change(select, { target: { value: "i1" } }),
+    const itemSelects = screen.getAllByRole("combobox", { name: "Menu item" });
+    itemSelects.forEach((_, index) =>
+      chooseSelectOptionAt("Menu item", "Mains — Paneer Tikka", index),
     );
     fireEvent.click(
       screen.getByRole("button", { name: "Preview authoritative price" }),
@@ -233,9 +274,7 @@ describe("DifferentiatorsPage coverage", () => {
     fireEvent.change(screen.getByPlaceholderText("Weekday special"), {
       target: { value: "Weekday" },
     });
-    fireEvent.change(screen.getByLabelText("Preview against menu item"), {
-      target: { value: "i1" },
-    });
+    chooseSelectOption("Preview against menu item", "Mains — Paneer Tikka");
     fireEvent.change(screen.getByPlaceholderText("LUNCH10"), {
       target: { value: "lunch10" },
     });
@@ -262,9 +301,7 @@ describe("DifferentiatorsPage coverage", () => {
     renderPage();
     await screen.findByText("Paneer Tikka");
     fireEvent.click(screen.getByRole("button", { name: "Approval rules" }));
-    fireEvent.change(screen.getByLabelText("Action"), {
-      target: { value: "VOID" },
-    });
+    chooseSelectOption("Action", "Void");
     fireEvent.change(screen.getByLabelText("Threshold amount"), {
       target: { value: "750" },
     });
@@ -304,12 +341,8 @@ describe("DifferentiatorsPage coverage", () => {
     expect(
       await screen.findByText("Everything is available in the selected scope."),
     ).toBeTruthy();
-    await waitFor(() =>
-      expect(mocks.toast).toHaveBeenCalledWith({
-        title: "Request failed",
-        tone: "danger",
-      }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Guided builder" }));
+    expect(await screen.findByText("Unable to load menu choices")).toBeTruthy();
 
     mocks.menuEngineering.mockResolvedValueOnce([
       {
@@ -332,19 +365,11 @@ describe("DifferentiatorsPage coverage", () => {
       },
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Menu engineering" }));
-    fireEvent.change(screen.getByLabelText("Analysis window"), {
-      target: { value: "60" },
-    });
+    chooseSelectOption("Analysis window", "Last 60 days");
     await waitFor(() => expect(mocks.menuEngineering).toHaveBeenCalledWith(60));
-    fireEvent.change(screen.getByLabelText("Sort by"), {
-      target: { value: "volume" },
-    });
-    fireEvent.change(screen.getByLabelText("Quadrant"), {
-      target: { value: "ALL" },
-    });
-    fireEvent.change(screen.getByLabelText("Sort by"), {
-      target: { value: "name" },
-    });
+    chooseSelectOption("Sort by", "Sales volume");
+    chooseSelectOption("Quadrant", "All quadrants");
+    chooseSelectOption("Sort by", "Name");
 
     mocks.explain.mockRejectedValueOnce(new Error("explain"));
     fireEvent.click(screen.getByRole("button", { name: "Order explain" }));
@@ -369,15 +394,13 @@ describe("DifferentiatorsPage coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: "+ Add slot" }));
     const slotInputs = screen.getAllByLabelText(/Slot \d/);
     fireEvent.change(slotInputs[0]!, { target: { value: "Main" } });
-    const itemSelects = screen.getAllByLabelText("Menu item");
-    itemSelects.forEach((select) =>
-      fireEvent.change(select, { target: { value: "i1" } }),
+    const itemSelects = screen.getAllByRole("combobox", { name: "Menu item" });
+    itemSelects.forEach((_, index) =>
+      chooseSelectOptionAt("Menu item", "Mains — Paneer Tikka", index),
     );
     const upcharges = screen.getAllByLabelText("Upcharge");
     fireEvent.change(upcharges[0]!, { target: { value: "25" } });
-    fireEvent.change(screen.getByLabelText("Pricing"), {
-      target: { value: "PERCENT_OFF_SUM" },
-    });
+    chooseSelectOption("Pricing", "Percent off components");
     fireEvent.change(screen.getByLabelText("Percent off"), {
       target: { value: "15" },
     });
@@ -426,15 +449,11 @@ describe("DifferentiatorsPage coverage", () => {
     fireEvent.change(screen.getByPlaceholderText("Weekday special"), {
       target: { value: "Fixed Deal" },
     });
-    fireEvent.change(screen.getByLabelText("Discount type"), {
-      target: { value: "FIXED_AMOUNT" },
-    });
+    chooseSelectOption("Discount type", "Fixed amount");
     fireEvent.change(screen.getByLabelText("Amount off"), {
       target: { value: "20" },
     });
-    fireEvent.change(screen.getByLabelText("Preview against menu item"), {
-      target: { value: "i1" },
-    });
+    chooseSelectOption("Preview against menu item", "Mains — Paneer Tikka");
     fireEvent.change(screen.getByPlaceholderText("LUNCH10"), {
       target: { value: "" },
     });
@@ -471,9 +490,7 @@ describe("DifferentiatorsPage coverage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Approval rules" }));
-    fireEvent.change(screen.getByLabelText("Action"), {
-      target: { value: "COMP" },
-    });
+    chooseSelectOption("Action", "Comp");
     fireEvent.change(screen.getByLabelText("Threshold amount"), {
       target: { value: "100" },
     });

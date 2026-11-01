@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { ApiClientErrorException } from "@pos/api-client";
 
 const mocks = vi.hoisted(() => ({
   createCustomerSession: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock("@/api", () => ({
   getCustomerOrder: mocks.getCustomerOrder,
   createCustomerRequest: mocks.createCustomerRequest,
 }));
-vi.mock("@/features/cart/persistence", () => ({
+vi.mock("@/features/cart", () => ({
   clearPersistedOrderId: mocks.clearPersistedOrderId,
   clearPersistedSession: mocks.clearPersistedSession,
   getCustomerStorageScope: mocks.getCustomerStorageScope,
@@ -36,7 +37,7 @@ vi.mock("@/features/cart/persistence", () => ({
   savePersistedOrderId: mocks.savePersistedOrderId,
   savePersistedSession: mocks.savePersistedSession,
 }));
-vi.mock("@/features/ordering/useCustomerOrderRealtime", () => ({
+vi.mock("@/features/ordering", () => ({
   useCustomerOrderRealtime: mocks.realtime,
 }));
 import { useCustomerSession } from "../useCustomerSession";
@@ -85,6 +86,33 @@ afterEach(() => {
 });
 
 describe("useCustomerSession exhaustive", () => {
+  it.each([true, false])(
+    "polls for missed order updates when realtime connected=%s",
+    async (connected) => {
+      mocks.realtime.mockReturnValue(connected);
+      mocks.loadPersistedOrderId.mockReturnValue("o1");
+      mocks.getCustomerOrder.mockResolvedValue({ id: "o1", status: "OPEN" });
+      const { result, unmount } = renderSessionHook();
+      await waitFor(() => expect(result.current.placedOrder?.id).toBe("o1"));
+      const callsBefore = mocks.getCustomerOrder.mock.calls.length;
+      mocks.getCustomerOrder.mockResolvedValue({
+        id: "o1",
+        status: "BILL_REQUESTED",
+      });
+      // No realtime event is delivered, including while the socket says connected.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_100);
+      });
+      await waitFor(() =>
+        expect(result.current.placedOrder?.status).toBe("BILL_REQUESTED"),
+      );
+      expect(mocks.getCustomerOrder.mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      );
+      expect(result.current.live).toBe(connected);
+      unmount();
+    },
+  );
   it("shows QR error when no token exists", async () => {
     history.replaceState({}, "", "/");
     mocks.getCustomerStorageScope.mockReturnValue(null);
@@ -128,10 +156,24 @@ describe("useCustomerSession exhaustive", () => {
       expiresAt: "old-exp",
     });
     mocks.getCustomerMenu
-      .mockRejectedValueOnce(new Error("expired"))
+      .mockRejectedValueOnce(
+        new ApiClientErrorException({
+          code: "UNAUTHORIZED",
+          message: "Customer session is invalid or expired",
+          retryable: false,
+          status: 401,
+        }),
+      )
       .mockResolvedValueOnce(menu("TAKEAWAY"));
     mocks.loadPersistedOrderId.mockReturnValue("bad");
-    mocks.getCustomerOrder.mockRejectedValueOnce(new Error("gone"));
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "VALIDATION_FAILED",
+        message: "Order does not belong to this customer session",
+        retryable: false,
+        status: 400,
+      }),
+    );
     const { result } = renderSessionHook();
     await waitFor(() => expect(result.current.session?.mode).toBe("TAKEAWAY"));
     expect(mocks.clearPersistedSession).toHaveBeenCalledWith("scope");
@@ -139,6 +181,53 @@ describe("useCustomerSession exhaustive", () => {
     expect(result.current.session?.area).toBe("Takeaway");
     expect(mocks.clearPersistedOrderId).toHaveBeenCalledWith("scope");
   });
+  it("preserves persisted session and order on transient bootstrap failures", async () => {
+    mocks.loadPersistedSession.mockReturnValue({
+      token: "old",
+      expiresAt: "persisted-exp",
+    });
+    mocks.getCustomerMenu.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Temporary outage",
+        retryable: true,
+        status: 503,
+      }),
+    );
+
+    const first = renderSessionHook();
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(first.result.current.error).toBe("Temporary outage");
+    expect(mocks.clearPersistedSession).not.toHaveBeenCalled();
+    expect(mocks.createCustomerSession).not.toHaveBeenCalled();
+    first.unmount();
+
+    vi.clearAllMocks();
+    mocks.getCustomerStorageScope.mockReturnValue("scope");
+    mocks.loadPersistedSession.mockReturnValue({
+      token: "old",
+      expiresAt: "persisted-exp",
+    });
+    mocks.loadPersistedOrderId.mockReturnValue("o1");
+    mocks.restoreCart.mockReturnValue({ cart: [], droppedCount: 0 });
+    mocks.realtime.mockReturnValue(true);
+    mocks.getCustomerMenu.mockResolvedValue(menu());
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Order service unavailable",
+        retryable: true,
+        status: 503,
+      }),
+    );
+
+    const second = renderSessionHook();
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+    expect(second.result.current.error).toBe("Order service unavailable");
+    expect(mocks.clearPersistedOrderId).not.toHaveBeenCalled();
+    second.unmount();
+  });
+
   it("uses persisted token without creating and supports storage-less scope", async () => {
     mocks.loadPersistedSession.mockReturnValue({
       token: "old",
@@ -170,6 +259,40 @@ describe("useCustomerSession exhaustive", () => {
       expect(result.current.error).toBe("Unable to load this ordering session"),
     );
   });
+  it("surfaces active-order refresh failures without discarding the cached order", async () => {
+    mocks.loadPersistedOrderId.mockReturnValue("o1");
+    mocks.getCustomerOrder.mockResolvedValueOnce({
+      id: "o1",
+      status: "PLACED",
+    });
+
+    const { result } = renderSessionHook();
+
+    await waitFor(() => expect(result.current.placedOrder?.id).toBe("o1"));
+
+    mocks.getCustomerOrder.mockRejectedValueOnce(
+      new ApiClientErrorException({
+        code: "SERVICE_UNAVAILABLE",
+        message: "Order refresh unavailable",
+        retryable: true,
+        status: 503,
+      }),
+    );
+    act(() => result.current.retryActiveOrder());
+    await waitFor(() =>
+      expect(result.current.activeOrderError).toBe("Order refresh unavailable"),
+    );
+    expect(result.current.placedOrder?.id).toBe("o1");
+
+    mocks.getCustomerOrder.mockResolvedValueOnce({
+      id: "o1",
+      status: "PREPARING",
+    });
+    act(() => result.current.retryActiveOrder());
+    await waitFor(() => expect(result.current.activeOrderError).toBeNull());
+    expect(result.current.placedOrder?.status).toBe("PREPARING");
+  });
+
   it("handles requests success/failure/guard and realtime callbacks", async () => {
     let onOrder: any, onMenu: any;
     mocks.realtime.mockImplementation((_t, _id, a, b) => {
@@ -189,10 +312,10 @@ describe("useCustomerSession exhaustive", () => {
     mocks.createCustomerRequest.mockRejectedValueOnce("x");
     await act(async () => result.current.requestHelp("CALL_WAITER" as any));
     expect(result.current.requestMessage).toBe("Could not send request");
-    act(() => onOrder({ id: "rt" }));
+    await act(() => onOrder({ id: "rt" }));
     expect(result.current.placedOrder?.id).toBe("rt");
     const calls = mocks.getCustomerMenu.mock.calls.length;
-    act(() => onMenu());
+    await act(() => onMenu());
     await waitFor(() =>
       expect(mocks.getCustomerMenu.mock.calls.length).toBeGreaterThan(calls),
     );

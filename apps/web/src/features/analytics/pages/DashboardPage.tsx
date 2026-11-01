@@ -19,7 +19,7 @@ export const DashboardPage = () => {
         description="Live sales, orders, and operational signals for the current restaurant scope."
         actions={<Badge variant="info">{scopeLabel}</Badge>}
       />
-      <DashboardOverview scopeLabel={scopeLabel} />
+      <DashboardOverview />
       <DashboardSalesInsights scopeLabel={scopeLabel} />
       <CostMarginPanel branchId={branchId} />
       <Grid columns={{ base: 1, lg: 2 }} gap="lg">

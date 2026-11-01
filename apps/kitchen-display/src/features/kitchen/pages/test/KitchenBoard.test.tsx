@@ -1,18 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children }: any) => <div>{children}</div>,
   IconButton: () => <button>icon</button>,
   Spinner: () => <span>loading</span>,
   EmptyState: () => <span>empty</span>,
+  QueryErrorState: ({ title }: any) => <span>{title}</span>,
+  StaleDataBanner: ({ message }: any) => <span>{message}</span>,
   Popover: ({ children }: any) => <div>{children}</div>,
   ThemeSwitcher: () => <span>theme</span>,
 }));
 vi.mock("../../hooks/useKitchenTickets", () => ({
-  useKitchenStations: () => ({ data: [] }),
+  useKitchenStations: () => ({
+    data: [],
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
   useKitchenTickets: () => ({
     data: [],
     isLoading: false,
+    isError: false,
     isFetching: false,
     refetch: vi.fn(),
   }),

@@ -7,7 +7,8 @@ vi.mock("qrcode.react", () => ({
 vi.mock("@/config/app-urls", () => ({
   appUrls: { customer: "https://customer.example/" },
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Modal: ({ open, title, children, footer }: any) =>
     open ? (
       <div>

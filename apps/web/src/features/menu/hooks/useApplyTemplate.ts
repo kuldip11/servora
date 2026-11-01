@@ -1,13 +1,12 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
-import { notifyError, notifySuccess } from "@/shared/lib/notify";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { menuKeys } from "@/features/menu/query-keys";
 import {
   menuTemplatesService,
   type ApplyTemplateInput,
 } from "@/features/menu/services/menu-templates.service";
-import { menuKeys } from "@/features/menu/query-keys";
 
 export const useApplyTemplate = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       templateId,
@@ -17,8 +16,7 @@ export const useApplyTemplate = () => {
       input: ApplyTemplateInput;
     }) => menuTemplatesService.apply(templateId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
+      void queryClient.invalidateQueries({ queryKey: menuKeys.categories() });
     },
-    onError: (err) => notifyError(err, "Failed to apply template"),
   });
 };

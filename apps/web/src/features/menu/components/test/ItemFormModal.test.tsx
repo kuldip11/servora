@@ -21,10 +21,14 @@ vi.mock("@/features/menu/hooks/useMenuTags", () => ({
 vi.mock("@/features/menu/hooks/useMenuAllergens", () => ({
   useMenuAllergens: () => ({ data: m.allergens }),
 }));
-vi.mock("@/features/menu/hooks/useMenuCategories", () => ({
+vi.mock("@/features/menu", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/menu")>()),
   useMenuCategories: () => ({ data: m.categories }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -43,10 +47,25 @@ vi.mock("@pos/ui", () => ({
     </label>
   )),
   Select: React.forwardRef(
-    ({ label, options = [], error, ...p }: any, ref: any) => (
+    (
+      {
+        label,
+        options = [],
+        error,
+        onChange,
+        containerClassName: _containerClassName,
+        ...p
+      }: any,
+      ref: any,
+    ) => (
       <label>
         {label}
-        <select ref={ref} aria-label={label} {...p}>
+        <select
+          ref={ref}
+          aria-label={label}
+          {...p}
+          onChange={(event) => onChange?.(event.target.value)}
+        >
           {options.map((o: any) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -264,7 +283,11 @@ describe("ItemFormModal coverage", () => {
     fireEvent.change(screen.getByLabelText("Effective from (optional)"), {
       target: { value: "2030-01-01T10:00" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    const addButton = screen.getByRole("button", { name: "Add Item" });
+    await waitFor(() =>
+      expect((addButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(addButton);
     await waitFor(() => expect(m.save).toHaveBeenCalled());
     expect(m.save.mock.calls[0]![0]).toEqual(
       expect.objectContaining({
@@ -322,7 +345,11 @@ describe("ItemFormModal coverage", () => {
       target: { value: "LB" },
     });
     fireEvent.click(screen.getByLabelText(/Track finite stock/));
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    const saveButton = screen.getByRole("button", { name: "Save Changes" });
+    await waitFor(() =>
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(saveButton);
     await waitFor(() => expect(m.save).toHaveBeenCalled());
     expect(m.save.mock.calls[0]![0].payload).toEqual(
       expect.objectContaining({
@@ -408,7 +435,11 @@ describe("ItemFormModal coverage", () => {
     );
     fireEvent.click(recipeToggle);
     fireEvent.click(recipeToggle);
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    const saveButton = screen.getByRole("button", { name: "Save Changes" });
+    await waitFor(() =>
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(saveButton);
     await waitFor(() => expect(m.save).toHaveBeenCalled());
     expect(m.save.mock.calls[0]![0].payload).toEqual(
       expect.objectContaining({

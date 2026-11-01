@@ -1,31 +1,48 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseSelectOption } from "@/test/select";
 
 const h = vi.hoisted(() => ({
   has: vi.fn(),
-  invalidate: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
-  org: {
-    list: vi.fn(),
-    tenants: vi.fn(),
-    menus: vi.fn(),
-    loyaltyTiers: vi.fn(),
-    createMenu: vi.fn(),
-    updateMenu: vi.fn(),
-    removeMenu: vi.fn(),
-    createLoyaltyTier: vi.fn(),
-    removeLoyaltyTier: vi.fn(),
-  },
-  menu: {
-    listPriceRulesFor: vi.fn(),
-    createPriceRule: vi.fn(),
-    removePriceRule: vi.fn(),
-  },
+  createMenu: vi.fn(),
+  updateMenu: vi.fn(),
+  removeMenu: vi.fn(),
+  createPriceRule: vi.fn(),
+  removePriceRule: vi.fn(),
+  createLoyaltyTier: vi.fn(),
+  removeLoyaltyTier: vi.fn(),
 }));
 let data: any = {};
-vi.mock("@pos/ui", () => ({
+const query = (queryKey: readonly unknown[]) => ({
+  data: data[JSON.stringify(queryKey)],
+  isError: false,
+  isFetching: false,
+  refetch: vi.fn(),
+});
+const mutation = (fn: ReturnType<typeof vi.fn>) => ({
+  isPending: false,
+  mutate: (arg?: unknown, callbacks?: { onSuccess?: () => void }) =>
+    Promise.resolve()
+      .then(() => fn(arg))
+      .then(() => callbacks?.onSuccess?.())
+      .catch((error) => h.error(error, mutationErrorFallback(fn))),
+});
+const mutationErrorFallback = (fn: ReturnType<typeof vi.fn>) => {
+  if (fn === h.createMenu) return "Failed to create organization menu";
+  if (fn === h.updateMenu) return "Failed to update organization menu";
+  if (fn === h.removeMenu) return "Failed to delete organization menu";
+  if (fn === h.createPriceRule)
+    return "Failed to create organization price rule";
+  if (fn === h.removePriceRule)
+    return "Failed to remove organization price rule";
+  if (fn === h.createLoyaltyTier)
+    return "Failed to create organization loyalty tier";
+  return "Failed to remove organization loyalty tier";
+};
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, loading: _l, ...p }: any) => (
     <button {...p}>{children}</button>
   ),
@@ -39,40 +56,40 @@ vi.mock("@pos/ui", () => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: h.has }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
-vi.mock("@/shared/lib/query-client", () => ({
-  queryClient: { invalidateQueries: h.invalidate },
-}));
 vi.mock("@/shared/lib/notify", () => ({
   notifySuccess: h.success,
   notifyError: h.error,
 }));
-vi.mock("@pos/api-client", () => ({
-  createOrganizationsApi: () => h.org,
-  createMenuApi: () => h.menu,
+vi.mock("@/features/menu/hooks/useOrganizationManagement", () => ({
+  useManagedOrganizations: () => query(["menu", "organizations"]),
+  useOrganizationTenants: (organizationId: string) =>
+    query(["menu", "organizations", organizationId, "tenants"]),
+  useOrganizationMenus: (organizationId: string) =>
+    query(["menu", "organizations", organizationId, "menus"]),
+  useOrganizationPriceRules: (organizationId: string) =>
+    query(["menu", "organizations", organizationId, "price-rules"]),
+  useOrganizationLoyaltyTiers: (organizationId: string) =>
+    query(["menu", "organizations", organizationId, "loyalty-tiers"]),
+  useCreateOrganizationMenu: () => mutation(h.createMenu),
+  useUpdateOrganizationMenu: () => mutation(h.updateMenu),
+  useDeleteOrganizationMenu: () => mutation(h.removeMenu),
+  useCreateOrganizationPriceRule: () => mutation(h.createPriceRule),
+  useDeleteOrganizationPriceRule: () => mutation(h.removePriceRule),
+  useCreateOrganizationLoyaltyTier: () => mutation(h.createLoyaltyTier),
+  useDeleteOrganizationLoyaltyTier: () => mutation(h.removeLoyaltyTier),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: any) => ({ data: data[JSON.stringify(queryKey)] }),
-  useMutation: (cfg: any) => ({
-    isPending: false,
-    mutate: (arg?: any) =>
-      Promise.resolve()
-        .then(() => cfg.mutationFn(arg))
-        .then((v) => cfg.onSuccess?.(v))
-        .catch((e) => cfg.onError?.(e)),
-  }),
-}));
+
 import { OrganizationManagementSection } from "../OrganizationManagementSection";
 
 const seed = () => {
-  const ms = [
-    { organizationId: "o1", organization: { id: "o1", name: "Org One" } },
-    { organizationId: "", organization: { id: "o2", name: "Org Two" } },
+  const organizations = [
+    { id: "o1", name: "Org One" },
+    { id: "o2", name: "Org Two" },
   ];
   data = {
-    '["organizations"]': ms,
-    '["organizations","o1","tenants"]': [{ id: "t1", name: "Tenant" }],
-    '["organizations","o1","menus"]': [
+    '["menu","organizations"]': organizations,
+    '["menu","organizations","o1","tenants"]': [{ id: "t1", name: "Tenant" }],
+    '["menu","organizations","o1","menus"]': [
       {
         id: "m1",
         name: "Pub",
@@ -88,18 +105,18 @@ const seed = () => {
         organizationItems: [],
       },
     ],
-    '["organizations","o1","price-rules"]': [
+    '["menu","organizations","o1","price-rules"]': [
       { id: "r1", menuItemSku: "SKU1", price: 12, isPerCover: false },
       { id: "r2", menuItemSku: null, price: 1, isPerCover: true },
     ],
-    '["organizations","o1","loyalty-tiers"]': [
+    '["menu","organizations","o1","loyalty-tiers"]': [
       { id: "l1", name: "Gold", discountPercent: 10, discountFixed: null },
       { id: "l2", name: "Fixed", discountPercent: null, discountFixed: 20 },
     ],
-    '["organizations","o2","tenants"]': [],
-    '["organizations","o2","menus"]': [],
-    '["organizations","o2","price-rules"]': [],
-    '["organizations","o2","loyalty-tiers"]': [],
+    '["menu","organizations","o2","tenants"]': [],
+    '["menu","organizations","o2","menus"]': [],
+    '["menu","organizations","o2","price-rules"]': [],
+    '["menu","organizations","o2","loyalty-tiers"]': [],
   };
 };
 describe("OrganizationManagementSection coverage", () => {
@@ -107,15 +124,13 @@ describe("OrganizationManagementSection coverage", () => {
     vi.clearAllMocks();
     h.has.mockReturnValue(true);
     seed();
-    Object.values(h.org).forEach((f: any) => f.mockResolvedValue?.({}));
-    Object.values(h.menu).forEach((f: any) => f.mockResolvedValue?.({}));
-    h.org.createMenu.mockResolvedValue({});
-    h.org.updateMenu.mockResolvedValue({});
-    h.org.removeMenu.mockResolvedValue({});
-    h.org.createLoyaltyTier.mockResolvedValue({});
-    h.org.removeLoyaltyTier.mockResolvedValue({});
-    h.menu.createPriceRule.mockResolvedValue({});
-    h.menu.removePriceRule.mockResolvedValue({});
+    h.createMenu.mockResolvedValue({});
+    h.updateMenu.mockResolvedValue({});
+    h.removeMenu.mockResolvedValue({});
+    h.createPriceRule.mockResolvedValue({});
+    h.removePriceRule.mockResolvedValue({});
+    h.createLoyaltyTier.mockResolvedValue({});
+    h.removeLoyaltyTier.mockResolvedValue({});
   });
   it("covers permission and missing membership guards", () => {
     h.has.mockReturnValue(false);
@@ -123,7 +138,7 @@ describe("OrganizationManagementSection coverage", () => {
     expect(screen.getByText(/need the organization:manage/)).toBeTruthy();
     a.unmount();
     h.has.mockReturnValue(true);
-    data['["organizations"]'] = [];
+    data['["menu","organizations"]'] = [];
     render(<OrganizationManagementSection />);
     expect(screen.getByText(/not linked/)).toBeTruthy();
   });
@@ -163,17 +178,14 @@ describe("OrganizationManagementSection coverage", () => {
       target: { value: " Tier " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create tier" }));
-    fireEvent.change(
-      screen.getByText("Discount type").querySelector("select")!,
-      { target: { value: "FIXED" } },
-    );
+    chooseSelectOption("Discount type", "Fixed amount");
     fireEvent.change(screen.getByLabelText("Amount"), {
       target: { value: "15" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create tier" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]!);
-    await waitFor(() => expect(h.org.createMenu).toHaveBeenCalled());
-    expect(h.org.createMenu.mock.calls[0][1]).toMatchObject({
+    await waitFor(() => expect(h.createMenu).toHaveBeenCalled());
+    expect(h.createMenu.mock.calls[0][0]).toMatchObject({
       name: "New Menu",
       status: "PUBLISHED",
       isDefault: false,
@@ -183,21 +195,17 @@ describe("OrganizationManagementSection coverage", () => {
         { itemSku: "C", sortOrder: 2 },
       ],
     });
-    expect(h.org.updateMenu).toHaveBeenCalledTimes(2);
-    expect(h.menu.createPriceRule).toHaveBeenCalled();
-    await waitFor(() =>
-      expect(h.org.createLoyaltyTier).toHaveBeenCalledTimes(2),
-    );
-    fireEvent.change(screen.getAllByRole("combobox")[0]!, {
-      target: { value: "o2" },
-    });
+    expect(h.updateMenu).toHaveBeenCalledTimes(2);
+    expect(h.createPriceRule).toHaveBeenCalled();
+    await waitFor(() => expect(h.createLoyaltyTier).toHaveBeenCalledTimes(2));
+    chooseSelectOption("Organization", "Org Two");
     expect(screen.getByText(/Org Two · 0 member/)).toBeTruthy();
   });
   it("covers mutation errors", async () => {
-    h.org.createMenu.mockRejectedValueOnce(new Error("m"));
-    h.menu.createPriceRule.mockRejectedValueOnce(new Error("r"));
-    h.org.createLoyaltyTier.mockRejectedValueOnce(new Error("l"));
-    h.org.removeLoyaltyTier.mockRejectedValueOnce(new Error("d"));
+    h.createMenu.mockRejectedValueOnce(new Error("m"));
+    h.createPriceRule.mockRejectedValueOnce(new Error("r"));
+    h.createLoyaltyTier.mockRejectedValueOnce(new Error("l"));
+    h.removeLoyaltyTier.mockRejectedValueOnce(new Error("d"));
     render(<OrganizationManagementSection />);
     fireEvent.change(screen.getByLabelText("Menu name"), {
       target: { value: "X" },

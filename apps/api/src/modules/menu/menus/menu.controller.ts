@@ -6,10 +6,15 @@ import {
   type CreateMenuScheduleInput,
   type UpdateMenuInput,
 } from "./menu.service";
+import {
+  toActiveMenuResponse,
+  toMenuResponse,
+  toMenuScheduleResponse,
+} from "./menu.mapper";
 
 export const menuController = {
   async list(auth: AuthContext) {
-    return successResponse(await menuService.list(auth));
+    return successResponse((await menuService.list(auth)).map(toMenuResponse));
   },
   async listActive(
     auth: AuthContext,
@@ -17,37 +22,49 @@ export const menuController = {
     fulfillmentType: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "ONLINE",
   ) {
     return successResponse(
-      await menuService.listActive(auth, channel, fulfillmentType),
+      (await menuService.listActive(auth, channel, fulfillmentType)).map(
+        toActiveMenuResponse,
+      ),
     );
   },
   async getById(auth: AuthContext, id: string) {
-    return successResponse(await menuService.getById(auth, id));
+    return successResponse(toMenuResponse(await menuService.getById(auth, id)));
   },
   async create(auth: AuthContext, input: CreateMenuInput) {
-    return createdResponse(await menuService.create(auth, input));
+    return createdResponse(
+      toMenuResponse(await menuService.create(auth, input)),
+    );
   },
   async update(auth: AuthContext, id: string, input: UpdateMenuInput) {
-    return successResponse(await menuService.update(auth, id, input));
+    return successResponse(
+      toMenuResponse(await menuService.update(auth, id, input)),
+    );
   },
   async publish(auth: AuthContext, id: string) {
-    return successResponse(await menuService.publish(auth, id));
+    return successResponse(toMenuResponse(await menuService.publish(auth, id)));
   },
   async unpublish(auth: AuthContext, id: string) {
-    return successResponse(await menuService.unpublish(auth, id));
+    return successResponse(
+      toMenuResponse(await menuService.unpublish(auth, id)),
+    );
   },
   async remove(auth: AuthContext, id: string) {
     await menuService.remove(auth, id);
     return successResponse(null);
   },
   async listSchedules(auth: AuthContext, id: string) {
-    return successResponse(await menuService.listSchedules(auth, id));
+    return successResponse(
+      (await menuService.listSchedules(auth, id)).map(toMenuScheduleResponse),
+    );
   },
   async createSchedule(
     auth: AuthContext,
     id: string,
     input: CreateMenuScheduleInput,
   ) {
-    return createdResponse(await menuService.createSchedule(auth, id, input));
+    return createdResponse(
+      toMenuScheduleResponse(await menuService.createSchedule(auth, id, input)),
+    );
   },
   async deleteSchedule(auth: AuthContext, id: string) {
     await menuService.deleteSchedule(auth, id);

@@ -8,6 +8,7 @@ import { menuRecipesService } from "@/features/menu/services/menu-recipes.servic
 describe("menuRecipesService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.post.mockResolvedValue({ data: { data: [] } });
   });
 
   it("loads recipes for an item", async () => {

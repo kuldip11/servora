@@ -2,9 +2,8 @@ import { memo, useState } from "react";
 import { BottomSheet } from "@pos/ui";
 
 import type { CustomerMenuItem } from "@/api";
-import { validateItemConfiguration } from "@/features/cart/configuration";
-import type { SelectedOption } from "@/features/cart/pricing";
-import { getLineSubtotal } from "@/features/cart/pricing";
+import { validateItemConfiguration, getLineSubtotal } from "@/features/cart";
+import type { SelectedOption } from "@/features/cart";
 import { ItemCustomizationFooter } from "@/features/menu/ItemCustomizationFooter";
 import { ItemCustomizationOverview } from "@/features/menu/ItemCustomizationOverview";
 import { ItemModifierGroups } from "@/features/menu/ItemModifierGroups";
@@ -39,6 +38,7 @@ export const ItemCustomization = memo(function ItemCustomization({
   editing = false,
 }: Props) {
   const [activeZone, setActiveZone] = useState<Zone>("LEFT");
+  const [showValidation, setShowValidation] = useState(false);
   const validationError = validateItemConfiguration(
     item,
     variantId,
@@ -77,7 +77,10 @@ export const ItemCustomization = memo(function ItemCustomization({
         <ItemCustomizationOverview
           item={item}
           variantId={variantId}
-          onVariantChange={onVariantChange}
+          onVariantChange={(nextVariantId) => {
+            setShowValidation(true);
+            onVariantChange(nextVariantId);
+          }}
         />
         <ItemModifierGroups
           item={item}
@@ -85,10 +88,16 @@ export const ItemCustomization = memo(function ItemCustomization({
           variantId={variantId}
           activeZone={activeZone}
           onZoneChange={setActiveZone}
-          onToggle={onToggle}
-          onOptionQuantity={onOptionQuantity}
+          onToggle={(optionId, groupId, zoneLabel) => {
+            setShowValidation(true);
+            onToggle(optionId, groupId, zoneLabel);
+          }}
+          onOptionQuantity={(optionId, delta, zoneLabel) => {
+            setShowValidation(true);
+            onOptionQuantity(optionId, delta, zoneLabel);
+          }}
         />
-        {validationError && (
+        {showValidation && validationError && (
           <p role="alert" className="text-sm text-danger">
             {validationError}
           </p>

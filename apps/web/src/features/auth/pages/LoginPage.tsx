@@ -5,7 +5,7 @@ import { useRouter } from "@tanstack/react-router";
 import { ChefHat, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 
-import { authService } from "@/features/auth/services/auth.service";
+import { authService } from "@/shared/auth/auth.service";
 import { useAuthStore } from "@/store/auth";
 import { Button, Card, Input, toast } from "@pos/ui";
 import { extractApiError } from "@/shared/lib/api-client";
@@ -26,6 +26,8 @@ export const LoginPage = () => {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -43,7 +45,7 @@ export const LoginPage = () => {
         title: `Welcome back, ${result.user.firstName}!`,
         tone: "success",
       });
-      router.navigate({
+      void router.navigate({
         to: restored
           ? getAuthorizedHomePath(useAuthStore.getState().user)
           : "/business",
@@ -71,12 +73,13 @@ export const LoginPage = () => {
 
         <Card className="rounded-xl p-8" padding="none">
           <form
-            onSubmit={handleSubmit(handleLogin)}
+            onSubmit={(event) => void handleSubmit(handleLogin)(event)}
             className="space-y-5"
             noValidate
           >
             <Input
               label="Email address"
+              required
               type="email"
               placeholder="you@restaurant.com"
               error={errors.email?.message}
@@ -87,6 +90,7 @@ export const LoginPage = () => {
             <Input
               id="login-password"
               label="Password"
+              required
               type={showPass ? "text" : "password"}
               placeholder="••••••••"
               autoComplete="current-password"

@@ -3,6 +3,7 @@ import { requirePermission } from "@/core/auth";
 import {
   ConflictError,
   ForbiddenError,
+  InternalError,
   NotFoundError,
   ValidationError,
 } from "@/core/errors";
@@ -85,6 +86,8 @@ export const roleService = {
       input = { ...input, name };
     }
     const updated = await roleRepository.update(id, input);
+    if (!updated)
+      throw new InternalError("Role update did not return a record");
     await writeAudit({
       tenantId: auth.tenantId,
       userId: auth.userId,

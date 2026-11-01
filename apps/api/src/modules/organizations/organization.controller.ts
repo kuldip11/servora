@@ -3,35 +3,60 @@ import {
   createdResponse,
   successResponse,
 } from "@/core/response/response-helpers";
+import type {
+  CreateOrganizationRequest,
+  LoyaltyTierRequest,
+  OrganizationMenuRequest,
+  UpdateLoyaltyTierRequest,
+  UpdateOrganizationMenuRequest,
+  UpdateOrganizationRequest,
+} from "@pos/contracts";
+import { toLoyaltyTierResponse } from "@/modules/loyalty/loyalty.mapper";
+import { toTenantResponse } from "@/modules/tenants/tenant.mapper";
+import {
+  toOrganizationCreatedResponse,
+  toOrganizationMenuResponse,
+  toOrganizationResponse,
+} from "./organization.mapper";
 import { organizationService } from "./organization.service";
 
 export const organizationController = {
   async listLoyaltyTiers(auth: AuthContext, organizationId: string) {
     return successResponse(
-      await organizationService.listLoyaltyTiers(auth, organizationId),
+      (await organizationService.listLoyaltyTiers(auth, organizationId)).map(
+        toLoyaltyTierResponse,
+      ),
     );
   },
   async createLoyaltyTier(
     auth: AuthContext,
     organizationId: string,
-    input: Parameters<typeof organizationService.createLoyaltyTier>[2],
+    input: LoyaltyTierRequest,
   ) {
     return createdResponse(
-      await organizationService.createLoyaltyTier(auth, organizationId, input),
+      toLoyaltyTierResponse(
+        await organizationService.createLoyaltyTier(
+          auth,
+          organizationId,
+          input,
+        ),
+      ),
     );
   },
   async updateLoyaltyTier(
     auth: AuthContext,
     organizationId: string,
     tierId: string,
-    input: Parameters<typeof organizationService.updateLoyaltyTier>[3],
+    input: UpdateLoyaltyTierRequest,
   ) {
     return successResponse(
-      await organizationService.updateLoyaltyTier(
-        auth,
-        organizationId,
-        tierId,
-        input,
+      toLoyaltyTierResponse(
+        await organizationService.updateLoyaltyTier(
+          auth,
+          organizationId,
+          tierId,
+          input,
+        ),
       ),
     );
   },
@@ -44,50 +69,68 @@ export const organizationController = {
     return successResponse(null);
   },
   async list(auth: AuthContext) {
-    return successResponse(await organizationService.list(auth));
+    return successResponse(
+      (await organizationService.list(auth)).map(toOrganizationResponse),
+    );
   },
-  async create(
-    auth: AuthContext,
-    input: Parameters<typeof organizationService.create>[1],
-  ) {
-    return createdResponse(await organizationService.create(auth, input));
+  async create(auth: AuthContext, input: CreateOrganizationRequest) {
+    return createdResponse(
+      toOrganizationCreatedResponse(
+        await organizationService.create(auth, input),
+      ),
+    );
   },
   async update(
     auth: AuthContext,
     organizationId: string,
-    changes: Parameters<typeof organizationService.update>[2],
+    changes: UpdateOrganizationRequest,
   ) {
     return successResponse(
-      await organizationService.update(auth, organizationId, changes),
+      toOrganizationResponse(
+        await organizationService.update(auth, organizationId, changes),
+      ),
     );
   },
   async listTenants(auth: AuthContext, organizationId: string) {
     return successResponse(
-      await organizationService.listTenants(auth, organizationId),
+      (await organizationService.listTenants(auth, organizationId)).map(
+        toTenantResponse,
+      ),
     );
   },
   async listMenus(auth: AuthContext, organizationId: string) {
     return successResponse(
-      await organizationService.listMenus(auth, organizationId),
+      (await organizationService.listMenus(auth, organizationId)).map(
+        toOrganizationMenuResponse,
+      ),
     );
   },
   async createMenu(
     auth: AuthContext,
     organizationId: string,
-    input: Parameters<typeof organizationService.createMenu>[2],
+    input: OrganizationMenuRequest,
   ) {
     return createdResponse(
-      await organizationService.createMenu(auth, organizationId, input),
+      toOrganizationMenuResponse(
+        await organizationService.createMenu(auth, organizationId, input),
+      ),
     );
   },
   async updateMenu(
     auth: AuthContext,
     organizationId: string,
     menuId: string,
-    input: Parameters<typeof organizationService.updateMenu>[3],
+    input: UpdateOrganizationMenuRequest,
   ) {
     return successResponse(
-      await organizationService.updateMenu(auth, organizationId, menuId, input),
+      toOrganizationMenuResponse(
+        await organizationService.updateMenu(
+          auth,
+          organizationId,
+          menuId,
+          input,
+        ),
+      ),
     );
   },
   async deleteMenu(auth: AuthContext, organizationId: string, menuId: string) {
@@ -96,7 +139,9 @@ export const organizationController = {
   },
   async archive(auth: AuthContext, organizationId: string) {
     return successResponse(
-      await organizationService.archive(auth, organizationId),
+      toOrganizationResponse(
+        await organizationService.archive(auth, organizationId),
+      ),
     );
   },
 };

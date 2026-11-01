@@ -1,78 +1,7 @@
-import { useEffect, useState } from "react";
 import { Badge, Button, Card, Modal, Spinner } from "@pos/ui";
-import { createOrdersApi } from "@pos/api-client";
-import { apiClient, extractApiError } from "@/shared/lib/api-client";
-
-const ordersApi = createOrdersApi(apiClient);
 import { formatCurrency } from "@/shared/utils/format";
 
-type ExplanationTrace = {
-  stage: string;
-  explanation: string;
-};
-
-type AvailabilitySnapshot = {
-  effectiveStatus: string;
-  reason?: string | null;
-  cause: string;
-  branchId: string;
-  channel: string;
-  fulfillmentType: string;
-  asOf: string;
-};
-
-type PricingReplay = {
-  priceSource?: { kind: string; id: string; description: string } | null;
-  baseResolvedUnitPrice: number;
-  variantDelta: number;
-  modifierDelta: number;
-  comboDelta: number;
-  promotionDelta: number;
-  loyaltyDelta: number;
-  persistedSubtotal: number;
-  payableBeforeTax: number;
-  matchesSnapshot: boolean;
-};
-
-type ExplanationLine = {
-  orderItemId: string;
-  name: string;
-  asOf: string;
-  historicalEvidenceComplete: boolean;
-  availabilityAtOrder?: AvailabilitySnapshot | null;
-  pricingReplay: PricingReplay;
-  authoritativePricingReplay?: {
-    unitPrice: number;
-    subtotal: number;
-    taxRate: number;
-    matchesSnapshot: boolean;
-  } | null;
-  authoritativeAvailabilityReplay?: {
-    effectiveStatus: string;
-    isHidden: boolean;
-    availabilityReason: string | null;
-    availabilityCause: string;
-    matchesSnapshot: boolean;
-  } | null;
-  trace: ExplanationTrace[];
-};
-
-type OrderExplanation = {
-  orderId: string;
-  asOf: string;
-  completeHistory: boolean;
-  historyNotice: string;
-  totals: {
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    serviceChargeAmount: number;
-    roundingAdjustment: number;
-    totalAmount: number;
-  };
-  lines: ExplanationLine[];
-};
-
+import { useOrderExplanation } from "@/features/orders/hooks/useOrderExplanation";
 export const OrderExplainDialog = ({
   open,
   orderId,
@@ -82,32 +11,10 @@ export const OrderExplainDialog = ({
   orderId: string;
   onClose: () => void;
 }) => {
-  const [explanation, setExplanation] = useState<OrderExplanation | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    void ordersApi
-      .explain<OrderExplanation>(orderId)
-      .then((response) => {
-        if (!cancelled) setExplanation(response);
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled) setError(extractApiError(reason));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, orderId]);
+  const explanationQuery = useOrderExplanation(orderId, { enabled: open });
+  const explanation = explanationQuery.data;
+  const loading = explanationQuery.isLoading;
+  const error = explanationQuery.error;
 
   return (
     <Modal open={open} onClose={onClose} title="Explain this order" size="xl">
@@ -120,7 +27,9 @@ export const OrderExplainDialog = ({
           <p className="text-sm font-semibold text-danger">
             Unable to reconstruct this order
           </p>
-          <p className="mt-1 text-sm text-text-secondary">{error}</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {error instanceof Error ? error.message : "Request failed"}
+          </p>
         </Card>
       ) : explanation ? (
         <div className="space-y-4">

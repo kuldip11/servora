@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Plus, Minus, Trash2 } from "lucide-react";
-import { Modal, Button } from "@pos/ui";
+import { Button, Modal, Select } from "@pos/ui";
 import { formatCurrency } from "@/shared/utils/format";
-import { useMenuCategories } from "@/features/menu/hooks/useMenuCategories";
-import { useAddOrderItems } from "@/features/orders/hooks/useAddOrderItems";
+import { useMenuCategories } from "@/features/menu";
+import { useAddOrderItems } from "@/features/orders";
 import { toCartItemPayload } from "@/features/orders/services/orders.service";
 import { ItemCustomizerModal } from "./ItemCustomizerModal";
 import { cartItemKey, type CartItem } from "@/features/orders/utils/cartTypes";
@@ -153,26 +153,22 @@ export const AddItemsModal = ({
             Assign this round to a course
           </label>
           {assignCourse && (
-            <select
-              className="rounded border border-border bg-surface px-2 py-1"
-              value={roundCourseNumber}
-              onChange={(event) =>
-                setRoundCourseNumber(Number(event.target.value))
-              }
-            >
-              {[1, 2, 3, 4, 5].map((course) => (
-                <option key={course} value={course}>
-                  Course {course}
-                </option>
-              ))}
-            </select>
+            <Select
+              aria-label="Course"
+              value={String(roundCourseNumber)}
+              onChange={(value) => setRoundCourseNumber(Number(value))}
+              options={[1, 2, 3, 4, 5].map((course) => ({
+                value: String(course),
+                label: `Course ${course}`,
+              }))}
+              containerClassName="min-w-32"
+              className="py-1"
+            />
           )}
         </div>
       )}
       <div className="grid grid-cols-2 gap-6">
-        {}
         <div>
-          {}
           <div className="flex items-center gap-2 mb-3">
             {FOOD_TYPE_FILTERS.map((f) => (
               <button
@@ -229,7 +225,6 @@ export const AddItemsModal = ({
           </div>
         </div>
 
-        {}
         <div className="flex flex-col">
           <p className="text-sm font-semibold text-text-primary mb-3">
             New Items ({items.length})

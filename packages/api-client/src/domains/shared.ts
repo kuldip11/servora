@@ -1,5 +1,5 @@
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import type { ApiResponse, PaginatedResponse } from "@pos/types";
+import type { PaginatedResponse, SuccessResponse } from "@pos/contracts";
 
 export type DomainHttpClient = Pick<
   AxiosInstance,
@@ -10,7 +10,7 @@ export const voidDomainRequest = async (request: unknown): Promise<void> => {
   await request;
 };
 
-function unwrap<T>(response: AxiosResponse<ApiResponse<T>>): T {
+function unwrap<T>(response: AxiosResponse<SuccessResponse<T>>): T {
   return response.data.data;
 }
 
@@ -21,8 +21,8 @@ export async function getDomainData<T>(
 ): Promise<T> {
   return unwrap(
     config === undefined
-      ? await client.get<ApiResponse<T>>(url)
-      : await client.get<ApiResponse<T>>(url, config),
+      ? await client.get<SuccessResponse<T>>(url)
+      : await client.get<SuccessResponse<T>>(url, config),
   );
 }
 
@@ -50,12 +50,12 @@ export async function postDomainData<T>(
   config?: AxiosRequestConfig,
 ): Promise<T> {
   if (config !== undefined) {
-    return unwrap(await client.post<ApiResponse<T>>(url, body, config));
+    return unwrap(await client.post<SuccessResponse<T>>(url, body, config));
   }
   return unwrap(
     body === undefined
-      ? await client.post<ApiResponse<T>>(url)
-      : await client.post<ApiResponse<T>>(url, body),
+      ? await client.post<SuccessResponse<T>>(url)
+      : await client.post<SuccessResponse<T>>(url, body),
   );
 }
 
@@ -66,12 +66,12 @@ export async function putDomainData<T>(
   config?: AxiosRequestConfig,
 ): Promise<T> {
   if (config !== undefined) {
-    return unwrap(await client.put<ApiResponse<T>>(url, body, config));
+    return unwrap(await client.put<SuccessResponse<T>>(url, body, config));
   }
   return unwrap(
     body === undefined
-      ? await client.put<ApiResponse<T>>(url)
-      : await client.put<ApiResponse<T>>(url, body),
+      ? await client.put<SuccessResponse<T>>(url)
+      : await client.put<SuccessResponse<T>>(url, body),
   );
 }
 
@@ -82,12 +82,12 @@ export async function patchDomainData<T>(
   config?: AxiosRequestConfig,
 ): Promise<T> {
   if (config !== undefined) {
-    return unwrap(await client.patch<ApiResponse<T>>(url, body, config));
+    return unwrap(await client.patch<SuccessResponse<T>>(url, body, config));
   }
   return unwrap(
     body === undefined
-      ? await client.patch<ApiResponse<T>>(url)
-      : await client.patch<ApiResponse<T>>(url, body),
+      ? await client.patch<SuccessResponse<T>>(url)
+      : await client.patch<SuccessResponse<T>>(url, body),
   );
 }
 
@@ -98,7 +98,7 @@ export async function deleteDomainData<T>(
 ): Promise<T> {
   return unwrap(
     config === undefined
-      ? await client.delete<ApiResponse<T>>(url)
-      : await client.delete<ApiResponse<T>>(url, config),
+      ? await client.delete<SuccessResponse<T>>(url)
+      : await client.delete<SuccessResponse<T>>(url, config),
   );
 }

@@ -4,6 +4,8 @@ import {
   canSatisfyNeeds,
   recipeYieldFactor,
   weightRecipeScale,
+  applicableRecipeRows,
+  convertRecipeQuantity,
 } from "@/modules/inventory/inventory-recipe.engine";
 
 describe("inventory recipe engine", () => {
@@ -43,11 +45,6 @@ describe("inventory recipe engine", () => {
     ).toBe(false);
   });
 });
-
-import {
-  applicableRecipeRows,
-  convertRecipeQuantity,
-} from "@/modules/inventory/inventory-recipe.engine";
 
 describe("inventory recipe engine comprehensive branches", () => {
   it("covers all weight units and invalid weight/yield fallbacks", () => {

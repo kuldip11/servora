@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,7 +12,8 @@ vi.mock("@/features/menu/hooks/useExportMenu", () => ({
     downloadingKey: h.downloadingKey,
   }),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Popover: ({ trigger, children, open }: any) => (
     <div>
       {trigger}

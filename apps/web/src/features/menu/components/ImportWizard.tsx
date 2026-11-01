@@ -53,8 +53,8 @@ export const ImportWizard = ({ onClose }: Props) => {
   async function downloadTemplate(format: "csv" | "xlsx") {
     try {
       await menuImportService.downloadTemplate(format);
-    } catch {
-      notifyError(undefined, "Failed to download template");
+    } catch (error) {
+      notifyError(error, "Failed to download template");
     }
   }
 
@@ -65,7 +65,7 @@ export const ImportWizard = ({ onClose }: Props) => {
     setResult(null);
     validateMutation.mutate(f, {
       onSuccess: (data) => setResult(data),
-      onError: () => setFile(null),
+      onError: () => setResult(null),
     });
   }
 
@@ -104,14 +104,14 @@ export const ImportWizard = ({ onClose }: Props) => {
           <span className="text-text-secondary">New here?</span>
           <button
             type="button"
-            onClick={() => downloadTemplate("csv")}
+            onClick={() => void downloadTemplate("csv")}
             className="flex items-center gap-1 text-primary hover:text-primary-hover font-medium"
           >
             <Download className="w-3.5 h-3.5" /> CSV template
           </button>
           <button
             type="button"
-            onClick={() => downloadTemplate("xlsx")}
+            onClick={() => void downloadTemplate("xlsx")}
             className="flex items-center gap-1 text-primary hover:text-primary-hover font-medium"
           >
             <Download className="w-3.5 h-3.5" /> Excel template
@@ -142,7 +142,6 @@ export const ImportWizard = ({ onClose }: Props) => {
           <p className="text-sm text-text-secondary">Validating…</p>
         )}
 
-        {}
         <div aria-live="polite" className="sr-only">
           {validateMutation.isPending
             ? "Validating file…"

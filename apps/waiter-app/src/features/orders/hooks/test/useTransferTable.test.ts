@@ -14,6 +14,10 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 vi.mock("@pos/ui", () => ({ toast }));
+vi.mock("@pos/api-client", () => ({
+  extractApiError: (error: unknown, fallback?: string) =>
+    error instanceof Error ? error.message : (fallback ?? "Unexpected error"),
+}));
 vi.mock("@/features/orders/api/orders", () => ({ transferOrderTable }));
 import { useTransferTable } from "../useTransferTable";
 
@@ -28,7 +32,8 @@ describe("useTransferTable", () => {
     const config = mutationConfigs.at(-1)!;
     await config.mutationFn({ newTableId: "t2", reason: "move" });
     config.onSuccess({ id: "o1" });
-    config.onError();
+    config.onError(new Error("api failed"));
     expect(transferOrderTable).toHaveBeenCalledWith("o1", "t2", "move");
+    expect(toast).toHaveBeenCalledWith({ title: "api failed", tone: "danger" });
   });
 });

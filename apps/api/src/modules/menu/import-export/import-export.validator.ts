@@ -1,14 +1,10 @@
 import { t } from "elysia";
+export {
+  menuExportItemsQuerySchema as exportItemsQuery,
+  menuExportQuerySchema as exportQuery,
+} from "@pos/contracts";
 
-export const exportItemsQuery = t.Object({
-  format: t.Optional(t.String()),
-  branchId: t.Optional(t.String()),
-});
-
-export const exportQuery = t.Object({
-  format: t.Optional(t.String()),
-});
-
+// Multipart File is an Elysia-specific parser boundary and intentionally remains local.
 export const importFileBody = t.Object({
   file: t.File(),
 });

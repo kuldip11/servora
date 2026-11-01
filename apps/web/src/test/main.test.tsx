@@ -1,4 +1,3 @@
-import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
@@ -15,10 +14,12 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@tanstack/react-query-devtools", () => ({
   ReactQueryDevtools: () => <div>devtools</div>,
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   ThemeProvider: ({ children }: any) => <>{children}</>,
   AppErrorBoundary: ({ children }: any) => <>{children}</>,
   Toaster: () => <div>toaster</div>,
+  ConnectivityBanner: () => <div>connectivity</div>,
 }));
 vi.mock("../routes", () => ({ router: {} }));
 vi.mock("../shared/lib/query-client", () => ({ queryClient: {} }));

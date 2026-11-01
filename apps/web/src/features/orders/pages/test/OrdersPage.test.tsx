@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/shared/auth/permissions", () => ({
   usePermissions: () => ({ has: mocks.has }),
 }));
-vi.mock("@/features/orders/hooks/useOrders", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useOrdersPage: mocks.useOrdersPage,
 }));
 vi.mock("@/features/orders/hooks/useOrdersRealtimeSync", () => ({
@@ -32,7 +33,8 @@ vi.mock("@tanstack/react-router", () => ({
     <a {...props}>{children}</a>
   ),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   BUTTON_VARIANT_CLASSES: { secondary: "secondary" },
   Button: ({
     children,
@@ -59,7 +61,7 @@ vi.mock("@pos/ui", () => ({
       <button onClick={onClear}>clear search</button>
     </div>
   ),
-  SelectMenu: ({
+  Select: ({
     "aria-label": label,
     value,
     onChange,
@@ -191,7 +193,43 @@ describe("OrdersPage coverage", () => {
     });
   });
 
-  it("renders rows and drives filters, sorting, paging, and create modal", () => {
+  it("shows an initial fetch failure with retry instead of an empty table", () => {
+    const refetch = vi.fn();
+    mocks.useOrdersPage.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      refetch,
+    });
+    render(<OrdersPage />);
+    expect(screen.getByText("Unable to load orders")).toBeTruthy();
+    expect(screen.queryByTestId("table")).toBeNull();
+    fireEvent.click(screen.getByText("Retry"));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("keeps cached orders visible with a warning after a background error", () => {
+    const refetch = vi.fn();
+    mocks.useOrdersPage.mockReturnValue({
+      data: { items: [order()], pagination: { total: 1 } },
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      refetch,
+    });
+    render(<OrdersPage />);
+    expect(screen.getByText("Table 7")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Unable to refresh orders. Showing the last available data.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByText("Retry"));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("renders rows and drives filters, sorting, paging, and create modal", async () => {
     render(<OrdersPage />);
     expect(screen.getByText("Orders")).toBeTruthy();
     expect(screen.getAllByText("Table 7").length).toBeGreaterThan(0);
@@ -202,7 +240,7 @@ describe("OrdersPage coverage", () => {
     fireEvent.change(screen.getByLabelText("search"), {
       target: { value: " abc " },
     });
-    act(() => vi.advanceTimersByTime(300));
+    await act(() => vi.advanceTimersByTime(300));
     expect(mocks.useOrdersPage).toHaveBeenLastCalledWith(
       expect.objectContaining({ search: "abc" }),
     );
@@ -230,7 +268,7 @@ describe("OrdersPage coverage", () => {
     expect(screen.queryByTestId("create-modal")).toBeNull();
   });
 
-  it("renders empty state and hides create action without permission", () => {
+  it("renders empty state and hides create action without permission", async () => {
     mocks.has.mockReturnValue(false);
     mocks.useOrdersPage.mockReturnValue({
       data: undefined,

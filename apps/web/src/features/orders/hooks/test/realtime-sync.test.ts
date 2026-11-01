@@ -14,7 +14,10 @@ vi.mock("../../../../shared/lib/realtime", () => ({
     handlers.set(type, handler),
   ),
 }));
-vi.mock("../../../../shared/lib/query-client", () => ({ queryClient }));
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...(await original<typeof import("@tanstack/react-query")>()),
+  useQueryClient: () => queryClient,
+}));
 vi.mock("../../query-keys", () => ({
   orderKeys: {
     lists: () => ["orders", "list"],
@@ -33,7 +36,7 @@ describe("order realtime synchronization", () => {
     useOrdersRealtimeSync();
   });
 
-  it("updates list and detail caches for created and updated orders", () => {
+  it("refreshes list and detail caches for created and updated orders", () => {
     const created = { id: "o1", status: "OPEN" };
     const updated = { id: "o1", status: "READY" };
     const listQueryKey = ["orders", "list", { status: "OPEN" }];
@@ -44,10 +47,9 @@ describe("order realtime synchronization", () => {
       payload: created,
     });
 
-    expect(queryClient.setQueryData).toHaveBeenCalledWith(
-      ["orders", "o1"],
-      created,
-    );
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["orders", "o1"],
+    });
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["orders", "list"],
     });
@@ -56,10 +58,7 @@ describe("order realtime synchronization", () => {
       type: "order.updated",
       payload: updated,
     });
-    expect(queryClient.setQueryData).toHaveBeenCalledWith(
-      ["orders", "o1"],
-      updated,
-    );
+    expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4);
   });
 
   it("updates an existing kitchen ticket while preserving unrelated tickets", () => {
@@ -67,7 +66,7 @@ describe("order realtime synchronization", () => {
       id: "o1",
       updatedAt: "2026-08-25T11:00:00Z",
       kitchenTickets: [
-        { id: "t1", status: "NEW" },
+        { id: "t1", status: "FIRED", items: [{ id: "detailed-item" }] },
         { id: "t2", status: "READY" },
       ],
     };
@@ -86,10 +85,14 @@ describe("order realtime synchronization", () => {
     ) => typeof existing;
     const result = updater(existing);
 
-    expect(result.kitchenTickets).toEqual([
-      { ...ticket, orderId: "o1" },
-      existing.kitchenTickets[1],
-    ]);
+    expect(result.kitchenTickets[0]).toEqual(
+      expect.objectContaining({
+        id: "t1",
+        status: "PREPARING",
+        items: [{ id: "detailed-item" }],
+      }),
+    );
+    expect(result.kitchenTickets[1]).toBe(existing.kitchenTickets[1]);
     expect(result.updatedAt).toBe(ticket.updatedAt);
   });
 

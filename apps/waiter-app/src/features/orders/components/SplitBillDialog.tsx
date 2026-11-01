@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Modal, SelectMenu } from "@pos/ui";
-import type { Order } from "@pos/types";
-import {
-  splitOrderBill,
-  splitOrderBillByItems,
-  splitOrderBillBySeat,
-} from "@/features/orders/api/orders";
+import { extractApiError } from "@pos/api-client";
+import { Button, FormErrorSummary, Input, Modal, Select } from "@pos/ui";
+import type { OrderDto as Order } from "@pos/api-client";
+import { useSplitOrderBill } from "@/features/orders/hooks/useOrderActions";
 
 type SplitMode = "EVEN" | "ITEM" | "SEAT";
 type SharedStrategy = "EVEN_SPLIT" | "MANUAL";
@@ -42,45 +38,35 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
     );
   }, [items, open]);
 
-  const splitBill = useMutation({
-    mutationFn: ({
-      billCount,
-      allocations,
-    }: {
-      billCount: number;
-      allocations?: Array<{ label: string; orderItemIds: string[] }>;
-    }) =>
-      allocations
-        ? splitOrderBillByItems(orderId, allocations)
-        : splitOrderBill(orderId, billCount),
-    onSuccess: onClose,
-  });
-  const splitBySeat = useMutation({
-    mutationFn: (strategy: SharedStrategy) =>
-      splitOrderBillBySeat(orderId, strategy),
-    onSuccess: (result) => {
-      if (result.status !== "MANUAL_REQUIRED") {
-        onClose();
-        return;
-      }
-      const mapping: Record<string, number> = {};
-      result.allocations.forEach((allocation, index) =>
-        allocation.orderItemIds.forEach((id) => {
-          mapping[id] = index;
-        }),
-      );
-      result.sharedItemIds.forEach((id, index) => {
-        mapping[id] = index % result.allocations.length;
-      });
-      setItemBills(mapping);
-      setWays(String(result.allocations.length));
-      setMode("ITEM");
-    },
-  });
+  const { splitBill, splitBySeat } = useSplitOrderBill(orderId, onClose);
+
+  const clearErrors = () => {
+    splitBill.reset();
+    splitBySeat.reset();
+  };
 
   const submit = () => {
     if (mode === "SEAT") {
-      splitBySeat.mutate(sharedStrategy);
+      splitBySeat.mutate(sharedStrategy, {
+        onSuccess: (result) => {
+          if (result.status !== "MANUAL_REQUIRED") {
+            onClose();
+            return;
+          }
+          const mapping: Record<string, number> = {};
+          result.allocations.forEach((allocation, index) =>
+            allocation.orderItemIds.forEach((id) => {
+              mapping[id] = index;
+            }),
+          );
+          result.sharedItemIds.forEach((id, index) => {
+            mapping[id] = index % result.allocations.length;
+          });
+          setItemBills(mapping);
+          setWays(String(result.allocations.length));
+          setMode("ITEM");
+        },
+      });
       return;
     }
     const billCount = Number(ways);
@@ -102,13 +88,18 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
     });
   };
 
+  const error = splitBill.error ?? splitBySeat.error;
+
   return (
     <Modal open={open} onClose={onClose} title="Split bill">
       <div className="space-y-4">
-        <SelectMenu
+        <Select
           label="Split mode"
           value={mode}
-          onChange={(value) => setMode(value as SplitMode)}
+          onChange={(value) => {
+            setMode(value as SplitMode);
+            clearErrors();
+          }}
           className="min-h-11 rounded-xl"
           options={[
             { value: "EVEN", label: "Even split" },
@@ -123,14 +114,20 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
             min="2"
             max="20"
             value={ways}
-            onChange={(event) => setWays(event.target.value)}
+            onChange={(event) => {
+              setWays(event.target.value);
+              clearErrors();
+            }}
           />
         )}
         {mode === "SEAT" && (
-          <SelectMenu
+          <Select
             label="Shared items"
             value={sharedStrategy}
-            onChange={(value) => setSharedStrategy(value as SharedStrategy)}
+            onChange={(value) => {
+              setSharedStrategy(value as SharedStrategy);
+              clearErrors();
+            }}
             className="min-h-11 rounded-xl"
             options={[
               { value: "EVEN_SPLIT", label: "Balance across seats" },
@@ -146,16 +143,17 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
                 className="flex items-center justify-between gap-3 rounded-md border border-border p-2 text-sm"
               >
                 {item.quantity}× {item.menuItemName}
-                <SelectMenu
+                <Select
                   aria-label={`Bill for ${item.menuItemName}`}
                   className="w-28 rounded-xl"
                   value={String(itemBills[item.id] ?? 0)}
-                  onChange={(value) =>
+                  onChange={(value) => {
                     setItemBills((current) => ({
                       ...current,
                       [item.id]: Number(value),
-                    }))
-                  }
+                    }));
+                    clearErrors();
+                  }}
                   options={Array.from(
                     { length: Number(ways) || 2 },
                     (_, index) => ({
@@ -168,6 +166,14 @@ export const SplitBillDialog = ({ open, orderId, items, onClose }: Props) => {
             ))}
           </div>
         )}
+        <FormErrorSummary
+          title="Could not split bill"
+          messages={
+            error
+              ? [extractApiError(error, "The bill could not be split.")]
+              : []
+          }
+        />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel

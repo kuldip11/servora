@@ -83,6 +83,43 @@ describe("createRealtimeClient", () => {
     token = "token-2";
   });
 
+  it("ignores delayed close, message and error events from a replaced socket", () => {
+    vi.useFakeTimers();
+    let branch = "a";
+    const client = createRealtimeClient<TestEvent>({
+      url: "wss://example.com",
+      getAccessToken: () => "token",
+      getBranchId: () => branch,
+    });
+    const handler = vi.fn();
+    const unsubscribe = client.subscribe(handler);
+    const first = FakeWebSocket.instances[0]!;
+    const delayedClose = first.onclose!;
+    const delayedMessage = first.onmessage!;
+    const delayedError = first.onerror!;
+    first.close.mockImplementation(() => {
+      first.readyState = FakeWebSocket.CLOSED;
+    });
+    unsubscribe();
+    branch = "b";
+    const unsubscribeSecond = client.subscribe(handler);
+    const second = FakeWebSocket.instances[1]!;
+    second.open();
+    second.message({ type: "connected" });
+    delayedClose();
+    delayedMessage({ data: JSON.stringify({ type: "order.created" }) });
+    delayedError();
+    vi.runOnlyPendingTimers();
+    const unsubscribeThird = client.subscribe(vi.fn());
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(client.isConnected()).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    expect(second.close).not.toHaveBeenCalled();
+    expect(JSON.parse(second.send.mock.calls[0]![0]).branchId).toBe("b");
+    unsubscribeSecond();
+    unsubscribeThird();
+  });
+
   it("ignores malformed messages", () => {
     const handler = vi.fn();
     const client = createRealtimeClient<TestEvent>({
@@ -91,7 +128,26 @@ describe("createRealtimeClient", () => {
     });
     client.subscribe(handler);
     FakeWebSocket.instances[0]!.message("{not-json");
+    FakeWebSocket.instances[0]!.message(null);
+    FakeWebSocket.instances[0]!.message({ id: "missing-type" });
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("drops typed frames that fail the configured wire validator", () => {
+    const handler = vi.fn();
+    const client = createRealtimeClient<TestEvent>({
+      url: "wss://example.com",
+      getAccessToken: () => "token",
+      validateEvent: (value) =>
+        typeof value === "object" &&
+        value !== null &&
+        (value as { type?: string }).type === "order.created",
+    });
+    client.subscribe(handler);
+    FakeWebSocket.instances[0]!.message({ type: "ping" });
+    FakeWebSocket.instances[0]!.message({ type: "order.created", id: "42" });
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith({ type: "order.created", id: "42" });
   });
 
   it("notifies connection listeners only when the connection state changes", () => {

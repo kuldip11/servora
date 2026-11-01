@@ -1,4 +1,4 @@
-import type { Bill, Order } from "@pos/types";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")

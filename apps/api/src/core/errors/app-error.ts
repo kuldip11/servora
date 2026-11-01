@@ -44,8 +44,9 @@ export class AppError extends Error {
   }
 
   toJSON() {
+    // Kept for internal/debug compatibility. HTTP responses are serialized by
+    // the global error handler so technical details never leak to clients.
     return {
-      success: false as const,
       code: this.code,
       message: this.message,
       details: this.details,
@@ -108,7 +109,7 @@ export class ValidationError extends AppError {
 
 export class UnauthorizedError extends AppError {
   constructor(
-    message = "Unauthorized",
+    message = "Please sign in to continue.",
     details?: Record<string, unknown> | undefined,
   ) {
     super({ code: ErrorCode.UNAUTHORIZED, message, details }, 401);
@@ -118,7 +119,7 @@ export class UnauthorizedError extends AppError {
 
 export class TooManyRequestsError extends AppError {
   constructor(
-    message = "Too many requests",
+    message = "Too many requests. Please try again shortly.",
     details?: Record<string, unknown> | undefined,
   ) {
     super({ code: ErrorCode.RATE_LIMITED, message, details }, 429);
@@ -135,7 +136,7 @@ export class CustomerSessionRequiredError extends AppError {
 
 export class ForbiddenError extends AppError {
   constructor(
-    message = "Forbidden",
+    message = "You do not have permission to perform this action.",
     details?: Record<string, unknown> | undefined,
   ) {
     super({ code: ErrorCode.FORBIDDEN, message, details }, 403);
@@ -152,7 +153,18 @@ export class NotFoundError extends AppError {
     const message = id
       ? `${resource} with id ${id} not found`
       : `${resource} not found`;
-    super({ code: ErrorCode.NOT_FOUND, message, details }, 404);
+    super(
+      {
+        code: ErrorCode.NOT_FOUND,
+        message,
+        details: {
+          resource,
+          ...(id ? { resourceId: id } : {}),
+          ...(details ?? {}),
+        },
+      },
+      404,
+    );
     this.name = "NotFoundError";
   }
 }
@@ -182,14 +194,19 @@ export class MissingBranchError extends AppError {
 }
 
 export class InternalError extends AppError {
-  constructor(message = "Internal server error", cause?: Error | undefined) {
+  constructor(
+    message = "Something went wrong while processing your request. Please try again.",
+    cause?: Error | undefined,
+  ) {
     super({ code: ErrorCode.INTERNAL_ERROR, message, cause }, 500);
     this.name = "InternalError";
   }
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message = "Service temporarily unavailable") {
+  constructor(
+    message = "This service is temporarily unavailable. Please try again.",
+  ) {
     super({ code: ErrorCode.SERVICE_UNAVAILABLE, message }, 503);
     this.name = "ServiceUnavailableError";
   }

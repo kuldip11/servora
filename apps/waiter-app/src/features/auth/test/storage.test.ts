@@ -7,7 +7,7 @@ import {
   saveContext,
   saveProfile,
   saveTokens,
-} from "@/features/auth/storage";
+} from "@/shared/auth/storage";
 
 beforeEach(() => localStorage.clear());
 
@@ -45,8 +45,7 @@ describe("waiter auth storage", () => {
 });
 
 it("stores deduplicated permissions and reads permission safely", async () => {
-  const { hasPermission, saveProfile } =
-    await import("@/features/auth/storage");
+  const { hasPermission, saveProfile } = await import("@/shared/auth/storage");
   saveProfile({
     firstName: "A",
     lastName: "B",

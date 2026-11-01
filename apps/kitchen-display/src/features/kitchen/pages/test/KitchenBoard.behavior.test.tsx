@@ -1,7 +1,7 @@
-import React, { act } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { KitchenTicket } from "@pos/types";
+import type { KitchenTicketDto as KitchenTicket } from "@pos/api-client";
 import { ticket } from "@/features/kitchen/test/fixtures";
 
 (
@@ -13,6 +13,11 @@ const mocks = vi.hoisted(() => ({
   tickets: undefined as undefined | KitchenTicket[],
   isLoading: false,
   isFetching: false,
+  ticketsIsError: false,
+  stationsIsError: false,
+  ticketError: undefined as unknown,
+  stationError: undefined as unknown,
+  stationRefetch: vi.fn(),
   connected: false,
   isPending: false,
   variables: undefined as undefined | { id: string; status: string },
@@ -29,11 +34,25 @@ const mocks = vi.hoisted(() => ({
   cardProps: [] as any[],
 }));
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Grid: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   IconButton: ({ icon: _icon, ...props }: any) => <button {...props} />,
   Spinner: (props: any) => <span {...props}>loading</span>,
   EmptyState: ({ title }: any) => <span>{title}</span>,
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <span>{description}</span>
+      <button onClick={onRetry}>Retry query</button>
+    </div>
+  ),
+  StaleDataBanner: ({ message, onRetry }: any) => (
+    <div>
+      <span>{message}</span>
+      <button onClick={onRetry}>Retry stale</button>
+    </div>
+  ),
   Popover: ({ trigger, children }: any) => (
     <div>
       {trigger}
@@ -43,12 +62,20 @@ vi.mock("@pos/ui", () => ({
   ThemeSwitcher: ({ label }: any) => <span>{label}</span>,
 }));
 vi.mock("@/features/kitchen/hooks/useKitchenTickets", () => ({
-  useKitchenStations: () => ({ data: mocks.stations }),
+  useKitchenStations: () => ({
+    data: mocks.stations,
+    isError: mocks.stationsIsError,
+    error: mocks.stationError,
+    isFetching: mocks.isFetching,
+    refetch: mocks.stationRefetch,
+  }),
   useKitchenTickets: (stationId?: string) => {
     mocks.stationArgs.push(stationId);
     return {
       data: mocks.tickets,
       isLoading: mocks.isLoading,
+      isError: mocks.ticketsIsError,
+      error: mocks.ticketError,
       isFetching: mocks.isFetching,
       refetch: mocks.refetch,
     };
@@ -111,6 +138,10 @@ beforeEach(() => {
   mocks.tickets = undefined;
   mocks.isLoading = false;
   mocks.isFetching = false;
+  mocks.ticketsIsError = false;
+  mocks.stationsIsError = false;
+  mocks.ticketError = undefined;
+  mocks.stationError = undefined;
   mocks.connected = false;
   mocks.isPending = false;
   mocks.variables = undefined;
@@ -118,6 +149,7 @@ beforeEach(() => {
   mocks.getVoidAlertsEnabled.mockReturnValue(true);
   for (const fn of [
     mocks.refetch,
+    mocks.stationRefetch,
     mocks.mutate,
     mocks.onLogout,
     mocks.setTerminalStationId,
@@ -200,19 +232,29 @@ describe("KitchenBoard interaction coverage", () => {
     mocks.tickets = [{ ...ticket, id: "interactive", status: "FIRED" }];
     await mount();
 
-    const select = container.querySelector(
-      'select[aria-label="KDS station"]',
-    ) as HTMLSelectElement;
+    const stationSelect = container.querySelector(
+      '[role="combobox"][aria-label="KDS station"]',
+    ) as HTMLButtonElement;
     await act(async () => {
-      select.value = "grill";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+      stationSelect.click();
+    });
+    const grillOption = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.includes("Grill"));
+    await act(async () => {
+      grillOption?.click();
     });
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith("grill");
     expect(mocks.stationArgs.at(-1)).toBe("grill");
 
     await act(async () => {
-      select.value = "";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+      stationSelect.click();
+    });
+    const allOption = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.includes("All / unassigned"));
+    await act(async () => {
+      allOption?.click();
     });
     expect(mocks.setTerminalStationId).toHaveBeenCalledWith(undefined);
 
@@ -259,5 +301,37 @@ describe("KitchenBoard interaction coverage", () => {
     expect(container.textContent?.match(/No tickets/g)?.length).toBe(4);
     expect(container.textContent).toContain("0 urgent");
     expect(container.textContent).toContain("0 ready");
+  });
+
+  it("shows an explicit error instead of a healthy empty queue when tickets fail", async () => {
+    mocks.ticketsIsError = true;
+    mocks.ticketError = new Error("kitchen offline");
+    await mount();
+    expect(container.textContent).toContain("Tickets unavailable");
+    expect(container.textContent).toContain("Unable to load kitchen tickets");
+    expect(container.textContent).not.toContain("0 active tickets");
+    expect(container.textContent).not.toContain("No tickets");
+  });
+
+  it("keeps stale tickets visible and labels a failed refresh", async () => {
+    mocks.tickets = [{ ...ticket, id: "stale", status: "FIRED" }];
+    mocks.ticketsIsError = true;
+    mocks.ticketError = new Error("refresh failed");
+    await mount();
+    expect(container.textContent).toContain("1 active tickets");
+    expect(container.textContent).toContain(
+      "Kitchen tickets could not be refreshed",
+    );
+    expect(container.querySelector('[data-ticket="stale"]')).toBeTruthy();
+  });
+
+  it("surfaces station loading failure instead of implying there are no stations", async () => {
+    mocks.stationsIsError = true;
+    mocks.stationError = new Error("stations offline");
+    mocks.tickets = [];
+    await mount();
+    expect(container.textContent).toContain(
+      "Kitchen stations could not be loaded",
+    );
   });
 });

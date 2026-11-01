@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 
 # Copy built output and the already-resolved node_modules from the builder
 # stage. We deliberately do NOT re-run `bun install` here: apps/api's
-# package.json depends on workspace packages (@pos/types, @pos/validation)
+# package.json depends on workspace packages (@pos/types, @pos/contracts)
 # that only resolve inside the full monorepo layout (root package.json +
 # packages/*) present in the builder stage. Re-installing from a flattened
 # single package.json in this stage would fail to resolve those.

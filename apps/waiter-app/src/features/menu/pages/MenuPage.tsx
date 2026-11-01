@@ -1,11 +1,14 @@
-import { toast } from "@pos/ui";
+import { QueryErrorState, StaleDataBanner } from "@pos/ui";
 import { useOrderDraft } from "@/features/menu/hooks/useOrderDraft";
 import { estimateComboSubtotal } from "@/features/menu/combo";
 import { ItemCustomiser } from "@/features/menu/components/ItemCustomiser";
 import { MenuGrid } from "@/features/menu/components/MenuGrid";
 import { OrderOptionsPanel } from "@/features/menu/components/OrderOptionsPanel";
 import { TabletOrderRail } from "@/features/menu/components/TabletOrderRail";
-import { CartSummary } from "@/features/menu/components/CartSummary";
+import {
+  NewOrderCartSummary,
+  AddRoundCartSummary,
+} from "@/features/menu/components/CartSummary";
 import { ComboCustomiser } from "@/features/menu/components/ComboCustomiser";
 import { AddToOrderHeader } from "@/features/menu/components/page/AddToOrderHeader";
 import { ComboStrip } from "@/features/menu/components/page/ComboStrip";
@@ -83,6 +86,13 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
     allItems,
     resolvedActiveCategory,
     activeItems,
+    requiredDependencyLoading,
+    requiredDependencyFailed,
+    requiredDependencyStale,
+    optionalDependencyFailed,
+    optionalDependencyStale,
+    retryDependencies,
+    isRetryingDependencies,
   } = useMenuPageData({
     isAddingToExisting,
     orderType,
@@ -167,13 +177,41 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
       : lineItemTotal;
   const needsTable = !isAddingToExisting && orderType === "DINE_IN" && !tableId;
 
+  if (requiredDependencyFailed) {
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center bg-background p-4">
+        <QueryErrorState
+          title="Unable to load order-entry data"
+          description="Menu or branch configuration could not be loaded. Retry before taking an order so unavailable items or order types are not shown as valid configuration."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+          className="w-full max-w-xl"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${isAddingToExisting ? "h-screen" : "h-full"} relative flex flex-col bg-background`}
     >
       {isAddingToExisting && <AddToOrderHeader onBack={onBack} />}
 
-      {}
+      {(requiredDependencyStale || optionalDependencyStale) && (
+        <StaleDataBanner
+          message="Some order-entry data could not be refreshed. Showing the latest cached data."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+        />
+      )}
+      {optionalDependencyFailed && !requiredDependencyLoading && (
+        <StaleDataBanner
+          message="Optional pricing or promotion data is temporarily unavailable. Core menu ordering remains available; retry before using discounts or per-cover pricing."
+          onRetry={() => void retryDependencies()}
+          isRetrying={isRetryingDependencies}
+        />
+      )}
+
       {!isAddingToExisting && (
         <OrderOptionsPanel
           availableOrderTypes={availableOrderTypes}
@@ -222,7 +260,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
             <ComboStrip combos={activeCombos} onOpenCombo={openCombo} />
           )}
 
-          {}
           <MenuGrid
             items={activeItems}
             cart={cart}
@@ -246,7 +283,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         />
       </div>
 
-      {}
       <MobileCartBar
         totalItems={totalItems}
         totalPrice={totalPrice}
@@ -254,7 +290,6 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         onReview={() => setCartVisible(true)}
       />
 
-      {}
       {customising && (
         <ItemCustomiser
           item={customising.item}
@@ -281,40 +316,58 @@ export const MenuPage = ({ onBack, onOrderPlaced, existingOrderId }: Props) => {
         />
       )}
 
-      {}
-      {showCart && (
-        <CartSummary
-          cart={cart}
-          combos={comboCart}
-          menuById={menuById}
-          isAddingToExisting={isAddingToExisting}
-          courseSequencingAvailable={courseSequencingAvailable}
-          courseMode={courseMode}
-          onCourseModeChange={setCourseModeEnabled}
-          roundCourseNumber={roundCourseNumber}
-          onRoundCourseNumberChange={changeRoundCourse}
-          onUpdateCourse={updateItemCourse}
-          onUpdateComboCourse={updateComboCourse}
-          orderNotes={orderNotes}
-          onOrderNotesChange={changeNotes}
-          couponCode={couponCode}
-          onCouponCodeChange={changeCoupon}
-          promotions={promotions.filter(
-            (promotion) => promotion.isActive && !promotion.couponCode,
-          )}
-          selectedPromotionIds={selectedPromotionIds}
-          onTogglePromotion={togglePromotion}
-          totalItems={totalItems}
-          totalPrice={totalPrice}
-          isPending={isPending}
-          needsTable={needsTable}
-          onUpdateQty={updateQty}
-          onUpdateComboQty={updateComboQty}
-          onEditItem={editCartItem}
-          onSubmit={handleSubmit}
-          onClose={() => setCartVisible(false)}
-        />
-      )}
+      {showCart &&
+        (() => {
+          const props = {
+            cart: {
+              items: cart,
+              combos: comboCart,
+              menuById,
+              totalItems,
+              totalPrice,
+            },
+            actions: { updateQty, updateComboQty, editItem: editCartItem },
+            checkout: {
+              notes: orderNotes,
+              setNotes: changeNotes,
+              couponCode,
+              setCouponCode: changeCoupon,
+              promotions: promotions.filter(
+                (promotion) => promotion.isActive && !promotion.couponCode,
+              ),
+              selectedPromotionIds,
+              togglePromotion,
+              isPending,
+              submit: handleSubmit,
+              close: () => setCartVisible(false),
+            },
+          };
+          const courses = {
+            available: courseSequencingAvailable,
+            enabled: courseMode,
+            setEnabled: setCourseModeEnabled,
+          };
+          return isAddingToExisting ? (
+            <AddRoundCartSummary
+              {...props}
+              courses={{
+                ...courses,
+                roundNumber: roundCourseNumber,
+                setRoundNumber: changeRoundCourse,
+              }}
+            />
+          ) : (
+            <NewOrderCartSummary
+              {...props}
+              courses={{
+                ...courses,
+                updateItem: updateItemCourse,
+                updateCombo: updateComboCourse,
+              }}
+              needsTable={needsTable}
+            />
+          );
+        })()}
     </div>
   );
 };

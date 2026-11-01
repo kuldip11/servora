@@ -39,7 +39,7 @@ const buttonNamed = (name: RegExp) =>
   );
 
 describe("CartView round fulfilment", () => {
-  it("asks once at placement and keeps table takeaway on the table tab", () => {
+  it("asks once at placement and keeps table takeaway on the table tab", async () => {
     const onPlace = vi.fn();
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -72,7 +72,7 @@ describe("CartView round fulfilment", () => {
     expect(document.body.textContent).not.toContain("Eat here");
     const placeOrder = buttonNamed(/place order/i);
     expect(placeOrder).toBeDefined();
-    act(() =>
+    await act(() =>
       placeOrder!.dispatchEvent(new MouseEvent("click", { bubbles: true })),
     );
     expect(document.body.textContent).toContain(
@@ -84,7 +84,7 @@ describe("CartView round fulfilment", () => {
 
     const takeaway = buttonNamed(/pack for takeaway/i);
     expect(takeaway).toBeDefined();
-    act(() =>
+    await act(() =>
       takeaway!.dispatchEvent(new MouseEvent("click", { bubbles: true })),
     );
     expect(onPlace).toHaveBeenCalledWith("TAKEAWAY");
@@ -121,7 +121,7 @@ const richLine = {
 } as unknown as CartLine;
 
 describe("CartView exhaustive interactions", () => {
-  it("covers empty state and browse back", () => {
+  it("covers empty state and browse back", async () => {
     const onBack = vi.fn();
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -151,11 +151,13 @@ describe("CartView exhaustive interactions", () => {
     );
     expect(document.body.textContent).toContain("Your order is empty");
     const browse = buttonNamed(/Browse menu/i)!;
-    act(() => browse.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(() =>
+      browse.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("covers combo/item controls, choices, rewards and dine-in choice", () => {
+  it("covers combo/item controls, choices, rewards and dine-in choice", async () => {
     const onChange = vi.fn(),
       onComboChange = vi.fn(),
       onEdit = vi.fn(),
@@ -205,16 +207,18 @@ describe("CartView exhaustive interactions", () => {
       ["Increase Loaded pizza", onChange, [0, 1]],
     ] as any[]) {
       const b = document.querySelector(`button[aria-label="${label}"]`)!;
-      act(() => b.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+      await act(() =>
+        b.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+      );
       expect(fn).toHaveBeenCalledWith(...args);
     }
-    act(() =>
+    await act(() =>
       buttonNamed(/Edit choices/i)!.dispatchEvent(
         new MouseEvent("click", { bubbles: true }),
       ),
     );
     expect(onEdit).toHaveBeenCalledWith(0);
-    act(() =>
+    await act(() =>
       buttonNamed(/Add coupon/i)!.dispatchEvent(
         new MouseEvent("click", { bubbles: true }),
       ),
@@ -244,11 +248,15 @@ describe("CartView exhaustive interactions", () => {
     expect(onCoupon).toHaveBeenCalledWith("SAVE");
     expect(onPhone).toHaveBeenCalledWith("999");
     const place = buttonNamed(/Place order/i)!;
-    act(() => place.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(() =>
+      place.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
     const dine = buttonNamed(/^Dine in/i)!;
-    act(() => dine.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(() =>
+      dine.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
     expect(onPlace).toHaveBeenCalledWith("DINE_IN");
-    act(() =>
+    await act(() =>
       document
         .querySelector('button[aria-label="Back to menu"]')!
         .dispatchEvent(new MouseEvent("click", { bubbles: true })),
@@ -256,7 +264,7 @@ describe("CartView exhaustive interactions", () => {
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("covers takeaway direct payment, rewards initially open, fallback image and loading", () => {
+  it("covers takeaway direct payment, rewards initially open, fallback image and loading", async () => {
     const onPlace = vi.fn();
     const line = {
       ...richLine,
@@ -298,7 +306,7 @@ describe("CartView exhaustive interactions", () => {
     expect(document.body.textContent).toContain("Takeaway order");
     expect(document.body.textContent).toContain("Payment required");
     expect(document.querySelector('img[src="fallback.jpg"]')).toBeTruthy();
-    act(() =>
+    await act(() =>
       buttonNamed(/Continue to payment/i)!.dispatchEvent(
         new MouseEvent("click", { bubbles: true }),
       ),

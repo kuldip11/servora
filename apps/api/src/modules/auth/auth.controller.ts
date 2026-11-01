@@ -1,22 +1,34 @@
 import type { AuthContext } from "@/core/auth";
 import { successResponse } from "@/core/response";
 import { authService } from "./auth.service";
-import type { SignupInput } from "@pos/validation";
+import type {
+  SignupRequest,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+} from "@pos/contracts";
+import {
+  toAuthSessionResponse,
+  toMembershipSummaryResponse,
+} from "./auth.mapper";
 
 export const authController = {
-  async signup(input: SignupInput) {
+  async signup(input: SignupRequest) {
     const result = await authService.signup(input);
     return successResponse(result);
   },
 
   async memberships(auth: AuthContext) {
     return successResponse(
-      await authService.memberships(auth.userId, auth.app ?? "web"),
+      (await authService.memberships(auth.userId, auth.app ?? "web")).map(
+        toMembershipSummaryResponse,
+      ),
     );
   },
 
   async sessions(auth: AuthContext) {
-    return successResponse(await authService.sessions(auth.userId));
+    return successResponse(
+      (await authService.sessions(auth.userId)).map(toAuthSessionResponse),
+    );
   },
 
   async revokeSession(auth: AuthContext, sessionId: string) {
@@ -25,24 +37,12 @@ export const authController = {
     );
   },
 
-  async updateProfile(
-    auth: AuthContext,
-    input: {
-      firstName?: string;
-      lastName?: string;
-      displayName?: string | null;
-      phone?: string | null;
-      profileImageUrl?: string | null;
-    },
-  ) {
+  async updateProfile(auth: AuthContext, input: UpdateProfileRequest) {
     await authService.updateProfile(auth.userId, input);
     return authController.me(auth);
   },
 
-  async changePassword(
-    auth: AuthContext,
-    input: { currentPassword: string; newPassword: string },
-  ) {
+  async changePassword(auth: AuthContext, input: ChangePasswordRequest) {
     await authService.changePassword(auth.userId, input);
     return successResponse({ changed: true });
   },
@@ -69,7 +69,7 @@ export const authController = {
     return successResponse({
       id: user.id,
       tenantId: auth.tenantId,
-      membershipId: auth.membershipId,
+      ...(auth.membershipId ? { membershipId: auth.membershipId } : {}),
       branchId: auth.branchId,
       firstName: user.firstName,
       lastName: user.lastName,

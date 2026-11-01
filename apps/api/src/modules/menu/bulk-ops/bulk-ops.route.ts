@@ -1,4 +1,10 @@
 import { Elysia } from "elysia";
+import {
+  bulkDeleteResponseSchema,
+  bulkOperationResponseSchema,
+  bulkPriceOperationResponseSchema,
+  standardErrorResponseSchemas,
+} from "@pos/contracts";
 import { requireAuthPlugin } from "@/core/auth";
 import { bulkOpsController } from "./bulk-ops.controller";
 import {
@@ -21,7 +27,13 @@ export const menuBulkOpsRouter = new Elysia({ prefix: "/api/menu/items/bulk" })
         body.status,
         body.reason,
       ),
-    { body: bulkStatusBody },
+    {
+      body: bulkStatusBody,
+      response: {
+        200: bulkOperationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/category",
@@ -31,7 +43,13 @@ export const menuBulkOpsRouter = new Elysia({ prefix: "/api/menu/items/bulk" })
         body.itemIds,
         body.categoryId,
       ),
-    { body: bulkCategoryBody },
+    {
+      body: bulkCategoryBody,
+      response: {
+        200: bulkOperationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/tags",
@@ -42,7 +60,13 @@ export const menuBulkOpsRouter = new Elysia({ prefix: "/api/menu/items/bulk" })
         body.tagIds,
         body.mode,
       ),
-    { body: bulkTagsBody },
+    {
+      body: bulkTagsBody,
+      response: {
+        200: bulkOperationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/modifiers",
@@ -53,7 +77,13 @@ export const menuBulkOpsRouter = new Elysia({ prefix: "/api/menu/items/bulk" })
         body.modifierGroupIds,
         body.mode,
       ),
-    { body: bulkModifiersBody },
+    {
+      body: bulkModifiersBody,
+      response: {
+        200: bulkOperationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/price",
@@ -64,10 +94,22 @@ export const menuBulkOpsRouter = new Elysia({ prefix: "/api/menu/items/bulk" })
         body.priceChange,
         body.mode,
       ),
-    { body: bulkPriceBody },
+    {
+      body: bulkPriceBody,
+      response: {
+        200: bulkPriceOperationResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   )
   .post(
     "/delete",
     ({ auth, body }) => bulkOpsController.bulkDeleteItems(auth, body.itemIds),
-    { body: bulkDeleteBody },
+    {
+      body: bulkDeleteBody,
+      response: {
+        200: bulkDeleteResponseSchema,
+        ...standardErrorResponseSchemas,
+      },
+    },
   );

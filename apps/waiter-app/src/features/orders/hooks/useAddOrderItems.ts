@@ -1,11 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@pos/ui";
+import { extractApiError } from "@pos/api-client";
 import {
   addOrderItems,
   type AddOrderComboInput,
   type AddOrderItemInput,
 } from "@/features/orders/api/orders";
 import { orderKeys } from "@/features/orders/constants";
+import { getWaiterQueryScope } from "@/shared/lib/query-scope";
 
 interface Params {
   orderId: string;
@@ -18,6 +20,7 @@ interface Params {
 
 export const useAddOrderItems = () => {
   const qc = useQueryClient();
+  const scope = getWaiterQueryScope();
 
   return useMutation({
     mutationFn: ({
@@ -32,19 +35,16 @@ export const useAddOrderItems = () => {
         ...(couponCode ? { couponCode } : {}),
         ...(promotionIds?.length ? { promotionIds } : {}),
       }),
-    onSuccess: (data, variables) => {
-      qc.invalidateQueries({ queryKey: orderKeys.all });
-      qc.invalidateQueries({ queryKey: orderKeys.detail(variables.orderId) });
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: orderKeys.all(scope) });
+      void qc.invalidateQueries({
+        queryKey: orderKeys.detail(scope, variables.orderId),
+      });
       toast({ title: "Sent to kitchen!", tone: "success" });
     },
     onError: (err: unknown) => {
-      const message =
-        typeof err === "object" && err !== null && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
-          : undefined;
       toast({
-        title: message ?? "Failed",
+        title: extractApiError(err, "Failed"),
         tone: "danger",
       });
     },

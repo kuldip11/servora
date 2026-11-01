@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Bill, Order } from "@pos/types";
+import type { BillDto as Bill, OrderDto as Order } from "@pos/api-client";
 import { printBills } from "../print-bills";
 
 const order = (overrides: Record<string, unknown> = {}) =>

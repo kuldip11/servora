@@ -1,4 +1,4 @@
-import type { User } from "@pos/types";
+import type { AuthUserDto as User } from "@pos/api-client";
 import { getUserPermissions } from "@/shared/auth/permissions";
 
 export type AuthorizedHomePath =

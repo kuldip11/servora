@@ -1,3 +1,5 @@
+const signal = new AbortController().signal;
+
 import { describe, expect, it, vi } from "vitest";
 
 const list = vi.hoisted(() => vi.fn());
@@ -12,7 +14,7 @@ vi.mock("../../../store/auth", () => ({
 import { inventoryItemsQuery } from "@/features/inventory/query-options";
 
 describe("inventoryItemsQuery", () => {
-  it("binds inventory items to the service and branch-scoped key", () => {
+  it("binds inventory items to the service and branch-scoped key", async () => {
     const query = inventoryItemsQuery();
     expect(query.queryKey).toEqual([
       "inventory",
@@ -21,7 +23,7 @@ describe("inventoryItemsQuery", () => {
       "br-1",
       "items",
     ]);
-    query.queryFn?.({} as never);
-    expect(list).toHaveBeenCalledWith({});
+    await query.queryFn?.({ signal } as never);
+    expect(list).toHaveBeenCalledWith({}, signal);
   });
 });

@@ -1,15 +1,18 @@
 "use client";
+
+import { websiteLogger } from "@/lib/logger";
 import { useEffect } from "react";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Servora application error");
-  }, []);
+    websiteLogger.error("website.application_error", error);
+  }, [error]);
   return (
     <main className="mx-auto max-w-xl px-6 py-24 text-center">
       <h1 className="text-4xl font-bold">Something went wrong</h1>

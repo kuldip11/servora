@@ -1,8 +1,11 @@
-import { createAuthApi, type AuthResponse } from "@pos/api-client";
+import {
+  createAuthApi,
+  type AuthResponse,
+  type AvailableMembershipDto as AvailableMembership,
+} from "@pos/api-client";
 import { apiClient } from "@/shared/lib/api-client";
-import { saveContext, saveProfile, saveTokens } from "@/features/auth/storage";
+import { saveContext, saveProfile, saveTokens } from "@/shared/auth/storage";
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
-import type { AvailableMembership } from "@pos/types";
 
 const authApi = createAuthApi(apiClient);
 export type { AuthResponse };

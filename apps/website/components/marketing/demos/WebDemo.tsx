@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Select } from "@pos/ui";
 
 import { WebBusinessScreen } from "./web/WebBusinessScreen";
 import { WebMenuScreen } from "./web/WebMenuScreen";
@@ -62,16 +63,16 @@ export const WebDemo = () => {
       )}
       <header className="flex items-center justify-between border-b border-[#dfe6e1] px-4 py-3 text-[10px] font-bold">
         <span>servora · Olive & Ember</span>
-        <select
+        <Select
           aria-label="Branch"
           value={branch}
-          onChange={(event) => setBranch(event.target.value)}
-          className="rounded-md bg-transparent text-[#6e7a72] outline-none"
-        >
-          <option>All branches</option>
-          <option>Connaught Place</option>
-          <option>South Delhi</option>
-        </select>
+          onChange={setBranch}
+          options={["All branches", "Connaught Place", "South Delhi"].map(
+            (value) => ({ value, label: value }),
+          )}
+          containerClassName="min-w-36"
+          className="border-0 bg-transparent py-1 text-[10px] text-[#6e7a72] shadow-none"
+        />
       </header>
       <div className="grid min-h-[390px] grid-cols-[96px_1fr] sm:grid-cols-[130px_1fr]">
         <aside className="border-r border-[#dfe6e1] bg-[#f1f5f2] p-2">

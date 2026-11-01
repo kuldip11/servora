@@ -1,20 +1,11 @@
 import { useReducer } from "react";
 import type { RestaurantTable } from "@/features/tables/types";
 
-interface TakeawayQrData {
-  branchId: string;
-  branchName: string;
-  enabled: boolean;
-  token: string;
-}
-
 interface TablesPageState {
   showAdd: boolean;
   editing: RestaurantTable | null;
   qrTable: RestaurantTable | null;
   takeawayQrOpen: boolean;
-  takeawayQr: TakeawayQrData | null;
-  takeawayQrBusy: boolean;
   transferSource: RestaurantTable | null;
   mergeSource: RestaurantTable | null;
   tableSearch: string;
@@ -27,8 +18,6 @@ type TablesPageAction =
   | { type: "set-editing"; table: RestaurantTable | null }
   | { type: "set-qr-table"; table: RestaurantTable | null }
   | { type: "set-takeaway-open"; open: boolean }
-  | { type: "set-takeaway-qr"; data: TakeawayQrData | null }
-  | { type: "set-takeaway-busy"; busy: boolean }
   | { type: "set-transfer-source"; table: RestaurantTable | null }
   | { type: "set-merge-source"; table: RestaurantTable | null }
   | { type: "set-search"; value: string }
@@ -41,8 +30,6 @@ const initialState: TablesPageState = {
   editing: null,
   qrTable: null,
   takeawayQrOpen: false,
-  takeawayQr: null,
-  takeawayQrBusy: false,
   transferSource: null,
   mergeSource: null,
   tableSearch: "",
@@ -63,10 +50,6 @@ const reducer = (
       return { ...state, qrTable: action.table };
     case "set-takeaway-open":
       return { ...state, takeawayQrOpen: action.open };
-    case "set-takeaway-qr":
-      return { ...state, takeawayQr: action.data };
-    case "set-takeaway-busy":
-      return { ...state, takeawayQrBusy: action.busy };
     case "set-transfer-source":
       return { ...state, transferSource: action.table };
     case "set-merge-source":
@@ -94,10 +77,6 @@ export const useTablesPageState = () => {
       dispatch({ type: "set-qr-table", table }),
     setTakeawayQrOpen: (open: boolean) =>
       dispatch({ type: "set-takeaway-open", open }),
-    setTakeawayQr: (data: TakeawayQrData | null) =>
-      dispatch({ type: "set-takeaway-qr", data }),
-    setTakeawayQrBusy: (busy: boolean) =>
-      dispatch({ type: "set-takeaway-busy", busy }),
     setTransferSource: (table: RestaurantTable | null) =>
       dispatch({ type: "set-transfer-source", table }),
     setMergeSource: (table: RestaurantTable | null) =>

@@ -10,7 +10,7 @@ vi.mock("@pos/api-client", () => ({
 }));
 
 import { apiClient } from "@/shared/lib/api-client";
-import { getToken, saveTokens } from "@/features/auth/storage";
+import { getToken, saveTokens } from "@/shared/auth/storage";
 
 describe("api client", () => {
   beforeEach(() => sessionStorage.clear());
@@ -34,7 +34,7 @@ describe("api client", () => {
     expect(config.storage.getBranchId?.()).toBeNull();
   });
 
-  it("clears auth context on refresh failure", () => {
+  it("cancels queries before clearing auth context on refresh failure", async () => {
     const config = mocks.createApiClient.mock.calls[0]![0];
     saveTokens("token");
     sessionStorage.setItem("kds_tenant", "tenant-1");
@@ -42,8 +42,10 @@ describe("api client", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     config.onRefreshFailure?.();
-    expect(getToken()).toBeNull();
-    expect(sessionStorage.getItem("kds_tenant")).toBeNull();
+    await vi.waitFor(() => {
+      expect(getToken()).toBeNull();
+      expect(sessionStorage.getItem("kds_tenant")).toBeNull();
+    });
     consoleError.mockRestore();
   });
 });

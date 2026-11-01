@@ -1,5 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/shared/lib/query-client";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifyError, notifySuccess } from "@/shared/lib/notify";
 import {
   menuSchedulesService,
@@ -8,12 +7,13 @@ import {
 import { menuKeys } from "@/features/menu/query-keys";
 
 export const useAddSchedule = (itemId: string) => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ScheduleFormInput) =>
       menuSchedulesService.add(itemId, input),
     onSuccess: () => {
       notifySuccess("Schedule added");
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: menuKeys.itemSchedules(itemId),
       });
     },

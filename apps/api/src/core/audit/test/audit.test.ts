@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-const { returning, values, insert } = vi.hoisted(() => {
+const { values, insert } = vi.hoisted(() => {
   const returning = vi
     .fn()
     .mockResolvedValue([{ id: "a1", action: "ORDER_CREATED" }]);

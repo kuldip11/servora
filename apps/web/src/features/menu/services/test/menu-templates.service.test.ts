@@ -12,6 +12,7 @@ import { menuTemplatesService } from "@/features/menu/services/menu-templates.se
 describe("menuTemplatesService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.post.mockResolvedValue({ data: { data: {} } });
   });
 
   it("lists and removes templates", async () => {

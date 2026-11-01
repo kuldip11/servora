@@ -1,11 +1,18 @@
 import Link from "next/link";
+import { productGuidance } from "@/content/product-guidance";
 import { ArrowRight, CheckCircle2, Users, Workflow } from "lucide-react";
 import type { Module } from "@/content/modules";
+import { productSeoBySlug } from "@/content/seo/products";
 import { moduleBySlug } from "@/content/modules";
 import { CtaBanner } from "./CtaBanner";
 import { ProductPreview } from "./ProductPreview";
 import { getSiteUrl } from "@/lib/seo";
-import { createBreadcrumbSchema, createOrganizationSchema, createSoftwareApplicationSchema } from "@pos/seo";
+import {
+  createBreadcrumbSchema,
+  createOrganizationSchema,
+  createFeaturePageSchema,
+  serializeJsonLd,
+} from "@pos/seo";
 
 export const ProductDetail = ({ module }: { module: Module }) => {
   const base = getSiteUrl();
@@ -14,12 +21,7 @@ export const ProductDetail = ({ module }: { module: Module }) => {
     "@context": "https://schema.org",
     "@graph": [
       createOrganizationSchema(base),
-      createSoftwareApplicationSchema({
-        baseUrl: base,
-        name: `Servora ${module.name}`,
-        path,
-        description: module.description,
-      }),
+      createFeaturePageSchema(base, path, module.name, module.description),
       createBreadcrumbSchema(base, [
         { name: "Product", path: "/product" },
         { name: module.name, path },
@@ -30,7 +32,7 @@ export const ProductDetail = ({ module }: { module: Module }) => {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <section className="mx-auto max-w-7xl px-6 pb-20 pt-14 lg:px-8 lg:pt-20">
         <nav
@@ -59,7 +61,8 @@ export const ProductDetail = ({ module }: { module: Module }) => {
               {module.eyebrow}
             </p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              {module.name}
+              {productSeoBySlug[module.slug as keyof typeof productSeoBySlug]
+                ?.title ?? module.name}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--text-secondary)]">
               {module.description}
@@ -146,11 +149,35 @@ export const ProductDetail = ({ module }: { module: Module }) => {
               ))}
             </div>
             <p className="mt-7 text-sm leading-6 text-[var(--text-secondary)]">
-              {module.name} stays connected to ordering, kitchen and business context so teams can work from the same operational record instead of isolated tools.
+              {module.name} stays connected to ordering, kitchen and business
+              context so teams can work from the same operational record instead
+              of isolated tools.
             </p>
           </section>
         </div>
 
+        {productGuidance[module.slug] && (
+          <section className="mt-20 space-y-5 rounded-3xl border border-[var(--border)] p-8">
+            <h2 className="text-2xl font-semibold">
+              {productGuidance[module.slug].question}
+            </h2>
+            <p className="leading-7 text-[var(--text-secondary)]">
+              {productGuidance[module.slug].answer}
+            </p>
+            <h3 className="text-xl font-semibold">
+              What to check in your demo
+            </h3>
+            <p className="leading-7 text-[var(--text-secondary)]">
+              {productGuidance[module.slug].demo}
+            </p>
+            <Link
+              href="/book-a-demo"
+              className="inline-flex text-[var(--primary)] underline"
+            >
+              Review your restaurant workflow with the team
+            </Link>
+          </section>
+        )}
         {module.related.length > 0 && (
           <section className="mt-20">
             <h2 className="text-2xl font-semibold tracking-tight">

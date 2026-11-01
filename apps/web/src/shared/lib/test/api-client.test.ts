@@ -12,7 +12,11 @@ const { createApiClient, extractApiError, capturedConfig } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@pos/api-client", () => ({ createApiClient, extractApiError }));
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
+  createApiClient,
+  extractApiError,
+}));
 
 const authState = vi.hoisted(() => ({
   accessToken: "access-1" as string | null,

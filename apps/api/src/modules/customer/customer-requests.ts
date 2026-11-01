@@ -5,14 +5,15 @@ import { db } from "@/db";
 import { customerRequests } from "@/db/schema/customer-request.schema";
 import { orders } from "@/db/schema/order.schema";
 import type {
-  CustomerRequest,
   CustomerRequestStatus,
   CustomerRequestType,
-  Order,
-} from "@pos/types";
+} from "@pos/contracts";
 import { customerService } from "./customer.service";
 import { eventBus } from "@/lib/event-bus";
+import { toCustomerRequestResponse } from "./customer-request.mapper";
+import { toRealtimeOrderPayload } from "@/modules/realtime/realtime.mapper";
 import { ticketRepository } from "@/modules/kitchen-tickets/ticket.repository";
+import { orderRepository } from "@/modules/orders/order.repository";
 
 const activeStatuses: CustomerRequestStatus[] = ["OPEN", "ACKNOWLEDGED"];
 
@@ -77,8 +78,15 @@ export const customerRequestService = {
             .where(and(eq(orders.id, order.id), eq(orders.status, "OPEN")))
             .returning();
           if (updated) {
+            const realtimeOrder = await orderRepository.findById(
+              session.tenantId,
+              updated.id,
+            );
             await eventBus.publish(
-              { type: "order.updated", payload: updated as unknown as Order },
+              {
+                type: "order.updated",
+                payload: toRealtimeOrderPayload(realtimeOrder),
+              },
               session.tenantId,
               session.branchId,
             );
@@ -90,7 +98,7 @@ export const customerRequestService = {
     await eventBus.publish(
       {
         type: "customer.request.created",
-        payload: request as unknown as CustomerRequest,
+        payload: toCustomerRequestResponse(request),
       },
       session.tenantId,
       session.branchId,
@@ -145,7 +153,7 @@ export const customerRequestService = {
     await eventBus.publish(
       {
         type: "customer.request.updated",
-        payload: updated as unknown as CustomerRequest,
+        payload: toCustomerRequestResponse(updated),
       },
       current.tenantId,
       current.branchId,

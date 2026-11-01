@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { BottomSheet, Button } from "@pos/ui";
 import type { CustomerCombo, CustomerMenuItem } from "./api";
-import type { CustomerComboSelection } from "@/features/cart/combo";
-import { estimateComboLine } from "@/features/cart/combo";
+import type { CustomerComboSelection } from "@/features/cart";
+import { estimateComboLine } from "@/features/cart";
 import { formatMoney } from "@/shared/utils/money";
 
 type Props = {

@@ -11,7 +11,6 @@ export function useRealtime<E extends { type: string }>(
   useEffect(() => {
     const stableHandler = (event: E) => handlerRef.current(event);
     return client.subscribe(stableHandler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
 }
 

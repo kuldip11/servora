@@ -3,33 +3,51 @@ import type {
   UseFormRegister,
   UseFormHandleSubmit,
 } from "react-hook-form";
-import { Button, Modal, Input, Select } from "@pos/ui";
-import type { Branch } from "@pos/types";
-import type { RestaurantTable } from "@/features/tables/types";
+import {
+  Button,
+  FormErrorSummary,
+  Modal,
+  Input,
+  QueryErrorState,
+  Select,
+} from "@pos/ui";
+import type { BranchDto } from "@pos/api-client";
 import type { TableFormValues } from "@/features/tables/table-form.types";
 
 export const TableFormModal = ({
   mode,
   open,
-  editing,
   branches,
   aggregate,
   errors,
+  formErrorMessages,
   register,
   handleSubmit,
   pending,
+  submitDisabled,
+  branchId = "",
+  onBranchIdChange,
+  onBranchIdBlur,
+  dependencyError,
+  onRetryDependency,
   onClose,
   onSubmit,
 }: {
   mode: "add" | "edit";
   open: boolean;
-  editing: RestaurantTable | null;
-  branches: Branch[];
+  branches: BranchDto[];
   aggregate: boolean;
   errors: FieldErrors<TableFormValues>;
+  formErrorMessages: string[];
   register: UseFormRegister<TableFormValues>;
   handleSubmit: UseFormHandleSubmit<TableFormValues>;
   pending: boolean;
+  submitDisabled: boolean;
+  branchId?: string;
+  onBranchIdChange?: (value: string) => void;
+  onBranchIdBlur?: () => void;
+  dependencyError?: string;
+  onRetryDependency?: () => void;
   onClose: () => void;
   onSubmit: (values: TableFormValues) => void;
 }) => {
@@ -39,9 +57,22 @@ export const TableFormModal = ({
       onClose={onClose}
       title={mode === "add" ? "Add Table" : "Edit Table"}
     >
-      <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      >
+        <FormErrorSummary messages={formErrorMessages} />
+        {dependencyError ? (
+          <QueryErrorState
+            title="Unable to load required table data"
+            description={dependencyError}
+            onRetry={onRetryDependency}
+          />
+        ) : null}
         <Input
           label="Table name"
+          required
           placeholder="T-01"
           error={errors.name?.message}
           {...register("name")}
@@ -49,6 +80,7 @@ export const TableFormModal = ({
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Capacity"
+            required
             type="number"
             min={1}
             error={errors.capacity?.message}
@@ -64,6 +96,7 @@ export const TableFormModal = ({
         {mode === "add" && aggregate && (
           <Select
             label="Branch"
+            required
             options={[
               { value: "", label: "Select branch" },
               ...branches.map((b) => ({ value: b.id, label: b.name })),
@@ -71,14 +104,20 @@ export const TableFormModal = ({
             {...(errors.branchId?.message
               ? { error: errors.branchId.message }
               : {})}
-            {...register("branchId")}
+            value={branchId}
+            onChange={(value) => onBranchIdChange?.(value)}
+            onBlur={onBranchIdBlur}
           />
         )}
         <div className="flex gap-2 justify-end">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" loading={pending}>
+          <Button
+            type="submit"
+            loading={pending}
+            disabled={pending || submitDisabled}
+          >
             {mode === "add" ? "Add Table" : "Save Changes"}
           </Button>
         </div>

@@ -186,7 +186,7 @@ describe("staff repository comprehensive coverage", () => {
   });
   it("covers update user/status and role replacement", async () => {
     await expect(
-      staffRepository.updateUser("t1", "u1", { firstName: "N" }),
+      staffRepository.updateGlobalUserProfile("u1", { firstName: "N" }),
     ).resolves.toEqual({ id: "u1" });
     await expect(
       staffRepository.updateMembershipStatus("t1", "u1", "INACTIVE"),

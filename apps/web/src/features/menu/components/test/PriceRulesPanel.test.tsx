@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,13 +12,41 @@ const h = vi.hoisted(() => ({
 let rules: any[] = [];
 let groups: any[] = [];
 
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
+  FormErrorSummary: ({ messages = [] }: any) =>
+    messages.length ? <div>{messages.join(" ")}</div> : null,
   Button: ({ children, loading: _loading, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
   Input: (props: any) => <input {...props} />,
+  Select: ({
+    label,
+    options = [],
+    onChange,
+    containerClassName: _containerClassName,
+    ...props
+  }: any) => (
+    <label>
+      {label}
+      <select
+        aria-label={label}
+        {...props}
+        onChange={(event) => onChange?.(event.target.value)}
+      >
+        {options.map((option: any) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  ),
 }));
-vi.mock("@pos/api-client", () => ({
+vi.mock("@pos/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/api-client")>()),
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
   createMenuApi: () => ({
     listPriceRulesFor: h.listRules,
     createPriceRule: h.create,
@@ -27,22 +54,35 @@ vi.mock("@pos/api-client", () => ({
   }),
   createCustomersApi: () => ({ listGroups: h.listGroups }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({ apiClient: {} }));
+vi.mock("@/shared/lib/api-client", () => ({
+  apiClient: {},
+  extractApiFieldErrors: () => ({}),
+  extractApiError: (_error: unknown, fallback: string) => fallback,
+  toApiClientError: () => ({}),
+}));
 vi.mock("@/shared/lib/query-client", () => ({
   queryClient: { invalidateQueries: h.invalidate },
 }));
 vi.mock("@/shared/lib/errors", () => ({ getErrorMessage: h.getError }));
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: h.invalidate }),
+  queryOptions: (options: any) => options,
   useQuery: (cfg: any) => ({
-    data: cfg.queryKey[0] === "customer-groups" ? groups : rules,
+    data: cfg.queryKey.includes("customer-groups") ? groups : rules,
   }),
   useMutation: (cfg: any) => ({
     isPending: false,
-    mutate: (arg?: any) =>
+    mutate: (arg?: any, callbacks?: any) =>
       Promise.resolve()
         .then(() => cfg.mutationFn(arg))
-        .then((v) => cfg.onSuccess?.(v, arg))
-        .catch((e) => cfg.onError?.(e, arg)),
+        .then((v) => {
+          cfg.onSuccess?.(v, arg);
+          callbacks?.onSuccess?.(v, arg);
+        })
+        .catch((e) => {
+          cfg.onError?.(e, arg);
+          callbacks?.onError?.(e, arg);
+        }),
   }),
 }));
 
@@ -96,7 +136,7 @@ describe("PriceRulesPanel coverage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
     await waitFor(() => expect(h.remove).toHaveBeenCalledWith("r1"));
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
 
     fireEvent.change(screen.getByLabelText("Rule channel"), {
@@ -143,7 +183,7 @@ describe("PriceRulesPanel coverage", () => {
       priority: 4,
     });
     expect(h.invalidate).toHaveBeenCalledWith({
-      queryKey: ["menu-items", "i1", "price-rules"],
+      queryKey: expect.arrayContaining(["item-price-rules", "i1"]),
     });
   });
 
@@ -161,12 +201,8 @@ describe("PriceRulesPanel coverage", () => {
     });
     fireEvent.click(save);
     await waitFor(() =>
-      expect(h.getError).toHaveBeenCalledWith(
-        expect.any(Error),
-        "Could not save price rule",
-      ),
+      expect(screen.getByText("Could not save price rule")).toBeTruthy(),
     );
-    expect(screen.getByText("Save failed")).toBeTruthy();
     expect(h.create.mock.calls[0][0]).toEqual({
       menuItemId: "i2",
       branchId: undefined,

@@ -59,7 +59,7 @@ const { inventoryFindFirst, branchFindFirst, findMany } = vi.hoisted(() => ({
   branchFindFirst: vi.fn(),
   findMany: vi.fn(),
 }));
-const { query, db } = vi.hoisted(() => {
+const { db } = vi.hoisted(() => {
   const query = {
     inventoryItems: { findFirst: inventoryFindFirst, findMany },
     inventoryTransactions: { findMany },

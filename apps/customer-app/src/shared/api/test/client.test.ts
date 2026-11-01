@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toApiClientError } from "@pos/api-client";
 describe("request", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -52,5 +53,51 @@ describe("request", () => {
     await expect(request("/json")).rejects.toThrow(
       "Customer API request failed",
     );
+  });
+  it("normalizes network failures as retryable API errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+    );
+    const { request } = await import("../client");
+
+    const error = await request("/network").catch((caught) => caught);
+    expect(toApiClientError(error)).toMatchObject({
+      code: "NETWORK_ERROR",
+      retryable: true,
+    });
+  });
+
+  it("normalizes timeouts as retryable and caller aborts as non-retryable", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn(
+      (_url: RequestInfo | URL, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const { CUSTOMER_API_REQUEST_TIMEOUT_MS, request } =
+      await import("../client");
+
+    const timeoutPromise = request("/slow").catch((caught) => caught);
+    await vi.advanceTimersByTimeAsync(CUSTOMER_API_REQUEST_TIMEOUT_MS);
+    expect(toApiClientError(await timeoutPromise)).toMatchObject({
+      code: "REQUEST_TIMEOUT",
+      retryable: true,
+    });
+
+    const controller = new AbortController();
+    const abortedPromise = request("/abort", {
+      signal: controller.signal,
+    }).catch((caught) => caught);
+    controller.abort();
+    expect(toApiClientError(await abortedPromise)).toMatchObject({
+      code: "REQUEST_ABORTED",
+      retryable: false,
+    });
+    vi.useRealTimers();
   });
 });

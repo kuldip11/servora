@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   compItem: { mutate: vi.fn(), isPending: false },
   reasons: vi.fn(() => ({ data: [{ id: "r1", label: "Mistake" }] })),
   has: vi.fn(() => true),
+  refetch: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -41,7 +42,8 @@ vi.mock("@/features/orders/hooks/useVoidOrderItem", () => ({
 vi.mock("@/features/orders/hooks/useCompOrderItem", () => ({
   useCompOrderItem: () => mocks.compItem,
 }));
-vi.mock("@/features/orders/hooks/useCancellationReasons", () => ({
+vi.mock("@/features/orders", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/orders")>()),
   useCancellationReasons: mocks.reasons,
 }));
 vi.mock("@/features/orders/hooks/useOrdersRealtimeSync", () => ({
@@ -61,8 +63,19 @@ vi.mock("@/features/orders/utils/round-actions", () => ({
     canServe: true,
   }),
 }));
-vi.mock("@/shared/lib/api-client", () => ({
+vi.mock("@/shared/lib/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/lib/api-client")>()),
   extractApiError: (e: unknown) => String(e),
+  toApiClientError: (e: unknown) => ({
+    code:
+      e instanceof Error && e.message === "Manager approval required"
+        ? "MANAGER_APPROVAL_REQUIRED"
+        : "UNEXPECTED_ERROR",
+    message: e instanceof Error ? e.message : String(e),
+    retryable: false,
+    ...(e instanceof Error && e.message === "not found" ? { status: 404 } : {}),
+    ...(e instanceof Error && e.message === "forbidden" ? { status: 403 } : {}),
+  }),
 }));
 vi.mock("@/features/orders/components/AddItemsModal", () => ({
   AddItemsModal: ({ onClose }: { onClose: () => void }) => (
@@ -100,7 +113,8 @@ vi.mock("@/features/orders/components/ManagerApprovalDialog", () => ({
     </div>
   ),
 }));
-vi.mock("@pos/ui", () => ({
+vi.mock("@pos/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@pos/ui")>()),
   Button: ({ children, onClick, disabled }: any) => (
     <button disabled={disabled} onClick={onClick}>
       {children}
@@ -123,6 +137,14 @@ vi.mock("@pos/ui", () => ({
   ),
   Breadcrumbs: () => <nav>breadcrumbs</nav>,
   Grid: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  QueryErrorState: ({ title, description, onRetry }: any) => (
+    <div>
+      <span>{title}</span>
+      <span>{description}</span>
+      {onRetry ? <button onClick={onRetry}>retry order</button> : null}
+    </div>
+  ),
+  StaleDataBanner: ({ message }: any) => <div>{message}</div>,
   Modal: ({ open, title, children }: any) =>
     open ? (
       <div>
@@ -207,17 +229,52 @@ const fullOrder = (status = "OPEN") => ({
 describe("OrderDetailPage coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.order.mockReturnValue({ data: fullOrder(), isLoading: false });
+    mocks.order.mockReturnValue({
+      data: fullOrder(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      isFetching: false,
+      refetch: mocks.refetch,
+    });
     mocks.has.mockReturnValue(true);
   });
 
-  it("renders loading and missing states", () => {
-    mocks.order.mockReturnValueOnce({ data: undefined, isLoading: true });
+  it("renders loading and a genuine 404 not-found state", () => {
+    mocks.order.mockReturnValueOnce({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    });
     const { rerender } = render(<OrderDetailPage />);
     expect(screen.getByText("spinner")).toBeTruthy();
-    mocks.order.mockReturnValueOnce({ data: undefined, isLoading: false });
+    mocks.order.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("not found"),
+      isFetching: false,
+      refetch: mocks.refetch,
+    });
     rerender(<OrderDetailPage />);
     expect(screen.getByText("Order not found")).toBeTruthy();
+    expect(screen.queryByText("retry order")).toBeNull();
+  });
+
+  it("renders retryable load failure separately from not found", () => {
+    mocks.order.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("server unavailable"),
+      isFetching: false,
+      refetch: mocks.refetch,
+    });
+    render(<OrderDetailPage />);
+    expect(screen.getByText("Unable to load order")).toBeTruthy();
+    expect(screen.queryByText("Order not found")).toBeNull();
+    fireEvent.click(screen.getByText("retry order"));
+    expect(mocks.refetch).toHaveBeenCalled();
   });
 
   it("renders rich order state and drives ticket, item, explanation and add-item actions", () => {

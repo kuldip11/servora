@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, GitBranch } from "lucide-react";
-import { useBranches } from "@/features/branches/hooks/useBranches";
+import { useBranches } from "@/features/branches";
 import { userHasPermission } from "@/shared/auth/permissions";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/shared/utils";
 import { persistActiveContext } from "@/shared/auth/active-context";
 
 export const BranchSwitcher = () => {
-  const { memberships, membershipId, branchId, setContext, user } =
-    useAuthStore();
+  const {
+    memberships,
+    membershipId,
+    branchId,
+    setContext,
+    user,
+    contextPending,
+  } = useAuthStore();
   const membership = memberships.find(
     (item) => item.membershipId === membershipId,
   );
@@ -54,6 +60,7 @@ export const BranchSwitcher = () => {
       : (selectedBranch?.name ?? "No branches");
 
   async function handleChange(value: string) {
+    if (contextPending) return;
     if (value === selectedValue) {
       setOpen(false);
       return;
@@ -84,21 +91,21 @@ export const BranchSwitcher = () => {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
-        disabled={switching}
+        disabled={switching || contextPending}
         className={cn(
-          "flex h-12 items-center gap-3 min-w-0 max-w-[280px] rounded-xl border border-border bg-surface px-3.5 text-left",
+          "flex h-11 w-full min-w-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-left sm:h-12 sm:gap-2 sm:px-3 lg:w-[220px] lg:gap-3 lg:rounded-xl lg:px-3.5 xl:w-[260px]",
           "shadow-sm transition-all hover:bg-surface-secondary hover:border-primary/30",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60",
         )}
       >
-        <span className="w-9 h-9 shrink-0 rounded-lg bg-primary-surface flex items-center justify-center">
+        <span className="hidden w-9 h-9 shrink-0 rounded-lg bg-primary-surface items-center justify-center xl:flex">
           <GitBranch
             aria-hidden="true"
             className="w-[18px] h-[18px] text-primary"
           />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] uppercase tracking-[0.08em] font-semibold leading-4 text-text-secondary">
+          <span className="block text-[9px] font-semibold uppercase leading-3 tracking-[0.08em] text-text-secondary sm:text-[10px] sm:leading-4">
             Branch
           </span>
           <span className="block text-sm font-semibold leading-5 text-text-primary truncate">
@@ -125,7 +132,7 @@ export const BranchSwitcher = () => {
           <div
             role="menu"
             aria-label="Branch selection"
-            className="absolute right-0 top-full mt-2 z-40 w-[320px] rounded-xl border border-border bg-surface shadow-elevated p-2"
+            className="absolute right-0 top-full z-40 mt-2 w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-surface p-2 shadow-elevated"
           >
             <div className="px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">

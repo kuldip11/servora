@@ -6,7 +6,7 @@ const m = vi.hoisted(() => ({
   findRoleById: vi.fn(),
   findBranchesByIds: vi.fn(),
   create: vi.fn(),
-  updateUser: vi.fn(),
+  updateGlobalUserProfile: vi.fn(),
   updateMembershipStatus: vi.fn(),
   setRole: vi.fn(),
   setBranches: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../staff.repository", () => ({
     findRoleById: m.findRoleById,
     findBranchesByIds: m.findBranchesByIds,
     create: m.create,
-    updateUser: m.updateUser,
+    updateGlobalUserProfile: m.updateGlobalUserProfile,
     updateMembershipStatus: m.updateMembershipStatus,
     setRole: m.setRole,
     setBranches: m.setBranches,
@@ -63,9 +63,14 @@ const membership = (o: Record<string, unknown> = {}) => ({
   id: "m1",
   userId: "u1",
   status: "ACTIVE",
-  user: { id: "u1" },
-  roles: [{ role: { id: "r1", scope: "BRANCH" } }],
-  branches: [{ branchId: "b1", branch: { id: "b1" } }],
+  user: {
+    id: "u1",
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "j@example.com",
+  },
+  roles: [{ role: { id: "r1", name: "CASHIER", scope: "BRANCH" } }],
+  branches: [{ branchId: "b1", branch: { id: "b1", name: "Central" } }],
   ...o,
 });
 const role = (scope: "BRANCH" | "TENANT" | "GLOBAL" = "BRANCH") => ({
@@ -82,6 +87,9 @@ describe("staff comprehensive service coverage", () => {
         lastName: "Doe",
         email: "j@example.com",
         status: "ACTIVE",
+        membershipId: "m1",
+        assignedBranches: [{ id: "b1", name: "Central" }],
+        roles: [{ id: "r1", name: "CASHIER", scope: "BRANCH" }],
       },
       {
         id: "u2",
@@ -89,6 +97,9 @@ describe("staff comprehensive service coverage", () => {
         lastName: null,
         email: null,
         status: "INACTIVE",
+        membershipId: "m2",
+        assignedBranches: [],
+        roles: [],
       },
     ]);
     m.findMembership.mockResolvedValue(membership());
@@ -97,7 +108,7 @@ describe("staff comprehensive service coverage", () => {
       ids.map((id) => ({ id, isActive: true })),
     );
     m.create.mockResolvedValue({ id: "m1", userId: "u1" });
-    m.updateUser.mockResolvedValue({ id: "u1" });
+    m.updateGlobalUserProfile.mockResolvedValue({ id: "u1" });
     m.updateMembershipStatus.mockResolvedValue({ id: "m1" });
     m.setRole.mockResolvedValue(undefined);
     m.setBranches.mockResolvedValue(undefined);
@@ -265,10 +276,14 @@ describe("staff comprehensive service coverage", () => {
       lastName: "Name",
       status: "ACTIVE",
     });
-    expect(m.updateUser).toHaveBeenCalled();
+    expect(m.updateGlobalUserProfile).toHaveBeenCalledWith("u1", {
+      firstName: "New",
+      lastName: "Name",
+    });
     expect(m.updateMembershipStatus).toHaveBeenCalledWith("t1", "u1", "ACTIVE");
     await staffService.update(auth(), "u1", { status: "INACTIVE" });
     await staffService.update(auth(), "u1", { status: "SUSPENDED" });
+    expect(m.updateGlobalUserProfile).toHaveBeenCalledTimes(1);
     await staffController.update(auth(), "u1", {});
     m.findMembership.mockResolvedValueOnce(undefined);
     await expect(staffService.update(auth(), "missing", {})).rejects.toThrow();

@@ -6,11 +6,10 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense, type ComponentType } from "react";
 import { Spinner } from "@pos/ui";
+import { RouteErrorPage } from "@/shared/components/RouteErrorPage";
 import { RootLayout } from "@/shared/components/layout/RootLayout";
 import { DashboardLayout } from "@/shared/components/layout/DashboardLayout";
-import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { SignupPage } from "@/features/auth/pages/SignupPage";
-import { ForbiddenPage } from "@/features/auth/pages/ForbiddenPage";
+import { LoginPage, SignupPage, ForbiddenPage } from "@/features/auth";
 import { userHasPermission } from "@/shared/auth/permissions";
 import { getAuthorizedHomePath } from "@/shared/auth/default-route";
 import { useAuthStore } from "@/store/auth";
@@ -100,7 +99,7 @@ const businessRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/business",
   component: lazyPage(() =>
-    import("../features/business/pages/BusinessPage").then((m) => ({
+    import("@/features/business/public/pages").then((m) => ({
       default: m.BusinessPage,
     })),
   ),
@@ -111,8 +110,30 @@ const dashboardRoute = createRoute({
   path: "/dashboard",
   beforeLoad: requirePermission("analytics:read"),
   component: lazyPage(() =>
-    import("../features/analytics/pages/DashboardPage").then((m) => ({
+    import("@/features/analytics/public/pages").then((m) => ({
       default: m.DashboardPage,
+    })),
+  ),
+});
+
+const operationsCenterRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: "/operations",
+  beforeLoad: requirePermission("analytics:read"),
+  component: lazyPage(() =>
+    import("@/features/operations/public/pages").then((m) => ({
+      default: m.OperationsCenterPage,
+    })),
+  ),
+});
+
+const branchHealthRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: "/branch-health",
+  beforeLoad: requirePermission("analytics:read"),
+  component: lazyPage(() =>
+    import("@/features/operations/public/pages").then((m) => ({
+      default: m.BranchHealthPage,
     })),
   ),
 });
@@ -122,7 +143,7 @@ const menuEngineeringRoute = createRoute({
   path: "/menu-engineering",
   beforeLoad: requirePermission("analytics:read"),
   component: lazyPage(() =>
-    import("../features/analytics/pages/MenuEngineeringPage").then((m) => ({
+    import("@/features/analytics/public/pages").then((m) => ({
       default: m.MenuEngineeringPage,
     })),
   ),
@@ -133,7 +154,7 @@ const ordersRoute = createRoute({
   path: "/orders",
   beforeLoad: requirePermission("orders:read"),
   component: lazyPage(() =>
-    import("../features/orders/pages/OrdersPage").then((m) => ({
+    import("@/features/orders/public/pages").then((m) => ({
       default: m.OrdersPage,
     })),
   ),
@@ -144,7 +165,7 @@ const orderDetailRoute = createRoute({
   path: "/orders/$orderId",
   beforeLoad: requirePermission("orders:read"),
   component: lazyPage(() =>
-    import("../features/orders/pages/OrderDetailPage").then((m) => ({
+    import("@/features/orders/public/pages").then((m) => ({
       default: m.OrderDetailPage,
     })),
   ),
@@ -155,7 +176,7 @@ const menuRoute = createRoute({
   path: "/menu",
   beforeLoad: requirePermission("menu:read"),
   component: lazyPage(() =>
-    import("../features/menu/pages/MenuPage").then((m) => ({
+    import("@/features/menu/public/pages").then((m) => ({
       default: m.MenuPage,
     })),
   ),
@@ -166,11 +187,9 @@ const availabilityDashboardRoute = createRoute({
   path: "/availability",
   beforeLoad: requirePermission("menu:read"),
   component: lazyPage(() =>
-    import("../features/availability/pages/AvailabilityDashboardPage").then(
-      (m) => ({
-        default: m.AvailabilityDashboardPage,
-      }),
-    ),
+    import("@/features/availability/public/pages").then((m) => ({
+      default: m.AvailabilityDashboardPage,
+    })),
   ),
 });
 
@@ -179,7 +198,7 @@ const tablesRoute = createRoute({
   path: "/tables",
   beforeLoad: requirePermission("tables:read"),
   component: lazyPage(() =>
-    import("../features/tables/pages/TablesPage").then((m) => ({
+    import("@/features/tables/public/pages").then((m) => ({
       default: m.TablesPage,
     })),
   ),
@@ -190,7 +209,7 @@ const inventoryRoute = createRoute({
   path: "/inventory",
   beforeLoad: requirePermission("inventory:read"),
   component: lazyPage(() =>
-    import("../features/inventory/pages/InventoryPage").then((m) => ({
+    import("@/features/inventory/public/pages").then((m) => ({
       default: m.InventoryPage,
     })),
   ),
@@ -201,7 +220,7 @@ const staffRoute = createRoute({
   path: "/staff",
   beforeLoad: requirePermission("staff:read"),
   component: lazyPage(() =>
-    import("../features/staff/pages/StaffPage").then((m) => ({
+    import("@/features/staff/public/pages").then((m) => ({
       default: m.StaffPage,
     })),
   ),
@@ -212,7 +231,7 @@ const billingRoute = createRoute({
   path: "/billing",
   beforeLoad: requirePermission("billing:read"),
   component: lazyPage(() =>
-    import("../features/billing/pages/BillingPage").then((m) => ({
+    import("@/features/billing/public/pages").then((m) => ({
       default: m.BillingPage,
     })),
   ),
@@ -223,7 +242,7 @@ const auditRoute = createRoute({
   path: "/audit",
   beforeLoad: requirePermission("audit:read"),
   component: lazyPage(() =>
-    import("../features/audit/pages/AuditLogPage").then((m) => ({
+    import("@/features/audit/public/pages").then((m) => ({
       default: m.AuditLogPage,
     })),
   ),
@@ -233,7 +252,7 @@ const settingsRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/settings",
   component: lazyPage(() =>
-    import("../features/settings/pages/SettingsPage").then((m) => ({
+    import("@/features/settings/public/pages").then((m) => ({
       default: m.SettingsPage,
     })),
   ),
@@ -243,7 +262,7 @@ const profileRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: "/profile",
   component: lazyPage(() =>
-    import("../features/profile/pages/ProfilePage").then((m) => ({
+    import("@/features/profile/public/pages").then((m) => ({
       default: m.ProfilePage,
     })),
   ),
@@ -280,6 +299,8 @@ const routeTree = rootRoute.addChildren([
     businessRoute,
     forbiddenRoute,
     dashboardRoute,
+    operationsCenterRoute,
+    branchHealthRoute,
     menuEngineeringRoute,
     ordersRoute,
     orderDetailRoute,
@@ -296,7 +317,10 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteErrorPage,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

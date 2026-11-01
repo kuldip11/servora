@@ -11,11 +11,7 @@ import {
   type ValidatedRow,
   type RowError,
 } from "./menu-import-parser";
-import {
-  noFileUploaded,
-  emptyImportFile,
-  importValidationFailed,
-} from "./import-export.errors";
+import { noFileUploaded, importValidationFailed } from "./import-export.errors";
 import { menuChangeLog } from "@/modules/menu/change-log/menu-change-log";
 
 export type ExportFormat = "csv" | "xlsx";

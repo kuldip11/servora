@@ -23,7 +23,7 @@ export const products: Product[] = [
       "Restaurant POS for the details that matter: the table, the choices, the notes and the next team to act.",
     question: "What happens after ‘I'll have…’ ?",
     answer:
-      "An order is more than a list of dishes. Keep its table and item details together as your team takes the order, sends kitchen work and gets the bill ready.",
+      "Keep the order’s table and item details together as your team takes the order, sends kitchen work and gets the bill ready.",
     audience: "For cashiers, managers and front-of-house teams.",
     capture: "pos",
     layout: "split",

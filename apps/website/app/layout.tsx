@@ -40,7 +40,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col">
+      <body className="flex flex-col">
         <SiteHeader />
         <main id="main" className="flex-1">
           {children}

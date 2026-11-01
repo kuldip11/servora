@@ -8,7 +8,7 @@ export const metadata = createPageMetadata({
   ...seo,
   path: "/product/billing-and-payments",
   ogTitle: seo.title,
-  imageAlt: `${seo.title} — Servora`,
+  imageAlt: `${seo.title} | Servora`,
 });
 export default function Page() {
   return <ProductDetail module={module} />;

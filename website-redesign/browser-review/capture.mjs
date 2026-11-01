@@ -57,14 +57,20 @@ try {
     );
     for (const route of routes) {
       const response = await page.goto("http://127.0.0.1:3001" + route, {
-        waitUntil: "networkidle",
+        waitUntil: "load",
       });
       await page.evaluate(() => document.fonts.ready);
-      await page
-        .locator("img")
-        .evaluateAll((imgs) =>
-          Promise.all(imgs.map((img) => img.decode().catch(() => {}))),
-        );
+      await page.locator("img").evaluateAll((imgs) =>
+        Promise.race([
+          Promise.all(
+            imgs.map((img) => {
+              img.loading = "eager";
+              return img.decode().catch(() => {});
+            }),
+          ),
+          new Promise((resolve) => setTimeout(resolve, 10000)),
+        ]),
+      );
       const key = route === "/" ? "home" : route.slice(1).replaceAll("/", "-");
       await page.screenshot({
         path: new URL(`${key}-${width}.png`, out).pathname,

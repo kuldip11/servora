@@ -15,7 +15,7 @@ try {
     await page.setViewportSize({width,height:view==="pos"?720:600});
     await page.goto(`http://127.0.0.1:4178/?view=${view}`,{waitUntil:"networkidle"});
     await page.locator(`[data-capture="${view}"]`).waitFor();
-    await page.screenshot({path:`${out}/${view}.png`,fullPage:true});
+    await page.locator(`[data-capture="${view}"]`).screenshot({path:`${out}/${view}.png`});
   }
   await writeFile(`${out}/PROVENANCE.md`,"These are actual imported Servora application components rendered with illustrative fixtures, not authenticated production screenshots. See product-capture/main.tsx for component imports and fixture values. No API requests, real restaurant data or payments are used.\n");
 } finally {await browser?.close();server.kill();}

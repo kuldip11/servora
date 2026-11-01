@@ -13,7 +13,7 @@ const references = [
   ["spoton", "https://www.spoton.com/"],
   ["restroworks", "https://www.restroworks.com/"],
   ["petpooja", "https://www.petpooja.com/"],
-  ["gofrugal", "https://www.gofrugal.com/restaurant-pos-software.html"],
+  ["gofrugal", "https://www.gofrugal.com/restaurant/"],
   ["urbanpiper", "https://www.urbanpiper.com/"],
 ];
 const out = new URL("../research/screenshots/", import.meta.url);
@@ -23,7 +23,10 @@ const results = [];
 try {
   for (const [name, url] of references) {
     for (const width of [1440, 390]) {
-      const page = await browser.newPage({ viewport: { width, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width, height: 1000 },
+        reducedMotion: "reduce",
+      });
       try {
         const response = await page.goto(url, {
           waitUntil: "domcontentloaded",
@@ -34,6 +37,13 @@ try {
           .first()
           .waitFor({ timeout: 8000 })
           .catch(() => {});
+        await page.evaluate(() =>
+          Promise.race([
+            document.fonts.ready,
+            new Promise((resolve) => setTimeout(resolve, 3000)),
+          ]),
+        );
+        await page.waitForTimeout(2200);
         await page.screenshot({
           path: new URL(`${name}-${width}.jpg`, out).pathname,
           type: "jpeg",

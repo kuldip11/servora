@@ -2313,4 +2313,34 @@ ol {
   }
 }
 
-body { min-height: 100svh; }
+body {
+  min-height: 100svh;
+}
+
+.service-context {
+  margin-top: -24px;
+  margin-bottom: 120px;
+}
+.service-context img {
+  width: 100%;
+  height: clamp(260px, 38vw, 520px);
+  object-fit: cover;
+  object-position: 50% 48%;
+  border-radius: 20px;
+}
+.service-context figcaption {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .service-context {
+    margin-top: -24px;
+    margin-bottom: 72px;
+  }
+  .service-context img {
+    height: 300px;
+    object-position: 44% 50%;
+    border-radius: 14px;
+  }
+}

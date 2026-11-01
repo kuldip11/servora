@@ -44,9 +44,13 @@ test("product tour supports keyboard selection and full-size views", async ({
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
   const panel = page.getByRole("tabpanel");
   await panel.getByRole("button", { name: /Enlarge/ }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "kitchen product view" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "kitchen product view" }),
+  ).not.toBeVisible();
 });
 
 test("narrow navigation exposes conversion and product links", async ({

@@ -47,7 +47,7 @@ try {
   }
   browser = await chromium.launch();
   const results = [];
-  for (const width of [390, 768, 1440]) {
+  for (const width of [320, 390, 768, 1440, 1920]) {
     const page = await browser.newPage({
       viewport: { width, height: 1000 },
       reducedMotion: "reduce",
@@ -106,6 +106,28 @@ try {
   );
   console.log(JSON.stringify({ pages: results.length, failures }, null, 2));
   if (failures.length) process.exitCode = 1;
+  const inspection = spawn(
+    process.execPath,
+    [
+      ".agents/skills/design-taste-frontend/scripts/inspect.mjs",
+      "http://127.0.0.1:3001",
+      "--out",
+      new URL("taste/", out).pathname,
+      "--widths",
+      "1440,768,390",
+    ],
+    {
+      stdio: "inherit",
+      env: { ...process.env, CHROME_PATH: chromium.executablePath() },
+    },
+  );
+  const inspectionExit = await new Promise((resolve) =>
+    inspection.on("exit", resolve),
+  );
+  await writeFile(
+    new URL("taste-exit.json", out),
+    JSON.stringify({ exitCode: inspectionExit }),
+  );
 } finally {
   await browser?.close();
   server.kill();

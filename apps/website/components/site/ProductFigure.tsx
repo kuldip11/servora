@@ -43,7 +43,11 @@ export function ProductFigure({
       <figcaption>
         Actual application components. Illustrative sample data.
       </figcaption>
-      <dialog ref={dialog} className="product-dialog">
+      <dialog
+        ref={dialog}
+        className="product-dialog"
+        aria-label={`${kind} product view`}
+      >
         <button
           type="button"
           className="dialog-close"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createPageMetadata, getSiteUrl } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
 import {
@@ -76,6 +77,18 @@ export default function Home() {
           context with the work.
         </p>
       </section>
+      <figure className="service-context container">
+        <Image
+          src="/images/service-handoff.webp"
+          alt="A chef and waiter passing a plated dish across the restaurant kitchen counter"
+          width={1536}
+          height={1024}
+          sizes="(max-width:760px) 94vw, 1320px"
+        />
+        <figcaption>
+          Illustration of a service handoff. AI-generated scene.
+        </figcaption>
+      </figure>
       <ProductTour />
       <section className="service-story">
         <div className="container story-layout">

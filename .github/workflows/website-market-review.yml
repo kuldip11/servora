@@ -55,6 +55,13 @@ jobs:
       - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
         working-directory: apps/website
       - run: bun run --cwd apps/website test:e2e:production
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: servora-browser-test-report
+          path: |
+            apps/website/playwright-report/
+            apps/website/test-results/
       - run: node website-redesign/browser-review/capture.mjs
         if: always()
       - uses: actions/upload-artifact@v4

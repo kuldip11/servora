@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("servora_cookie_consent", "essential"),
+  );
+});
+
 test("a guest order progresses through the kitchen and floor", async ({
   page,
 }) => {

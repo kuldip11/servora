@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TrackedLink } from "@/components/analytics/TrackedLink";
 import { createPageMetadata } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
 import { products, workspaces, workspaceSlugs } from "@/content/product";
@@ -38,11 +38,15 @@ export default function ProductPage() {
           {products
             .filter((p) => !workspaceSlugs.includes(p.slug))
             .map((p) => (
-              <Link href={`/product/${p.slug}`} key={p.slug}>
+              <TrackedLink
+                href={`/product/${p.slug}`}
+                key={p.slug}
+                tracking={{ kind: "module", moduleSlug: p.slug }}
+              >
                 <h3>{p.name}</h3>
                 <p>{p.intro}</p>
                 <span aria-hidden="true">↗</span>
-              </Link>
+              </TrackedLink>
             ))}
         </div>
       </section>

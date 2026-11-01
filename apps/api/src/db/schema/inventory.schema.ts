@@ -172,6 +172,9 @@ export const orderInventoryDeductions = pgTable(
   },
   (t) => ({
     orderIdx: index("order_inventory_deductions_order_idx").on(t.orderId),
+    itemIdx: index("order_inventory_deductions_order_item_idx").on(
+      t.orderItemId,
+    ),
     menuItemIdx: index("order_inventory_deductions_menu_item_idx").on(
       t.menuItemId,
     ),

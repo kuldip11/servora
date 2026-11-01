@@ -111,11 +111,15 @@ bun run db:reset
 bun run db:migrate
 ```
 
-Optional development data:
+Optional development/demo data:
 
 ```bash
-bun run db:seed
+bun run demo:seed -- --preset=small
+bun run demo:reset
+bun run demo:seed -- --preset=demo
 ```
+
+`bun run db:seed` defaults to the small preset. See [demo data audit and usage](docs/DEMO_DATA_AUDIT.md) for dataset sizes, credentials, reproducible dates and reset boundaries.
 
 Start all applications:
 
@@ -125,7 +129,7 @@ bun run dev
 
 ## Database state
 
-The current pre-v1 repository contains **78 ordered SQL migrations, `0000` through `0077`**.
+The current pre-v1 repository contains **81 ordered SQL migrations, `0000` through `0080`**.
 
 Because Servora has not been released and has no production data, schema changes should continue to target the clean intended v1 model rather than adding compatibility backfills or phased migration machinery for historical production states that do not exist.
 

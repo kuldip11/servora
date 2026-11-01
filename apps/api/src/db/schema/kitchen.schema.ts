@@ -316,6 +316,10 @@ export const orderItems = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
+    orderIdx: index("order_items_order_idx").on(t.orderId),
+    ticketIdx: index("order_items_ticket_idx").on(t.kitchenTicketId),
+    menuItemIdx: index("order_items_menu_item_idx").on(t.menuItemId),
+    variantIdx: index("order_items_variant_idx").on(t.variantId),
     comboGroupIdx: index("order_items_combo_group_idx").on(t.comboGroupId),
     comboSlotOptionIdx: index("order_items_combo_slot_option_idx").on(
       t.comboSlotOptionId,
@@ -331,18 +335,24 @@ export const orderItems = pgTable(
   }),
 );
 
-export const orderItemModifiers = pgTable("order_item_modifiers", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orderItemId: uuid("order_item_id")
-    .notNull()
-    .references(() => orderItems.id, { onDelete: "cascade" }),
-  modifierId: uuid("modifier_id").references(() => modifierOptions.id),
-  modifierGroupName: varchar("modifier_group_name", { length: 100 }),
-  name: varchar("name", { length: 100 }).notNull(),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
-  quantity: integer("quantity").notNull().default(1),
-  zoneLabel: varchar("zone_label", { length: 30 }),
-});
+export const orderItemModifiers = pgTable(
+  "order_item_modifiers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    modifierId: uuid("modifier_id").references(() => modifierOptions.id),
+    modifierGroupName: varchar("modifier_group_name", { length: 100 }),
+    name: varchar("name", { length: 100 }).notNull(),
+    price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
+    quantity: integer("quantity").notNull().default(1),
+    zoneLabel: varchar("zone_label", { length: 30 }),
+  },
+  (t) => ({
+    itemIdx: index("order_item_modifiers_item_idx").on(t.orderItemId),
+  }),
+);
 
 export const orderItemSeatShares = pgTable(
   "order_item_seat_shares",
@@ -368,18 +378,22 @@ export const orderItemSeatShares = pgTable(
   }),
 );
 
-export const orderStatusHistory = pgTable("order_status_history", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  oldStatus: orderStatusEnum("old_status"),
-  newStatus: orderStatusEnum("new_status").notNull(),
-  changedBy: uuid("changed_by").references(() => users.id),
-  reason: text("reason"),
-  cancellationReasonId: uuid("cancellation_reason_id").references(
-    () => cancellationReasons.id,
-    { onDelete: "set null" },
-  ),
-  changedAt: timestamp("changed_at").notNull().defaultNow(),
-});
+export const orderStatusHistory = pgTable(
+  "order_status_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    oldStatus: orderStatusEnum("old_status"),
+    newStatus: orderStatusEnum("new_status").notNull(),
+    changedBy: uuid("changed_by").references(() => users.id),
+    reason: text("reason"),
+    cancellationReasonId: uuid("cancellation_reason_id").references(
+      () => cancellationReasons.id,
+      { onDelete: "set null" },
+    ),
+    changedAt: timestamp("changed_at").notNull().defaultNow(),
+  },
+  (t) => ({ orderIdx: index("order_status_history_order_idx").on(t.orderId) }),
+);

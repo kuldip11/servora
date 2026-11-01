@@ -20,7 +20,8 @@
     "demo:reset": "bun run --env-file=.env src/db/seed/reset-cli.ts",
     "openapi:export": "bun run scripts/export-openapi.ts",
     "openapi:check": "bun run scripts/export-openapi.ts --check",
-    "test:billing:postgres": "node scripts/test-billing-postgres.mjs"
+    "test:billing:postgres": "node scripts/test-billing-postgres.mjs",
+    "test:demo:postgres": "node scripts/test-demo-postgres.mjs"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.0.2",

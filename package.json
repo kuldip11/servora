@@ -52,7 +52,7 @@
     "verify:baseline": "node scripts/release/verify-baseline.mjs",
     "verify:baseline:plan": "node scripts/release/verify-baseline.mjs --plan",
     "verify:baseline:all": "node scripts/release/verify-baseline.mjs --keep-going",
-    "verify:migrations": "node scripts/release/verify-migrations.mjs",
+    "verify:migrations": "node --test scripts/release/migration-index-unit.test.mjs && node scripts/release/verify-migrations.mjs",
     "db:verify:migrations": "node scripts/release/verify-migrations.mjs",
     "verify:performance": "node scripts/release/performance-smoke.mjs",
     "release:certify": "node scripts/release/certify-release.mjs",
@@ -91,7 +91,8 @@
     "test:billing:postgres": "cd apps/api && bun run test:billing:postgres",
     "seo:live": "node scripts/seo/audit-live.mjs",
     "test:seo:checks": "node --test scripts/seo/production-env.test.mjs && python3 -m unittest discover -s scripts/seo -p 'test_*.py'",
-    "test:e2e:website:production": "cd apps/website && bun run test:e2e:production"
+    "test:e2e:website:production": "cd apps/website && bun run test:e2e:production",
+    "test:demo:postgres": "cd apps/api && bun run test:demo:postgres"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

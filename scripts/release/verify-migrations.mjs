@@ -1,3 +1,7 @@
+import {
+  parseIndexUnit,
+  indexSnapshotErrors,
+} from "./migration-index-unit.mjs";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -48,6 +52,7 @@ const seenTags = new Set();
 const seenIds = new Set();
 let previousSnapshotId = "00000000-0000-0000-0000-000000000000";
 let previousTableCount = 0;
+let previousSnapshot;
 
 for (let i = 0; i < sqlNames.length; i += 1) {
   const prefix = String(i).padStart(4, "0");
@@ -86,6 +91,15 @@ for (let i = 0; i < sqlNames.length; i += 1) {
   }
 
   const sql = readFileSync(resolve(folder, sqlName), "utf8").trim();
+  const indexUnit = /^\d{4}_create_[a-z0-9_]+_indexes$/.test(expectedTag);
+  let indexes = [];
+  if (indexUnit) {
+    try {
+      indexes = parseIndexUnit(sql);
+    } catch (error) {
+      errors.push(`${sqlName}: ${error.message}`);
+    }
+  }
   if (!sql) errors.push(`Empty migration: ${sqlName}`);
   if (/DROP\s+SCHEMA\s+public\s+CASCADE/i.test(sql)) {
     errors.push(
@@ -112,7 +126,7 @@ for (let i = 0; i < sqlNames.length; i += 1) {
       errors.push("Migration 0000 must be the canonical enum baseline.");
     if (/CREATE\s+TABLE/i.test(sql))
       errors.push("0000_enums must not create application tables.");
-  } else {
+  } else if (!indexUnit) {
     const match = expectedTag.match(/^\d{4}_create_(.+)$/);
     if (!match) {
       errors.push(
@@ -152,7 +166,7 @@ for (let i = 0; i < sqlNames.length; i += 1) {
     previousSnapshotId = snapshot.id;
 
     const tableCount = Object.keys(snapshot.tables ?? {}).length;
-    const expectedCount = i;
+    const expectedCount = previousTableCount + (i > 0 && !indexUnit ? 1 : 0);
     if (tableCount !== expectedCount) {
       errors.push(
         `${expectedSnapshotName} should contain ${expectedCount} tables, found ${tableCount}.`,
@@ -164,6 +178,13 @@ for (let i = 0; i < sqlNames.length; i += 1) {
       );
     }
     previousTableCount = tableCount;
+    if (indexUnit && previousSnapshot)
+      errors.push(
+        ...indexSnapshotErrors(previousSnapshot, snapshot, indexes).map(
+          (message) => `${expectedSnapshotName}: ${message}`,
+        ),
+      );
+    previousSnapshot = snapshot;
 
     const enumCount = Object.keys(snapshot.enums ?? {}).length;
     const firstEnumCount = snapshotNames.length

@@ -1,24 +1,36 @@
 import { createPageMetadata } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
 import { DemoRequestForm } from "@/components/forms/DemoRequestForm";
+import { ProductFigure } from "@/components/site/ProductFigure";
 export const metadata = createPageMetadata(websitePageSeo.demo);
-export default function Demo() {
+export default function DemoRequest() {
   return (
-    <section className="mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
-      <div>
-        <p className="text-sm font-semibold text-[var(--primary)]">
-          Book a Demo
-        </p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-          See how Servora could fit your restaurant workflow.
+    <section className="container form-page">
+      <div className="form-story">
+        <h1>
+          See your service
+          <br />
+          in Servora.
         </h1>
-        <p className="mt-5 text-lg leading-8 text-[var(--text-secondary)]">
-          Tell us a little about your operation and use the walkthrough to focus
-          on the workflows that matter most.
+        <p className="lead">
+          Tell us what your restaurant needs. Request a walkthrough focused on
+          the team, tables and workflows you want to connect.
         </p>
+        <ul>
+          <li>Follow an order into the kitchen.</li>
+          <li>Look at the floor team's next action.</li>
+          <li>Review menu, bill and management context.</li>
+        </ul>
+        <ProductFigure kind="waiter" />
       </div>
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-sm)] sm:p-8">
+      <div className="form-panel">
+        <h2>Request a walkthrough</h2>
+        <p>Share your details and the questions you want to explore.</p>
         <DemoRequestForm />
+        <p className="small-copy">
+          This sends an enquiry to the Servora team. It does not reserve a
+          calendar time.
+        </p>
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ export type PublicRouteSeo = {
 };
 
 export const WEBSITE_ROUTES: readonly PublicRouteSeo[] = [
+  { path: "/demo", indexable: true, sitemap: true, changeFrequency: "monthly", priority: 0.7 },
   {
     path: "/",
     indexable: true,

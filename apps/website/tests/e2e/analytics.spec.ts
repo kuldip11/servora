@@ -54,7 +54,7 @@ test("production analytics records one view per navigation after consent", async
     )
     .toBe(true);
   await page
-    .getByRole("link", { name: "Product", exact: true })
+    .getByRole("link", { name: "Management capabilities", exact: true })
     .first()
     .click();
   await expect(page).toHaveURL(/\/product$/);

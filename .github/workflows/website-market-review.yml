@@ -1,0 +1,74 @@
+name: Website market review
+on:
+  push:
+    branches: [codex/servora-market-rebuild]
+    paths: [apps/website/**, packages/seo/**, website-redesign/browser-review/**, .github/workflows/website-market-review.yml]
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        working-directory: apps/website
+      - run: node website-redesign/browser-review/competitors.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restaurant-market-references
+          path: website-redesign/research/screenshots/
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SERVORA_SEO_TEST_BUILD: "true"
+      NEXT_PUBLIC_SITE_URL: https://servora.ci.invalid
+      NEXT_PUBLIC_APP_SIGNIN_URL: https://app.servora.ci.invalid/login
+      NEXT_PUBLIC_WEB_APP_URL: https://app.servora.ci.invalid
+      NEXT_PUBLIC_KITCHEN_APP_URL: https://kitchen.servora.ci.invalid
+      NEXT_PUBLIC_WAITER_APP_URL: https://waiter.servora.ci.invalid
+      NEXT_PUBLIC_CUSTOMER_APP_URL: https://order.servora.ci.invalid
+      LEAD_WEBHOOK_URL: https://leads.servora.ci.invalid/submit
+      NEXT_PUBLIC_GA_ID: G-SEOTEST
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/website lint
+      - run: bun run --cwd apps/website test
+      - run: bun run --cwd apps/website build
+      - run: node scripts/seo/audit-built-pages.mjs --website-only
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        working-directory: apps/website
+      - run: bun run --cwd apps/website test:e2e:production
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: servora-browser-test-report
+          path: |
+            apps/website/playwright-report/
+            apps/website/test-results/
+      - run: node website-redesign/browser-review/capture.mjs
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: servora-market-review
+          path: |
+            website-redesign/browser-review/output/
+            apps/website/playwright-report/
+            apps/website/test-results/

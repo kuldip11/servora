@@ -30,17 +30,26 @@ export const useLeadForm = ({
     {},
   );
   const [formError, setFormError] = useState("");
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<LeadField, boolean>>
+  >({});
   const [state, setState] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
 
   const clientFieldErrors = useMemo(() => validate(values), [validate, values]);
-  const fieldErrors = { ...clientFieldErrors, ...serverFieldErrors };
+  const visibleClientErrors: LeadFieldErrors = {};
+  for (const field of Object.keys(clientFieldErrors) as LeadField[]) {
+    if (touchedFields[field])
+      visibleClientErrors[field] = clientFieldErrors[field];
+  }
+  const fieldErrors = { ...visibleClientErrors, ...serverFieldErrors };
   const isValid = Object.keys(clientFieldErrors).length === 0;
 
   const updateField = (field: LeadField | "website", value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
     if (field !== "website") {
+      setTouchedFields((current) => ({ ...current, [field]: true }));
       setServerFieldErrors((current) => {
         if (!current[field]) return current;
         const next = { ...current };
@@ -85,6 +94,7 @@ export const useLeadForm = ({
 
       onSuccess(values);
       setValues(initialValues);
+      setTouchedFields({});
       setState("success");
       return true;
     } catch (error) {

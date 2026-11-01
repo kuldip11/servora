@@ -1,29 +1,56 @@
+import { TrackedLink } from "@/components/analytics/TrackedLink";
 import { createPageMetadata } from "@/lib/seo";
 import { websitePageSeo } from "@/content/seo";
-import { modules } from "@/content/modules";
-import { ModuleCard } from "@/components/marketing/ModuleCard";
-import { CtaBanner } from "@/components/marketing/CtaBanner";
+import { products, workspaces, workspaceSlugs } from "@/content/product";
+import { PageIntro, Action, ClosingCta } from "@/components/site/Primitives";
+import { ProductFigure } from "@/components/site/ProductFigure";
 export const metadata = createPageMetadata(websitePageSeo.product);
 export default function ProductPage() {
   return (
     <>
-      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <p className="text-sm font-semibold text-[var(--primary)]">Product</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-          Restaurant operations, connected from customer to kitchen to back
-          office.
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--text-secondary)]">
-          Explore the capabilities currently represented in the Servora
-          application.
-        </p>
-        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {modules.map((m) => (
-            <ModuleCard key={m.slug} module={m} />
-          ))}
+      <PageIntro title="Every role. One restaurant." action>
+        Explore four workspaces around one restaurant operation, then look at
+        the management controls behind the shift.
+      </PageIntro>
+      <section
+        className="container workspace-directory"
+        aria-label="Product workspaces"
+      >
+        {workspaces.map((p) => (
+          <article
+            key={p.slug}
+            className={`workspace-row workspace-${p.capture}`}
+          >
+            <div>
+              <h2>{p.name}</h2>
+              <p>{p.intro}</p>
+              <Action href={`/product/${p.slug}`} secondary>
+                Explore {p.name.toLowerCase()}
+              </Action>
+            </div>
+            <ProductFigure kind={p.capture!} />
+          </article>
+        ))}
+      </section>
+      <section className="container management-directory">
+        <h2>The controls behind service.</h2>
+        <div>
+          {products
+            .filter((p) => !workspaceSlugs.includes(p.slug))
+            .map((p) => (
+              <TrackedLink
+                href={`/product/${p.slug}`}
+                key={p.slug}
+                tracking={{ kind: "module", moduleSlug: p.slug }}
+              >
+                <h3>{p.name}</h3>
+                <p>{p.intro}</p>
+                <span aria-hidden="true">↗</span>
+              </TrackedLink>
+            ))}
         </div>
       </section>
-      <CtaBanner />
+      <ClosingCta />
     </>
   );
 }

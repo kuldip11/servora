@@ -1,0 +1,947 @@
+[
+  {
+    "route": "/",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/apps",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/pricing",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/book-a-demo",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/contact",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/demo",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/privacy",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/terms",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/cookies",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/pos-and-orders",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/kitchen-display",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/waiter-app",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/qr-ordering",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/menu-management",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/billing-and-payments",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/inventory",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/analytics",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/multi-branch",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/staff-and-roles",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/security",
+    "width": 320,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/apps",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/pricing",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/book-a-demo",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/contact",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/demo",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/privacy",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/terms",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/cookies",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/pos-and-orders",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/kitchen-display",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/waiter-app",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/qr-ordering",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/menu-management",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/billing-and-payments",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/inventory",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/analytics",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/multi-branch",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/staff-and-roles",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/security",
+    "width": 390,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/apps",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/pricing",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/book-a-demo",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/contact",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/demo",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/privacy",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/terms",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/cookies",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/pos-and-orders",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/kitchen-display",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/waiter-app",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/qr-ordering",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/menu-management",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/billing-and-payments",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/inventory",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/analytics",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/multi-branch",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/staff-and-roles",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/security",
+    "width": 768,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/apps",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/pricing",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/book-a-demo",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/contact",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/demo",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/privacy",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/terms",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/cookies",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/pos-and-orders",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/kitchen-display",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/waiter-app",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/qr-ordering",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/menu-management",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/billing-and-payments",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/inventory",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/analytics",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/multi-branch",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/staff-and-roles",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/security",
+    "width": 1440,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/apps",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/pricing",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/book-a-demo",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/contact",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/demo",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/privacy",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/terms",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/legal/cookies",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/pos-and-orders",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/kitchen-display",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/waiter-app",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/qr-ordering",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/menu-management",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/billing-and-payments",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/inventory",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/analytics",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/multi-branch",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/staff-and-roles",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  },
+  {
+    "route": "/product/security",
+    "width": 1920,
+    "status": 200,
+    "overflow": false,
+    "h1": 1,
+    "main": 1,
+    "images": []
+  }
+]

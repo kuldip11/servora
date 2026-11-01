@@ -2,22 +2,18 @@ import { Analytics } from "@/components/analytics/Analytics";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/navigation/SiteHeader";
 import { CookieConsent } from "@/components/privacy/CookieConsent";
-import {
-  BRAND_ASSETS,
-  DEFAULT_DESCRIPTION,
-  DEFAULT_TITLE,
-  getSiteUrl,
-} from "@/lib/seo";
+import { BRAND_ASSETS, getSiteUrl } from "@/lib/seo";
+import { websitePageSeo } from "@/content/seo";
 import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: DEFAULT_TITLE,
+    default: websitePageSeo.home.title,
     template: "%s | Servora",
   },
-  description: DEFAULT_DESCRIPTION,
+  description: websitePageSeo.home.description,
   icons: {
     icon: [
       { url: BRAND_ASSETS.faviconSvg, type: "image/svg+xml" },
@@ -29,13 +25,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Servora",
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
+    title: websitePageSeo.home.title,
+    description: websitePageSeo.home.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
+    title: websitePageSeo.home.title,
+    description: websitePageSeo.home.description,
   },
 };
 
@@ -44,7 +40,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col">
+      <body className="flex flex-col">
         <SiteHeader />
         <main id="main" className="flex-1">
           {children}

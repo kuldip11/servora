@@ -10,6 +10,8 @@ import { useCustomerCheckout } from "./features/order";
 import { OrderStatus } from "./features/ordering";
 import { StatusScreen, useCustomerSession } from "./features/session";
 
+import { Concierge } from "./features/assistant/Concierge";
+
 export type View = "menu" | "cart" | "order";
 
 type CustomerSessionResult = ReturnType<typeof useCustomerSession>;
@@ -174,6 +176,21 @@ const CustomerExperience = ({
     <>
       <CustomerMenuView
         session={session}
+        concierge={
+          <Concierge
+            token={session.token}
+            onOpenItem={cartState.openItem}
+            onCallWaiter={
+              session.mode === "DINE_IN"
+                ? () => {
+                    void requestHelp("CALL_WAITER");
+                  }
+                : undefined
+            }
+            requestBusy={requestBusy}
+            requestMessage={requestMessage}
+          />
+        }
         placedOrder={Boolean(placedOrder)}
         itemCount={cartState.summary.itemCount}
         total={cartState.summary.total}

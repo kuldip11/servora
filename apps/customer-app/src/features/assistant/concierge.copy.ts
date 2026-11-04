@@ -1,0 +1,32 @@
+export const copy = {
+  welcome: "Tell me what sounds good.",
+  suggestions: "Start with a preference",
+  menuLabel: "Explore the menu",
+  questionHint:
+    "Ask about a dish, drinks, what's popular or a budget, then follow up (e.g. “and above ₹300?”). Leave out personal details.",
+  you: "You",
+  clear: "Clear chat",
+  interrupted:
+    "Search stopped when Concierge closed. Please send a new question.",
+  intro: "Find something you'll enjoy",
+  hint: "Ask about the menu in your own words. Please leave out personal details.",
+  placeholder: "Coffee, what's popular, veg under ₹300…",
+  send: "Find dishes",
+  chips: [
+    "Vegetarian",
+    "Not spicy",
+    "Under ₹300",
+    "Jain options?",
+    "What's popular?",
+    "Show me drinks",
+  ],
+  followUps: "Suggested follow-up questions",
+  hasOptions: "Customisable",
+  open: "View options",
+  waiter: "Ask waiter",
+  busy: "Checking the live menu…",
+  basePrice: "Base price",
+  veg: "Vegetarian",
+  egg: "Contains egg",
+  nonVeg: "Non-vegetarian",
+};

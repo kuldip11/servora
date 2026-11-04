@@ -1,0 +1,395 @@
+--- a/README.md
++++ b/README.md
+@@ -85,7 +85,7 @@
+ Install dependencies:
+ 
+ ```bash
+-bun install
++bun run setup
+ ```
+ 
+ Create the required environment files from each application's `.env.example` and configure local PostgreSQL/Redis URLs and development secrets.
+@@ -218,3 +218,9 @@
+ ## Optional customer menu Concierge
+ 
+ The read-only QR Concierge pilot is disabled by default. See [setup, safety boundaries and rollout](docs/SERVORA_CONCIERGE.md) before enabling a branch. It requires an explicitly configured gateway model/key and does not require a database migration.
++
++### Workspace installation and source archives
++
++Run `bun run setup` from the repository root after extracting source or merging workspace changes. It backs up regular directory copies of local workspace packages found under `node_modules`, runs the normal `bun install`, and verifies that workspace imports resolve to the actual source directories and that TypeBox is reachable. Backups are retained under `.cache/workspace-copies-*`. It does not delete source, `.env`, database files, or unrelated installed packages. Existing dependency-tree symlinks are left alone.
++
++Use `bun run source:zip` (Python 3 required) to create `dist/servora-source.zip`. The source packager excludes all nested `node_modules`, build/cache directories, environment secrets and symlinks. Install dependencies after extracting a source archive; installed dependencies are intentionally not distributed as source.
+--- a/docs/CONCIERGE_REFACTOR_REVIEW.md
++++ b/docs/CONCIERGE_REFACTOR_REVIEW.md
+@@ -71,3 +71,13 @@
+ The sheet explicitly carries the `customer-experience` theme class so portaled content inherits the menu palette. It is width-constrained on larger screens and remains a bottom sheet on mobile. History, cancellation, quota enforcement, item refresh and independent-question behavior are unchanged.
+ 
+ Verification for the refinement: 128 customer-app tests passed; TypeScript, targeted ESLint and formatting passed. The production build passed using the existing CI fixture-origin path, with the existing main-chunk advisory. Visual browser verification could not run: the browser download returned a truncated archive. No source dependency, lockfile, backend, database or provider setting changed in this visual refinement.
++
++## Source packaging and workspace repair
++
++The uploaded archive contained 261 entries under nested `node_modules`, including regular directory copies of `@pos/contracts` below `packages/realtime` and `packages/api-client`, and a copied workspace dependency below validation. Earlier repackaging preserved those install artifacts. The customer's unresolved TypeBox errors name those copied-package paths. TypeBox itself is already a dependency of the actual contracts workspace and already present in `bun.lock`; no new TypeBox dependency or Vite externalization is appropriate.
++
++The corrected archive contains no `node_modules` at any depth. `scripts/release/package-source.py` is now the source of distribution archives and excludes dependency trees, caches, build output, symlinks and `.env` secrets while retaining `.env.example`/`.env.template` if present. Run `bun run source:zip` to reproduce it.
++
++Run `bun run setup` from an extracted project root, or run the standalone `setup-workspace.mjs` from an existing project root. The setup backs up only real-directory copies of known local workspace packages under installed dependency folders, performs normal `bun install`, then verifies workspace source resolution plus TypeBox and its value export. It does not force-update dependencies or use `--frozen-lockfile`. Copies are retained under `.cache/workspace-copies-*`; source, environment files and unrelated installed packages are not removed. A conventional dependency installation remains necessary for a source-only ZIP.
++
++Checks: four Node repair/resolution tests and one Python archive test passed. A staging run detected and backed up all three copied workspace packages from the original archive. Native Bun installation remains blocked in this host with `NotDir`, so a complete native install is not certified. The actual repair and archive logic, including keeping symlinks and avoiding external dependency trees, is covered by the targeted tests.
+--- a/package.json
++++ b/package.json
+@@ -94,7 +94,10 @@
+     "test:e2e:website:production": "cd apps/website && bun run test:e2e:production",
+     "test:demo:postgres": "cd apps/api && bun run test:demo:postgres",
+     "assistant:eval": "cd apps/api && bun run assistant:eval",
+-    "test:assistant:redis": "cd apps/api && bun run test:assistant:redis"
++    "test:assistant:redis": "cd apps/api && bun run test:assistant:redis",
++    "setup": "node scripts/foundation/setup-workspace.mjs",
++    "source:zip": "python3 scripts/release/package-source.py",
++    "test:workspace-setup": "node --test scripts/foundation/test/setup-workspace.test.mjs"
+   },
+   "devDependencies": {
+     "@types/node": "^20.14.0",
+--- /dev/null
++++ b/scripts/foundation/setup-workspace.mjs
+@@ -0,0 +1,148 @@
++import {
++  existsSync,
++  lstatSync,
++  mkdirSync,
++  mkdtempSync,
++  readFileSync,
++  readdirSync,
++  realpathSync,
++  renameSync,
++} from "node:fs";
++import { dirname, join, relative, resolve, sep } from "node:path";
++import { createRequire } from "node:module";
++import { spawnSync } from "node:child_process";
++import { pathToFileURL } from "node:url";
++
++const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
++const present = (path) => {
++  try {
++    return lstatSync(path);
++  } catch (error) {
++    if (error.code === "ENOENT") return undefined;
++    throw error;
++  }
++};
++
++export function readWorkspaces(root) {
++  const manifest = readJson(join(root, "package.json"));
++  const patterns = manifest.workspaces;
++  if (!Array.isArray(patterns))
++    throw new Error("Expected a workspace array in package.json.");
++  const workspaces = [];
++  for (const pattern of patterns) {
++    if (!pattern.endsWith("/*") || pattern.slice(0, -2).includes("*"))
++      throw new Error(`Unsupported workspace pattern: ${pattern}`);
++    const parent = resolve(root, pattern.slice(0, -2));
++    if (!parent.startsWith(root + sep))
++      throw new Error("Workspace must be inside this repository.");
++    for (const entry of readdirSync(parent, { withFileTypes: true })) {
++      const directory = join(parent, entry.name);
++      if (!entry.isDirectory() || !existsSync(join(directory, "package.json")))
++        continue;
++      const pkg = readJson(join(directory, "package.json"));
++      if (pkg.name) workspaces.push({ directory, manifest: pkg });
++    }
++  }
++  return workspaces;
++}
++
++export function findCopiedWorkspaces(root, workspaces = readWorkspaces(root)) {
++  const copies = [];
++  for (const owner of [root, ...workspaces.map((w) => w.directory)]) {
++    const modules = join(owner, "node_modules");
++    // Do not modify an external dependency tree behind a directory symlink.
++    if (!present(modules)?.isDirectory() || present(modules)?.isSymbolicLink())
++      continue;
++    for (const workspace of workspaces) {
++      const name = workspace.manifest.name;
++      const scope = name.startsWith("@")
++        ? join(modules, name.split("/")[0])
++        : modules;
++      if (present(scope)?.isSymbolicLink()) continue;
++      const candidate = join(modules, name);
++      const info = present(candidate);
++      if (!info?.isDirectory() || info.isSymbolicLink()) continue;
++      const manifest = join(candidate, "package.json");
++      if (existsSync(manifest) && readJson(manifest).name === name)
++        copies.push(candidate);
++    }
++  }
++  return copies;
++}
++
++export function backUpCopies(root, copies) {
++  if (!copies.length) return undefined;
++  const cache = join(root, ".cache");
++  mkdirSync(cache, { recursive: true });
++  const backup = mkdtempSync(join(cache, "workspace-copies-"));
++  for (const source of copies) {
++    const destination = join(backup, relative(root, source));
++    mkdirSync(dirname(destination), { recursive: true });
++    renameSync(source, destination);
++  }
++  return backup;
++}
++
++export function verifyWorkspaceResolution(
++  root,
++  workspaces = readWorkspaces(root),
++) {
++  const byName = new Map(workspaces.map((w) => [w.manifest.name, w.directory]));
++  for (const owner of workspaces) {
++    const require = createRequire(join(owner.directory, "package.json"));
++    const deps = {
++      ...owner.manifest.dependencies,
++      ...owner.manifest.devDependencies,
++    };
++    for (const [name, version] of Object.entries(deps)) {
++      if (!version.startsWith("workspace:")) continue;
++      const expected = byName.get(name);
++      if (!expected)
++        throw new Error(`Unknown workspace ${name} in ${owner.manifest.name}.`);
++      const actual = realpathSync(require.resolve(name));
++      if (!actual.startsWith(realpathSync(expected) + sep))
++        throw new Error(
++          `${owner.manifest.name} resolves ${name} outside its source workspace: ${actual}`,
++        );
++    }
++  }
++  const contracts = byName.get("@pos/contracts");
++  if (!contracts) throw new Error("Missing @pos/contracts workspace.");
++  const require = createRequire(join(contracts, "package.json"));
++  require.resolve("@sinclair/typebox");
++  require.resolve("@sinclair/typebox/value");
++}
++
++export function setupWorkspace(root) {
++  const workspaces = readWorkspaces(root);
++  const copies = findCopiedWorkspaces(root, workspaces);
++  const backup = backUpCopies(root, copies);
++  if (backup)
++    console.log(
++      `Backed up ${copies.length} copied workspace package(s): ${backup}`,
++    );
++  const bun = process.versions.bun ? process.execPath : "bun";
++  const result = spawnSync(bun, ["install"], { cwd: root, stdio: "inherit" });
++  if (result.error) throw result.error;
++  if (result.status !== 0)
++    throw new Error(
++      "Dependency installation failed. Any moved copies remain in the printed backup directory.",
++    );
++  verifyWorkspaceResolution(root, workspaces);
++  console.log(
++    "Workspace links and TypeBox resolution verified. Start Servora with: bun run dev",
++  );
++}
++
++if (
++  process.argv[1] &&
++  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
++) {
++  const root = resolve(process.cwd());
++  try {
++    setupWorkspace(root);
++  } catch (error) {
++    console.error(`Workspace setup failed: ${error.message}`);
++    process.exitCode = 1;
++  }
++}
+--- /dev/null
++++ b/scripts/foundation/test/setup-workspace.test.mjs
+@@ -0,0 +1,115 @@
++import { afterEach, test } from "node:test";
++import assert from "node:assert/strict";
++import {
++  mkdirSync,
++  mkdtempSync,
++  writeFileSync,
++  symlinkSync,
++  existsSync,
++  lstatSync,
++  rmSync,
++} from "node:fs";
++import { join } from "node:path";
++import {
++  backUpCopies,
++  findCopiedWorkspaces,
++  verifyWorkspaceResolution,
++} from "../setup-workspace.mjs";
++
++const roots = [];
++afterEach(() => {
++  for (const root of roots.splice(0))
++    rmSync(root, { recursive: true, force: true });
++});
++function write(path, data) {
++  mkdirSync(join(path, ".."), { recursive: true });
++  writeFileSync(path, data);
++}
++function fixture() {
++  const root = mkdtempSync(join(process.cwd(), ".setup-test-"));
++  roots.push(root);
++  write(
++    join(root, "package.json"),
++    JSON.stringify({ workspaces: ["apps/*", "packages/*"] }),
++  );
++  write(
++    join(root, "apps/demo/package.json"),
++    JSON.stringify({
++      name: "@pos/demo",
++      dependencies: { "@pos/contracts": "workspace:*" },
++    }),
++  );
++  write(
++    join(root, "packages/contracts/package.json"),
++    JSON.stringify({ name: "@pos/contracts", main: "src/index.js" }),
++  );
++  write(join(root, "packages/contracts/src/index.js"), "module.exports = {};");
++  return root;
++}
++function typebox(root) {
++  const base = join(root, "packages/contracts/node_modules/@sinclair/typebox");
++  write(
++    join(base, "package.json"),
++    JSON.stringify({
++      name: "@sinclair/typebox",
++      exports: { ".": "./index.js", "./value": "./value.js" },
++    }),
++  );
++  write(join(base, "index.js"), "module.exports = {};");
++  write(join(base, "value.js"), "module.exports = {};");
++}
++test("backs up copied workspace trees and preserves source, env and unrelated packages", () => {
++  const root = fixture();
++  const copy = join(root, "apps/demo/node_modules/@pos/contracts");
++  write(join(copy, "package.json"), JSON.stringify({ name: "@pos/contracts" }));
++  write(join(copy, "local.txt"), "preserve");
++  write(join(root, "apps/demo/.env"), "LOCAL=keep");
++  write(join(root, "apps/demo/node_modules/other/package.json"), "{}");
++  const copies = findCopiedWorkspaces(root);
++  assert.deepEqual(copies, [copy]);
++  const backup = backUpCopies(root, copies);
++  assert.ok(
++    existsSync(join(backup, "apps/demo/node_modules/@pos/contracts/local.txt")),
++  );
++  assert.ok(!existsSync(copy));
++  assert.ok(existsSync(join(root, "apps/demo/.env")));
++  assert.ok(
++    existsSync(join(root, "apps/demo/node_modules/other/package.json")),
++  );
++  assert.ok(existsSync(join(root, "packages/contracts/src/index.js")));
++});
++test("keeps legitimate workspace symlinks and verifies dependency resolution", () => {
++  const root = fixture();
++  const scope = join(root, "apps/demo/node_modules/@pos");
++  mkdirSync(scope, { recursive: true });
++  const link = join(scope, "contracts");
++  symlinkSync(join(root, "packages/contracts"), link, "dir");
++  typebox(root);
++  assert.deepEqual(findCopiedWorkspaces(root), []);
++  assert.ok(lstatSync(link).isSymbolicLink());
++  verifyWorkspaceResolution(root);
++});
++test("rejects a shadow workspace even if its package.json and main look valid", () => {
++  const root = fixture();
++  const copy = join(root, "apps/demo/node_modules/@pos/contracts");
++  write(
++    join(copy, "package.json"),
++    JSON.stringify({ name: "@pos/contracts", main: "index.js" }),
++  );
++  write(join(copy, "index.js"), "module.exports = {};");
++  typebox(root);
++  assert.throws(
++    () => verifyWorkspaceResolution(root),
++    /outside its source workspace/,
++  );
++});
++test("does not mutate dependency trees behind a node_modules directory symlink", () => {
++  const root = fixture();
++  const external = join(root, "external-dependencies");
++  write(
++    join(external, "@pos/contracts/package.json"),
++    JSON.stringify({ name: "@pos/contracts" }),
++  );
++  symlinkSync(external, join(root, "apps/demo/node_modules"), "dir");
++  assert.deepEqual(findCopiedWorkspaces(root), []);
++});
+--- /dev/null
++++ b/scripts/release/package-source.py
+@@ -0,0 +1,44 @@
++#!/usr/bin/env python3
++"""Package source without dependency trees, runtime output or environment secrets."""
++import argparse
++import os
++from pathlib import Path
++import zipfile
++
++EXCLUDED_DIRS = {
++    'node_modules', '.git', '.bun', '.cache', '.turbo', '.vite', '.next',
++    'dist', 'build', 'out', 'coverage', 'playwright-report', 'test-results',
++    '__pycache__',
++}
++
++def source_files(root):
++    for directory, dirs, files in os.walk(root, followlinks=False):
++        dirs[:] = sorted(name for name in dirs if name not in EXCLUDED_DIRS and not (Path(directory) / name).is_symlink())
++        for name in sorted(files):
++            path = Path(directory) / name
++            if path.is_symlink():
++                continue
++            if (name == '.env' or name.startswith('.env.')) and name not in {'.env.example', '.env.template'}:
++                continue
++            if name.endswith(('.log', '.tsbuildinfo', '.zip')) or name == '.DS_Store':
++                continue
++            yield path
++
++def package_source(root, output):
++    root, output = Path(root).resolve(), Path(output).resolve()
++    output.parent.mkdir(parents=True, exist_ok=True)
++    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
++        for path in source_files(root):
++            if path.resolve() != output:
++                archive.write(path, path.relative_to(root))
++    with zipfile.ZipFile(output) as archive:
++        if archive.testzip() is not None:
++            raise RuntimeError('Source archive integrity check failed')
++    return output
++
++if __name__ == '__main__':
++    root = Path(__file__).resolve().parents[2]
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--output', type=Path, default=root / 'dist/servora-source.zip')
++    args = parser.parse_args()
++    print(package_source(root, args.output))
+--- /dev/null
++++ b/scripts/release/test_package_source.py
+@@ -0,0 +1,25 @@
++import tempfile
++import unittest
++import zipfile
++from pathlib import Path
++import importlib.util
++spec = importlib.util.spec_from_file_location("package_source", Path(__file__).with_name("package-source.py"))
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++package_source = module.package_source
++
++class SourceArchiveTest(unittest.TestCase):
++    def test_excludes_partial_installs_and_secrets_at_every_workspace_depth(self):
++        with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
++            root = Path(directory)
++            keep = ['package.json', 'bun.lock', 'packages/contracts/src/index.ts', '.env.example', 'apps/api/.env.template']
++            omit = ['node_modules/x/index.js', 'packages/realtime/node_modules/@pos/contracts/src/index.ts', '.env', 'apps/api/.env.local', 'apps/api/dist/index.js', '.cache/stale.json']
++            for name in keep + omit:
++                path = root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('fixture')
++            (root / 'dependency-link').symlink_to(root / 'node_modules', target_is_directory=True)
++            output = package_source(root, root / 'dist/source.zip')
++            with zipfile.ZipFile(output) as archive:
++                self.assertEqual(set(archive.namelist()), set(keep))
++
++if __name__ == '__main__':
++    unittest.main()

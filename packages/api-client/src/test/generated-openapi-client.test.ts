@@ -9,7 +9,7 @@ const uuid = "550e8400-e29b-41d4-a716-446655440000";
 
 describe("generated OpenAPI client", () => {
   it("contains the complete current operation registry", () => {
-    expect(Object.keys(OPENAPI_OPERATIONS)).toHaveLength(229);
+    expect(Object.keys(OPENAPI_OPERATIONS)).toHaveLength(231);
   });
 
   it("interpolates path parameters and omits undefined axios options", async () => {

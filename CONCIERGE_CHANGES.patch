@@ -1,0 +1,2627 @@
+--- a/README.md
++++ b/README.md
+@@ -85,7 +85,7 @@
+ Install dependencies:
+ 
+ ```bash
+-bun install
++bun run setup
+ ```
+ 
+ Create the required environment files from each application's `.env.example` and configure local PostgreSQL/Redis URLs and development secrets.
+@@ -218,3 +218,9 @@
+ ## Optional customer menu Concierge
+ 
+ The read-only QR Concierge pilot is disabled by default. See [setup, safety boundaries and rollout](docs/SERVORA_CONCIERGE.md) before enabling a branch. It requires an explicitly configured gateway model/key and does not require a database migration.
++
++### Workspace installation and source archives
++
++Run `bun run setup` from the repository root after extracting source or merging workspace changes. It backs up regular directory copies of local workspace packages found under `node_modules`, runs the normal `bun install`, and verifies that workspace imports resolve to the actual source directories and that TypeBox is reachable. Backups are retained under `.cache/workspace-copies-*`. It does not delete source, `.env`, database files, or unrelated installed packages. Existing dependency-tree symlinks are left alone.
++
++Use `bun run source:zip` (Python 3 required) to create `dist/servora-source.zip`. The source packager excludes all nested `node_modules`, build/cache directories, environment secrets and symlinks. Install dependencies after extracting a source archive; installed dependencies are intentionally not distributed as source.
+--- a/apps/api/scripts/test-assistant-redis.mjs
++++ b/apps/api/scripts/test-assistant-redis.mjs
+@@ -15,7 +15,7 @@
+   [
+     fileURLToPath(import.meta.resolve("vitest/vitest.mjs")),
+     "run",
+-    "src/modules/assistant/assistant.redis.test.ts",
++    "src/modules/assistant/test/assistant.redis.test.ts",
+     "--pool=threads",
+     "--poolOptions.threads.singleThread",
+   ],
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant-recommendation.service.ts
+@@ -0,0 +1,33 @@
++import type { AssistantLanguage, AssistantReply } from "@pos/contracts";
++import { customerMenuService } from "@/modules/customer/customer-menu.service";
++import type { MenuSearchInput } from "./assistant.input";
++import { reply, staffReply } from "./assistant.responses";
++import { searchItems } from "./assistant.search";
++
++async function resolveRecommendation(
++  token: string,
++  language: AssistantLanguage,
++  canCallWaiter: boolean,
++  input: MenuSearchInput,
++): Promise<AssistantReply> {
++  if (input.needsDietaryVerification)
++    return reply(language, "ASK_STAFF", canCallWaiter);
++  if (input.intent === "STAFF") return staffReply(language, canCallWaiter);
++  if (input.intent === "OUT_OF_SCOPE")
++    return reply(language, "OUT_OF_SCOPE", canCallWaiter);
++
++  // Resolve authoritative availability/prices after classification completes.
++  // No database call runs inside the provider's tool execution lifecycle.
++  const menu = await customerMenuService.getMenu(token);
++  const items = searchItems(menu.items, input);
++  return reply(
++    language,
++    items.length ? "MATCHES" : "NO_MATCH",
++    canCallWaiter,
++    items,
++  );
++}
++
++export const assistantRecommendationService = {
++  resolve: resolveRecommendation,
++};
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.controller.ts
+@@ -0,0 +1,13 @@
++import type { AssistantQuestion } from "@pos/contracts";
++import { successResponse } from "@/core/response";
++import { assistantService } from "./assistant.service";
++
++export const assistantController = {
++  async capabilities(token: string) {
++    return successResponse(await assistantService.capabilities(token));
++  },
++
++  async ask(token: string, question: AssistantQuestion, signal?: AbortSignal) {
++    return successResponse(await assistantService.ask(token, question, signal));
++  },
++};
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.diagnostics.ts
+@@ -0,0 +1,34 @@
++import { createLogger } from "@/core/logger";
++import { AssistantProtocolError } from "./assistant.errors";
++import { metrics } from "@/core/observability/metrics";
++
++export type AssistantFailureStage =
++  "reservation" | "model" | "menu" | "protocol";
++const logger = createLogger({}, "assistant");
++
++export function reportAssistantFailure(
++  stage: AssistantFailureStage,
++  scope: { tenantId: string; branchId: string },
++  error: unknown,
++) {
++  // Never log raw errors: provider messages/stacks may include customer text,
++  // request headers, credentials or response bodies. Status is allowlisted.
++  const status =
++    error !== null && typeof error === "object" && "statusCode" in error
++      ? error.statusCode
++      : undefined;
++  metrics.increment("servora_assistant_failures_total", { stage });
++  logger.warn("assistant.request_failed", {
++    ...scope,
++    stage,
++    ...(error instanceof AssistantProtocolError
++      ? { reason: error.reason }
++      : {}),
++    ...(typeof status === "number" &&
++    Number.isInteger(status) &&
++    status >= 400 &&
++    status <= 599
++      ? { upstreamStatus: status }
++      : {}),
++  });
++}
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.errors.ts
+@@ -0,0 +1,13 @@
++export type AssistantProtocolReason =
++  | "missing_tool"
++  | "duplicate_tools"
++  | "invalid_tool_result"
++  | "truncated_output";
++
++// Controlled codes only; never attach model arguments or provider payloads.
++export class AssistantProtocolError extends Error {
++  constructor(readonly reason: AssistantProtocolReason) {
++    super("Menu classification protocol failed");
++    this.name = "AssistantProtocolError";
++  }
++}
+--- a/apps/api/src/modules/assistant/assistant.evaluation.ts
++++ b/apps/api/src/modules/assistant/assistant.evaluation.ts
+@@ -1,12 +1,9 @@
+ import { performance } from "node:perf_hooks";
+ import { resolvePreset } from "@/db/seed/demo/config";
+ import { catalogItem } from "@/db/seed/demo/catalog";
+-import {
+-  needsStaff,
+-  searchItems,
+-  type MenuSearchInput,
+-  type SearchableItem,
+-} from "./assistant.policy";
++import { needsStaff } from "./assistant.safety";
++import { searchItems, type SearchableItem } from "./assistant.search";
++import { type MenuSearchInput } from "./assistant.input";
+ 
+ export type EvaluationCase = {
+   id: string;
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.input.ts
+@@ -0,0 +1,14 @@
++import { z } from "zod";
++
++// The model classifies preferences only. No IDs, prices or public prose are accepted.
++export const menuSearchInput = z
++  .object({
++    intent: z.enum(["MENU", "STAFF", "OUT_OF_SCOPE"]),
++    foodType: z.enum(["ANY", "VEG", "NON_VEG", "EGG"]),
++    mild: z.boolean(),
++    maxPrice: z.number().min(0).max(100000).nullable(),
++    terms: z.array(z.string().max(40)).max(6),
++    needsDietaryVerification: z.boolean(),
++  })
++  .strict();
++export type MenuSearchInput = z.infer<typeof menuSearchInput>;
+--- a/apps/api/src/modules/assistant/assistant.model.ts
++++ b/apps/api/src/modules/assistant/assistant.model.ts
+@@ -1,10 +1,16 @@
+-import { createGateway, generateText, tool, jsonSchema } from "ai";
++import {
++  createGateway,
++  generateText,
++  tool,
++  jsonSchema,
++  ToolChoiceViolationError,
++  InvalidToolInputError,
++  NoSuchToolError,
++} from "ai";
+ import { env } from "@/config/env";
+-import {
+-  menuSearchInput,
+-  redactMessage,
+-  type MenuSearchInput,
+-} from "./assistant.policy";
++import { menuSearchInput, type MenuSearchInput } from "./assistant.input";
++import { AssistantProtocolError } from "./assistant.errors";
++import { redactMessage } from "./assistant.safety";
+ 
+ export async function runMenuTool(
+   message: string,
+@@ -81,9 +87,28 @@
+     maxRetries: 0,
+     timeout: 8000,
+     ...(signal ? { abortSignal: signal } : {}),
++  }).catch((error: unknown) => {
++    // SDK enforcement may reject before a result exists. Reduce those typed
++    // errors to controlled codes without retaining their model content.
++    if (ToolChoiceViolationError.isInstance(error))
++      throw new AssistantProtocolError(
++        error.finishReason === "length" ? "truncated_output" : "missing_tool",
++      );
++    if (
++      InvalidToolInputError.isInstance(error) ||
++      NoSuchToolError.isInstance(error)
++    )
++      throw new AssistantProtocolError("invalid_tool_result");
++    throw error;
+   });
++  if (result.finishReason === "length")
++    throw new AssistantProtocolError("truncated_output");
++  if (result.toolCalls.length === 0)
++    throw new AssistantProtocolError("missing_tool");
++  if (result.toolCalls.length !== 1)
++    throw new AssistantProtocolError("duplicate_tools");
+   if (!called || result.toolResults.length !== 1)
+-    throw new Error("Menu lookup failed");
++    throw new AssistantProtocolError("invalid_tool_result");
+   return {
+     inputTokens: result.totalUsage.inputTokens ?? 0,
+     outputTokens: result.totalUsage.outputTokens ?? 0,
+--- a/apps/api/src/modules/assistant/assistant.policy.ts
++++ /dev/null
+@@ -1,164 +0,0 @@
+-import { z } from "zod";
+-import type { AssistantLanguage, AssistantReply } from "@pos/contracts";
+-
+-// The model classifies preferences only. No IDs, prices or public prose are accepted.
+-export const menuSearchInput = z
+-  .object({
+-    intent: z.enum(["MENU", "STAFF", "OUT_OF_SCOPE"]),
+-    foodType: z.enum(["ANY", "VEG", "NON_VEG", "EGG"]),
+-    mild: z.boolean(),
+-    maxPrice: z.number().min(0).max(100000).nullable(),
+-    terms: z.array(z.string().max(40)).max(6),
+-    needsDietaryVerification: z.boolean(),
+-  })
+-  .strict();
+-export type MenuSearchInput = z.infer<typeof menuSearchInput>;
+-export type SearchableItem = {
+-  id: string;
+-  name: string;
+-  description: string | null;
+-  basePrice: string | number;
+-  foodType: "VEG" | "NON_VEG" | "EGG";
+-  spiceLevel: string | null;
+-  pricingMode: string;
+-  variants: unknown[];
+-  modifierGroupLinks: unknown[];
+-  tagLinks: Array<{ tag: { name: string } }>;
+-};
+-
+-export const messages = {
+-  en: {
+-    MATCHES:
+-      "Here are dishes matching your preferences. Open a dish to review its options.",
+-    NO_MATCH:
+-      "I couldn't find a matching dish. Try a different dish or budget, or ask the team.",
+-    ASK_STAFF:
+-      "Dietary suitability, ingredients and allergen safety are unverified. Please check with the restaurant team before ordering.",
+-    OUT_OF_SCOPE:
+-      "I can help you explore this restaurant's menu. Tell me a dish, food preference or item budget.",
+-    disclaimer:
+-      "Prices shown are base prices. Options, tax and charges may change the total. Dietary and allergen information must be confirmed with staff.",
+-  },
+-  hi: {
+-    MATCHES:
+-      "आपकी पसंद के अनुसार ये व्यंजन मिले। विकल्प देखने के लिए व्यंजन खोलें।",
+-    NO_MATCH:
+-      "इस पसंद का व्यंजन नहीं मिला। कोई और व्यंजन या बजट बताएं, या स्टाफ से पूछें।",
+-    ASK_STAFF:
+-      "सामग्री, एलर्जी और आहार संबंधी उपयुक्तता की पुष्टि नहीं है। ऑर्डर करने से पहले रेस्टोरेंट के स्टाफ से पूछें।",
+-    OUT_OF_SCOPE:
+-      "मैं इस रेस्टोरेंट का मेनू चुनने में मदद कर सकता हूँ। व्यंजन, पसंद या एक व्यंजन का बजट बताएं।",
+-    disclaimer:
+-      "ये बेस कीमतें हैं। विकल्प, टैक्स और शुल्क से कुल बदल सकता है। सामग्री और एलर्जी की जानकारी स्टाफ से पक्की करें।",
+-  },
+-  hinglish: {
+-    MATCHES:
+-      "Aapki pasand ke hisaab se ye dishes mili hain. Options dekhne ke liye dish kholen.",
+-    NO_MATCH:
+-      "Is pasand ki dish nahi mili. Koi aur dish ya budget batayein, ya staff se poochhein.",
+-    ASK_STAFF:
+-      "Ingredients, allergy aur dietary suitability verified nahi hain. Order se pehle restaurant staff se confirm karein.",
+-    OUT_OF_SCOPE:
+-      "Main is restaurant ke menu mein madad kar sakta hoon. Dish, preference ya ek dish ka budget batayein.",
+-    disclaimer:
+-      "Ye base prices hain. Options, tax aur charges se total badal sakta hai. Ingredients aur allergy staff se confirm karein.",
+-  },
+-} satisfies Record<
+-  AssistantLanguage,
+-  Record<AssistantReply["outcome"] | "disclaimer", string>
+->;
+-
+-// Defense in depth. Every response also carries the fixed safety disclaimer.
+-export const needsStaff = (text: string) =>
+-  /allerg|peanut|groundnut|nut.free|gluten|celiac|coeliac|lactose|vegan|jain|halal|kosher|pregnan|diabet|ingredient|contain|safe|without|free.of|no\s+(nuts|milk|egg|onion|garlic)|एलर्जी|मूंगफली|जैन|वीगन|सामग्री|बिना|दूध|anda|moongfali|mungfali|lehsun|lahsun|pyaaz|pyaz/i.test(
+-    text,
+-  );
+-
+-export const redactMessage = (text: string) =>
+-  text
+-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email removed]")
+-    .replace(/(?:\+?\d[\d\s().-]{6,}\d)/g, "[number removed]")
+-    .replace(/https?:\/\/\S+/gi, "[link removed]");
+-
+-export function searchItems(
+-  items: SearchableItem[],
+-  input: MenuSearchInput,
+-): AssistantReply["items"] {
+-  const terms = input.terms
+-    .map((t) => t.toLocaleLowerCase().trim())
+-    .filter(Boolean);
+-  return items
+-    .filter((item) => {
+-      const price = Number(item.basePrice);
+-      if (!Number.isFinite(price) || price < 0) return false;
+-      if (input.foodType !== "ANY" && item.foodType !== input.foodType)
+-        return false;
+-      if (input.mild && !["MILD", "NONE"].includes(item.spiceLevel ?? ""))
+-        return false;
+-      // No misleading budget claims for weight/open prices or configurable items.
+-      if (
+-        input.maxPrice !== null &&
+-        (price > input.maxPrice ||
+-          item.pricingMode !== "FIXED" ||
+-          item.variants.length ||
+-          item.modifierGroupLinks.length)
+-      )
+-        return false;
+-      return true;
+-    })
+-    .map((item) => {
+-      const haystack =
+-        `${item.name} ${item.description ?? ""} ${item.tagLinks.map((l) => l.tag.name).join(" ")}`.toLocaleLowerCase();
+-      return {
+-        item,
+-        score: terms.reduce(
+-          (sum, term) => sum + Number(haystack.includes(term)),
+-          0,
+-        ),
+-      };
+-    })
+-    .filter((row) => !terms.length || row.score > 0)
+-    .sort(
+-      (a, b) =>
+-        b.score - a.score ||
+-        Number(a.item.basePrice) - Number(b.item.basePrice) ||
+-        a.item.id.localeCompare(b.item.id),
+-    )
+-    .slice(0, 4)
+-    .map(({ item }) => ({
+-      id: item.id,
+-      name: item.name,
+-      basePrice: String(item.basePrice),
+-      foodType: item.foodType,
+-      spiceLevel: item.spiceLevel,
+-    }));
+-}
+-
+-export function reply(
+-  language: AssistantLanguage,
+-  outcome: AssistantReply["outcome"],
+-  canCallWaiter: boolean,
+-  items: AssistantReply["items"] = [],
+-): AssistantReply {
+-  return {
+-    language,
+-    outcome,
+-    message: messages[language][outcome],
+-    disclaimer: messages[language].disclaimer,
+-    items,
+-    canCallWaiter,
+-  };
+-}
+-
+-export function staffReply(
+-  language: AssistantLanguage,
+-  canCallWaiter: boolean,
+-): AssistantReply {
+-  const message = {
+-    en: "For waiter help, bill requests, order status or restaurant details, please use the order and service controls or ask the restaurant team.",
+-    hi: "वेटर की मदद, बिल, ऑर्डर की स्थिति या रेस्टोरेंट की जानकारी के लिए ऑर्डर और सेवा के विकल्प इस्तेमाल करें या स्टाफ से पूछें।",
+-    hinglish:
+-      "Waiter ki madad, bill, order status ya restaurant ki jaankari ke liye order aur service controls use karein, ya staff se poochhein.",
+-  }[language];
+-  return { ...reply(language, "ASK_STAFF", canCallWaiter), message };
+-}
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.responses.ts
+@@ -0,0 +1,72 @@
++import type { AssistantLanguage, AssistantReply } from "@pos/contracts";
++
++export const messages = {
++  en: {
++    MATCHES:
++      "Here are dishes matching your preferences. Open a dish to review its options.",
++    NO_MATCH:
++      "I couldn't find a matching dish. Try a different dish or budget, or ask the team.",
++    ASK_STAFF:
++      "Dietary suitability, ingredients and allergen safety are unverified. Please check with the restaurant team before ordering.",
++    OUT_OF_SCOPE:
++      "I can help you explore this restaurant's menu. Tell me a dish, food preference or item budget.",
++    disclaimer:
++      "Prices shown are base prices. Options, tax and charges may change the total. Dietary and allergen information must be confirmed with staff.",
++  },
++  hi: {
++    MATCHES:
++      "आपकी पसंद के अनुसार ये व्यंजन मिले। विकल्प देखने के लिए व्यंजन खोलें।",
++    NO_MATCH:
++      "इस पसंद का व्यंजन नहीं मिला। कोई और व्यंजन या बजट बताएं, या स्टाफ से पूछें।",
++    ASK_STAFF:
++      "सामग्री, एलर्जी और आहार संबंधी उपयुक्तता की पुष्टि नहीं है। ऑर्डर करने से पहले रेस्टोरेंट के स्टाफ से पूछें।",
++    OUT_OF_SCOPE:
++      "मैं इस रेस्टोरेंट का मेनू चुनने में मदद कर सकता हूँ। व्यंजन, पसंद या एक व्यंजन का बजट बताएं।",
++    disclaimer:
++      "ये बेस कीमतें हैं। विकल्प, टैक्स और शुल्क से कुल बदल सकता है। सामग्री और एलर्जी की जानकारी स्टाफ से पक्की करें।",
++  },
++  hinglish: {
++    MATCHES:
++      "Aapki pasand ke hisaab se ye dishes mili hain. Options dekhne ke liye dish kholen.",
++    NO_MATCH:
++      "Is pasand ki dish nahi mili. Koi aur dish ya budget batayein, ya staff se poochhein.",
++    ASK_STAFF:
++      "Ingredients, allergy aur dietary suitability verified nahi hain. Order se pehle restaurant staff se confirm karein.",
++    OUT_OF_SCOPE:
++      "Main is restaurant ke menu mein madad kar sakta hoon. Dish, preference ya ek dish ka budget batayein.",
++    disclaimer:
++      "Ye base prices hain. Options, tax aur charges se total badal sakta hai. Ingredients aur allergy staff se confirm karein.",
++  },
++} satisfies Record<
++  AssistantLanguage,
++  Record<AssistantReply["outcome"] | "disclaimer", string>
++>;
++
++export function reply(
++  language: AssistantLanguage,
++  outcome: AssistantReply["outcome"],
++  canCallWaiter: boolean,
++  items: AssistantReply["items"] = [],
++): AssistantReply {
++  return {
++    language,
++    outcome,
++    message: messages[language][outcome],
++    disclaimer: messages[language].disclaimer,
++    items,
++    canCallWaiter,
++  };
++}
++
++export function staffReply(
++  language: AssistantLanguage,
++  canCallWaiter: boolean,
++): AssistantReply {
++  const message = {
++    en: "For waiter help, bill requests, order status or restaurant details, please use the order and service controls or ask the restaurant team.",
++    hi: "वेटर की मदद, बिल, ऑर्डर की स्थिति या रेस्टोरेंट की जानकारी के लिए ऑर्डर और सेवा के विकल्प इस्तेमाल करें या स्टाफ से पूछें।",
++    hinglish:
++      "Waiter ki madad, bill, order status ya restaurant ki jaankari ke liye order aur service controls use karein, ya staff se poochhein.",
++  }[language];
++  return { ...reply(language, "ASK_STAFF", canCallWaiter), message };
++}
+--- a/apps/api/src/modules/assistant/assistant.route.ts
++++ b/apps/api/src/modules/assistant/assistant.route.ts
+@@ -6,8 +6,7 @@
+   standardErrorResponseSchemas,
+ } from "@pos/contracts";
+ import { CustomerSessionRequiredError } from "@/core/errors";
+-import { successResponse } from "@/core/response";
+-import { assistantService } from "./assistant.service";
++import { assistantController } from "./assistant.controller";
+ const requireToken = (headers: Record<string, string | undefined>) => {
+   const token = headers["x-customer-session"];
+   if (!token) throw new CustomerSessionRequiredError();
+@@ -18,9 +17,7 @@
+     "/capabilities",
+     async ({ headers, set }) => {
+       set.headers["cache-control"] = "no-store";
+-      return successResponse(
+-        await assistantService.capabilities(requireToken(headers)),
+-      );
++      return assistantController.capabilities(requireToken(headers));
+     },
+     {
+       response: {
+@@ -33,8 +30,10 @@
+     "/messages",
+     async ({ headers, body, request, set }) => {
+       set.headers["cache-control"] = "no-store";
+-      return successResponse(
+-        await assistantService.ask(requireToken(headers), body, request.signal),
++      return assistantController.ask(
++        requireToken(headers),
++        body,
++        request.signal,
+       );
+     },
+     {
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.safety.ts
+@@ -0,0 +1,11 @@
++// Defense in depth. Every response also carries the fixed safety disclaimer.
++export const needsStaff = (text: string) =>
++  /allerg|peanut|groundnut|nut.free|gluten|celiac|coeliac|lactose|vegan|jain|halal|kosher|pregnan|diabet|ingredient|contain|safe|without|free.of|no\s+(nuts|milk|egg|onion|garlic)|एलर्जी|मूंगफली|जैन|वीगन|सामग्री|बिना|दूध|anda|moongfali|mungfali|lehsun|lahsun|pyaaz|pyaz/i.test(
++    text,
++  );
++
++export const redactMessage = (text: string) =>
++  text
++    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email removed]")
++    .replace(/(?:\+?\d[\d\s().-]{6,}\d)/g, "[number removed]")
++    .replace(/https?:\/\/\S+/gi, "[link removed]");
+--- /dev/null
++++ b/apps/api/src/modules/assistant/assistant.search.ts
+@@ -0,0 +1,69 @@
++import type { AssistantReply } from "@pos/contracts";
++import type { MenuSearchInput } from "./assistant.input";
++
++export type SearchableItem = {
++  id: string;
++  name: string;
++  description: string | null;
++  basePrice: string | number;
++  foodType: "VEG" | "NON_VEG" | "EGG";
++  spiceLevel: string | null;
++  pricingMode: string;
++  variants: unknown[];
++  modifierGroupLinks: unknown[];
++  tagLinks: Array<{ tag: { name: string } }>;
++};
++
++export function searchItems(
++  items: SearchableItem[],
++  input: MenuSearchInput,
++): AssistantReply["items"] {
++  const terms = input.terms
++    .map((t) => t.toLocaleLowerCase().trim())
++    .filter(Boolean);
++  return items
++    .filter((item) => {
++      const price = Number(item.basePrice);
++      if (!Number.isFinite(price) || price < 0) return false;
++      if (input.foodType !== "ANY" && item.foodType !== input.foodType)
++        return false;
++      if (input.mild && !["MILD", "NONE"].includes(item.spiceLevel ?? ""))
++        return false;
++      // No misleading budget claims for weight/open prices or configurable items.
++      if (
++        input.maxPrice !== null &&
++        (price > input.maxPrice ||
++          item.pricingMode !== "FIXED" ||
++          item.variants.length ||
++          item.modifierGroupLinks.length)
++      )
++        return false;
++      return true;
++    })
++    .map((item) => {
++      const haystack =
++        `${item.name} ${item.description ?? ""} ${item.tagLinks.map((l) => l.tag.name).join(" ")}`.toLocaleLowerCase();
++      return {
++        item,
++        score: terms.reduce(
++          (sum, term) => sum + Number(haystack.includes(term)),
++          0,
++        ),
++      };
++    })
++    .filter((row) => !terms.length || row.score > 0)
++    .sort(
++      (a, b) =>
++        b.score - a.score ||
++        Number(a.item.basePrice) - Number(b.item.basePrice) ||
++        a.item.id.localeCompare(b.item.id),
++    )
++    .slice(0, 4)
++    .map(({ item }) => ({
++      id: item.id,
++      name: item.name,
++      basePrice: String(item.basePrice),
++      foodType: item.foodType,
++      spiceLevel: item.spiceLevel,
++    }));
++}
+--- a/apps/api/src/modules/assistant/assistant.service.ts
++++ b/apps/api/src/modules/assistant/assistant.service.ts
+@@ -5,13 +5,21 @@
+   ValidationError,
+ } from "@/core/errors";
+ import { customerSessionService } from "@/modules/customer/customer-session.service";
+-import { customerMenuService } from "@/modules/customer/customer-menu.service";
+ import { metrics } from "@/core/observability/metrics";
+ import { assistantEnabledForBranch } from "./assistant.config";
+ import { reserveAssistantTurn } from "./assistant.limits";
+ import { recordAssistantUsage } from "./assistant.usage";
+ import { runMenuTool } from "./assistant.model";
+-import { needsStaff, reply, searchItems, staffReply } from "./assistant.policy";
++import { needsStaff } from "./assistant.safety";
++import { reply } from "./assistant.responses";
++
++import { AssistantProtocolError } from "./assistant.errors";
++import type { MenuSearchInput } from "./assistant.input";
++import { assistantRecommendationService } from "./assistant-recommendation.service";
++import {
++  reportAssistantFailure,
++  type AssistantFailureStage,
++} from "./assistant.diagnostics";
+ 
+ export const assistantService = {
+   async capabilities(token: string) {
+@@ -30,34 +38,31 @@
+       );
+     const message = question.message.trim();
+     if (!message) throw new ValidationError("Please enter a menu question.");
+-    await reserveAssistantTurn(session.tenantId, session.id, session.expiresAt);
++    const scope = { tenantId: session.tenantId, branchId: session.branchId };
++    try {
++      await reserveAssistantTurn(
++        session.tenantId,
++        session.id,
++        session.expiresAt,
++      );
++    } catch (error) {
++      // Keep quota rejection and fail-closed storage behavior intact.
++      if (error instanceof ServiceUnavailableError)
++        reportAssistantFailure("reservation", scope, error);
++      throw error;
++    }
+     const canCallWaiter = session.mode === "DINE_IN";
+     // Safety responses never require sending diner text to a provider.
+     if (needsStaff(message))
+       return reply(question.language, "ASK_STAFF", canCallWaiter);
+-    let response: AssistantReply | undefined;
++    let preferences: MenuSearchInput | undefined;
++    let stage: AssistantFailureStage = "model";
+     const started = Date.now();
+     try {
+       const usage = await runMenuTool(
+         message,
+         async (input) => {
+-          if (input.needsDietaryVerification) {
+-            response = reply(question.language, "ASK_STAFF", canCallWaiter);
+-          } else if (input.intent === "STAFF") {
+-            response = staffReply(question.language, canCallWaiter);
+-          } else if (input.intent === "OUT_OF_SCOPE") {
+-            response = reply(question.language, "OUT_OF_SCOPE", canCallWaiter);
+-          } else {
+-            // Revalidates the session and resolves branch/channel/schedule/availability/price.
+-            const menu = await customerMenuService.getMenu(token);
+-            const items = searchItems(menu.items, input);
+-            response = reply(
+-              question.language,
+-              items.length ? "MATCHES" : "NO_MATCH",
+-              canCallWaiter,
+-              items,
+-            );
+-          }
++          preferences = input;
+         },
+         signal,
+       );
+@@ -76,10 +81,21 @@
+         {},
+         usage.outputTokens,
+       );
+-      if (!response) throw new Error("No menu result");
+-      return response;
+-    } catch {
+-      metrics.increment("servora_assistant_failures_total");
++      stage = "protocol";
++      if (!preferences) throw new AssistantProtocolError("missing_tool");
++      stage = "menu";
++      return await assistantRecommendationService.resolve(
++        token,
++        question.language,
++        canCallWaiter,
++        preferences,
++      );
++    } catch (error) {
++      reportAssistantFailure(
++        error instanceof AssistantProtocolError ? "protocol" : stage,
++        scope,
++        error,
++      );
+       throw new ServiceUnavailableError(
+         "Menu assistant is temporarily unavailable. Please browse the menu or ask staff.",
+       );
+--- a/apps/api/src/modules/assistant/test/assistant.config.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.config.test.ts
+@@ -6,7 +6,7 @@
+   AI_GATEWAY_API_KEY: "",
+ }));
+ vi.mock("@/config/env", () => ({ env: state }));
+-import { assistantEnabledForBranch } from "./assistant.config";
++import { assistantEnabledForBranch } from "../assistant.config";
+ beforeEach(() => {
+   Object.assign(state, {
+     ASSISTANT_ENABLED: "true",
+--- /dev/null
++++ b/apps/api/src/modules/assistant/test/assistant.diagnostics.test.ts
+@@ -0,0 +1,65 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { reportAssistantFailure } from "../assistant.diagnostics";
++import { AssistantProtocolError } from "../assistant.errors";
++import { metrics } from "@/core/observability/metrics";
++
++afterEach(() => {
++  vi.restoreAllMocks();
++});
++
++describe("assistant failure diagnostics", () => {
++  it("records the dependency and safe status without leaking raw provider data", () => {
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    const increment = vi.spyOn(metrics, "increment");
++    const error = Object.assign(new Error("customer text and secret payload"), {
++      statusCode: 401,
++      responseBody: "sensitive response",
++      headers: { authorization: "secret-key" },
++    });
++    reportAssistantFailure(
++      "model",
++      { tenantId: "tenant", branchId: "branch" },
++      error,
++    );
++    const log = JSON.parse(warn.mock.calls[0]![0]);
++    expect(log.meta).toEqual({
++      tenantId: "tenant",
++      branchId: "branch",
++      stage: "model",
++      upstreamStatus: 401,
++    });
++    expect(JSON.stringify(log)).not.toMatch(
++      /customer text|secret|sensitive response/,
++    );
++    expect(increment).toHaveBeenCalledWith("servora_assistant_failures_total", {
++      stage: "model",
++    });
++  });
++  it.each([null, "raw secret", { statusCode: "secret" }, { statusCode: 999 }])(
++    "omits untrusted status metadata: %j",
++    (error) => {
++      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++      reportAssistantFailure(
++        "menu",
++        { tenantId: "tenant", branchId: "branch" },
++        error,
++      );
++      expect(JSON.parse(warn.mock.calls[0]![0]).meta).toEqual({
++        tenantId: "tenant",
++        branchId: "branch",
++        stage: "menu",
++      });
++    },
++  );
++  it("records only the controlled protocol reason", () => {
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    reportAssistantFailure(
++      "protocol",
++      { tenantId: "tenant", branchId: "branch" },
++      new AssistantProtocolError("duplicate_tools"),
++    );
++    expect(JSON.parse(warn.mock.calls[0]![0]).meta.reason).toBe(
++      "duplicate_tools",
++    );
++  });
++});
+--- a/apps/api/src/modules/assistant/test/assistant.evaluation.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.evaluation.test.ts
+@@ -4,7 +4,7 @@
+   evaluateAssistant,
+   evaluationCases,
+   type EvaluationRunner,
+-} from "./assistant.evaluation";
++} from "../assistant.evaluation";
+ const defaults = {
+   intent: "MENU",
+   foodType: "ANY",
+--- /dev/null
++++ b/apps/api/src/modules/assistant/test/assistant.flow.test.ts
+@@ -0,0 +1,166 @@
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import type { AssistantReply } from "@pos/contracts";
++import { Elysia } from "elysia";
++import { MockLanguageModelV4 } from "ai/test";
++
++const state = vi.hoisted(() => ({
++  model: undefined as unknown,
++  session: vi.fn(),
++  menu: vi.fn(),
++  reserve: vi.fn(),
++}));
++vi.mock("ai", async (original) => ({
++  ...(await original<typeof import("ai")>()),
++  createGateway: () => () => state.model,
++}));
++vi.mock("@/modules/customer/customer-session.service", () => ({
++  customerSessionService: { getSession: state.session },
++}));
++vi.mock("@/modules/customer/customer-menu.service", () => ({
++  customerMenuService: { getMenu: state.menu },
++}));
++vi.mock("../assistant.config", () => ({
++  assistantEnabledForBranch: () => true,
++}));
++vi.mock("../assistant.limits", () => ({ reserveAssistantTurn: state.reserve }));
++vi.mock("../assistant.usage", () => ({ recordAssistantUsage: vi.fn() }));
++import { assistantRouter } from "../assistant.route";
++import { handleApiError } from "@/core/errors";
++
++// Only external boundaries are replaced. HTTP contracts, orchestration, the
++// installed SDK tool protocol, safety, filtering and response projection are real.
++const preferences = {
++  intent: "MENU",
++  foodType: "VEG",
++  mild: true,
++  maxPrice: 300,
++  terms: [],
++  needsDietaryVerification: false,
++};
++const item = {
++  id: "11111111-1111-4111-8111-111111111111",
++  name: "Restaurant paneer",
++  basePrice: "250",
++  description: "Current menu dish",
++  foodType: "VEG",
++  spiceLevel: "MILD",
++  pricingMode: "FIXED",
++  variants: [],
++  modifierGroupLinks: [],
++  tagLinks: [],
++};
++function provider(args: unknown = preferences, count = 1) {
++  return new MockLanguageModelV4({
++    doGenerate: {
++      content: Array.from({ length: count }, (_, i) => ({
++        type: "tool-call" as const,
++        toolCallId: String(i),
++        toolName: "search_menu",
++        input: JSON.stringify(args),
++      })),
++      finishReason: { unified: "tool-calls", raw: undefined },
++      usage: {
++        inputTokens: {
++          total: 10,
++          noCache: 10,
++          cacheRead: undefined,
++          cacheWrite: undefined,
++        },
++        outputTokens: { total: 10, text: 10, reasoning: undefined },
++      },
++      warnings: [],
++    },
++  });
++}
++const post = (message: string, language = "en") =>
++  new Elysia()
++    .onError(handleApiError)
++    .use(assistantRouter)
++    .handle(
++      new Request("http://localhost/api/customer/assistant/messages", {
++        method: "POST",
++        headers: {
++          "Content-Type": "application/json",
++          "X-Customer-Session": "session-token",
++        },
++        body: JSON.stringify({ message, language }),
++      }),
++    );
++
++const readReply = (response: Response) =>
++  response.json() as Promise<{ data: AssistantReply }>;
++
++beforeEach(() => {
++  vi.clearAllMocks();
++  state.session.mockResolvedValue({
++    id: "session",
++    tenantId: "tenant",
++    branchId: "branch",
++    mode: "DINE_IN",
++    expiresAt: new Date(Date.now() + 60000),
++  });
++  state.reserve.mockResolvedValue(undefined);
++  state.menu.mockResolvedValue({
++    items: [
++      item,
++      { ...item, id: "22222222-2222-4222-8222-222222222222", basePrice: "400" },
++    ],
++  });
++  state.model = provider();
++});
++
++describe("Concierge HTTP to SDK to menu flow", () => {
++  it("returns only eligible menu-service facts through the real response contract", async () => {
++    const response = await post("Vegetarian, not spicy, under 300");
++    expect(response.status).toBe(200);
++    expect(response.headers.get("cache-control")).toBe("no-store");
++    const body = await readReply(response);
++    expect(body.data.outcome).toBe("MATCHES");
++    expect(body.data.items).toEqual([
++      {
++        id: item.id,
++        name: item.name,
++        basePrice: item.basePrice,
++        foodType: item.foodType,
++        spiceLevel: item.spiceLevel,
++      },
++    ]);
++    expect(state.menu).toHaveBeenCalledWith("session-token");
++    expect((state.model as MockLanguageModelV4).doGenerateCalls).toHaveLength(
++      1,
++    );
++  });
++  it("handles Hindi dietary questions without a provider or menu lookup", async () => {
++    const response = await post("जैन विकल्प?", "hi");
++    expect(response.status).toBe(200);
++    expect((await readReply(response)).data.outcome).toBe("ASK_STAFF");
++    expect(state.menu).not.toHaveBeenCalled();
++    expect((state.model as MockLanguageModelV4).doGenerateCalls).toHaveLength(
++      0,
++    );
++  });
++  it.each(["invalid", "duplicate"])(
++    "returns 503 without menu access for %s model output",
++    async (kind) => {
++      state.model =
++        kind === "invalid"
++          ? provider({ ...preferences, itemId: "invented" })
++          : provider(preferences, 2);
++      const response = await post("Not spicy");
++      expect(response.status).toBe(503);
++      expect(state.menu).not.toHaveBeenCalled();
++      const body = JSON.stringify(await response.json());
++      expect(body).not.toContain("invented");
++      expect(body).not.toContain("toolInput");
++    },
++  );
++  it("reads the current menu for every request and never reuses removed cards", async () => {
++    expect((await readReply(await post("Not spicy"))).data.outcome).toBe(
++      "MATCHES",
++    );
++    state.menu.mockResolvedValue({ items: [] });
++    const second = await post("Not spicy");
++    expect((await readReply(second)).data.outcome).toBe("NO_MATCH");
++    expect(state.menu).toHaveBeenCalledTimes(2);
++  });
++});
+--- a/apps/api/src/modules/assistant/test/assistant.limits.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.limits.test.ts
+@@ -1,7 +1,7 @@
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ const mock = vi.hoisted(() => ({ eval: vi.fn() }));
+ vi.mock("@/lib/redis", () => ({ redis: mock }));
+-import { reserveAssistantTurn } from "./assistant.limits";
++import { reserveAssistantTurn } from "../assistant.limits";
+ beforeEach(() => {
+   vi.clearAllMocks();
+ });
+--- a/apps/api/src/modules/assistant/test/assistant.model.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.model.test.ts
+@@ -5,7 +5,7 @@
+   ...(await importOriginal<typeof import("ai")>()),
+   createGateway: () => () => state.model,
+ }));
+-import { runMenuTool } from "./assistant.model";
++import { runMenuTool } from "../assistant.model";
+ const input = {
+   intent: "MENU",
+   foodType: "VEG",
+@@ -23,7 +23,7 @@
+   },
+   outputTokens: { total: 20, text: 20, reasoning: undefined },
+ };
+-function model(args: unknown = input, count = 1) {
++function model(args: unknown = input, count = 1, truncated = false) {
+   return new MockLanguageModelV4({
+     doGenerate: {
+       content: Array.from({ length: count }, (_, i) => ({
+@@ -32,7 +32,10 @@
+         toolName: "search_menu",
+         input: JSON.stringify(args),
+       })),
+-      finishReason: { unified: "tool-calls", raw: undefined },
++      finishReason: {
++        unified: truncated ? "length" : "tool-calls",
++        raw: undefined,
++      },
+       usage,
+       warnings: [],
+     },
+@@ -78,8 +81,23 @@
+   it("rejects duplicate tool calls, executing the menu lookup at most once", async () => {
+     state.model = model(input, 2);
+     const execute = vi.fn().mockResolvedValue(undefined);
+-    // Duplicate tool calls cannot execute a second search, regardless of SDK error representation.
+-    await runMenuTool("veg", execute).catch(() => undefined);
++    await expect(runMenuTool("veg", execute)).rejects.toMatchObject({
++      reason: "duplicate_tools",
++    });
+     expect(execute).toHaveBeenCalledTimes(1);
+   });
++  it("rejects a completion without a tool call", async () => {
++    state.model = model(input, 0);
++    const execute = vi.fn();
++    await expect(runMenuTool("veg", execute)).rejects.toMatchObject({
++      reason: "missing_tool",
++    });
++    expect(execute).not.toHaveBeenCalled();
++  });
++  it("rejects output that hit the token limit even if a tool was parsed", async () => {
++    state.model = model(input, 1, true);
++    await expect(runMenuTool("veg", vi.fn())).rejects.toMatchObject({
++      reason: "truncated_output",
++    });
++  });
+ });
+--- a/apps/api/src/modules/assistant/test/assistant.policy.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.policy.test.ts
+@@ -1,13 +1,8 @@
+ import { describe, expect, it } from "vitest";
+-import {
+-  menuSearchInput,
+-  needsStaff,
+-  redactMessage,
+-  reply,
+-  searchItems,
+-  type MenuSearchInput,
+-  type SearchableItem,
+-} from "./assistant.policy";
++import { menuSearchInput, type MenuSearchInput } from "../assistant.input";
++import { needsStaff, redactMessage } from "../assistant.safety";
++import { reply } from "../assistant.responses";
++import { searchItems, type SearchableItem } from "../assistant.search";
+ import { resolvePreset } from "@/db/seed/demo/config";
+ import { catalogItem } from "@/db/seed/demo/catalog";
+ const input: MenuSearchInput = {
+--- a/apps/api/src/modules/assistant/test/assistant.redis.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.redis.test.ts
+@@ -22,8 +22,8 @@
+     },
+   ),
+ }));
+-import { reserveAssistantTurn } from "./assistant.limits";
+-import { recordAssistantUsage } from "./assistant.usage";
++import { reserveAssistantTurn } from "../assistant.limits";
++import { recordAssistantUsage } from "../assistant.usage";
+ import { env } from "@/config/env";
+ const url = process.env["ASSISTANT_TEST_REDIS_URL"];
+ const sessions: string[] = [];
+--- a/apps/api/src/modules/assistant/test/assistant.route.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.route.test.ts
+@@ -1,10 +1,10 @@
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ import { Elysia } from "elysia";
+ const mock = vi.hoisted(() => ({ capabilities: vi.fn(), ask: vi.fn() }));
+-vi.mock("./assistant.service", () => ({ assistantService: mock }));
+-import { assistantRouter } from "./assistant.route";
++vi.mock("../assistant.service", () => ({ assistantService: mock }));
++import { assistantRouter } from "../assistant.route";
+ import { handleApiError } from "@/core/errors";
+-import { reply } from "./assistant.policy";
++import { reply } from "../assistant.responses";
+ const app = () =>
+   new Elysia()
+     .onError((context) => handleApiError(context))
+--- a/apps/api/src/modules/assistant/test/assistant.service.test.ts
++++ b/apps/api/src/modules/assistant/test/assistant.service.test.ts
+@@ -5,6 +5,7 @@
+   enabled: vi.fn(),
+   reserve: vi.fn(),
+   model: vi.fn(),
++  failure: vi.fn(),
+ }));
+ vi.mock("@/modules/customer/customer-session.service", () => ({
+   customerSessionService: { getSession: mock.session },
+@@ -12,13 +13,17 @@
+ vi.mock("@/modules/customer/customer-menu.service", () => ({
+   customerMenuService: { getMenu: mock.menu },
+ }));
+-vi.mock("./assistant.config", () => ({
++vi.mock("../assistant.config", () => ({
+   assistantEnabledForBranch: mock.enabled,
+ }));
+-vi.mock("./assistant.limits", () => ({ reserveAssistantTurn: mock.reserve }));
+-vi.mock("./assistant.model", () => ({ runMenuTool: mock.model }));
+-vi.mock("./assistant.usage", () => ({ recordAssistantUsage: vi.fn() }));
+-import { assistantService } from "./assistant.service";
++vi.mock("../assistant.limits", () => ({ reserveAssistantTurn: mock.reserve }));
++vi.mock("../assistant.model", () => ({ runMenuTool: mock.model }));
++vi.mock("../assistant.usage", () => ({ recordAssistantUsage: vi.fn() }));
++vi.mock("../assistant.diagnostics", () => ({
++  reportAssistantFailure: mock.failure,
++}));
++import { AssistantProtocolError } from "../assistant.errors";
++import { assistantService } from "../assistant.service";
+ const preferences = {
+   intent: "MENU",
+   foodType: "VEG",
+@@ -160,4 +165,54 @@
+       assistantService.ask("token", { message: "veg", language: "en" }),
+     ).rejects.toThrow("temporarily unavailable");
+   });
++  it("does not read the menu if the provider fails after calling its tool", async () => {
++    mock.model.mockImplementation(async (_message, execute) => {
++      await execute(preferences);
++      throw new Error("provider failed after tool execution");
++    });
++    await expect(
++      assistantService.ask("token", { message: "veg", language: "en" }),
++    ).rejects.toThrow("temporarily unavailable");
++    expect(mock.menu).not.toHaveBeenCalled();
++    expect(mock.failure).toHaveBeenCalledWith(
++      "model",
++      { tenantId: "tenant-A", branchId: "branch-A" },
++      expect.any(Error),
++    );
++  });
++  it("identifies menu failures separately from provider failures", async () => {
++    mock.menu.mockRejectedValue(new Error("database unavailable"));
++    await expect(
++      assistantService.ask("token", { message: "veg", language: "en" }),
++    ).rejects.toThrow("temporarily unavailable");
++    expect(mock.failure).toHaveBeenCalledWith(
++      "menu",
++      { tenantId: "tenant-A", branchId: "branch-A" },
++      expect.any(Error),
++    );
++  });
++  it("rejects a model completion with no validated preferences", async () => {
++    mock.model.mockResolvedValue({ inputTokens: 10, outputTokens: 10 });
++    await expect(
++      assistantService.ask("token", { message: "veg", language: "en" }),
++    ).rejects.toThrow("temporarily unavailable");
++    expect(mock.menu).not.toHaveBeenCalled();
++    expect(mock.failure).toHaveBeenCalledWith(
++      "protocol",
++      { tenantId: "tenant-A", branchId: "branch-A" },
++      expect.any(Error),
++    );
++  });
++  it("classifies rejected tool completions as protocol failures without menu access", async () => {
++    mock.model.mockRejectedValue(new AssistantProtocolError("duplicate_tools"));
++    await expect(
++      assistantService.ask("token", { message: "veg", language: "en" }),
++    ).rejects.toThrow("temporarily unavailable");
++    expect(mock.menu).not.toHaveBeenCalled();
++    expect(mock.failure).toHaveBeenCalledWith(
++      "protocol",
++      { tenantId: "tenant-A", branchId: "branch-A" },
++      expect.objectContaining({ reason: "duplicate_tools" }),
++    );
++  });
+ });
+--- a/apps/customer-app/src/features/assistant/Concierge.test.tsx
++++ b/apps/customer-app/src/features/assistant/Concierge.test.tsx
+@@ -1,4 +1,5 @@
+ import {
++  act,
+   fireEvent,
+   render,
+   screen,
+@@ -23,14 +24,17 @@
+ vi.mock("@pos/ui", () => ({
+   BottomSheet: ({
+     children,
++    footer,
+     onClose,
+   }: {
+     children: React.ReactNode;
++    footer?: React.ReactNode;
+     onClose: () => void;
+   }) => (
+     <div role="dialog">
+       <button onClick={onClose}>Close concierge</button>
+       {children}
++      {footer}
+     </div>
+   ),
+ }));
+@@ -184,9 +188,105 @@
+       "textContent",
+       "Assistant limit reached",
+     );
++    fireEvent.change(screen.getByLabelText("Menu question"), {
++      target: { value: "Try another dish" },
++    });
+     expect(screen.getByRole("button", { name: "Find dishes" })).toHaveProperty(
+       "disabled",
+       false,
+     );
+   });
++  it("retains earlier turns while another question is pending and after it completes", async () => {
++    let resolve!: (value: typeof answer) => void;
++    mock.ask.mockResolvedValueOnce(answer).mockImplementationOnce(
++      () =>
++        new Promise((done) => {
++          resolve = done;
++        }),
++    );
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Not spicy" }));
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByRole("log").textContent).toContain("Not spicy");
++    await waitFor(() => expect(mock.ask).toHaveBeenCalledTimes(2));
++    resolve({
++      ...answer,
++      items: [{ ...answer.items[0]!, id: "tea", name: "Green tea" }],
++    });
++    await screen.findByText("Green tea");
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByLabelText("Menu question")).toHaveProperty("value", "");
++  });
++  it("preserves completed history across closing and reopening and clears it explicitly", async () => {
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Close concierge" }));
++    await open();
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(mock.ask).toHaveBeenCalledTimes(1);
++    fireEvent.click(screen.getByRole("button", { name: "Clear chat" }));
++    expect(screen.queryByText("Paneer")).toBeNull();
++  });
++  it("keeps a failed turn beside previous results and supports the next question", async () => {
++    mock.ask
++      .mockResolvedValueOnce(answer)
++      .mockRejectedValueOnce(new Error("Offline"));
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Not spicy" }));
++    await screen.findByText("Offline");
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByRole("button", { name: "Vegetarian" })).toHaveProperty(
++      "disabled",
++      false,
++    );
++  });
++  it("does not show the previous QR session history after the session changes", async () => {
++    const view = mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    const client = clients[0]!;
++    view.rerender(
++      <QueryClientProvider client={client}>
++        <Concierge
++          token="session-B"
++          onOpenItem={mock.openItem}
++          requestBusy={false}
++          requestMessage={null}
++        />
++      </QueryClientProvider>,
++    );
++    await open();
++    expect(screen.queryByText("Paneer")).toBeNull();
++  });
++  it("marks an interrupted turn on reopen and ignores its late completion", async () => {
++    let resolve!: (value: typeof answer) => void;
++    mock.ask.mockImplementationOnce(
++      () =>
++        new Promise((done) => {
++          resolve = done;
++        }),
++    );
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await waitFor(() => expect(mock.ask).toHaveBeenCalled());
++    fireEvent.click(screen.getByRole("button", { name: "Close concierge" }));
++    await open();
++    expect(
++      screen.getByText(/Search stopped when Concierge closed/),
++    ).toBeTruthy();
++    await act(async () => {
++      resolve(answer);
++    });
++    await waitFor(() => expect(screen.queryByText("Paneer")).toBeNull());
++  });
+ });
+--- a/apps/customer-app/src/features/assistant/Concierge.tsx
++++ b/apps/customer-app/src/features/assistant/Concierge.tsx
+@@ -1,11 +1,16 @@
+ import { lazy, Suspense, useState } from "react";
+ import { useQuery } from "@tanstack/react-query";
+-import { MessageCircle } from "lucide-react";
++import { MessageCircle, ChevronRight } from "lucide-react";
+ import { getAssistantCapabilities } from "./api";
+-import type { ConciergeProps } from "./types";
++import type { ConciergeProps, ConciergeTurn } from "./types";
+ const ConciergeSheet = lazy(() => import("./ConciergeSheet"));
+ 
+ export function Concierge(props: ConciergeProps) {
++  return <SessionConcierge key={props.token} {...props} />;
++}
++
++function SessionConcierge(props: ConciergeProps) {
++  const [turns, setTurns] = useState<ConciergeTurn[]>([]);
+   const capabilities = useQuery({
+     queryKey: ["customer", "assistant", "capabilities", props.token],
+     queryFn: ({ signal }) => getAssistantCapabilities(props.token, signal),
+@@ -21,15 +26,21 @@
+         <button
+           type="button"
+           onClick={() => setOpen(true)}
+-          className="flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary-surface px-4 py-4 text-left text-primary"
++          className="group flex w-full items-center gap-3 rounded-2xl border border-primary-border bg-primary-surface px-4 py-4 text-left text-primary transition-colors hover:border-primary"
+         >
+-          <MessageCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+-          <span>
++          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
++            <MessageCircle aria-hidden="true" className="h-5 w-5" />
++          </span>
++          <span className="min-w-0 flex-1">
+             <span className="block font-semibold">Ask Servora Concierge</span>
+-            <span className="text-sm">
++            <span className="mt-0.5 block text-xs leading-relaxed text-text-secondary">
+               Find a dish in English, हिंदी or Hinglish
+             </span>
+           </span>
++          <ChevronRight
++            aria-hidden="true"
++            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
++          />
+         </button>
+       </div>
+       {open ? (
+@@ -40,7 +51,12 @@
+             </p>
+           }
+         >
+-          <ConciergeSheet {...props} onClose={() => setOpen(false)} />
++          <ConciergeSheet
++            {...props}
++            turns={turns}
++            setTurns={setTurns}
++            onClose={() => setOpen(false)}
++          />
+         </Suspense>
+       ) : null}
+     </>
+--- a/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
++++ b/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
+@@ -1,73 +1,22 @@
+ import { useEffect, useRef, useState } from "react";
+ import { useMutation } from "@tanstack/react-query";
+-import { Send } from "lucide-react";
++import {
++  ArrowUp,
++  Leaf,
++  Flame,
++  Wallet,
++  ShieldCheck,
++  UtensilsCrossed,
++  RotateCcw,
++  HandHelping,
++} from "lucide-react";
+ import { BottomSheet } from "@pos/ui";
+ import type { AssistantLanguage, AssistantQuestion } from "@pos/contracts";
+ import { getCustomerMenu } from "@/features/menu/api";
+-import { formatMoney } from "@/shared/utils/money";
+ import { askAssistant } from "./api";
+-import type { ConciergeProps } from "./types";
+-
+-const copy = {
+-  en: {
+-    intro: "Find something you'll enjoy",
+-    hint: "Ask a complete menu question. Each question is searched separately. Please leave out personal details.",
+-    placeholder: "Vegetarian, mild, under ₹300…",
+-    send: "Find dishes",
+-    chips: ["Vegetarian", "Not spicy", "Under ₹300", "Jain options?"],
+-    open: "View options",
+-    waiter: "Ask waiter",
+-    busy: "Checking the live menu…",
+-    basePrice: "Base price",
+-    veg: "Vegetarian",
+-    egg: "Contains egg",
+-    nonVeg: "Non-vegetarian",
+-  },
+-  hi: {
+-    intro: "अपनी पसंद का व्यंजन खोजें",
+-    hint: "हर सवाल अलग से खोजा जाता है। पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
+-    placeholder: "शाकाहारी, कम तीखा, ₹300 से कम…",
+-    send: "व्यंजन खोजें",
+-    chips: ["शाकाहारी", "कम तीखा", "₹300 से कम", "जैन विकल्प?"],
+-    open: "विकल्प देखें",
+-    waiter: "वेटर से पूछें",
+-    busy: "मेनू देख रहे हैं…",
+-    basePrice: "बेस कीमत",
+-    veg: "शाकाहारी",
+-    egg: "अंडा शामिल है",
+-    nonVeg: "मांसाहारी",
+-  },
+-  hinglish: {
+-    intro: "Apni pasand ki dish dhoondhein",
+-    hint: "Har sawaal alag search hota hai. Poori preference batayein. Personal details na likhein.",
+-    placeholder: "Veg, kam teekha, ₹300 ke andar…",
+-    send: "Dishes dhoondhein",
+-    chips: ["Vegetarian", "Kam teekha", "₹300 ke andar", "Jain options?"],
+-    open: "Options dekhein",
+-    waiter: "Waiter se poochhein",
+-    busy: "Live menu check ho raha hai…",
+-    basePrice: "Base price",
+-    veg: "Shakahari",
+-    egg: "Anda shamil hai",
+-    nonVeg: "Non-vegetarian",
+-  },
+-} satisfies Record<
+-  AssistantLanguage,
+-  {
+-    intro: string;
+-    hint: string;
+-    placeholder: string;
+-    send: string;
+-    chips: string[];
+-    open: string;
+-    waiter: string;
+-    busy: string;
+-    basePrice: string;
+-    veg: string;
+-    egg: string;
+-    nonVeg: string;
+-  }
+->;
++import type { ConciergeProps, ConciergeHistoryProps } from "./types";
++import { copy } from "./concierge.copy";
++import { ConciergeTranscript } from "./ConciergeTranscript";
+ 
+ export default function ConciergeSheet({
+   token,
+@@ -76,20 +25,75 @@
+   requestBusy,
+   requestMessage,
+   onClose,
+-}: ConciergeProps & { onClose: () => void }) {
++  turns,
++  setTurns,
++}: ConciergeProps & ConciergeHistoryProps & { onClose: () => void }) {
+   const [language, setLanguage] = useState<AssistantLanguage>("en");
+   const [message, setMessage] = useState("");
+   const controller = useRef<AbortController | null>(null);
+   const t = copy[language];
+-  useEffect(() => () => controller.current?.abort(), []);
++  useEffect(
++    () => () => {
++      controller.current?.abort();
++      setTurns((current) =>
++        current.map((turn) =>
++          turn.status === "pending"
++            ? {
++                id: turn.id,
++                question: turn.question,
++                status: "error",
++                error: copy[turn.question.language].interrupted,
++              }
++            : turn,
++        ),
++      );
++    },
++    [setTurns],
++  );
+   const ask = useMutation({
+     mutationKey: ["customer", "assistant", token],
+     gcTime: 0,
+     retry: false,
+-    mutationFn: (question: AssistantQuestion) => {
++    mutationFn: async ({
++      question,
++      id,
++    }: {
++      question: AssistantQuestion;
++      id: string;
++    }) => {
+       controller.current?.abort();
+       controller.current = new AbortController();
+-      return askAssistant(token, question, controller.current.signal);
++      const signal = controller.current.signal;
++      try {
++        const response = await askAssistant(token, question, signal);
++        if (!signal.aborted)
++          setTurns((current) =>
++            current.map((turn) =>
++              turn.id === id
++                ? { id, question, status: "complete", reply: response }
++                : turn,
++            ),
++          );
++        return response;
++      } catch (error) {
++        if (!signal.aborted)
++          setTurns((current) =>
++            current.map((turn) =>
++              turn.id === id
++                ? {
++                    id,
++                    question,
++                    status: "error",
++                    error:
++                      error instanceof Error
++                        ? error.message
++                        : "Unable to check the menu. Please try again or ask staff.",
++                  }
++                : turn,
++            ),
++          );
++        throw error;
++      }
+     },
+   });
+   const select = useMutation({
+@@ -112,149 +116,181 @@
+     },
+   });
+   const busy = ask.isPending || select.isPending;
+-  const result = ask.data;
+   const submit = (text: string) => {
+     if (!text.trim() || busy) return;
+-    setMessage(text);
++    setMessage("");
+     select.reset();
+-    ask.mutate({ message: text.trim(), language });
++    const id = crypto.randomUUID();
++    const question = { message: text.trim(), language };
++    setTurns((current) => [...current, { id, question, status: "pending" }]);
++    ask.mutate({ question, id });
+   };
++  const composer = (
++    <form
++      onSubmit={(event) => {
++        event.preventDefault();
++        submit(message);
++      }}
++      className="w-full space-y-2.5"
++    >
++      <label htmlFor="concierge-question" className="sr-only">
++        Menu question
++      </label>
++      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
++        <textarea
++          id="concierge-question"
++          value={message}
++          onChange={(event) => setMessage(event.target.value)}
++          placeholder={t.placeholder}
++          maxLength={600}
++          rows={2}
++          disabled={busy}
++          aria-describedby="concierge-question-hint"
++          className="min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-base leading-relaxed text-text-primary outline-none placeholder:text-text-secondary disabled:opacity-60"
++        />
++        <button
++          type="submit"
++          aria-label={t.send}
++          title={t.send}
++          disabled={busy || !message.trim()}
++          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
++        >
++          <ArrowUp className="h-5 w-5" aria-hidden="true" />
++        </button>
++      </div>
++      <p
++        id="concierge-question-hint"
++        className="px-1 text-xs leading-relaxed text-text-secondary"
++      >
++        {t.questionHint}
++      </p>
++    </form>
++  );
+   return (
+     <BottomSheet
+       open
+       onClose={onClose}
+       title="Servora Concierge"
+       description={t.intro}
+-      maxHeight="90dvh"
++      maxHeight="92dvh"
++      contentClassName="customer-experience mx-auto max-w-3xl sm:mb-4 sm:rounded-3xl"
++      bodyClassName="px-4 pb-3 sm:px-6"
++      footer={composer}
++      footerClassName="block bg-surface px-4 py-3 sm:px-6"
+     >
+       <div className="space-y-4" lang={language === "hi" ? "hi" : "en"}>
+-        <div className="flex flex-wrap gap-2" aria-label="Response language">
+-          {(["en", "hi", "hinglish"] as const).map((value) => (
++        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
++          <span className="flex items-center gap-2 text-xs font-medium text-text-secondary">
++            <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
++            {t.menuLabel}
++          </span>
++          <div
++            className="inline-flex rounded-full bg-surface-secondary p-1"
++            aria-label="Response language"
++          >
++            {(["en", "hi", "hinglish"] as const).map((value) => (
++              <button
++                key={value}
++                type="button"
++                aria-pressed={language === value}
++                disabled={busy}
++                onClick={() => {
++                  setLanguage(value);
++                  ask.reset();
++                  select.reset();
++                }}
++                className={`min-h-10 rounded-full px-3 text-xs font-medium transition-colors disabled:opacity-50 ${language === value ? "bg-surface text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
++              >
++                {value === "en"
++                  ? "English"
++                  : value === "hi"
++                    ? "हिंदी"
++                    : "Hinglish"}
++              </button>
++            ))}
++          </div>
++        </div>
++        {!turns.length ? (
++          <div className="px-1 pb-2 pt-7 text-center sm:pt-10">
++            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary-surface text-primary">
++              <UtensilsCrossed className="h-6 w-6" aria-hidden="true" />
++            </div>
++            <h2 className="customer-display text-2xl font-semibold leading-tight sm:text-3xl">
++              {t.intro}
++            </h2>
++            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-secondary">
++              {t.welcome}
++            </p>
++          </div>
++        ) : (
++          <div className="flex items-center justify-between gap-3">
++            <p className="text-xs text-text-secondary">{t.suggestions}</p>
+             <button
+-              key={value}
+               type="button"
+-              aria-pressed={language === value}
+               disabled={busy}
+               onClick={() => {
+-                setLanguage(value);
++                setTurns([]);
+                 ask.reset();
+                 select.reset();
+               }}
+-              className={`rounded-full border px-3 py-2 text-sm ${language === value ? "border-primary bg-primary-surface text-primary" : "border-border"}`}
++              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+             >
+-              {value === "en"
+-                ? "English"
+-                : value === "hi"
+-                  ? "हिंदी"
+-                  : "Hinglish"}
++              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
++              {t.clear}
+             </button>
+-          ))}
++          </div>
++        )}
++        <div
++          className={
++            turns.length
++              ? "flex gap-2 overflow-x-auto pb-1"
++              : "grid grid-cols-2 gap-2 pb-3"
++          }
++        >
++          {t.chips.map((chip, index) => {
++            const Icon =
++              [Leaf, Flame, Wallet, ShieldCheck][index] ?? UtensilsCrossed;
++            return (
++              <button
++                key={chip}
++                type="button"
++                disabled={busy}
++                onClick={() => submit(chip)}
++                className={
++                  turns.length
++                    ? "flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 text-xs text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-50"
++                    : "flex min-h-14 items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-3 text-left text-sm font-medium transition-colors hover:border-primary/40 hover:bg-primary-surface disabled:opacity-50"
++                }
++              >
++                <Icon
++                  className="h-4 w-4 shrink-0 text-primary"
++                  aria-hidden="true"
++                />
++                {chip}
++              </button>
++            );
++          })}
+         </div>
+-        <p className="text-sm text-text-secondary">{t.hint}</p>
+-        <div className="flex flex-wrap gap-2">
+-          {t.chips.map((chip) => (
+-            <button
+-              key={chip}
+-              type="button"
+-              disabled={busy}
+-              onClick={() => submit(chip)}
+-              className="rounded-full border border-border px-3 py-2 text-sm disabled:opacity-50"
+-            >
+-              {chip}
+-            </button>
+-          ))}
+-        </div>
+-        <form
+-          onSubmit={(event) => {
+-            event.preventDefault();
+-            submit(message);
+-          }}
+-          className="space-y-2"
+-        >
+-          <label htmlFor="concierge-question" className="sr-only">
+-            Menu question
+-          </label>
+-          <textarea
+-            id="concierge-question"
+-            value={message}
+-            onChange={(event) => setMessage(event.target.value)}
+-            placeholder={t.placeholder}
+-            maxLength={600}
+-            rows={2}
+-            disabled={busy}
+-            className="w-full resize-none rounded-xl border border-border bg-surface p-3 text-base focus:outline-primary"
++        {turns.length ? (
++          <ConciergeTranscript
++            turns={turns}
++            busy={busy}
++            onSelect={(id) => select.mutate(id)}
+           />
+-          <button
+-            type="submit"
+-            disabled={busy || !message.trim()}
+-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50"
+-          >
+-            <Send className="h-4 w-4" aria-hidden="true" />
+-            {t.send}
+-          </button>
+-        </form>
+-        <div
+-          role="status"
+-          aria-live="polite"
+-          aria-busy={busy}
+-          className="space-y-3"
+-        >
+-          {busy ? (
+-            <p className="text-sm text-text-secondary">{t.busy}</p>
+-          ) : null}
+-          {ask.isError || select.isError ? (
+-            <p role="alert" className="text-sm text-error">
+-              {(select.error ?? ask.error)?.message ??
+-                "Unable to check the menu. Please try again or ask staff."}
+-            </p>
+-          ) : null}
+-          {result && !ask.isPending ? (
+-            <>
+-              <p className="text-sm">{result.message}</p>
+-              <ul className="space-y-2">
+-                {result.items.map((item) => (
+-                  <li
+-                    key={item.id}
+-                    className="rounded-xl border border-border bg-surface p-4"
+-                  >
+-                    <div className="flex justify-between gap-3">
+-                      <h3 className="font-semibold">{item.name}</h3>
+-                      <span className="whitespace-nowrap font-semibold">
+-                        {formatMoney(Number(item.basePrice))}
+-                      </span>
+-                    </div>
+-                    <p className="mt-1 text-xs text-text-secondary">
+-                      {item.foodType === "VEG"
+-                        ? t.veg
+-                        : item.foodType === "EGG"
+-                          ? t.egg
+-                          : t.nonVeg}{" "}
+-                      · {t.basePrice}
+-                    </p>
+-                    <button
+-                      type="button"
+-                      disabled={busy}
+-                      onClick={() => select.mutate(item.id)}
+-                      className="mt-3 min-h-11 w-full rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50"
+-                    >
+-                      {t.open}
+-                    </button>
+-                  </li>
+-                ))}
+-              </ul>
+-              <p className="text-xs leading-relaxed text-text-secondary">
+-                {result.disclaimer}
+-              </p>
+-            </>
+-          ) : null}
+-        </div>
++        ) : null}
++        {select.isError ? (
++          <p role="alert" className="text-sm text-error">
++            {select.error.message}
++          </p>
++        ) : null}
+         {onCallWaiter ? (
+           <button
+             type="button"
+             disabled={requestBusy}
+             onClick={onCallWaiter}
+-            className="min-h-11 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold disabled:opacity-50"
++            className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-medium text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+           >
++            <HandHelping className="h-4 w-4" aria-hidden="true" />
+             {t.waiter}
+           </button>
+         ) : null}
+--- /dev/null
++++ b/apps/customer-app/src/features/assistant/ConciergeTranscript.tsx
+@@ -0,0 +1,132 @@
++import {
++  ArrowUpRight,
++  UtensilsCrossed,
++  Leaf,
++  Egg,
++  Drumstick,
++} from "lucide-react";
++import { useEffect, useRef } from "react";
++import { formatMoney } from "@/shared/utils/money";
++import { copy } from "./concierge.copy";
++import type { ConciergeTurn } from "./types";
++
++export function ConciergeTranscript({
++  turns,
++  busy,
++  onSelect,
++}: {
++  turns: ConciergeTurn[];
++  busy: boolean;
++  onSelect: (id: string) => void;
++}) {
++  const log = useRef<HTMLOListElement>(null);
++  const lastStatus = turns[turns.length - 1]?.status;
++  useEffect(() => {
++    if (log.current) log.current.scrollTop = log.current.scrollHeight;
++  }, [turns.length, lastStatus]);
++  return (
++    <ol
++      ref={log}
++      role="log"
++      aria-label="Conversation"
++      aria-live="polite"
++      aria-relevant="additions text"
++      className="max-h-[44dvh] space-y-6 overflow-y-auto overscroll-contain py-3 pr-1"
++    >
++      {turns.map((turn) => {
++        const t = copy[turn.question.language];
++        return (
++          <li
++            key={turn.id}
++            lang={turn.question.language === "hi" ? "hi" : "en"}
++            className="space-y-3"
++          >
++            <div className="ml-auto max-w-[85%] break-words rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
++              <span className="sr-only">{t.you}: </span>
++              {turn.question.message}
++            </div>
++            <div className="space-y-3 rounded-2xl rounded-bl-md bg-surface-secondary/50 p-3 sm:p-4">
++              <p className="flex items-center gap-2 text-xs font-semibold text-primary">
++                <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
++                Servora Concierge
++              </p>
++              {turn.status === "pending" ? (
++                <p role="status" className="text-sm text-text-secondary">
++                  {t.busy}
++                </p>
++              ) : turn.status === "error" ? (
++                <p role="alert" className="text-sm text-error">
++                  {turn.error}
++                </p>
++              ) : (
++                <CompletedReply turn={turn} busy={busy} onSelect={onSelect} />
++              )}
++            </div>
++          </li>
++        );
++      })}
++    </ol>
++  );
++}
++
++function CompletedReply({
++  turn,
++  busy,
++  onSelect,
++}: {
++  turn: Extract<ConciergeTurn, { status: "complete" }>;
++  busy: boolean;
++  onSelect: (id: string) => void;
++}) {
++  const result = turn.reply;
++  const t = copy[result.language];
++  return (
++    <>
++      <p className="text-sm">{result.message}</p>
++      <ul className="grid gap-2 sm:grid-cols-2">
++        {result.items.map((item) => (
++          <li
++            key={item.id}
++            className="flex flex-col rounded-2xl border border-border bg-surface p-3.5 transition-colors hover:border-primary/30"
++          >
++            <div className="flex items-start justify-between gap-3">
++              <h3 className="min-w-0 break-words text-sm font-semibold leading-snug">
++                {item.name}
++              </h3>
++              <span className="whitespace-nowrap text-sm font-semibold text-primary">
++                {formatMoney(Number(item.basePrice))}
++              </span>
++            </div>
++            <p className="mb-3 mt-2 flex items-center gap-1.5 text-xs text-text-secondary">
++              {item.foodType === "VEG" ? (
++                <Leaf className="h-3 w-3 text-primary" aria-hidden="true" />
++              ) : item.foodType === "EGG" ? (
++                <Egg className="h-3 w-3" aria-hidden="true" />
++              ) : (
++                <Drumstick className="h-3 w-3" aria-hidden="true" />
++              )}
++              {item.foodType === "VEG"
++                ? t.veg
++                : item.foodType === "EGG"
++                  ? t.egg
++                  : t.nonVeg}{" "}
++              · {t.basePrice}
++            </p>
++            <button
++              type="button"
++              disabled={busy}
++              onClick={() => onSelect(item.id)}
++              className="mt-auto flex min-h-11 w-full items-center justify-between rounded-xl bg-primary-surface px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-50"
++            >
++              {t.open}
++              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
++            </button>
++          </li>
++        ))}
++      </ul>
++      <p className="text-xs leading-relaxed text-text-secondary">
++        {result.disclaimer}
++      </p>
++    </>
++  );
++}
+--- /dev/null
++++ b/apps/customer-app/src/features/assistant/concierge.copy.ts
+@@ -0,0 +1,95 @@
++import type { AssistantLanguage } from "@pos/contracts";
++
++export const copy = {
++  en: {
++    welcome: "Tell me what sounds good.",
++    suggestions: "Start with a preference",
++    menuLabel: "Explore the menu",
++    questionHint:
++      "Include all preferences in each question. Leave out personal details.",
++    you: "You",
++    clear: "Clear chat",
++    interrupted:
++      "Search stopped when Concierge closed. Please send a new question.",
++    intro: "Find something you'll enjoy",
++    hint: "Ask a complete menu question. Each question is searched separately. Please leave out personal details.",
++    placeholder: "Vegetarian, mild, under ₹300…",
++    send: "Find dishes",
++    chips: ["Vegetarian", "Not spicy", "Under ₹300", "Jain options?"],
++    open: "View options",
++    waiter: "Ask waiter",
++    busy: "Checking the live menu…",
++    basePrice: "Base price",
++    veg: "Vegetarian",
++    egg: "Contains egg",
++    nonVeg: "Non-vegetarian",
++  },
++  hi: {
++    welcome: "बताएं, आज क्या खाने का मन है?",
++    suggestions: "अपनी पसंद से शुरुआत करें",
++    menuLabel: "मेनू में खोजें",
++    questionHint:
++      "हर सवाल में अपनी पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
++    you: "आप",
++    clear: "चैट साफ़ करें",
++    interrupted: "Concierge बंद होने पर खोज रुक गई। कृपया नया सवाल भेजें।",
++    intro: "अपनी पसंद का व्यंजन खोजें",
++    hint: "हर सवाल अलग से खोजा जाता है। पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
++    placeholder: "शाकाहारी, कम तीखा, ₹300 से कम…",
++    send: "व्यंजन खोजें",
++    chips: ["शाकाहारी", "कम तीखा", "₹300 से कम", "जैन विकल्प?"],
++    open: "विकल्प देखें",
++    waiter: "वेटर से पूछें",
++    busy: "मेनू देख रहे हैं…",
++    basePrice: "बेस कीमत",
++    veg: "शाकाहारी",
++    egg: "अंडा शामिल है",
++    nonVeg: "मांसाहारी",
++  },
++  hinglish: {
++    welcome: "Aaj kya khaane ka mann hai?",
++    suggestions: "Apni pasand se shuru karein",
++    menuLabel: "Menu explore karein",
++    questionHint:
++      "Har sawaal mein poori preference batayein. Personal details na likhein.",
++    you: "Aap",
++    clear: "Chat saaf karein",
++    interrupted:
++      "Concierge band hone par search ruk gayi. Naya sawaal bhejein.",
++    intro: "Apni pasand ki dish dhoondhein",
++    hint: "Har sawaal alag search hota hai. Poori preference batayein. Personal details na likhein.",
++    placeholder: "Veg, kam teekha, ₹300 ke andar…",
++    send: "Dishes dhoondhein",
++    chips: ["Vegetarian", "Kam teekha", "₹300 ke andar", "Jain options?"],
++    open: "Options dekhein",
++    waiter: "Waiter se poochhein",
++    busy: "Live menu check ho raha hai…",
++    basePrice: "Base price",
++    veg: "Shakahari",
++    egg: "Anda shamil hai",
++    nonVeg: "Non-vegetarian",
++  },
++} satisfies Record<
++  AssistantLanguage,
++  {
++    welcome: string;
++    suggestions: string;
++    menuLabel: string;
++    questionHint: string;
++    you: string;
++    interrupted: string;
++    clear: string;
++    intro: string;
++    hint: string;
++    placeholder: string;
++    send: string;
++    chips: string[];
++    open: string;
++    waiter: string;
++    busy: string;
++    basePrice: string;
++    veg: string;
++    egg: string;
++    nonVeg: string;
++  }
++>;
+--- a/apps/customer-app/src/features/assistant/types.ts
++++ b/apps/customer-app/src/features/assistant/types.ts
+@@ -1,3 +1,5 @@
++import type { Dispatch, SetStateAction } from "react";
++import type { AssistantQuestion, AssistantReply } from "@pos/contracts";
+ import type { CustomerMenuItem } from "@/features/menu/api";
+ export type ConciergeProps = {
+   token: string;
+@@ -6,3 +8,17 @@
+   requestBusy: boolean;
+   requestMessage: string | null;
+ };
++
++export type ConciergeTurn = {
++  id: string;
++  question: AssistantQuestion;
++} & (
++  | { status: "pending" }
++  | { status: "complete"; reply: AssistantReply }
++  | { status: "error"; error: string }
++);
++
++export type ConciergeHistoryProps = {
++  turns: ConciergeTurn[];
++  setTurns: Dispatch<SetStateAction<ConciergeTurn[]>>;
++};
+--- /dev/null
++++ b/docs/CONCIERGE_REFACTOR_REVIEW.md
+@@ -0,0 +1,83 @@
++# Concierge foundation refactor
++
++## Result
++
++The Concierge now separates request orchestration, strict input validation, safety checks, recommendation resolution, menu filtering, response text and diagnostics. It still uses the current customer-menu service and database-backed cards. No dummy recommendations, pgvector extension, embedding provider or database migration was added.
++
++Menu retrieval happens after model classification succeeds, outside the AI SDK tool callback. The model cannot choose restaurant scope, item IDs or prices. Existing budget exclusions, dietary handoffs and quota controls remain in place.
++
++Model completions now require exactly one tool call and one successful result. Missing/duplicate calls, invalid tool results and token-limit truncation have controlled diagnostic reasons and are rejected before the live menu is read. SDK tool-choice violations are mapped to those reasons without logging provider content.
++
++The assistant test imports/mocks and the Redis integration runner had stale paths after tests moved into `test/`; those references have been repaired.
++
++## Validation in this environment
++
++- ESLint on the assistant module: passed.
++- API TypeScript check: passed (`tsc --noEmit`).
++- Formatting check on the assistant module, Redis runner and Concierge documentation: passed.
++- Focused Vitest run: clean exit, 66 tests passed and five disposable-Redis integration tests skipped. This includes HTTP → real SDK tool protocol → menu filtering → response-contract tests, with external provider/session/menu/Redis boundaries replaced by test fixtures. This verifies application wiring, not real-model interpretation or a live database.
++- Test-host limitation resolved: this sandbox has no `/proc` RSS data, so Node `process.memoryUsage()` throws `ENOENT` during the test runner's bookkeeping. A temporary host-only preload supplies unavailable RSS metadata so the runner can finish; application behavior and assertions are unchanged. The preload is excluded from this archive and is unnecessary in a normal development environment.
++- Native Bun installation: failed with `NotDir`. Checks used a separate temporary npm dependency installation; project manifests and `bun.lock` were not changed. This does not certify the locked dependency installation.
++- No live provider evaluation, database/Redis integration, QR-session walkthrough or browser verification was performed. No credentials or server logs were supplied.
++
++## Apply and verify locally
++
++This archive is a modified copy of the uploaded source; it has not changed the files on your computer. It includes `CONCIERGE_CHANGES.patch`, generated against the exact source you uploaded. Choose one patch for your current source: `CONCIERGE_CHANGES.patch` for the original uploaded source; `CONCIERGE_CHAT_UI.patch` for the controller/service archive before chat; `CONCIERGE_UI_POLISH.patch` for the basic chat-history archive. Each patch includes matching documentation updates. Apply only one patch. From your local Servora root, check and apply the appropriate patch using its extracted path:
++
++```bash
++git apply --check /path/to/CONCIERGE_CHANGES.patch
++git apply /path/to/CONCIERGE_CHANGES.patch
++```
++
++The check does not change your files. If it fails because your local source changed after the upload, review the differences rather than forcing the patch. The patch includes the focused assistant changes, Redis test-runner path and documentation, and removes the old `assistant.policy.ts`. It also includes the customer-app chat transcript and related tests. It does not require a commit or GitHub push. The full updated source is also included for review.
++
++From the project root:
++
++```bash
++bun install --frozen-lockfile
++cd apps/api
++bun run typecheck
++bun run test src/modules/assistant/test
++```
++
++Use an explicitly disposable Redis instance for integration tests:
++
++```bash
++ASSISTANT_TEST_REDIS_URL=redis://127.0.0.1:6379/15 bun run test:assistant:redis
++```
++
++Restart the local API and repeat the failing non-dietary question with a valid QR session. Find `assistant.request_failed` in API logs. The `stage` identifies `reservation`, `model`, `protocol` or `menu`; an available `upstreamStatus` can help diagnose provider errors. Protocol failures also include a controlled `reason` (`missing_tool`, `duplicate_tools`, `invalid_tool_result` or `truncated_output`). Raw provider errors and customer messages are deliberately excluded. Share the stage, reason and status to continue diagnosing the 503; do not share your environment file or API key.
++
++The existing `assistant:eval` command remains opt-in and can incur provider costs. Its results are needed before treating multilingual interpretation as verified.
++
++See `SERVORA_CONCIERGE.md` for the file responsibility map and stage-by-stage troubleshooting. The live 503 root cause remains unverified. pgvector should follow a comparison against the working lexical/structured baseline.
++
++The module follows Servora’s existing route → controller → service convention. `assistant.controller.ts` wraps service results in HTTP success envelopes; `assistant.route.ts` owns request contracts, token extraction, cache headers and cancellation forwarding. `assistant-recommendation.service.ts` exposes `assistantRecommendationService.resolve`. Search and safety remain pure functions. No assistant repository is added because the feature reuses the existing menu service.
++
++## Customer chat UI update
++
++The customer-facing request now displays user/assistant turns above a fixed composer instead of replacing one result panel. History stays in memory for the mounted QR session, survives sheet close/reopen, and clears on explicit Clear chat, token change, entry unmount or reload. Closing cancels active requests and marks an unfinished question as interrupted. Historical cards retain fresh-menu checks. Language changes preserve history.
++
++This does not add AI conversation memory; every submitted question remains independent. No messages are stored in localStorage or sent as prior history. Clear chat affects display only, not Redis turn caps.
++
++Checks: all 128 customer-app tests passed; customer TypeScript, assistant UI ESLint and formatting passed. The production Vite build passed with an explicit CI fixture origin; its existing main-bundle size advisory remains, and the Concierge is still lazy-loaded. Browser visual verification was blocked by a missing browser executable. Dependencies were installed only in temporary tooling; the source package manifests and lockfile were unchanged. The existing React 19/lucide-react peer-range mismatch required legacy peer resolution in that temporary tooling.
++
++For local verification after applying the patch, run the customer-app typecheck, tests and build, then check the sheet on mobile with several questions, failures, close/reopen and item selection. The backend refactor checks above remain applicable; no backend logic changed in the chat UI update.
++
++## Chat visual refinement
++
++The interface now has a welcoming empty state, icon-led suggestions, a compact language selector and a single composer with an accessible arrow send control. The menu entry has a distinct icon treatment and directional affordance. Dish cards use a two-column layout on wider screens, clear price hierarchy, food-type icons and quieter option buttons. User bubbles use the theme foreground token for dark-mode contrast.
++
++The sheet explicitly carries the `customer-experience` theme class so portaled content inherits the menu palette. It is width-constrained on larger screens and remains a bottom sheet on mobile. History, cancellation, quota enforcement, item refresh and independent-question behavior are unchanged.
++
++Verification for the refinement: 128 customer-app tests passed; TypeScript, targeted ESLint and formatting passed. The production build passed using the existing CI fixture-origin path, with the existing main-chunk advisory. Visual browser verification could not run: the browser download returned a truncated archive. No source dependency, lockfile, backend, database or provider setting changed in this visual refinement.
++
++## Source packaging and workspace repair
++
++The uploaded archive contained 261 entries under nested `node_modules`, including regular directory copies of `@pos/contracts` below `packages/realtime` and `packages/api-client`, and a copied workspace dependency below validation. Earlier repackaging preserved those install artifacts. The customer's unresolved TypeBox errors name those copied-package paths. TypeBox itself is already a dependency of the actual contracts workspace and already present in `bun.lock`; no new TypeBox dependency or Vite externalization is appropriate.
++
++The corrected archive contains no `node_modules` at any depth. `scripts/release/package-source.py` is now the source of distribution archives and excludes dependency trees, caches, build output, symlinks and `.env` secrets while retaining `.env.example`/`.env.template` if present. Run `bun run source:zip` to reproduce it.
++
++Run `bun run setup` from an extracted project root, or run the standalone `setup-workspace.mjs` from an existing project root. The setup backs up only real-directory copies of known local workspace packages under installed dependency folders, performs normal `bun install`, then verifies workspace source resolution plus TypeBox and its value export. It does not force-update dependencies or use `--frozen-lockfile`. Copies are retained under `.cache/workspace-copies-*`; source, environment files and unrelated installed packages are not removed. A conventional dependency installation remains necessary for a source-only ZIP.
++
++Checks: four Node repair/resolution tests and one Python archive test passed. A staging run detected and backed up all three copied workspace packages from the original archive. Native Bun installation remains blocked in this host with `NotDir`, so a complete native install is not certified. The actual repair and archive logic, including keeping symlinks and avoiding external dependency trees, is covered by the targeted tests.
+--- a/docs/SERVORA_CONCIERGE.md
++++ b/docs/SERVORA_CONCIERGE.md
+@@ -13,7 +13,7 @@
+ 3. Atomically reserve a turn in Redis before any model call. Fail closed if the limiter is unavailable.
+ 4. Short-circuit recognized dietary/allergen questions to fixed, localized staff-handoff copy. No provider call is needed for these cases.
+ 5. Make one bounded AI SDK tool-calling request. The model may supply validated search preferences only. It cannot supply item IDs, prices, restaurant IDs, public prose or mutations. Common email, phone and URL patterns are removed from user text before the request. This is minimization, not a guarantee that all personal data can be detected: names, addresses and unusual personal details may still appear in free text. Review provider processing terms before enabling a real pilot.
+-6. Execute `search_menu` against the existing customer menu service, which revalidates the session and resolves menu schedules, branch/channel visibility, effective availability and effective base prices.
++6. After successful model completion with validated preferences, call the existing customer menu service. It revalidates the session and resolves menu schedules, branch/channel visibility, effective availability and effective base prices. The tool callback captures preferences only; database access happens outside the SDK lifecycle.
+ 7. Apply food type, known mild spice level, lexical dish/tag matching and optional per-item base-price ceiling in deterministic code. Display only these server results. A budget excludes open/weight prices, variants and modifier-bearing items rather than guessing the final configuration price. Tax and charges are explicitly excluded from the stated base price.
+ 8. Render controlled localized text and server-owned cards; model prose is discarded. The provider receives no catalog, prices, recipes, internal IDs, costs or tool result data beyond a processing acknowledgement.
+ 
+@@ -55,7 +55,7 @@
+ - One provider generation, no retries, maximum 400 output tokens, an 8-second SDK timeout, and a 600-character question limit. A turn may invoke the menu lookup at most once.
+ - Aggregate tenant/day model-call and input/output-token counters expire after 31 days. No prompts, replies, session tokens or conversation transcripts are stored by this module. Existing metrics record tokens, duration and failures without user text.
+ - Turn caps bound call volume; these counters are not a monetary budget or a billing ledger. Provider failures may incur usage that is not available to the application. Reconcile provider charges before commercial billing.
+-- Client state is session-scoped, in memory, and removed when the sheet/session unmounts. Model requests are not retried automatically; closing the sheet aborts its active request.
++- Client chat history is session-scoped and held in memory by the Concierge entry. Completed turns survive closing and reopening the sheet while the same entry stays mounted; history is cleared explicitly, on QR-token change, entry unmount or page refresh. No browser persistence is used. Model requests are not retried automatically; closing the sheet aborts its active request.
+ 
+ ## Verification and remaining work
+ 
+@@ -75,7 +75,7 @@
+ - Streaming, server-owned multi-turn context, feedback, demand analytics and a settings UI.
+ - Confirmed cart tools, idempotent waiter/bill actions, order status, waiter app and voice/channels.
+ 
+-## Implementation checks
++## Historical implementation checks (before this refactor)
+ 
+ - Full API test run: successful JSON report, no failed tests.
+ - Full customer-app suite: 123 tests passed.
+@@ -112,3 +112,77 @@
+ The evaluation intentionally tests the classifier even for phrases that the production keyword guard would intercept. Its harness has deterministic tests, but no live provider evaluation has been claimed. A classifier evaluation complements the HTTP/auth/data/browser tests; it is not a replacement for them.
+ 
+ Staff requests now receive localized service guidance, rather than the dietary-verification message. Dietary questions continue to receive the fixed safety handoff.
++
++## Concierge structure and failure diagnosis
++
++The assistant feature stays under `apps/api/src/modules/assistant`. Files are separated by behavior:
++
++| File                                  | Responsibility                                                 |
++| ------------------------------------- | -------------------------------------------------------------- |
++| `assistant.route.ts`                  | HTTP contracts, session header, cache headers and cancellation |
++| `assistant.controller.ts`             | Call application services and wrap success responses           |
++| `assistant.service.ts`                | Session, enablement, turn reservation and orchestration        |
++| `assistant.input.ts`                  | Strict model preference schema and type                        |
++| `assistant.model.ts`                  | Bounded AI Gateway tool call                                   |
++| `assistant.safety.ts`                 | Local dietary handoff guard and text redaction                 |
++| `assistant-recommendation.service.ts` | Resolve intent; fetch live menu for menu intent                |
++| `assistant.search.ts`                 | Deterministic filtering, ranking and card projection           |
++| `assistant.responses.ts`              | Controlled localized response copy                             |
++| `assistant.diagnostics.ts`            | Privacy-preserving failure logs and stage metrics              |
++| `assistant.errors.ts`                 | Controlled protocol failure reasons                            |
++| `assistant.limits.ts`                 | Atomic fail-closed Redis turn caps                             |
++| `assistant.usage.ts`                  | Best-effort aggregate usage counters                           |
++| `assistant.evaluation.ts`             | Opt-in model evaluation cases and harness                      |
++
++The former `assistant.policy.ts` has been split into input, safety, search and response files. No public API contract changed. Tests in `test/` now import and mock their parent module paths correctly. The Redis integration runner now targets the actual test location.
++
++Model execution only captures validated preferences. Menu lookup starts after successful model completion. A provider failure after a tool callback cannot trigger a database lookup or produce cards. Usage reporting already handles its own Redis errors; it is not a confirmed cause of the reported 503.
++
++### Diagnose the reported 503 locally
++
++Run the API with your existing local settings and submit a non-dietary request such as “Vegetarian, not spicy, under ₹300”. Inspect the structured API log event `assistant.request_failed`. It includes tenant/branch identifiers, a failure `stage`, and an HTTP `upstreamStatus` when a safe numeric status is available. It never includes the message, session token, raw exception, stack, provider response body or headers.
++
++| Stage         | Check next                                                                                                    |
++| ------------- | ------------------------------------------------------------------------------------------------------------- |
++| `reservation` | Redis connectivity; the turn limiter remains fail-closed                                                      |
++| `model`       | Gateway credentials, configured model/tool support, connectivity and timeouts; use upstream status if present |
++| `protocol`    | Model integration returned without validated preferences                                                      |
++| `menu`        | Existing customer-menu service, session revalidation and database dependencies                                |
++
++`servora_assistant_failures_total` now has a bounded `stage` label. Monitoring that needs a single total should sum across stages. Authentication, disabled-branch errors and quota rejection retain their existing HTTP behavior.
++
++No live server logs, database, QR session or provider credentials were supplied with the archive. The original 503 root cause therefore remains unverified. No pgvector extension, embedding pipeline or database migration is included in this foundation change. Semantic retrieval should be evaluated against this structured/lexical baseline before integration.
++
++### Model completion checks
++
++A valid classification requires exactly one tool call and one successful tool result. Duplicate calls, missing calls, invalid results and output truncated by the token limit are rejected before the live menu is read. Logs for these failures have `stage=protocol` and a controlled `reason`: `duplicate_tools`, `missing_tool`, `invalid_tool_result` or `truncated_output`. The numeric upstream HTTP status remains available for provider failures when supplied by the SDK. No raw model output is logged.
++
++## Current archive verification
++
++The foundation refactor was checked with a clean API TypeScript check and a successful focused test run: 66 passed, five Redis integration cases skipped. The added flow tests combine the real HTTP contracts, assistant orchestration, AI SDK tool protocol, safety guard, menu filtering and response projection. External provider/session/menu/Redis boundaries use fixtures; this does not establish live provider quality or database integration.
++
++The test runner initially stalled because this sandbox lacks `/proc` RSS data required by Node's memory bookkeeping. A temporary host-only memory-metadata preload resolved that environment issue. It is not included in Servora source. See `CONCIERGE_REFACTOR_REVIEW.md` for remaining local verification and the exact application steps.
++
++The module follows Servora’s existing route → controller → service convention. `assistant.controller.ts` wraps service results in HTTP success envelopes; `assistant.route.ts` owns request contracts, token extraction, cache headers and cancellation forwarding. `assistant-recommendation.service.ts` exposes `assistantRecommendationService.resolve`. Search and safety remain pure functions. No assistant repository is added because the feature reuses the existing menu service.
++
++## Chat interface
++
++The previous single-result panel was replaced by a session-scoped transcript. New questions append a user bubble and a pending assistant bubble, then replace only that pending bubble with the response or an error. Previous cards remain visible during subsequent searches. The composer lives in the BottomSheet footer; the transcript scrolls independently. Language changes do not delete earlier turns. Clear chat removes the visible history and does not reset server quotas.
++
++Closing the sheet aborts active work. An interrupted question receives a controlled stopped-search message, and a late response cannot overwrite that turn. Changing QR tokens remounts the entry, preventing the next session from seeing the previous session's history. Opening any historical card still refreshes the current menu before customization.
++
++This is display history, not server conversation memory. The API still receives only the current message and language. No new provider calls, server endpoints, database tables, streaming or cart actions were added. Prompts must still contain complete preferences.
++
++Frontend responsibilities:
++
++- `Concierge.tsx`: capability query, QR-token isolation and in-memory history ownership.
++- `ConciergeSheet.tsx`: composer, request lifecycle, cancellation and fresh-menu item selection.
++- `ConciergeTranscript.tsx`: accessible conversation log, user/assistant bubbles and historical cards.
++- `concierge.copy.ts`: localized labels and controlled copy.
++- `types.ts`: feature props and discriminated chat-turn types.
++
++The customer-app suite passes 128 tests, including multi-turn display, pending/error preservation, close/reopen, explicit clearing, QR-token isolation and late canceled completions. TypeScript and targeted lint pass. Browser visual verification was unavailable because this environment has no installed Playwright browser executable.
++
++### Visual layout
++
++The Concierge sheet uses Servora’s customer theme, including when rendered through the dialog portal. The empty state offers four preference starters; an ongoing conversation uses smaller suggestion chips. Language and clear-history controls stay secondary to the transcript. The footer combines question input and an accessible send button, with a reminder to include complete preferences. Dish cards adapt from one column on mobile to two on wider screens, and all displayed prices and food types still come from the API response. No photos, ratings or availability claims are fabricated.
+--- a/package.json
++++ b/package.json
+@@ -94,7 +94,10 @@
+     "test:e2e:website:production": "cd apps/website && bun run test:e2e:production",
+     "test:demo:postgres": "cd apps/api && bun run test:demo:postgres",
+     "assistant:eval": "cd apps/api && bun run assistant:eval",
+-    "test:assistant:redis": "cd apps/api && bun run test:assistant:redis"
++    "test:assistant:redis": "cd apps/api && bun run test:assistant:redis",
++    "setup": "node scripts/foundation/setup-workspace.mjs",
++    "source:zip": "python3 scripts/release/package-source.py",
++    "test:workspace-setup": "node --test scripts/foundation/test/setup-workspace.test.mjs"
+   },
+   "devDependencies": {
+     "@types/node": "^20.14.0",
+--- /dev/null
++++ b/scripts/foundation/setup-workspace.mjs
+@@ -0,0 +1,148 @@
++import {
++  existsSync,
++  lstatSync,
++  mkdirSync,
++  mkdtempSync,
++  readFileSync,
++  readdirSync,
++  realpathSync,
++  renameSync,
++} from "node:fs";
++import { dirname, join, relative, resolve, sep } from "node:path";
++import { createRequire } from "node:module";
++import { spawnSync } from "node:child_process";
++import { pathToFileURL } from "node:url";
++
++const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
++const present = (path) => {
++  try {
++    return lstatSync(path);
++  } catch (error) {
++    if (error.code === "ENOENT") return undefined;
++    throw error;
++  }
++};
++
++export function readWorkspaces(root) {
++  const manifest = readJson(join(root, "package.json"));
++  const patterns = manifest.workspaces;
++  if (!Array.isArray(patterns))
++    throw new Error("Expected a workspace array in package.json.");
++  const workspaces = [];
++  for (const pattern of patterns) {
++    if (!pattern.endsWith("/*") || pattern.slice(0, -2).includes("*"))
++      throw new Error(`Unsupported workspace pattern: ${pattern}`);
++    const parent = resolve(root, pattern.slice(0, -2));
++    if (!parent.startsWith(root + sep))
++      throw new Error("Workspace must be inside this repository.");
++    for (const entry of readdirSync(parent, { withFileTypes: true })) {
++      const directory = join(parent, entry.name);
++      if (!entry.isDirectory() || !existsSync(join(directory, "package.json")))
++        continue;
++      const pkg = readJson(join(directory, "package.json"));
++      if (pkg.name) workspaces.push({ directory, manifest: pkg });
++    }
++  }
++  return workspaces;
++}
++
++export function findCopiedWorkspaces(root, workspaces = readWorkspaces(root)) {
++  const copies = [];
++  for (const owner of [root, ...workspaces.map((w) => w.directory)]) {
++    const modules = join(owner, "node_modules");
++    // Do not modify an external dependency tree behind a directory symlink.
++    if (!present(modules)?.isDirectory() || present(modules)?.isSymbolicLink())
++      continue;
++    for (const workspace of workspaces) {
++      const name = workspace.manifest.name;
++      const scope = name.startsWith("@")
++        ? join(modules, name.split("/")[0])
++        : modules;
++      if (present(scope)?.isSymbolicLink()) continue;
++      const candidate = join(modules, name);
++      const info = present(candidate);
++      if (!info?.isDirectory() || info.isSymbolicLink()) continue;
++      const manifest = join(candidate, "package.json");
++      if (existsSync(manifest) && readJson(manifest).name === name)
++        copies.push(candidate);
++    }
++  }
++  return copies;
++}
++
++export function backUpCopies(root, copies) {
++  if (!copies.length) return undefined;
++  const cache = join(root, ".cache");
++  mkdirSync(cache, { recursive: true });
++  const backup = mkdtempSync(join(cache, "workspace-copies-"));
++  for (const source of copies) {
++    const destination = join(backup, relative(root, source));
++    mkdirSync(dirname(destination), { recursive: true });
++    renameSync(source, destination);
++  }
++  return backup;
++}
++
++export function verifyWorkspaceResolution(
++  root,
++  workspaces = readWorkspaces(root),
++) {
++  const byName = new Map(workspaces.map((w) => [w.manifest.name, w.directory]));
++  for (const owner of workspaces) {
++    const require = createRequire(join(owner.directory, "package.json"));
++    const deps = {
++      ...owner.manifest.dependencies,
++      ...owner.manifest.devDependencies,
++    };
++    for (const [name, version] of Object.entries(deps)) {
++      if (!version.startsWith("workspace:")) continue;
++      const expected = byName.get(name);
++      if (!expected)
++        throw new Error(`Unknown workspace ${name} in ${owner.manifest.name}.`);
++      const actual = realpathSync(require.resolve(name));
++      if (!actual.startsWith(realpathSync(expected) + sep))
++        throw new Error(
++          `${owner.manifest.name} resolves ${name} outside its source workspace: ${actual}`,
++        );
++    }
++  }
++  const contracts = byName.get("@pos/contracts");
++  if (!contracts) throw new Error("Missing @pos/contracts workspace.");
++  const require = createRequire(join(contracts, "package.json"));
++  require.resolve("@sinclair/typebox");
++  require.resolve("@sinclair/typebox/value");
++}
++
++export function setupWorkspace(root) {
++  const workspaces = readWorkspaces(root);
++  const copies = findCopiedWorkspaces(root, workspaces);
++  const backup = backUpCopies(root, copies);
++  if (backup)
++    console.log(
++      `Backed up ${copies.length} copied workspace package(s): ${backup}`,
++    );
++  const bun = process.versions.bun ? process.execPath : "bun";
++  const result = spawnSync(bun, ["install"], { cwd: root, stdio: "inherit" });
++  if (result.error) throw result.error;
++  if (result.status !== 0)
++    throw new Error(
++      "Dependency installation failed. Any moved copies remain in the printed backup directory.",
++    );
++  verifyWorkspaceResolution(root, workspaces);
++  console.log(
++    "Workspace links and TypeBox resolution verified. Start Servora with: bun run dev",
++  );
++}
++
++if (
++  process.argv[1] &&
++  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
++) {
++  const root = resolve(process.cwd());
++  try {
++    setupWorkspace(root);
++  } catch (error) {
++    console.error(`Workspace setup failed: ${error.message}`);
++    process.exitCode = 1;
++  }
++}
+--- /dev/null
++++ b/scripts/foundation/test/setup-workspace.test.mjs
+@@ -0,0 +1,115 @@
++import { afterEach, test } from "node:test";
++import assert from "node:assert/strict";
++import {
++  mkdirSync,
++  mkdtempSync,
++  writeFileSync,
++  symlinkSync,
++  existsSync,
++  lstatSync,
++  rmSync,
++} from "node:fs";
++import { join } from "node:path";
++import {
++  backUpCopies,
++  findCopiedWorkspaces,
++  verifyWorkspaceResolution,
++} from "../setup-workspace.mjs";
++
++const roots = [];
++afterEach(() => {
++  for (const root of roots.splice(0))
++    rmSync(root, { recursive: true, force: true });
++});
++function write(path, data) {
++  mkdirSync(join(path, ".."), { recursive: true });
++  writeFileSync(path, data);
++}
++function fixture() {
++  const root = mkdtempSync(join(process.cwd(), ".setup-test-"));
++  roots.push(root);
++  write(
++    join(root, "package.json"),
++    JSON.stringify({ workspaces: ["apps/*", "packages/*"] }),
++  );
++  write(
++    join(root, "apps/demo/package.json"),
++    JSON.stringify({
++      name: "@pos/demo",
++      dependencies: { "@pos/contracts": "workspace:*" },
++    }),
++  );
++  write(
++    join(root, "packages/contracts/package.json"),
++    JSON.stringify({ name: "@pos/contracts", main: "src/index.js" }),
++  );
++  write(join(root, "packages/contracts/src/index.js"), "module.exports = {};");
++  return root;
++}
++function typebox(root) {
++  const base = join(root, "packages/contracts/node_modules/@sinclair/typebox");
++  write(
++    join(base, "package.json"),
++    JSON.stringify({
++      name: "@sinclair/typebox",
++      exports: { ".": "./index.js", "./value": "./value.js" },
++    }),
++  );
++  write(join(base, "index.js"), "module.exports = {};");
++  write(join(base, "value.js"), "module.exports = {};");
++}
++test("backs up copied workspace trees and preserves source, env and unrelated packages", () => {
++  const root = fixture();
++  const copy = join(root, "apps/demo/node_modules/@pos/contracts");
++  write(join(copy, "package.json"), JSON.stringify({ name: "@pos/contracts" }));
++  write(join(copy, "local.txt"), "preserve");
++  write(join(root, "apps/demo/.env"), "LOCAL=keep");
++  write(join(root, "apps/demo/node_modules/other/package.json"), "{}");
++  const copies = findCopiedWorkspaces(root);
++  assert.deepEqual(copies, [copy]);
++  const backup = backUpCopies(root, copies);
++  assert.ok(
++    existsSync(join(backup, "apps/demo/node_modules/@pos/contracts/local.txt")),
++  );
++  assert.ok(!existsSync(copy));
++  assert.ok(existsSync(join(root, "apps/demo/.env")));
++  assert.ok(
++    existsSync(join(root, "apps/demo/node_modules/other/package.json")),
++  );
++  assert.ok(existsSync(join(root, "packages/contracts/src/index.js")));
++});
++test("keeps legitimate workspace symlinks and verifies dependency resolution", () => {
++  const root = fixture();
++  const scope = join(root, "apps/demo/node_modules/@pos");
++  mkdirSync(scope, { recursive: true });
++  const link = join(scope, "contracts");
++  symlinkSync(join(root, "packages/contracts"), link, "dir");
++  typebox(root);
++  assert.deepEqual(findCopiedWorkspaces(root), []);
++  assert.ok(lstatSync(link).isSymbolicLink());
++  verifyWorkspaceResolution(root);
++});
++test("rejects a shadow workspace even if its package.json and main look valid", () => {
++  const root = fixture();
++  const copy = join(root, "apps/demo/node_modules/@pos/contracts");
++  write(
++    join(copy, "package.json"),
++    JSON.stringify({ name: "@pos/contracts", main: "index.js" }),
++  );
++  write(join(copy, "index.js"), "module.exports = {};");
++  typebox(root);
++  assert.throws(
++    () => verifyWorkspaceResolution(root),
++    /outside its source workspace/,
++  );
++});
++test("does not mutate dependency trees behind a node_modules directory symlink", () => {
++  const root = fixture();
++  const external = join(root, "external-dependencies");
++  write(
++    join(external, "@pos/contracts/package.json"),
++    JSON.stringify({ name: "@pos/contracts" }),
++  );
++  symlinkSync(external, join(root, "apps/demo/node_modules"), "dir");
++  assert.deepEqual(findCopiedWorkspaces(root), []);
++});
+--- /dev/null
++++ b/scripts/release/package-source.py
+@@ -0,0 +1,44 @@
++#!/usr/bin/env python3
++"""Package source without dependency trees, runtime output or environment secrets."""
++import argparse
++import os
++from pathlib import Path
++import zipfile
++
++EXCLUDED_DIRS = {
++    'node_modules', '.git', '.bun', '.cache', '.turbo', '.vite', '.next',
++    'dist', 'build', 'out', 'coverage', 'playwright-report', 'test-results',
++    '__pycache__',
++}
++
++def source_files(root):
++    for directory, dirs, files in os.walk(root, followlinks=False):
++        dirs[:] = sorted(name for name in dirs if name not in EXCLUDED_DIRS and not (Path(directory) / name).is_symlink())
++        for name in sorted(files):
++            path = Path(directory) / name
++            if path.is_symlink():
++                continue
++            if (name == '.env' or name.startswith('.env.')) and name not in {'.env.example', '.env.template'}:
++                continue
++            if name.endswith(('.log', '.tsbuildinfo', '.zip')) or name == '.DS_Store':
++                continue
++            yield path
++
++def package_source(root, output):
++    root, output = Path(root).resolve(), Path(output).resolve()
++    output.parent.mkdir(parents=True, exist_ok=True)
++    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
++        for path in source_files(root):
++            if path.resolve() != output:
++                archive.write(path, path.relative_to(root))
++    with zipfile.ZipFile(output) as archive:
++        if archive.testzip() is not None:
++            raise RuntimeError('Source archive integrity check failed')
++    return output
++
++if __name__ == '__main__':
++    root = Path(__file__).resolve().parents[2]
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--output', type=Path, default=root / 'dist/servora-source.zip')
++    args = parser.parse_args()
++    print(package_source(root, args.output))
+--- /dev/null
++++ b/scripts/release/test_package_source.py
+@@ -0,0 +1,25 @@
++import tempfile
++import unittest
++import zipfile
++from pathlib import Path
++import importlib.util
++spec = importlib.util.spec_from_file_location("package_source", Path(__file__).with_name("package-source.py"))
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++package_source = module.package_source
++
++class SourceArchiveTest(unittest.TestCase):
++    def test_excludes_partial_installs_and_secrets_at_every_workspace_depth(self):
++        with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
++            root = Path(directory)
++            keep = ['package.json', 'bun.lock', 'packages/contracts/src/index.ts', '.env.example', 'apps/api/.env.template']
++            omit = ['node_modules/x/index.js', 'packages/realtime/node_modules/@pos/contracts/src/index.ts', '.env', 'apps/api/.env.local', 'apps/api/dist/index.js', '.cache/stale.json']
++            for name in keep + omit:
++                path = root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('fixture')
++            (root / 'dependency-link').symlink_to(root / 'node_modules', target_is_directory=True)
++            output = package_source(root, root / 'dist/source.zip')
++            with zipfile.ZipFile(output) as archive:
++                self.assertEqual(set(archive.namelist()), set(keep))
++
++if __name__ == '__main__':
++    unittest.main()

@@ -48,7 +48,7 @@ Servora API failures use one frontend-safe response contract. Route handlers and
 
 `src/test/helpers/api-endpoint-manifest.ts` scans the API route sources at test time. The contract suite fails if the endpoint inventory changes unexpectedly.
 
-Current inventory: **229 HTTP endpoints**.
+Current inventory: **231 HTTP endpoints**, including the two customer-session Concierge endpoints.
 
 `src/core/errors/test/endpoint-error-matrix.test.ts` currently verifies:
 

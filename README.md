@@ -85,7 +85,7 @@ The POS/admin app includes a permission-aware command palette (`Ctrl+K`) for fas
 Install dependencies:
 
 ```bash
-bun install
+bun run setup
 ```
 
 Create the required environment files from each application's `.env.example` and configure local PostgreSQL/Redis URLs and development secrets.
@@ -214,3 +214,13 @@ cd apps/web && bun run test:visual
 ```
 
 See `docs/JOB_IMPACT_IMPLEMENTATION_STATUS.md` for the implementation status and validation notes.
+
+## Optional customer menu Concierge
+
+The read-only QR Concierge pilot is disabled by default. See [setup, safety boundaries and rollout](docs/SERVORA_CONCIERGE.md) before enabling a branch. It requires an explicitly configured gateway model/key and does not require a database migration.
+
+### Workspace installation and source archives
+
+Run `bun run setup` from the repository root after extracting source or merging workspace changes. It backs up regular directory copies of local workspace packages found under `node_modules`, runs the normal `bun install`, and verifies that workspace imports resolve to the actual source directories and that TypeBox is reachable. Backups are retained under `.cache/workspace-copies-*`. It does not delete source, `.env`, database files, or unrelated installed packages. Existing dependency-tree symlinks are left alone.
+
+Use `bun run source:zip` (Python 3 required) to create `dist/servora-source.zip`. The source packager excludes all nested `node_modules`, build/cache directories, environment secrets and symlinks. Install dependencies after extracting a source archive; installed dependencies are intentionally not distributed as source.

@@ -29,9 +29,10 @@ export const customerMenuService = {
       with: { slots: { with: { options: true } } },
     });
     const asOf = new Date();
-    const effectiveItems = await Promise.all(
-      menu.items.map(async (item) => {
-        const effective = await availabilityService.getEffectiveItem(
+    const resolved = await Promise.all(
+      menu.items.map(async (item) => ({
+        item,
+        effective: await availabilityService.getEffectiveItem(
           session.tenantId,
           item.id,
           session.branchId,
@@ -40,17 +41,32 @@ export const customerMenuService = {
             fulfillmentType: session.mode,
             asOf,
           },
-        );
-        if (effective.effectiveStatus !== "ACTIVE" || effective.isHidden)
-          return null;
-        return {
-          ...item,
-          basePrice: effective.effectivePrice,
-          taxRate: effective.effectiveTaxRate,
-          prepTimeMinutes: effective.effectivePrepTimeMinutes,
-        };
-      }),
+        ),
+      })),
     );
+    const effectiveItems = resolved.map(({ item, effective }) =>
+      effective.effectiveStatus !== "ACTIVE" || effective.isHidden
+        ? null
+        : {
+            ...item,
+            basePrice: effective.effectivePrice,
+            taxRate: effective.effectiveTaxRate,
+            prepTimeMinutes: effective.effectivePrepTimeMinutes,
+          },
+    );
+    // Published dishes the diner can't order right now (out of stock, outside
+    // their schedule). Hidden dishes stay secret; only the Concierge uses this
+    // so it can say "not available right now" instead of "not found".
+    const unavailableItems = resolved
+      .filter(
+        ({ item, effective }) =>
+          effective.effectiveStatus !== "ACTIVE" &&
+          !effective.isHidden &&
+          effective.effectiveStatus !== "HIDDEN" &&
+          effective.effectiveStatus !== "DISCONTINUED" &&
+          activeItemIds.has(item.id),
+      )
+      .map(({ item }) => item);
     return {
       restaurant: {
         id: session.branch.id,
@@ -86,6 +102,7 @@ export const customerMenuService = {
         (item): item is NonNullable<typeof item> =>
           item !== null && activeItemIds.has(item.id),
       ),
+      unavailableItems,
     };
   },
 };

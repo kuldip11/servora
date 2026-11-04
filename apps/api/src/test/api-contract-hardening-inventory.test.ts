@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getApiEndpointManifest } from "./helpers/api-endpoint-manifest";
 
-const BASELINE_ENDPOINT_COUNT = 229;
+const BASELINE_ENDPOINT_COUNT = 231;
 
 describe("API contract hardening inventory", () => {
   const endpoints = getApiEndpointManifest();

@@ -127,6 +127,10 @@ export const OPENAPI_OPERATIONS = {
     method: "GET",
     path: "/api/customer-groups/{id}",
   },
+  getApiCustomerAssistantCapabilities: {
+    method: "GET",
+    path: "/api/customer/assistant/capabilities",
+  },
   getApiCustomerMenu: { method: "GET", path: "/api/customer/menu" },
   getApiCustomerOrdersById: {
     method: "GET",
@@ -393,6 +397,10 @@ export const OPENAPI_OPERATIONS = {
     path: "/api/branches/{id}/takeaway-qr/regenerate",
   },
   "postApiCustomer-groups": { method: "POST", path: "/api/customer-groups/" },
+  postApiCustomerAssistantMessages: {
+    method: "POST",
+    path: "/api/customer/assistant/messages",
+  },
   postApiCustomerOrders: { method: "POST", path: "/api/customer/orders" },
   postApiCustomerOrdersByIdCheckout: {
     method: "POST",
@@ -1302,6 +1310,24 @@ export type Schema_2fcf4d3f2ebb = {
   modifierOptionId?: string | null;
 };
 
+export type Schema_30a1dd1be61d = {
+  success: true;
+  data: {
+    message: string;
+    language: "en";
+    outcome: "MATCHES" | "NO_MATCH" | "ASK_STAFF" | "OUT_OF_SCOPE";
+    items: Array<{
+      id: string;
+      name: string;
+      basePrice: string;
+      foodType: "VEG" | "NON_VEG" | "EGG";
+      spiceLevel: string | null;
+    }>;
+    disclaimer: string;
+    canCallWaiter: boolean;
+  };
+};
+
 export type Schema_3117e1741c96 = {
   success: true;
   data: {
@@ -2076,6 +2102,13 @@ export type Schema_5b2de97eeca5 = {
 
 export type Schema_5dcf8620fb72 = {
   scheduleId: string;
+};
+
+export type Schema_5e72df84d88d = {
+  success: true;
+  data: {
+    enabled: boolean;
+  };
 };
 
 export type Schema_5f99b8a15836 = {
@@ -4894,6 +4927,11 @@ export type Schema_a9ebbba94a86 = {
   };
 };
 
+export type Schema_ac3d7a01988f = {
+  message: string;
+  language?: "en";
+};
+
 export type Schema_acc750387cda = {
   success: true;
   data: {
@@ -6644,6 +6682,15 @@ export interface OpenApiOperationTypes {
     bodyRequired: false;
     response: Schema_4404ffbb013f;
   };
+  getApiCustomerAssistantCapabilities: {
+    pathParams: never;
+    pathParamsRequired: false;
+    query: never;
+    queryRequired: false;
+    body: never;
+    bodyRequired: false;
+    response: Schema_5e72df84d88d;
+  };
   getApiCustomerMenu: {
     pathParams: never;
     pathParamsRequired: false;
@@ -7606,6 +7653,15 @@ export interface OpenApiOperationTypes {
     body: Schema_9b5292aaa974;
     bodyRequired: true;
     response: Schema_4404ffbb013f;
+  };
+  postApiCustomerAssistantMessages: {
+    pathParams: never;
+    pathParamsRequired: false;
+    query: never;
+    queryRequired: false;
+    body: Schema_ac3d7a01988f;
+    bodyRequired: true;
+    response: Schema_30a1dd1be61d;
   };
   postApiCustomerOrders: {
     pathParams: never;

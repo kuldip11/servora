@@ -19,6 +19,16 @@ const schema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default("15m"),
   METRICS_TOKEN: z.string().min(16).default("development-metrics-token"),
+  ASSISTANT_ENABLED: z.enum(["true", "false"]).default("false"),
+  ASSISTANT_BRANCH_IDS: z.string().default(""),
+  ASSISTANT_MODEL: z.string().default(""),
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  ASSISTANT_DAILY_TURN_LIMIT: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10000)
+    .default(200),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),

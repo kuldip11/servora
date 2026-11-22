@@ -1,4 +1,10 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+  type ReactNode,
+} from "react";
 import { Search } from "lucide-react";
 import { EmptyState } from "@pos/ui";
 import type { CustomerCombo, CustomerMenuItem } from "@/api";
@@ -16,6 +22,7 @@ export interface CustomerMenuSessionView {
 }
 
 interface CustomerMenuViewProps {
+  concierge?: ReactNode;
   session: CustomerMenuSessionView;
   placedOrder: boolean;
   itemCount: number;
@@ -37,6 +44,7 @@ interface CustomerMenuViewProps {
 
 export const CustomerMenuView = ({
   session,
+  concierge,
   placedOrder,
   itemCount,
   total,
@@ -102,6 +110,8 @@ export const CustomerMenuView = ({
         onSearchChange={setSearch}
         onViewOrder={onViewOrder}
       />
+
+      {concierge}
 
       <CustomerCategoryNav
         categories={categories}

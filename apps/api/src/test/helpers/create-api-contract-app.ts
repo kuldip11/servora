@@ -35,6 +35,7 @@ import { menuChangeLogRouter } from "@/modules/menu/change-log/menu-change-log.r
 import { kitchenStationsRouter } from "@/modules/kitchen-tickets/stations/station.route";
 import { analyticsRouter } from "@/modules/analytics/analytics.route";
 import { auditRouter } from "@/modules/audit/audit.route";
+import { assistantRouter } from "@/modules/assistant/assistant.route";
 import { customerRouter } from "@/modules/customer/customer.route";
 import { customerRequestRouter } from "@/modules/customer/customer-requests.route";
 import { razorpayWebhookRouter } from "@/modules/billing/razorpay-webhook.route";
@@ -82,5 +83,6 @@ export const createApiContractApp = () =>
     .use(analyticsRouter)
     .use(auditRouter)
     .use(customerRouter)
+    .use(assistantRouter)
     .use(customerRequestRouter)
     .use(razorpayWebhookRouter);

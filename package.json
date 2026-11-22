@@ -92,7 +92,12 @@
     "seo:live": "node scripts/seo/audit-live.mjs",
     "test:seo:checks": "node --test scripts/seo/production-env.test.mjs && python3 -m unittest discover -s scripts/seo -p 'test_*.py'",
     "test:e2e:website:production": "cd apps/website && bun run test:e2e:production",
-    "test:demo:postgres": "cd apps/api && bun run test:demo:postgres"
+    "test:demo:postgres": "cd apps/api && bun run test:demo:postgres",
+    "assistant:eval": "cd apps/api && bun run assistant:eval",
+    "test:assistant:redis": "cd apps/api && bun run test:assistant:redis",
+    "setup": "node scripts/foundation/setup-workspace.mjs",
+    "source:zip": "python3 scripts/release/package-source.py",
+    "test:workspace-setup": "node --test scripts/foundation/test/setup-workspace.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

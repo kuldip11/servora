@@ -1,3 +1,4 @@
+vi.mock("./features/assistant/Concierge", () => ({ Concierge: () => null }));
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({

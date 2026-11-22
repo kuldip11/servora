@@ -65,7 +65,7 @@ const requestFor = (
 
 describe("exhaustive API endpoint error matrix", () => {
   it("accounts for every HTTP endpoint with a unique contract entry", () => {
-    expect(endpoints).toHaveLength(229);
+    expect(endpoints).toHaveLength(231);
     expect(new Set(endpoints.map((endpoint) => endpoint.id)).size).toBe(
       endpoints.length,
     );

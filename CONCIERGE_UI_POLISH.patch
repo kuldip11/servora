@@ -1,0 +1,460 @@
+--- a/apps/customer-app/src/features/assistant/Concierge.tsx
++++ b/apps/customer-app/src/features/assistant/Concierge.tsx
+@@ -1,6 +1,6 @@
+ import { lazy, Suspense, useState } from "react";
+ import { useQuery } from "@tanstack/react-query";
+-import { MessageCircle } from "lucide-react";
++import { MessageCircle, ChevronRight } from "lucide-react";
+ import { getAssistantCapabilities } from "./api";
+ import type { ConciergeProps, ConciergeTurn } from "./types";
+ const ConciergeSheet = lazy(() => import("./ConciergeSheet"));
+@@ -26,15 +26,21 @@
+         <button
+           type="button"
+           onClick={() => setOpen(true)}
+-          className="flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary-surface px-4 py-4 text-left text-primary"
++          className="group flex w-full items-center gap-3 rounded-2xl border border-primary-border bg-primary-surface px-4 py-4 text-left text-primary transition-colors hover:border-primary"
+         >
+-          <MessageCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+-          <span>
++          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
++            <MessageCircle aria-hidden="true" className="h-5 w-5" />
++          </span>
++          <span className="min-w-0 flex-1">
+             <span className="block font-semibold">Ask Servora Concierge</span>
+-            <span className="text-sm">
++            <span className="mt-0.5 block text-xs leading-relaxed text-text-secondary">
+               Find a dish in English, हिंदी or Hinglish
+             </span>
+           </span>
++          <ChevronRight
++            aria-hidden="true"
++            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
++          />
+         </button>
+       </div>
+       {open ? (
+--- a/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
++++ b/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
+@@ -1,6 +1,15 @@
+ import { useEffect, useRef, useState } from "react";
+ import { useMutation } from "@tanstack/react-query";
+-import { Send } from "lucide-react";
++import {
++  ArrowUp,
++  Leaf,
++  Flame,
++  Wallet,
++  ShieldCheck,
++  UtensilsCrossed,
++  RotateCcw,
++  HandHelping,
++} from "lucide-react";
+ import { BottomSheet } from "@pos/ui";
+ import type { AssistantLanguage, AssistantQuestion } from "@pos/contracts";
+ import { getCustomerMenu } from "@/features/menu/api";
+@@ -122,29 +131,39 @@
+         event.preventDefault();
+         submit(message);
+       }}
+-      className="w-full space-y-2"
++      className="w-full space-y-2.5"
+     >
+       <label htmlFor="concierge-question" className="sr-only">
+         Menu question
+       </label>
+-      <textarea
+-        id="concierge-question"
+-        value={message}
+-        onChange={(event) => setMessage(event.target.value)}
+-        placeholder={t.placeholder}
+-        maxLength={600}
+-        rows={2}
+-        disabled={busy}
+-        className="w-full resize-none rounded-xl border border-border bg-surface p-3 text-base focus:outline-primary"
+-      />
+-      <button
+-        type="submit"
+-        disabled={busy || !message.trim()}
+-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50"
++      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
++        <textarea
++          id="concierge-question"
++          value={message}
++          onChange={(event) => setMessage(event.target.value)}
++          placeholder={t.placeholder}
++          maxLength={600}
++          rows={2}
++          disabled={busy}
++          aria-describedby="concierge-question-hint"
++          className="min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-base leading-relaxed text-text-primary outline-none placeholder:text-text-secondary disabled:opacity-60"
++        />
++        <button
++          type="submit"
++          aria-label={t.send}
++          title={t.send}
++          disabled={busy || !message.trim()}
++          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
++        >
++          <ArrowUp className="h-5 w-5" aria-hidden="true" />
++        </button>
++      </div>
++      <p
++        id="concierge-question-hint"
++        className="px-1 text-xs leading-relaxed text-text-secondary"
+       >
+-        <Send className="h-4 w-4" aria-hidden="true" />
+-        {t.send}
+-      </button>
++        {t.questionHint}
++      </p>
+     </form>
+   );
+   return (
+@@ -153,71 +172,112 @@
+       onClose={onClose}
+       title="Servora Concierge"
+       description={t.intro}
+-      maxHeight="90dvh"
++      maxHeight="92dvh"
++      contentClassName="customer-experience mx-auto max-w-3xl sm:mb-4 sm:rounded-3xl"
++      bodyClassName="px-4 pb-3 sm:px-6"
+       footer={composer}
+-      footerClassName="block bg-surface"
++      footerClassName="block bg-surface px-4 py-3 sm:px-6"
+     >
+       <div className="space-y-4" lang={language === "hi" ? "hi" : "en"}>
+-        <div className="flex flex-wrap gap-2" aria-label="Response language">
+-          {(["en", "hi", "hinglish"] as const).map((value) => (
++        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
++          <span className="flex items-center gap-2 text-xs font-medium text-text-secondary">
++            <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
++            {t.menuLabel}
++          </span>
++          <div
++            className="inline-flex rounded-full bg-surface-secondary p-1"
++            aria-label="Response language"
++          >
++            {(["en", "hi", "hinglish"] as const).map((value) => (
++              <button
++                key={value}
++                type="button"
++                aria-pressed={language === value}
++                disabled={busy}
++                onClick={() => {
++                  setLanguage(value);
++                  ask.reset();
++                  select.reset();
++                }}
++                className={`min-h-10 rounded-full px-3 text-xs font-medium transition-colors disabled:opacity-50 ${language === value ? "bg-surface text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
++              >
++                {value === "en"
++                  ? "English"
++                  : value === "hi"
++                    ? "हिंदी"
++                    : "Hinglish"}
++              </button>
++            ))}
++          </div>
++        </div>
++        {!turns.length ? (
++          <div className="px-1 pb-2 pt-7 text-center sm:pt-10">
++            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary-surface text-primary">
++              <UtensilsCrossed className="h-6 w-6" aria-hidden="true" />
++            </div>
++            <h2 className="customer-display text-2xl font-semibold leading-tight sm:text-3xl">
++              {t.intro}
++            </h2>
++            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-secondary">
++              {t.welcome}
++            </p>
++          </div>
++        ) : (
++          <div className="flex items-center justify-between gap-3">
++            <p className="text-xs text-text-secondary">{t.suggestions}</p>
+             <button
+-              key={value}
+               type="button"
+-              aria-pressed={language === value}
+               disabled={busy}
+               onClick={() => {
+-                setLanguage(value);
++                setTurns([]);
+                 ask.reset();
+                 select.reset();
+               }}
+-              className={`rounded-full border px-3 py-2 text-sm ${language === value ? "border-primary bg-primary-surface text-primary" : "border-border"}`}
++              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+             >
+-              {value === "en"
+-                ? "English"
+-                : value === "hi"
+-                  ? "हिंदी"
+-                  : "Hinglish"}
++              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
++              {t.clear}
+             </button>
+-          ))}
+-        </div>
+-        <p className="text-sm text-text-secondary">{t.hint}</p>
+-        <div className="flex flex-wrap gap-2">
+-          {t.chips.map((chip) => (
+-            <button
+-              key={chip}
+-              type="button"
+-              disabled={busy}
+-              onClick={() => submit(chip)}
+-              className="rounded-full border border-border px-3 py-2 text-sm disabled:opacity-50"
+-            >
+-              {chip}
+-            </button>
+-          ))}
++          </div>
++        )}
++        <div
++          className={
++            turns.length
++              ? "flex gap-2 overflow-x-auto pb-1"
++              : "grid grid-cols-2 gap-2 pb-3"
++          }
++        >
++          {t.chips.map((chip, index) => {
++            const Icon =
++              [Leaf, Flame, Wallet, ShieldCheck][index] ?? UtensilsCrossed;
++            return (
++              <button
++                key={chip}
++                type="button"
++                disabled={busy}
++                onClick={() => submit(chip)}
++                className={
++                  turns.length
++                    ? "flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 text-xs text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-50"
++                    : "flex min-h-14 items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-3 text-left text-sm font-medium transition-colors hover:border-primary/40 hover:bg-primary-surface disabled:opacity-50"
++                }
++              >
++                <Icon
++                  className="h-4 w-4 shrink-0 text-primary"
++                  aria-hidden="true"
++                />
++                {chip}
++              </button>
++            );
++          })}
+         </div>
+         {turns.length ? (
+-          <>
+-            <div className="flex justify-end">
+-              <button
+-                type="button"
+-                disabled={busy}
+-                onClick={() => {
+-                  setTurns([]);
+-                  ask.reset();
+-                  select.reset();
+-                }}
+-                className="min-h-11 rounded-lg px-3 text-sm text-text-secondary disabled:opacity-50"
+-              >
+-                {t.clear}
+-              </button>
+-            </div>
+-            <ConciergeTranscript
+-              turns={turns}
+-              busy={busy}
+-              onSelect={(id) => select.mutate(id)}
+-            />
+-          </>
++          <ConciergeTranscript
++            turns={turns}
++            busy={busy}
++            onSelect={(id) => select.mutate(id)}
++          />
+         ) : null}
+-
+         {select.isError ? (
+           <p role="alert" className="text-sm text-error">
+             {select.error.message}
+@@ -228,8 +288,9 @@
+             type="button"
+             disabled={requestBusy}
+             onClick={onCallWaiter}
+-            className="min-h-11 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold disabled:opacity-50"
++            className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-medium text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+           >
++            <HandHelping className="h-4 w-4" aria-hidden="true" />
+             {t.waiter}
+           </button>
+         ) : null}
+--- a/apps/customer-app/src/features/assistant/ConciergeTranscript.tsx
++++ b/apps/customer-app/src/features/assistant/ConciergeTranscript.tsx
+@@ -1,3 +1,10 @@
++import {
++  ArrowUpRight,
++  UtensilsCrossed,
++  Leaf,
++  Egg,
++  Drumstick,
++} from "lucide-react";
+ import { useEffect, useRef } from "react";
+ import { formatMoney } from "@/shared/utils/money";
+ import { copy } from "./concierge.copy";
+@@ -24,7 +31,7 @@
+       aria-label="Conversation"
+       aria-live="polite"
+       aria-relevant="additions text"
+-      className="max-h-[42dvh] space-y-5 overflow-y-auto overscroll-contain py-2 pr-1"
++      className="max-h-[44dvh] space-y-6 overflow-y-auto overscroll-contain py-3 pr-1"
+     >
+       {turns.map((turn) => {
+         const t = copy[turn.question.language];
+@@ -34,12 +41,13 @@
+             lang={turn.question.language === "hi" ? "hi" : "en"}
+             className="space-y-3"
+           >
+-            <div className="ml-8 break-words rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-white">
+-              <span className="sr-only">You: </span>
++            <div className="ml-auto max-w-[85%] break-words rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
++              <span className="sr-only">{t.you}: </span>
+               {turn.question.message}
+             </div>
+-            <div className="mr-2 space-y-3 rounded-2xl rounded-bl-sm border border-border bg-surface p-4">
+-              <p className="text-xs font-semibold text-primary">
++            <div className="space-y-3 rounded-2xl rounded-bl-md bg-surface-secondary/50 p-3 sm:p-4">
++              <p className="flex items-center gap-2 text-xs font-semibold text-primary">
++                <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                 Servora Concierge
+               </p>
+               {turn.status === "pending" ? (
+@@ -75,19 +83,28 @@
+   return (
+     <>
+       <p className="text-sm">{result.message}</p>
+-      <ul className="space-y-2">
++      <ul className="grid gap-2 sm:grid-cols-2">
+         {result.items.map((item) => (
+           <li
+             key={item.id}
+-            className="rounded-xl border border-border bg-surface p-4"
++            className="flex flex-col rounded-2xl border border-border bg-surface p-3.5 transition-colors hover:border-primary/30"
+           >
+-            <div className="flex justify-between gap-3">
+-              <h3 className="min-w-0 break-words font-semibold">{item.name}</h3>
+-              <span className="whitespace-nowrap font-semibold">
++            <div className="flex items-start justify-between gap-3">
++              <h3 className="min-w-0 break-words text-sm font-semibold leading-snug">
++                {item.name}
++              </h3>
++              <span className="whitespace-nowrap text-sm font-semibold text-primary">
+                 {formatMoney(Number(item.basePrice))}
+               </span>
+             </div>
+-            <p className="mt-1 text-xs text-text-secondary">
++            <p className="mb-3 mt-2 flex items-center gap-1.5 text-xs text-text-secondary">
++              {item.foodType === "VEG" ? (
++                <Leaf className="h-3 w-3 text-primary" aria-hidden="true" />
++              ) : item.foodType === "EGG" ? (
++                <Egg className="h-3 w-3" aria-hidden="true" />
++              ) : (
++                <Drumstick className="h-3 w-3" aria-hidden="true" />
++              )}
+               {item.foodType === "VEG"
+                 ? t.veg
+                 : item.foodType === "EGG"
+@@ -99,9 +116,10 @@
+               type="button"
+               disabled={busy}
+               onClick={() => onSelect(item.id)}
+-              className="mt-3 min-h-11 w-full rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50"
++              className="mt-auto flex min-h-11 w-full items-center justify-between rounded-xl bg-primary-surface px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-50"
+             >
+               {t.open}
++              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+             </button>
+           </li>
+         ))}
+--- a/apps/customer-app/src/features/assistant/concierge.copy.ts
++++ b/apps/customer-app/src/features/assistant/concierge.copy.ts
+@@ -2,6 +2,12 @@
+ 
+ export const copy = {
+   en: {
++    welcome: "Tell me what sounds good.",
++    suggestions: "Start with a preference",
++    menuLabel: "Explore the menu",
++    questionHint:
++      "Include all preferences in each question. Leave out personal details.",
++    you: "You",
+     clear: "Clear chat",
+     interrupted:
+       "Search stopped when Concierge closed. Please send a new question.",
+@@ -19,6 +25,12 @@
+     nonVeg: "Non-vegetarian",
+   },
+   hi: {
++    welcome: "बताएं, आज क्या खाने का मन है?",
++    suggestions: "अपनी पसंद से शुरुआत करें",
++    menuLabel: "मेनू में खोजें",
++    questionHint:
++      "हर सवाल में अपनी पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
++    you: "आप",
+     clear: "चैट साफ़ करें",
+     interrupted: "Concierge बंद होने पर खोज रुक गई। कृपया नया सवाल भेजें।",
+     intro: "अपनी पसंद का व्यंजन खोजें",
+@@ -35,6 +47,12 @@
+     nonVeg: "मांसाहारी",
+   },
+   hinglish: {
++    welcome: "Aaj kya khaane ka mann hai?",
++    suggestions: "Apni pasand se shuru karein",
++    menuLabel: "Menu explore karein",
++    questionHint:
++      "Har sawaal mein poori preference batayein. Personal details na likhein.",
++    you: "Aap",
+     clear: "Chat saaf karein",
+     interrupted:
+       "Concierge band hone par search ruk gayi. Naya sawaal bhejein.",
+@@ -54,6 +72,11 @@
+ } satisfies Record<
+   AssistantLanguage,
+   {
++    welcome: string;
++    suggestions: string;
++    menuLabel: string;
++    questionHint: string;
++    you: string;
+     interrupted: string;
+     clear: string;
+     intro: string;
+--- a/docs/CONCIERGE_REFACTOR_REVIEW.md
++++ b/docs/CONCIERGE_REFACTOR_REVIEW.md
+@@ -22,7 +22,7 @@
+ 
+ ## Apply and verify locally
+ 
+-This archive is a modified copy of the uploaded source; it has not changed the files on your computer. It includes `CONCIERGE_CHANGES.patch`, generated against the exact source you uploaded. If you have not applied an earlier archive, use the cumulative patch below. If you already applied the preceding controller/service archive, use `CONCIERGE_CHAT_UI.patch` instead; it contains only the chat UI update and accompanying documentation. Apply only one patch. From your local Servora root, check and apply the appropriate patch using its extracted path:
++This archive is a modified copy of the uploaded source; it has not changed the files on your computer. It includes `CONCIERGE_CHANGES.patch`, generated against the exact source you uploaded. Choose one patch for your current source: `CONCIERGE_CHANGES.patch` for the original uploaded source; `CONCIERGE_CHAT_UI.patch` for the controller/service archive before chat; `CONCIERGE_UI_POLISH.patch` for the basic chat-history archive. Each patch includes matching documentation updates. Apply only one patch. From your local Servora root, check and apply the appropriate patch using its extracted path:
+ 
+ ```bash
+ git apply --check /path/to/CONCIERGE_CHANGES.patch
+@@ -63,3 +63,11 @@
+ Checks: all 128 customer-app tests passed; customer TypeScript, assistant UI ESLint and formatting passed. The production Vite build passed with an explicit CI fixture origin; its existing main-bundle size advisory remains, and the Concierge is still lazy-loaded. Browser visual verification was blocked by a missing browser executable. Dependencies were installed only in temporary tooling; the source package manifests and lockfile were unchanged. The existing React 19/lucide-react peer-range mismatch required legacy peer resolution in that temporary tooling.
+ 
+ For local verification after applying the patch, run the customer-app typecheck, tests and build, then check the sheet on mobile with several questions, failures, close/reopen and item selection. The backend refactor checks above remain applicable; no backend logic changed in the chat UI update.
++
++## Chat visual refinement
++
++The interface now has a welcoming empty state, icon-led suggestions, a compact language selector and a single composer with an accessible arrow send control. The menu entry has a distinct icon treatment and directional affordance. Dish cards use a two-column layout on wider screens, clear price hierarchy, food-type icons and quieter option buttons. User bubbles use the theme foreground token for dark-mode contrast.
++
++The sheet explicitly carries the `customer-experience` theme class so portaled content inherits the menu palette. It is width-constrained on larger screens and remains a bottom sheet on mobile. History, cancellation, quota enforcement, item refresh and independent-question behavior are unchanged.
++
++Verification for the refinement: 128 customer-app tests passed; TypeScript, targeted ESLint and formatting passed. The production build passed using the existing CI fixture-origin path, with the existing main-chunk advisory. Visual browser verification could not run: the browser download returned a truncated archive. No source dependency, lockfile, backend, database or provider setting changed in this visual refinement.
+--- a/docs/SERVORA_CONCIERGE.md
++++ b/docs/SERVORA_CONCIERGE.md
+@@ -182,3 +182,7 @@
+ - `types.ts`: feature props and discriminated chat-turn types.
+ 
+ The customer-app suite passes 128 tests, including multi-turn display, pending/error preservation, close/reopen, explicit clearing, QR-token isolation and late canceled completions. TypeScript and targeted lint pass. Browser visual verification was unavailable because this environment has no installed Playwright browser executable.
++
++### Visual layout
++
++The Concierge sheet uses Servora’s customer theme, including when rendered through the dialog portal. The empty state offers four preference starters; an ongoing conversation uses smaller suggestion chips. Language and clear-history controls stay secondary to the transcript. The footer combines question input and an accessible send button, with a reminder to include complete preferences. Dish cards adapt from one column on mobile to two on wider screens, and all displayed prices and food types still come from the API response. No photos, ratings or availability claims are fabricated.

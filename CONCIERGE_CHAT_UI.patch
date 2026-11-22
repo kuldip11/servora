@@ -1,0 +1,995 @@
+--- a/apps/customer-app/src/features/assistant/Concierge.test.tsx
++++ b/apps/customer-app/src/features/assistant/Concierge.test.tsx
+@@ -1,4 +1,5 @@
+ import {
++  act,
+   fireEvent,
+   render,
+   screen,
+@@ -23,14 +24,17 @@
+ vi.mock("@pos/ui", () => ({
+   BottomSheet: ({
+     children,
++    footer,
+     onClose,
+   }: {
+     children: React.ReactNode;
++    footer?: React.ReactNode;
+     onClose: () => void;
+   }) => (
+     <div role="dialog">
+       <button onClick={onClose}>Close concierge</button>
+       {children}
++      {footer}
+     </div>
+   ),
+ }));
+@@ -184,9 +188,105 @@
+       "textContent",
+       "Assistant limit reached",
+     );
++    fireEvent.change(screen.getByLabelText("Menu question"), {
++      target: { value: "Try another dish" },
++    });
+     expect(screen.getByRole("button", { name: "Find dishes" })).toHaveProperty(
+       "disabled",
+       false,
+     );
+   });
++  it("retains earlier turns while another question is pending and after it completes", async () => {
++    let resolve!: (value: typeof answer) => void;
++    mock.ask.mockResolvedValueOnce(answer).mockImplementationOnce(
++      () =>
++        new Promise((done) => {
++          resolve = done;
++        }),
++    );
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Not spicy" }));
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByRole("log").textContent).toContain("Not spicy");
++    await waitFor(() => expect(mock.ask).toHaveBeenCalledTimes(2));
++    resolve({
++      ...answer,
++      items: [{ ...answer.items[0]!, id: "tea", name: "Green tea" }],
++    });
++    await screen.findByText("Green tea");
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByLabelText("Menu question")).toHaveProperty("value", "");
++  });
++  it("preserves completed history across closing and reopening and clears it explicitly", async () => {
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Close concierge" }));
++    await open();
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(mock.ask).toHaveBeenCalledTimes(1);
++    fireEvent.click(screen.getByRole("button", { name: "Clear chat" }));
++    expect(screen.queryByText("Paneer")).toBeNull();
++  });
++  it("keeps a failed turn beside previous results and supports the next question", async () => {
++    mock.ask
++      .mockResolvedValueOnce(answer)
++      .mockRejectedValueOnce(new Error("Offline"));
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    fireEvent.click(screen.getByRole("button", { name: "Not spicy" }));
++    await screen.findByText("Offline");
++    expect(screen.getByText("Paneer")).toBeTruthy();
++    expect(screen.getByRole("button", { name: "Vegetarian" })).toHaveProperty(
++      "disabled",
++      false,
++    );
++  });
++  it("does not show the previous QR session history after the session changes", async () => {
++    const view = mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await screen.findByText("Paneer");
++    const client = clients[0]!;
++    view.rerender(
++      <QueryClientProvider client={client}>
++        <Concierge
++          token="session-B"
++          onOpenItem={mock.openItem}
++          requestBusy={false}
++          requestMessage={null}
++        />
++      </QueryClientProvider>,
++    );
++    await open();
++    expect(screen.queryByText("Paneer")).toBeNull();
++  });
++  it("marks an interrupted turn on reopen and ignores its late completion", async () => {
++    let resolve!: (value: typeof answer) => void;
++    mock.ask.mockImplementationOnce(
++      () =>
++        new Promise((done) => {
++          resolve = done;
++        }),
++    );
++    mount();
++    await open();
++    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
++    await waitFor(() => expect(mock.ask).toHaveBeenCalled());
++    fireEvent.click(screen.getByRole("button", { name: "Close concierge" }));
++    await open();
++    expect(
++      screen.getByText(/Search stopped when Concierge closed/),
++    ).toBeTruthy();
++    await act(async () => {
++      resolve(answer);
++    });
++    await waitFor(() => expect(screen.queryByText("Paneer")).toBeNull());
++  });
+ });
+--- a/apps/customer-app/src/features/assistant/Concierge.tsx
++++ b/apps/customer-app/src/features/assistant/Concierge.tsx
+@@ -1,11 +1,16 @@
+ import { lazy, Suspense, useState } from "react";
+ import { useQuery } from "@tanstack/react-query";
+-import { MessageCircle } from "lucide-react";
++import { MessageCircle, ChevronRight } from "lucide-react";
+ import { getAssistantCapabilities } from "./api";
+-import type { ConciergeProps } from "./types";
++import type { ConciergeProps, ConciergeTurn } from "./types";
+ const ConciergeSheet = lazy(() => import("./ConciergeSheet"));
+ 
+ export function Concierge(props: ConciergeProps) {
++  return <SessionConcierge key={props.token} {...props} />;
++}
++
++function SessionConcierge(props: ConciergeProps) {
++  const [turns, setTurns] = useState<ConciergeTurn[]>([]);
+   const capabilities = useQuery({
+     queryKey: ["customer", "assistant", "capabilities", props.token],
+     queryFn: ({ signal }) => getAssistantCapabilities(props.token, signal),
+@@ -21,15 +26,21 @@
+         <button
+           type="button"
+           onClick={() => setOpen(true)}
+-          className="flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary-surface px-4 py-4 text-left text-primary"
++          className="group flex w-full items-center gap-3 rounded-2xl border border-primary-border bg-primary-surface px-4 py-4 text-left text-primary transition-colors hover:border-primary"
+         >
+-          <MessageCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+-          <span>
++          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
++            <MessageCircle aria-hidden="true" className="h-5 w-5" />
++          </span>
++          <span className="min-w-0 flex-1">
+             <span className="block font-semibold">Ask Servora Concierge</span>
+-            <span className="text-sm">
++            <span className="mt-0.5 block text-xs leading-relaxed text-text-secondary">
+               Find a dish in English, हिंदी or Hinglish
+             </span>
+           </span>
++          <ChevronRight
++            aria-hidden="true"
++            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
++          />
+         </button>
+       </div>
+       {open ? (
+@@ -40,7 +51,12 @@
+             </p>
+           }
+         >
+-          <ConciergeSheet {...props} onClose={() => setOpen(false)} />
++          <ConciergeSheet
++            {...props}
++            turns={turns}
++            setTurns={setTurns}
++            onClose={() => setOpen(false)}
++          />
+         </Suspense>
+       ) : null}
+     </>
+--- a/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
++++ b/apps/customer-app/src/features/assistant/ConciergeSheet.tsx
+@@ -1,73 +1,22 @@
+ import { useEffect, useRef, useState } from "react";
+ import { useMutation } from "@tanstack/react-query";
+-import { Send } from "lucide-react";
++import {
++  ArrowUp,
++  Leaf,
++  Flame,
++  Wallet,
++  ShieldCheck,
++  UtensilsCrossed,
++  RotateCcw,
++  HandHelping,
++} from "lucide-react";
+ import { BottomSheet } from "@pos/ui";
+ import type { AssistantLanguage, AssistantQuestion } from "@pos/contracts";
+ import { getCustomerMenu } from "@/features/menu/api";
+-import { formatMoney } from "@/shared/utils/money";
+ import { askAssistant } from "./api";
+-import type { ConciergeProps } from "./types";
+-
+-const copy = {
+-  en: {
+-    intro: "Find something you'll enjoy",
+-    hint: "Ask a complete menu question. Each question is searched separately. Please leave out personal details.",
+-    placeholder: "Vegetarian, mild, under ₹300…",
+-    send: "Find dishes",
+-    chips: ["Vegetarian", "Not spicy", "Under ₹300", "Jain options?"],
+-    open: "View options",
+-    waiter: "Ask waiter",
+-    busy: "Checking the live menu…",
+-    basePrice: "Base price",
+-    veg: "Vegetarian",
+-    egg: "Contains egg",
+-    nonVeg: "Non-vegetarian",
+-  },
+-  hi: {
+-    intro: "अपनी पसंद का व्यंजन खोजें",
+-    hint: "हर सवाल अलग से खोजा जाता है। पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
+-    placeholder: "शाकाहारी, कम तीखा, ₹300 से कम…",
+-    send: "व्यंजन खोजें",
+-    chips: ["शाकाहारी", "कम तीखा", "₹300 से कम", "जैन विकल्प?"],
+-    open: "विकल्प देखें",
+-    waiter: "वेटर से पूछें",
+-    busy: "मेनू देख रहे हैं…",
+-    basePrice: "बेस कीमत",
+-    veg: "शाकाहारी",
+-    egg: "अंडा शामिल है",
+-    nonVeg: "मांसाहारी",
+-  },
+-  hinglish: {
+-    intro: "Apni pasand ki dish dhoondhein",
+-    hint: "Har sawaal alag search hota hai. Poori preference batayein. Personal details na likhein.",
+-    placeholder: "Veg, kam teekha, ₹300 ke andar…",
+-    send: "Dishes dhoondhein",
+-    chips: ["Vegetarian", "Kam teekha", "₹300 ke andar", "Jain options?"],
+-    open: "Options dekhein",
+-    waiter: "Waiter se poochhein",
+-    busy: "Live menu check ho raha hai…",
+-    basePrice: "Base price",
+-    veg: "Shakahari",
+-    egg: "Anda shamil hai",
+-    nonVeg: "Non-vegetarian",
+-  },
+-} satisfies Record<
+-  AssistantLanguage,
+-  {
+-    intro: string;
+-    hint: string;
+-    placeholder: string;
+-    send: string;
+-    chips: string[];
+-    open: string;
+-    waiter: string;
+-    busy: string;
+-    basePrice: string;
+-    veg: string;
+-    egg: string;
+-    nonVeg: string;
+-  }
+->;
++import type { ConciergeProps, ConciergeHistoryProps } from "./types";
++import { copy } from "./concierge.copy";
++import { ConciergeTranscript } from "./ConciergeTranscript";
+ 
+ export default function ConciergeSheet({
+   token,
+@@ -76,20 +25,75 @@
+   requestBusy,
+   requestMessage,
+   onClose,
+-}: ConciergeProps & { onClose: () => void }) {
++  turns,
++  setTurns,
++}: ConciergeProps & ConciergeHistoryProps & { onClose: () => void }) {
+   const [language, setLanguage] = useState<AssistantLanguage>("en");
+   const [message, setMessage] = useState("");
+   const controller = useRef<AbortController | null>(null);
+   const t = copy[language];
+-  useEffect(() => () => controller.current?.abort(), []);
++  useEffect(
++    () => () => {
++      controller.current?.abort();
++      setTurns((current) =>
++        current.map((turn) =>
++          turn.status === "pending"
++            ? {
++                id: turn.id,
++                question: turn.question,
++                status: "error",
++                error: copy[turn.question.language].interrupted,
++              }
++            : turn,
++        ),
++      );
++    },
++    [setTurns],
++  );
+   const ask = useMutation({
+     mutationKey: ["customer", "assistant", token],
+     gcTime: 0,
+     retry: false,
+-    mutationFn: (question: AssistantQuestion) => {
++    mutationFn: async ({
++      question,
++      id,
++    }: {
++      question: AssistantQuestion;
++      id: string;
++    }) => {
+       controller.current?.abort();
+       controller.current = new AbortController();
+-      return askAssistant(token, question, controller.current.signal);
++      const signal = controller.current.signal;
++      try {
++        const response = await askAssistant(token, question, signal);
++        if (!signal.aborted)
++          setTurns((current) =>
++            current.map((turn) =>
++              turn.id === id
++                ? { id, question, status: "complete", reply: response }
++                : turn,
++            ),
++          );
++        return response;
++      } catch (error) {
++        if (!signal.aborted)
++          setTurns((current) =>
++            current.map((turn) =>
++              turn.id === id
++                ? {
++                    id,
++                    question,
++                    status: "error",
++                    error:
++                      error instanceof Error
++                        ? error.message
++                        : "Unable to check the menu. Please try again or ask staff.",
++                  }
++                : turn,
++            ),
++          );
++        throw error;
++      }
+     },
+   });
+   const select = useMutation({
+@@ -112,149 +116,181 @@
+     },
+   });
+   const busy = ask.isPending || select.isPending;
+-  const result = ask.data;
+   const submit = (text: string) => {
+     if (!text.trim() || busy) return;
+-    setMessage(text);
++    setMessage("");
+     select.reset();
+-    ask.mutate({ message: text.trim(), language });
++    const id = crypto.randomUUID();
++    const question = { message: text.trim(), language };
++    setTurns((current) => [...current, { id, question, status: "pending" }]);
++    ask.mutate({ question, id });
+   };
++  const composer = (
++    <form
++      onSubmit={(event) => {
++        event.preventDefault();
++        submit(message);
++      }}
++      className="w-full space-y-2.5"
++    >
++      <label htmlFor="concierge-question" className="sr-only">
++        Menu question
++      </label>
++      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
++        <textarea
++          id="concierge-question"
++          value={message}
++          onChange={(event) => setMessage(event.target.value)}
++          placeholder={t.placeholder}
++          maxLength={600}
++          rows={2}
++          disabled={busy}
++          aria-describedby="concierge-question-hint"
++          className="min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-base leading-relaxed text-text-primary outline-none placeholder:text-text-secondary disabled:opacity-60"
++        />
++        <button
++          type="submit"
++          aria-label={t.send}
++          title={t.send}
++          disabled={busy || !message.trim()}
++          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
++        >
++          <ArrowUp className="h-5 w-5" aria-hidden="true" />
++        </button>
++      </div>
++      <p
++        id="concierge-question-hint"
++        className="px-1 text-xs leading-relaxed text-text-secondary"
++      >
++        {t.questionHint}
++      </p>
++    </form>
++  );
+   return (
+     <BottomSheet
+       open
+       onClose={onClose}
+       title="Servora Concierge"
+       description={t.intro}
+-      maxHeight="90dvh"
++      maxHeight="92dvh"
++      contentClassName="customer-experience mx-auto max-w-3xl sm:mb-4 sm:rounded-3xl"
++      bodyClassName="px-4 pb-3 sm:px-6"
++      footer={composer}
++      footerClassName="block bg-surface px-4 py-3 sm:px-6"
+     >
+       <div className="space-y-4" lang={language === "hi" ? "hi" : "en"}>
+-        <div className="flex flex-wrap gap-2" aria-label="Response language">
+-          {(["en", "hi", "hinglish"] as const).map((value) => (
++        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
++          <span className="flex items-center gap-2 text-xs font-medium text-text-secondary">
++            <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
++            {t.menuLabel}
++          </span>
++          <div
++            className="inline-flex rounded-full bg-surface-secondary p-1"
++            aria-label="Response language"
++          >
++            {(["en", "hi", "hinglish"] as const).map((value) => (
++              <button
++                key={value}
++                type="button"
++                aria-pressed={language === value}
++                disabled={busy}
++                onClick={() => {
++                  setLanguage(value);
++                  ask.reset();
++                  select.reset();
++                }}
++                className={`min-h-10 rounded-full px-3 text-xs font-medium transition-colors disabled:opacity-50 ${language === value ? "bg-surface text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
++              >
++                {value === "en"
++                  ? "English"
++                  : value === "hi"
++                    ? "हिंदी"
++                    : "Hinglish"}
++              </button>
++            ))}
++          </div>
++        </div>
++        {!turns.length ? (
++          <div className="px-1 pb-2 pt-7 text-center sm:pt-10">
++            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary-surface text-primary">
++              <UtensilsCrossed className="h-6 w-6" aria-hidden="true" />
++            </div>
++            <h2 className="customer-display text-2xl font-semibold leading-tight sm:text-3xl">
++              {t.intro}
++            </h2>
++            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-secondary">
++              {t.welcome}
++            </p>
++          </div>
++        ) : (
++          <div className="flex items-center justify-between gap-3">
++            <p className="text-xs text-text-secondary">{t.suggestions}</p>
+             <button
+-              key={value}
+               type="button"
+-              aria-pressed={language === value}
+               disabled={busy}
+               onClick={() => {
+-                setLanguage(value);
++                setTurns([]);
+                 ask.reset();
+                 select.reset();
+               }}
+-              className={`rounded-full border px-3 py-2 text-sm ${language === value ? "border-primary bg-primary-surface text-primary" : "border-border"}`}
++              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+             >
+-              {value === "en"
+-                ? "English"
+-                : value === "hi"
+-                  ? "हिंदी"
+-                  : "Hinglish"}
++              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
++              {t.clear}
+             </button>
+-          ))}
++          </div>
++        )}
++        <div
++          className={
++            turns.length
++              ? "flex gap-2 overflow-x-auto pb-1"
++              : "grid grid-cols-2 gap-2 pb-3"
++          }
++        >
++          {t.chips.map((chip, index) => {
++            const Icon =
++              [Leaf, Flame, Wallet, ShieldCheck][index] ?? UtensilsCrossed;
++            return (
++              <button
++                key={chip}
++                type="button"
++                disabled={busy}
++                onClick={() => submit(chip)}
++                className={
++                  turns.length
++                    ? "flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 text-xs text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-50"
++                    : "flex min-h-14 items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-3 text-left text-sm font-medium transition-colors hover:border-primary/40 hover:bg-primary-surface disabled:opacity-50"
++                }
++              >
++                <Icon
++                  className="h-4 w-4 shrink-0 text-primary"
++                  aria-hidden="true"
++                />
++                {chip}
++              </button>
++            );
++          })}
+         </div>
+-        <p className="text-sm text-text-secondary">{t.hint}</p>
+-        <div className="flex flex-wrap gap-2">
+-          {t.chips.map((chip) => (
+-            <button
+-              key={chip}
+-              type="button"
+-              disabled={busy}
+-              onClick={() => submit(chip)}
+-              className="rounded-full border border-border px-3 py-2 text-sm disabled:opacity-50"
+-            >
+-              {chip}
+-            </button>
+-          ))}
+-        </div>
+-        <form
+-          onSubmit={(event) => {
+-            event.preventDefault();
+-            submit(message);
+-          }}
+-          className="space-y-2"
+-        >
+-          <label htmlFor="concierge-question" className="sr-only">
+-            Menu question
+-          </label>
+-          <textarea
+-            id="concierge-question"
+-            value={message}
+-            onChange={(event) => setMessage(event.target.value)}
+-            placeholder={t.placeholder}
+-            maxLength={600}
+-            rows={2}
+-            disabled={busy}
+-            className="w-full resize-none rounded-xl border border-border bg-surface p-3 text-base focus:outline-primary"
++        {turns.length ? (
++          <ConciergeTranscript
++            turns={turns}
++            busy={busy}
++            onSelect={(id) => select.mutate(id)}
+           />
+-          <button
+-            type="submit"
+-            disabled={busy || !message.trim()}
+-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50"
+-          >
+-            <Send className="h-4 w-4" aria-hidden="true" />
+-            {t.send}
+-          </button>
+-        </form>
+-        <div
+-          role="status"
+-          aria-live="polite"
+-          aria-busy={busy}
+-          className="space-y-3"
+-        >
+-          {busy ? (
+-            <p className="text-sm text-text-secondary">{t.busy}</p>
+-          ) : null}
+-          {ask.isError || select.isError ? (
+-            <p role="alert" className="text-sm text-error">
+-              {(select.error ?? ask.error)?.message ??
+-                "Unable to check the menu. Please try again or ask staff."}
+-            </p>
+-          ) : null}
+-          {result && !ask.isPending ? (
+-            <>
+-              <p className="text-sm">{result.message}</p>
+-              <ul className="space-y-2">
+-                {result.items.map((item) => (
+-                  <li
+-                    key={item.id}
+-                    className="rounded-xl border border-border bg-surface p-4"
+-                  >
+-                    <div className="flex justify-between gap-3">
+-                      <h3 className="font-semibold">{item.name}</h3>
+-                      <span className="whitespace-nowrap font-semibold">
+-                        {formatMoney(Number(item.basePrice))}
+-                      </span>
+-                    </div>
+-                    <p className="mt-1 text-xs text-text-secondary">
+-                      {item.foodType === "VEG"
+-                        ? t.veg
+-                        : item.foodType === "EGG"
+-                          ? t.egg
+-                          : t.nonVeg}{" "}
+-                      · {t.basePrice}
+-                    </p>
+-                    <button
+-                      type="button"
+-                      disabled={busy}
+-                      onClick={() => select.mutate(item.id)}
+-                      className="mt-3 min-h-11 w-full rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50"
+-                    >
+-                      {t.open}
+-                    </button>
+-                  </li>
+-                ))}
+-              </ul>
+-              <p className="text-xs leading-relaxed text-text-secondary">
+-                {result.disclaimer}
+-              </p>
+-            </>
+-          ) : null}
+-        </div>
++        ) : null}
++        {select.isError ? (
++          <p role="alert" className="text-sm text-error">
++            {select.error.message}
++          </p>
++        ) : null}
+         {onCallWaiter ? (
+           <button
+             type="button"
+             disabled={requestBusy}
+             onClick={onCallWaiter}
+-            className="min-h-11 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold disabled:opacity-50"
++            className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-medium text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
+           >
++            <HandHelping className="h-4 w-4" aria-hidden="true" />
+             {t.waiter}
+           </button>
+         ) : null}
+--- /dev/null
++++ b/apps/customer-app/src/features/assistant/ConciergeTranscript.tsx
+@@ -0,0 +1,132 @@
++import {
++  ArrowUpRight,
++  UtensilsCrossed,
++  Leaf,
++  Egg,
++  Drumstick,
++} from "lucide-react";
++import { useEffect, useRef } from "react";
++import { formatMoney } from "@/shared/utils/money";
++import { copy } from "./concierge.copy";
++import type { ConciergeTurn } from "./types";
++
++export function ConciergeTranscript({
++  turns,
++  busy,
++  onSelect,
++}: {
++  turns: ConciergeTurn[];
++  busy: boolean;
++  onSelect: (id: string) => void;
++}) {
++  const log = useRef<HTMLOListElement>(null);
++  const lastStatus = turns[turns.length - 1]?.status;
++  useEffect(() => {
++    if (log.current) log.current.scrollTop = log.current.scrollHeight;
++  }, [turns.length, lastStatus]);
++  return (
++    <ol
++      ref={log}
++      role="log"
++      aria-label="Conversation"
++      aria-live="polite"
++      aria-relevant="additions text"
++      className="max-h-[44dvh] space-y-6 overflow-y-auto overscroll-contain py-3 pr-1"
++    >
++      {turns.map((turn) => {
++        const t = copy[turn.question.language];
++        return (
++          <li
++            key={turn.id}
++            lang={turn.question.language === "hi" ? "hi" : "en"}
++            className="space-y-3"
++          >
++            <div className="ml-auto max-w-[85%] break-words rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
++              <span className="sr-only">{t.you}: </span>
++              {turn.question.message}
++            </div>
++            <div className="space-y-3 rounded-2xl rounded-bl-md bg-surface-secondary/50 p-3 sm:p-4">
++              <p className="flex items-center gap-2 text-xs font-semibold text-primary">
++                <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
++                Servora Concierge
++              </p>
++              {turn.status === "pending" ? (
++                <p role="status" className="text-sm text-text-secondary">
++                  {t.busy}
++                </p>
++              ) : turn.status === "error" ? (
++                <p role="alert" className="text-sm text-error">
++                  {turn.error}
++                </p>
++              ) : (
++                <CompletedReply turn={turn} busy={busy} onSelect={onSelect} />
++              )}
++            </div>
++          </li>
++        );
++      })}
++    </ol>
++  );
++}
++
++function CompletedReply({
++  turn,
++  busy,
++  onSelect,
++}: {
++  turn: Extract<ConciergeTurn, { status: "complete" }>;
++  busy: boolean;
++  onSelect: (id: string) => void;
++}) {
++  const result = turn.reply;
++  const t = copy[result.language];
++  return (
++    <>
++      <p className="text-sm">{result.message}</p>
++      <ul className="grid gap-2 sm:grid-cols-2">
++        {result.items.map((item) => (
++          <li
++            key={item.id}
++            className="flex flex-col rounded-2xl border border-border bg-surface p-3.5 transition-colors hover:border-primary/30"
++          >
++            <div className="flex items-start justify-between gap-3">
++              <h3 className="min-w-0 break-words text-sm font-semibold leading-snug">
++                {item.name}
++              </h3>
++              <span className="whitespace-nowrap text-sm font-semibold text-primary">
++                {formatMoney(Number(item.basePrice))}
++              </span>
++            </div>
++            <p className="mb-3 mt-2 flex items-center gap-1.5 text-xs text-text-secondary">
++              {item.foodType === "VEG" ? (
++                <Leaf className="h-3 w-3 text-primary" aria-hidden="true" />
++              ) : item.foodType === "EGG" ? (
++                <Egg className="h-3 w-3" aria-hidden="true" />
++              ) : (
++                <Drumstick className="h-3 w-3" aria-hidden="true" />
++              )}
++              {item.foodType === "VEG"
++                ? t.veg
++                : item.foodType === "EGG"
++                  ? t.egg
++                  : t.nonVeg}{" "}
++              · {t.basePrice}
++            </p>
++            <button
++              type="button"
++              disabled={busy}
++              onClick={() => onSelect(item.id)}
++              className="mt-auto flex min-h-11 w-full items-center justify-between rounded-xl bg-primary-surface px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-50"
++            >
++              {t.open}
++              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
++            </button>
++          </li>
++        ))}
++      </ul>
++      <p className="text-xs leading-relaxed text-text-secondary">
++        {result.disclaimer}
++      </p>
++    </>
++  );
++}
+--- /dev/null
++++ b/apps/customer-app/src/features/assistant/concierge.copy.ts
+@@ -0,0 +1,95 @@
++import type { AssistantLanguage } from "@pos/contracts";
++
++export const copy = {
++  en: {
++    welcome: "Tell me what sounds good.",
++    suggestions: "Start with a preference",
++    menuLabel: "Explore the menu",
++    questionHint:
++      "Include all preferences in each question. Leave out personal details.",
++    you: "You",
++    clear: "Clear chat",
++    interrupted:
++      "Search stopped when Concierge closed. Please send a new question.",
++    intro: "Find something you'll enjoy",
++    hint: "Ask a complete menu question. Each question is searched separately. Please leave out personal details.",
++    placeholder: "Vegetarian, mild, under ₹300…",
++    send: "Find dishes",
++    chips: ["Vegetarian", "Not spicy", "Under ₹300", "Jain options?"],
++    open: "View options",
++    waiter: "Ask waiter",
++    busy: "Checking the live menu…",
++    basePrice: "Base price",
++    veg: "Vegetarian",
++    egg: "Contains egg",
++    nonVeg: "Non-vegetarian",
++  },
++  hi: {
++    welcome: "बताएं, आज क्या खाने का मन है?",
++    suggestions: "अपनी पसंद से शुरुआत करें",
++    menuLabel: "मेनू में खोजें",
++    questionHint:
++      "हर सवाल में अपनी पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
++    you: "आप",
++    clear: "चैट साफ़ करें",
++    interrupted: "Concierge बंद होने पर खोज रुक गई। कृपया नया सवाल भेजें।",
++    intro: "अपनी पसंद का व्यंजन खोजें",
++    hint: "हर सवाल अलग से खोजा जाता है। पूरी पसंद बताएं। व्यक्तिगत जानकारी न लिखें।",
++    placeholder: "शाकाहारी, कम तीखा, ₹300 से कम…",
++    send: "व्यंजन खोजें",
++    chips: ["शाकाहारी", "कम तीखा", "₹300 से कम", "जैन विकल्प?"],
++    open: "विकल्प देखें",
++    waiter: "वेटर से पूछें",
++    busy: "मेनू देख रहे हैं…",
++    basePrice: "बेस कीमत",
++    veg: "शाकाहारी",
++    egg: "अंडा शामिल है",
++    nonVeg: "मांसाहारी",
++  },
++  hinglish: {
++    welcome: "Aaj kya khaane ka mann hai?",
++    suggestions: "Apni pasand se shuru karein",
++    menuLabel: "Menu explore karein",
++    questionHint:
++      "Har sawaal mein poori preference batayein. Personal details na likhein.",
++    you: "Aap",
++    clear: "Chat saaf karein",
++    interrupted:
++      "Concierge band hone par search ruk gayi. Naya sawaal bhejein.",
++    intro: "Apni pasand ki dish dhoondhein",
++    hint: "Har sawaal alag search hota hai. Poori preference batayein. Personal details na likhein.",
++    placeholder: "Veg, kam teekha, ₹300 ke andar…",
++    send: "Dishes dhoondhein",
++    chips: ["Vegetarian", "Kam teekha", "₹300 ke andar", "Jain options?"],
++    open: "Options dekhein",
++    waiter: "Waiter se poochhein",
++    busy: "Live menu check ho raha hai…",
++    basePrice: "Base price",
++    veg: "Shakahari",
++    egg: "Anda shamil hai",
++    nonVeg: "Non-vegetarian",
++  },
++} satisfies Record<
++  AssistantLanguage,
++  {
++    welcome: string;
++    suggestions: string;
++    menuLabel: string;
++    questionHint: string;
++    you: string;
++    interrupted: string;
++    clear: string;
++    intro: string;
++    hint: string;
++    placeholder: string;
++    send: string;
++    chips: string[];
++    open: string;
++    waiter: string;
++    busy: string;
++    basePrice: string;
++    veg: string;
++    egg: string;
++    nonVeg: string;
++  }
++>;
+--- a/apps/customer-app/src/features/assistant/types.ts
++++ b/apps/customer-app/src/features/assistant/types.ts
+@@ -1,3 +1,5 @@
++import type { Dispatch, SetStateAction } from "react";
++import type { AssistantQuestion, AssistantReply } from "@pos/contracts";
+ import type { CustomerMenuItem } from "@/features/menu/api";
+ export type ConciergeProps = {
+   token: string;
+@@ -6,3 +8,17 @@
+   requestBusy: boolean;
+   requestMessage: string | null;
+ };
++
++export type ConciergeTurn = {
++  id: string;
++  question: AssistantQuestion;
++} & (
++  | { status: "pending" }
++  | { status: "complete"; reply: AssistantReply }
++  | { status: "error"; error: string }
++);
++
++export type ConciergeHistoryProps = {
++  turns: ConciergeTurn[];
++  setTurns: Dispatch<SetStateAction<ConciergeTurn[]>>;
++};
+--- a/docs/CONCIERGE_REFACTOR_REVIEW.md
++++ b/docs/CONCIERGE_REFACTOR_REVIEW.md
+@@ -22,14 +22,14 @@
+ 
+ ## Apply and verify locally
+ 
+-This archive is a modified copy of the uploaded source; it has not changed the files on your computer. It includes `CONCIERGE_CHANGES.patch`, generated against the exact source you uploaded. From your local Servora root, check and apply that patch using its extracted path:
++This archive is a modified copy of the uploaded source; it has not changed the files on your computer. It includes `CONCIERGE_CHANGES.patch`, generated against the exact source you uploaded. Choose one patch for your current source: `CONCIERGE_CHANGES.patch` for the original uploaded source; `CONCIERGE_CHAT_UI.patch` for the controller/service archive before chat; `CONCIERGE_UI_POLISH.patch` for the basic chat-history archive. Each patch includes matching documentation updates. Apply only one patch. From your local Servora root, check and apply the appropriate patch using its extracted path:
+ 
+ ```bash
+ git apply --check /path/to/CONCIERGE_CHANGES.patch
+ git apply /path/to/CONCIERGE_CHANGES.patch
+ ```
+ 
+-The check does not change your files. If it fails because your local source changed after the upload, review the differences rather than forcing the patch. The patch includes the focused assistant changes, Redis test-runner path and documentation, and removes the old `assistant.policy.ts`. It does not require a commit or GitHub push. The full updated source is also included for review.
++The check does not change your files. If it fails because your local source changed after the upload, review the differences rather than forcing the patch. The patch includes the focused assistant changes, Redis test-runner path and documentation, and removes the old `assistant.policy.ts`. It also includes the customer-app chat transcript and related tests. It does not require a commit or GitHub push. The full updated source is also included for review.
+ 
+ From the project root:
+ 
+@@ -53,3 +53,21 @@
+ See `SERVORA_CONCIERGE.md` for the file responsibility map and stage-by-stage troubleshooting. The live 503 root cause remains unverified. pgvector should follow a comparison against the working lexical/structured baseline.
+ 
+ The module follows Servora’s existing route → controller → service convention. `assistant.controller.ts` wraps service results in HTTP success envelopes; `assistant.route.ts` owns request contracts, token extraction, cache headers and cancellation forwarding. `assistant-recommendation.service.ts` exposes `assistantRecommendationService.resolve`. Search and safety remain pure functions. No assistant repository is added because the feature reuses the existing menu service.
++
++## Customer chat UI update
++
++The customer-facing request now displays user/assistant turns above a fixed composer instead of replacing one result panel. History stays in memory for the mounted QR session, survives sheet close/reopen, and clears on explicit Clear chat, token change, entry unmount or reload. Closing cancels active requests and marks an unfinished question as interrupted. Historical cards retain fresh-menu checks. Language changes preserve history.
++
++This does not add AI conversation memory; every submitted question remains independent. No messages are stored in localStorage or sent as prior history. Clear chat affects display only, not Redis turn caps.
++
++Checks: all 128 customer-app tests passed; customer TypeScript, assistant UI ESLint and formatting passed. The production Vite build passed with an explicit CI fixture origin; its existing main-bundle size advisory remains, and the Concierge is still lazy-loaded. Browser visual verification was blocked by a missing browser executable. Dependencies were installed only in temporary tooling; the source package manifests and lockfile were unchanged. The existing React 19/lucide-react peer-range mismatch required legacy peer resolution in that temporary tooling.
++
++For local verification after applying the patch, run the customer-app typecheck, tests and build, then check the sheet on mobile with several questions, failures, close/reopen and item selection. The backend refactor checks above remain applicable; no backend logic changed in the chat UI update.
++
++## Chat visual refinement
++
++The interface now has a welcoming empty state, icon-led suggestions, a compact language selector and a single composer with an accessible arrow send control. The menu entry has a distinct icon treatment and directional affordance. Dish cards use a two-column layout on wider screens, clear price hierarchy, food-type icons and quieter option buttons. User bubbles use the theme foreground token for dark-mode contrast.
++
++The sheet explicitly carries the `customer-experience` theme class so portaled content inherits the menu palette. It is width-constrained on larger screens and remains a bottom sheet on mobile. History, cancellation, quota enforcement, item refresh and independent-question behavior are unchanged.
++
++Verification for the refinement: 128 customer-app tests passed; TypeScript, targeted ESLint and formatting passed. The production build passed using the existing CI fixture-origin path, with the existing main-chunk advisory. Visual browser verification could not run: the browser download returned a truncated archive. No source dependency, lockfile, backend, database or provider setting changed in this visual refinement.
+--- a/docs/SERVORA_CONCIERGE.md
++++ b/docs/SERVORA_CONCIERGE.md
+@@ -55,7 +55,7 @@
+ - One provider generation, no retries, maximum 400 output tokens, an 8-second SDK timeout, and a 600-character question limit. A turn may invoke the menu lookup at most once.
+ - Aggregate tenant/day model-call and input/output-token counters expire after 31 days. No prompts, replies, session tokens or conversation transcripts are stored by this module. Existing metrics record tokens, duration and failures without user text.
+ - Turn caps bound call volume; these counters are not a monetary budget or a billing ledger. Provider failures may incur usage that is not available to the application. Reconcile provider charges before commercial billing.
+-- Client state is session-scoped, in memory, and removed when the sheet/session unmounts. Model requests are not retried automatically; closing the sheet aborts its active request.
++- Client chat history is session-scoped and held in memory by the Concierge entry. Completed turns survive closing and reopening the sheet while the same entry stays mounted; history is cleared explicitly, on QR-token change, entry unmount or page refresh. No browser persistence is used. Model requests are not retried automatically; closing the sheet aborts its active request.
+ 
+ ## Verification and remaining work
+ 
+@@ -164,3 +164,25 @@
+ The test runner initially stalled because this sandbox lacks `/proc` RSS data required by Node's memory bookkeeping. A temporary host-only memory-metadata preload resolved that environment issue. It is not included in Servora source. See `CONCIERGE_REFACTOR_REVIEW.md` for remaining local verification and the exact application steps.
+ 
+ The module follows Servora’s existing route → controller → service convention. `assistant.controller.ts` wraps service results in HTTP success envelopes; `assistant.route.ts` owns request contracts, token extraction, cache headers and cancellation forwarding. `assistant-recommendation.service.ts` exposes `assistantRecommendationService.resolve`. Search and safety remain pure functions. No assistant repository is added because the feature reuses the existing menu service.
++
++## Chat interface
++
++The previous single-result panel was replaced by a session-scoped transcript. New questions append a user bubble and a pending assistant bubble, then replace only that pending bubble with the response or an error. Previous cards remain visible during subsequent searches. The composer lives in the BottomSheet footer; the transcript scrolls independently. Language changes do not delete earlier turns. Clear chat removes the visible history and does not reset server quotas.
++
++Closing the sheet aborts active work. An interrupted question receives a controlled stopped-search message, and a late response cannot overwrite that turn. Changing QR tokens remounts the entry, preventing the next session from seeing the previous session's history. Opening any historical card still refreshes the current menu before customization.
++
++This is display history, not server conversation memory. The API still receives only the current message and language. No new provider calls, server endpoints, database tables, streaming or cart actions were added. Prompts must still contain complete preferences.
++
++Frontend responsibilities:
++
++- `Concierge.tsx`: capability query, QR-token isolation and in-memory history ownership.
++- `ConciergeSheet.tsx`: composer, request lifecycle, cancellation and fresh-menu item selection.
++- `ConciergeTranscript.tsx`: accessible conversation log, user/assistant bubbles and historical cards.
++- `concierge.copy.ts`: localized labels and controlled copy.
++- `types.ts`: feature props and discriminated chat-turn types.
++
++The customer-app suite passes 128 tests, including multi-turn display, pending/error preservation, close/reopen, explicit clearing, QR-token isolation and late canceled completions. TypeScript and targeted lint pass. Browser visual verification was unavailable because this environment has no installed Playwright browser executable.
++
++### Visual layout
++
++The Concierge sheet uses Servora’s customer theme, including when rendered through the dialog portal. The empty state offers four preference starters; an ongoing conversation uses smaller suggestion chips. Language and clear-history controls stay secondary to the transcript. The footer combines question input and an accessible send button, with a reminder to include complete preferences. Dish cards adapt from one column on mobile to two on wider screens, and all displayed prices and food types still come from the API response. No photos, ratings or availability claims are fabricated.

@@ -60,6 +60,7 @@ import {
   customerRealtimeRouter,
   startRealtimeRedisSubscription,
 } from "./modules/realtime/gateway";
+import { assistantRouter } from "./modules/assistant/assistant.route";
 import { customerRouter } from "./modules/customer/customer.route";
 import { customerRequestRouter } from "./modules/customer/customer-requests.route";
 import { razorpayWebhookRouter } from "./modules/billing/razorpay-webhook.route";
@@ -245,6 +246,7 @@ app = app
 app = app
   .use(auditRouter)
   .use(customerRouter)
+  .use(assistantRouter)
   .use(customerRequestRouter)
   .use(razorpayWebhookRouter)
   .use(realtimeRouter)

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { createApiClient, extractApiError, capturedConfig } = vi.hoisted(() => {
   const capturedConfig: { current?: any } = {};
@@ -37,20 +37,29 @@ vi.mock("../../../store/auth", () => ({
 
 vi.mock("../query-client", () => ({ queryClient: { clear: vi.fn() } }));
 
-import { apiClient } from "@/shared/lib/api-client";
 import { queryClient } from "@/shared/lib/query-client";
 
 const config = () => capturedConfig.current as any;
 
 describe("web api client adapter", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetModules();
+    // Save the original for cleanup; Vitest 1 stringifies undefined stubs.
+    vi.stubEnv("VITE_API_URL", "");
+    delete process.env["VITE_API_URL"];
     authState.accessToken = "access-1";
     authState.franchiseId = "tenant-1";
     authState.branchId = "branch-1";
+    await import("@/shared/lib/api-client");
   });
 
-  it("creates the client with web defaults and reads auth context", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("creates the client with web defaults and reads auth context", async () => {
+    const { apiClient } = await import("@/shared/lib/api-client");
     expect(apiClient).toBeDefined();
     expect(config()).toEqual(
       expect.objectContaining({ baseURL: "/api", timeout: 30_000 }),
@@ -59,6 +68,18 @@ describe("web api client adapter", () => {
     expect(config().storage.getAccessToken()).toBe("access-1");
     expect(config().storage.getTenantId()).toBe("tenant-1");
     expect(config().storage.getBranchId()).toBe("branch-1");
+  });
+
+  it("uses the configured API URL", async () => {
+    vi.stubEnv("VITE_API_URL", "https://api.example.test/api");
+    vi.resetModules();
+    await import("@/shared/lib/api-client");
+    expect(config()).toEqual(
+      expect.objectContaining({
+        baseURL: "https://api.example.test/api",
+        timeout: 30_000,
+      }),
+    );
   });
 
   it("writes tokens and clears the web session on refresh failure", () => {

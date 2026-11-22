@@ -109,7 +109,7 @@ describe("customer Concierge", () => {
     expect(screen.getByText(answer.disclaimer)).toBeTruthy();
     expect(mock.ask).toHaveBeenCalledWith(
       "session-A",
-      { message: "veg under 300", language: "en" },
+      { message: "veg under 300" },
       expect.any(AbortSignal),
     );
     expect(mock.openItem).not.toHaveBeenCalled();
@@ -151,17 +151,19 @@ describe("customer Concierge", () => {
   it("supports Hindi questions and requires an explicit waiter click", async () => {
     mount();
     await open();
-    fireEvent.click(screen.getByRole("button", { name: "हिंदी" }));
-    fireEvent.click(screen.getByRole("button", { name: "जैन विकल्प?" }));
+    fireEvent.change(screen.getByLabelText("Menu question"), {
+      target: { value: "जैन विकल्प?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Find dishes" }));
     await waitFor(() =>
       expect(mock.ask).toHaveBeenCalledWith(
         "session-A",
-        { message: "जैन विकल्प?", language: "hi" },
+        { message: "जैन विकल्प?" },
         expect.any(AbortSignal),
       ),
     );
     expect(mock.waiter).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "वेटर से पूछें" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask waiter" }));
     expect(mock.waiter).toHaveBeenCalledOnce();
   });
   it("does not expose waiter actions for takeaway", async () => {

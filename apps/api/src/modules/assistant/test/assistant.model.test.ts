@@ -75,10 +75,17 @@ describe("AI SDK tool protocol", () => {
     expect(prompt).not.toContain("9876543210");
   });
   it("rejects invalid model arguments before they can reach the menu service", async () => {
-    state.model = model({ ...input, tenantId: "foreign" });
+    state.model = model({ ...input, foodType: "invented" });
     const execute = vi.fn();
     await expect(runMenuTool("veg", execute)).rejects.toThrow();
     expect(execute).not.toHaveBeenCalled();
+  });
+  it("discards model-provided scope overrides before executing the menu tool", async () => {
+    state.model = model({ ...input, tenantId: "foreign", branchId: "foreign" });
+    const execute = vi.fn().mockResolvedValue(undefined);
+    await runMenuTool("veg", execute);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledWith(input);
   });
   it("rejects duplicate tool calls, executing the menu lookup at most once", async () => {
     state.model = model(input, 2);

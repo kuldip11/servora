@@ -80,12 +80,17 @@ describe("Concierge golden safety cases", () => {
       searchItems(
         [
           item,
+          { ...item, id: "none", spiceLevel: "NONE" },
           { ...item, id: "unknown", spiceLevel: null },
+          { ...item, id: "empty", spiceLevel: "" },
+          { ...item, id: "hot", spiceLevel: "HOT" },
           { ...item, id: "meat", foodType: "NON_VEG" },
         ],
         { ...input, foodType: "VEG", mild: true },
-      ).map((i) => i.id),
-    ).toEqual(["one"]);
+      )
+        .map((i) => i.id)
+        .sort(),
+    ).toEqual(["none", "one"]);
   });
   it("does not claim configured or weight/open-price items fit a budget", () => {
     const items = [

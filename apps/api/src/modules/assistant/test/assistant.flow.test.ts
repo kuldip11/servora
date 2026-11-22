@@ -131,6 +131,7 @@ describe("Concierge HTTP to SDK to menu flow", () => {
         basePrice: item.basePrice,
         foodType: item.foodType,
         spiceLevel: item.spiceLevel,
+        hasOptions: false,
       },
     ]);
     expect(state.menu).toHaveBeenCalledWith("session-token");

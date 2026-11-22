@@ -226,7 +226,8 @@ function passesFilters(item: CatalogItem, input: MenuSearchInput): boolean {
   const price = Number(item.basePrice);
   if (!Number.isFinite(price) || price < 0) return false;
   if (input.foodType !== "ANY" && item.foodType !== input.foodType) return false;
-  if (input.mild && !["MILD", "NONE", ""].includes(item.spiceLevel ?? "")) return false;
+  if (input.mild && !["MILD", "NONE"].includes(item.spiceLevel ?? ""))
+    return false;
   // Weight/open-price items have no honest per-item price to compare.
   const constrained = input.maxPrice !== null || input.minPrice !== null;
   if (constrained && item.pricingMode !== "FIXED") return false;

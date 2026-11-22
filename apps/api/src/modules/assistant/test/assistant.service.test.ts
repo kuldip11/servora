@@ -112,7 +112,7 @@ describe("session-scoped read-only assistant", () => {
       message: "paneer",
       language: "en",
     });
-    expect(result.outcome).toBe("NO_MATCH");
+    expect(result.outcome).toBe("NOT_ON_MENU");
     expect(result.items).toEqual([]);
   });
   it("short-circuits dietary questions without sending them to a provider", async () => {
@@ -209,7 +209,11 @@ describe("session-scoped read-only assistant", () => {
     ).rejects.toThrow("temporarily unavailable");
     expect(mock.failure).toHaveBeenCalledWith(
       "menu",
-      { tenantId: "tenant-A", branchId: "branch-A" },
+      {
+        tenantId: "tenant-A",
+        branchId: "branch-A",
+        durationMs: expect.any(Number),
+      },
       expect.any(Error),
     );
   });

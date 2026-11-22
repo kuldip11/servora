@@ -120,7 +120,7 @@ describe("session-scoped read-only assistant", () => {
       (
         await assistantService.ask("token", {
           message: "peanut allergy",
-          language: "hinglish",
+          language: "en",
         })
       ).outcome,
     ).toBe("ASK_STAFF");
@@ -136,7 +136,7 @@ describe("session-scoped read-only assistant", () => {
       (
         await assistantService.ask("token", {
           message: "special dietary question",
-          language: "hi",
+          language: "en",
         })
       ).outcome,
     ).toBe("ASK_STAFF");

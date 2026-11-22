@@ -23,7 +23,7 @@ const post = (body: unknown, token = "token") =>
 beforeEach(() => {
   vi.clearAllMocks();
   mock.capabilities.mockResolvedValue({ enabled: false });
-  mock.ask.mockResolvedValue(reply("en", "NO_MATCH", true));
+  mock.ask.mockResolvedValue(reply("NO_MATCH", true));
 });
 describe("assistant HTTP contract", () => {
   it("requires customer authentication", async () => {
@@ -35,6 +35,8 @@ describe("assistant HTTP contract", () => {
   it("rejects oversized messages and unsupported languages", async () => {
     for (const body of [
       { message: "x".repeat(601), language: "en" },
+      { message: "veg", language: "hi" },
+      { message: "veg", language: "hinglish" },
       { message: "veg", language: "fr" },
     ])
       expect((await post(body)).status).toBe(400);

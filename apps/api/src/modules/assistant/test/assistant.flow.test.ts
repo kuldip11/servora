@@ -139,9 +139,12 @@ describe("Concierge HTTP to SDK to menu flow", () => {
     );
   });
   it("handles Hindi dietary questions without a provider or menu lookup", async () => {
-    const response = await post("जैन विकल्प?", "hi");
+    const response = await post("जैन विकल्प?");
     expect(response.status).toBe(200);
-    expect((await readReply(response)).data.outcome).toBe("ASK_STAFF");
+    expect((await readReply(response)).data).toMatchObject({
+      outcome: "ASK_STAFF",
+      language: "en",
+    });
     expect(state.menu).not.toHaveBeenCalled();
     expect((state.model as MockLanguageModelV4).doGenerateCalls).toHaveLength(
       0,
